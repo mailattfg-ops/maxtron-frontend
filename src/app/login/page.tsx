@@ -1,0 +1,205 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Briefcase, User, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('admin');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // In a real app, role might be determined by the backend based on email, 
+      // or passed along if we have specific login portals per role.
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role }), // adding role for future backend usage
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        router.push('/');
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      setError('Cannot connect to server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoFill = () => {
+    setEmail('admin@maxtron.com');
+    setPassword('password');
+    setRole('admin');
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-1/2 bg-primary transform -skew-y-3 origin-top-right -z-10 shadow-lg"></div>
+
+      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl flex overflow-hidden border border-foreground/5 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        
+        {/* Left Side: Information / Branding */}
+        <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground p-12 flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-bl-full -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/20 rounded-tr-full -z-0"></div>
+          
+          <div className="z-10 relative">
+            <div className="flex items-center space-x-3 mb-8">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary font-bold text-2xl shadow-inner">
+                M
+              </div>
+              <h1 className="text-3xl font-bold tracking-wider">Maxtron ERP</h1>
+            </div>
+            
+            <h2 className="text-4xl font-extrabold leading-tight mb-6">
+              Empowering your Polybag Production.
+            </h2>
+            <p className="text-primary-foreground/80 text-lg max-w-md">
+              Streamline operations across multiple departments, manage inventory efficiently, and connect your entire workforce in one robust system.
+            </p>
+          </div>
+
+          <div className="z-10 flex space-x-6 text-sm font-medium text-primary-foreground/70">
+            <span>Enterprise Grade</span>
+            <span>•</span>
+            <span>Secure</span>
+            <span>•</span>
+            <span>Fast</span>
+          </div>
+        </div>
+
+        {/* Right Side: Login Form */}
+        <div className="w-full lg:w-1/2 p-10 sm:p-14 flex flex-col justify-center bg-white">
+          <div className="mb-10 lg:hidden flex items-center space-x-3">
+             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-inner">M</div>
+             <h1 className="text-2xl font-bold text-primary tracking-wider">Maxtron</h1>
+          </div>
+
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-foreground mb-2">Welcome Back</h2>
+            <p className="text-foreground/50">Please sign in to your unified workstation</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium rounded-r-lg flex items-center">
+              <ShieldCheck className="w-5 h-5 mr-2" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            
+            {/* Role Selector (Demo purpose UI) */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold inline-block text-foreground/80">Select Role / Department</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { id: 'admin', label: 'Admin', icon: ShieldCheck },
+                  { id: 'hr', label: 'HR', icon: Briefcase },
+                  { id: 'sales', label: 'Sales', icon: User },
+                ].map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setRole(r.id)}
+                    className={`flex items-center justify-center p-3 rounded-lg border text-sm font-medium transition-all ${
+                      role === r.id 
+                        ? 'border-secondary bg-accent text-primary shadow-sm' 
+                        : 'border-foreground/10 text-foreground/60 hover:border-foreground/30 hover:bg-background'
+                    }`}
+                  >
+                    <r.icon className="w-4 h-4 mr-2" />
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80">Email Address</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-foreground/40" />
+                </div>
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-foreground/10 focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-background/50"
+                  placeholder="name@maxtron.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-sm font-semibold text-foreground/80">Password</label>
+                <a href="#" className="text-sm font-medium text-secondary hover:text-primary transition-colors">Forgot password?</a>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-foreground/40" />
+                </div>
+                <Input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-foreground/10 focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-background/50"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full py-6 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 group"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  Sign In to Workforce <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Quick Demo Fill - Remove in production */}
+          <div className="mt-8 text-center border-t border-foreground/10 pt-6">
+             <button onClick={handleDemoFill} className="text-xs font-semibold text-foreground/40 hover:text-foreground transition-colors px-4 py-2 bg-background rounded-full">
+               Auto-fill Admin Credentials for Demo
+             </button>
+          </div>
+
+        </div>
+      </div>
+      
+      {/* Footer Text */}
+      <div className="mt-8 text-foreground/50 text-sm font-medium">
+        © {new Date().getFullYear()} Maxtron Enterprises. All rights reserved.
+      </div>
+    </div>
+  );
+}
