@@ -1,16 +1,18 @@
 'use client';
 
 import { 
-  Briefcase, 
-  Package, 
-  ShoppingCart, 
   Users, 
-  DollarSign, 
+  Settings,
+  Package,
+  Truck,
+  DollarSign,
   TrendingUp, 
   Menu, 
   Bell, 
   Search, 
-  ChevronDown
+  ChevronDown,
+  ChevronRight,
+  CircleDot
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -26,11 +28,128 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+const maxtronSidebarMenu = [
+  {
+    title: "Dashboard",
+    icon: TrendingUp,
+    path: "/maxtron",
+    roles: ["HR", "ADMIN", "PURCHASE", "PRODUCTION", "SALES", "ACCOUNTS"]
+  },
+  {
+    title: "HR & Administration",
+    icon: Users,
+    roles: ["HR", "ADMIN", "SUPERVISOR"],
+    children: [
+      { title: "Employee Information", path: "/maxtron/hr-payroll/employee" },
+      { title: "Company Information", path: "/maxtron/hr-payroll/company" },
+      { title: "Attendance Details", path: "/maxtron/hr-payroll/attendance" },
+      { title: "Marketing Team Visits", path: "/maxtron/hr-payroll/marketing-visits" },
+      { title: "Employee List", path: "/maxtron/hr-payroll/reports/employees" },
+      { title: "Attendance Summary", path: "/maxtron/hr-payroll/reports/attendance" },
+      { title: "Marketing Visit Report", path: "/maxtron/hr-payroll/reports/marketing" }
+    ]
+  },
+  {
+    title: "Inventory & Procurement",
+    icon: Package,
+    roles: ["PURCHASE", "STORE", "AUDITOR"],
+    children: [
+      { title: "Raw Material Details", path: "/maxtron/inventory/raw-material" },
+      { title: "Supplier Information", path: "/maxtron/inventory/suppliers" },
+      { title: "Raw Material Order", path: "/maxtron/inventory/order" },
+      { title: "Purchase Entry", path: "/maxtron/inventory/purchase" },
+      { title: "Material Consumption", path: "/maxtron/inventory/consumption" },
+      { title: "Purchase Returns", path: "/maxtron/inventory/returns" },
+      { title: "Stock List", path: "/maxtron/inventory/reports/stock" },
+      { title: "Purchase Report", path: "/maxtron/inventory/reports/purchase" },
+      { title: "Consumption Report", path: "/maxtron/inventory/reports/consumption" }
+    ]
+  },
+  {
+    title: "Production MES",
+    icon: Settings,
+    roles: ["PRODUCTION", "SHIFT", "OPERATOR"],
+    children: [
+      { title: "Finished Product Details", path: "/maxtron/production/product" },
+      { title: "Production (Extrusion)", path: "/maxtron/production/extrusion" },
+      { title: "Cutting & Sealing", path: "/maxtron/production/cutting" },
+      { title: "Packing Details", path: "/maxtron/production/packing" },
+      { title: "Damages & Wastage", path: "/maxtron/production/wastage" },
+      { title: "Production Summary", path: "/maxtron/production/reports/summary" },
+      { title: "Packing Summary", path: "/maxtron/production/reports/packing" },
+      { title: "Wastage Analysis", path: "/maxtron/production/reports/wastage" }
+    ]
+  },
+  {
+    title: "Sales & Logistics",
+    icon: Truck,
+    roles: ["SALES", "DISPATCH", "MARKETING"],
+    children: [
+      { title: "Customer Information", path: "/maxtron/sales/customers" },
+      { title: "Vehicle Information", path: "/maxtron/sales/vehicles" },
+      { title: "Customer Order Entry", path: "/maxtron/sales/order" },
+      { title: "Sales / Invoice Entry", path: "/maxtron/sales/invoice" },
+      { title: "Delivery Details", path: "/maxtron/sales/delivery" },
+      { title: "Sales Returns", path: "/maxtron/sales/returns" },
+      { title: "Order Report", path: "/maxtron/sales/reports/orders" },
+      { title: "Billing Summary", path: "/maxtron/sales/reports/billing" },
+      { title: "Delivery Report", path: "/maxtron/sales/reports/delivery" }
+    ]
+  },
+  {
+    title: "Finance & Accounts",
+    icon: DollarSign,
+    roles: ["ACCOUNTS", "FINANCE"],
+    children: [
+      { title: "Customer Collection Entry", path: "/maxtron/finance/collection" },
+      { title: "Supplier Payment Entry", path: "/maxtron/finance/payment" },
+      { title: "Petty Cash Entry", path: "/maxtron/finance/petty-cash" },
+      { title: "Customer Ledger", path: "/maxtron/finance/reports/customer-ledger" },
+      { title: "Supplier Ledger", path: "/maxtron/finance/reports/supplier-ledger" },
+      { title: "Financial Summary", path: "/maxtron/finance/reports/summary" },
+      { title: "Period Wise Scorecard", path: "/maxtron/finance/reports/scorecard" }
+    ]
+  }
+];
+
+// -------------------------------------------------------------
+// KEIL SEPARATE MODULES (Placeholder structures to show separation)
+// -------------------------------------------------------------
+const keilSidebarMenu = [
+  {
+    title: "KEIL Dashboard",
+    icon: TrendingUp,
+    path: "/keil",
+    roles: ["HR", "ADMIN", "OPERATIONS"]
+  },
+  {
+    title: "KEIL Operations",
+    icon: Settings,
+    roles: ["ADMIN", "MANAGER"],
+    children: [
+      { title: "Project Assignments", path: "/keil/projects" },
+      { title: "Resource Allocation", path: "/keil/resources" }
+    ]
+  },
+  {
+    title: "KEIL Supply Chain",
+    icon: Truck,
+    roles: ["ADMIN", "LOGISTICS"],
+    children: [
+      { title: "Vendor Management", path: "/keil/vendors" },
+      { title: "Shipment Tracking", path: "/keil/tracking" }
+    ]
+  }
+];
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  
   const pathname = usePathname();
   const router = useRouter();
+  const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
 
   useEffect(() => {
     setMounted(true);
@@ -38,7 +157,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!token && pathname !== '/login') {
       router.push('/login');
     } else if (token && pathname === '/login') {
-      router.push('/');
+      router.push('/maxtron');
     } else if (token) {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
@@ -55,56 +174,128 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
+  const toggleExpand = (title: string) => {
+    setExpanded(prev => ({ ...prev, [title]: !prev[title] }));
+  };
+
   if (!mounted) return null;
 
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
-  const navItems = [
-    { icon: TrendingUp, label: 'Dashboard', href: '/' },
-    { icon: Package, label: 'Inventory', href: '/inventory' },
-    { icon: ShoppingCart, label: 'Sales', href: '/sales' },
-    { icon: Briefcase, label: 'Production', href: '/production' },
-    { icon: Users, label: 'HR & Payroll', href: '/hr-payroll' },
-    { icon: DollarSign, label: 'Finance', href: '/finance' },
-  ];
-
   return (
     <div className="min-h-screen flex bg-background font-sans text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 bg-primary text-primary-foreground hidden md:flex flex-col shadow-xl">
-        <div className="p-6 flex items-center justify-center border-b border-primary/20">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3 text-primary font-bold text-xl shadow-inner">
-            M
+      <aside className="w-72 bg-primary text-primary-foreground hidden md:flex flex-col shadow-xl overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col flex-shrink-0 border-b border-primary/20 bg-primary sticky top-0 z-10">
+          <div className="p-6 flex items-center justify-center pb-4">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3 text-primary font-bold text-xl shadow-inner transition-colors">
+              {activeEntity === 'maxtron' ? 'M' : 'K'}
+            </div>
+            <h1 className="text-2xl font-bold tracking-wider transition-all">
+              {activeEntity === 'maxtron' ? 'Maxtron' : 'KEIL'}
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold tracking-wider">Maxtron</h1>
+          
+          {/* Entity Switcher */}
+          <div className="flex px-4 pb-4 space-x-2">
+            <button 
+              onClick={() => router.push('/maxtron')}
+              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                activeEntity === 'maxtron' 
+                  ? 'bg-secondary text-white shadow-md' 
+                  : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
+              }`}
+            >
+              MAXTRON
+            </button>
+            <button 
+              onClick={() => router.push('/keil')}
+              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                activeEntity === 'keil' 
+                  ? 'bg-secondary text-white shadow-md' 
+                  : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
+              }`}
+            >
+              KEIL
+            </button>
+          </div>
         </div>
         
-        <nav className="flex-1 py-6">
-          <ul className="space-y-2">
-            {navItems.map((item, idx) => {
-              const isActive = pathname === item.href;
+        <nav className="flex-1 py-6 px-3">
+          <ul className="space-y-1">
+            {(activeEntity === 'maxtron' ? maxtronSidebarMenu : keilSidebarMenu).map((moduleItem, idx) => {
+              const isModuleExpanded = expanded[moduleItem.title];
+              
+              if (!moduleItem.children) {
+                // Top level simple link (Dashboard)
+                const isActive = pathname === moduleItem.path;
+                return (
+                  <li key={idx}>
+                    <Link
+                      href={moduleItem.path || '#'}
+                      className={`flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
+                        isActive 
+                          ? 'bg-secondary text-white shadow-md' 
+                          : 'hover:bg-primary/50 text-primary-foreground/90 hover:text-white'
+                      }`}
+                    >
+                      <moduleItem.icon className="w-5 h-5 mr-3 shrink-0" />
+                      <span className="font-medium text-sm">{moduleItem.title}</span>
+                    </Link>
+                  </li>
+                );
+              }
+
               return (
-                <li key={idx}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center px-6 py-3 transition-colors duration-200 ${
-                      isActive 
-                        ? 'bg-secondary border-l-4 border-white' 
-                        : 'hover:bg-primary/50 text-primary-foreground/80 hover:text-white'
-                    }`}
+                <li key={idx} className="flex flex-col">
+                  {/* Parent Module Item */}
+                  <div 
+                    onClick={() => toggleExpand(moduleItem.title)}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 hover:bg-primary/50 text-primary-foreground/90 hover:text-white select-none"
                   >
-                    <item.icon className="w-5 h-5 mr-3" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
+                    <div className="flex items-center">
+                      <moduleItem.icon className="w-5 h-5 mr-3 shrink-0" />
+                      <span className="font-medium text-sm">{moduleItem.title}</span>
+                    </div>
+                    {isModuleExpanded ? (
+                      <ChevronDown className="w-4 h-4 shrink-0 transition-transform duration-200" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 shrink-0 transition-transform duration-200" />
+                    )}
+                  </div>
+
+                  {/* Nested Links */}
+                  {isModuleExpanded && (
+                    <ul className="ml-8 mt-1 space-y-1 mb-2 border-l border-white/10 pl-2">
+                       {moduleItem.children.map((link, lIdx) => {
+                          const isActive = pathname === link.path;
+                          return (
+                            <li key={lIdx}>
+                              <Link
+                                href={link.path || '#'}
+                                className={`flex items-center px-4 py-2 rounded-md transition-colors duration-200 ${
+                                  isActive 
+                                    ? 'bg-secondary/80 text-white font-medium' 
+                                    : 'hover:bg-primary/40 text-primary-foreground/70 hover:text-white'
+                                }`}
+                              >
+                                <CircleDot className={`w-3 h-3 mr-2 shrink-0 ${isActive ? 'text-white' : 'text-white/30'}`} />
+                                <span className="text-xs truncate">{link.title}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
         </nav>
         
-        <div className="p-6 text-sm text-primary-foreground/60">
+        <div className="p-6 text-sm text-primary-foreground/60 flex-shrink-0 bg-primary sticky bottom-0 border-t border-primary/20">
           <p>ERP Version 1.0.0</p>
         </div>
       </aside>

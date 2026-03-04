@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Briefcase, User, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { User, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('admin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -20,12 +19,10 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // In a real app, role might be determined by the backend based on email, 
-      // or passed along if we have specific login portals per role.
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role }), // adding role for future backend usage
+        body: JSON.stringify({ email, password }), 
       });
 
       const data = await res.json();
@@ -47,7 +44,6 @@ export default function LoginPage() {
   const handleDemoFill = () => {
     setEmail('admin@maxtron.com');
     setPassword('password');
-    setRole('admin');
   };
 
   return (
@@ -107,34 +103,6 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
-            
-            {/* Role Selector (Demo purpose UI) */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold inline-block text-foreground/80">Select Role / Department</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { id: 'admin', label: 'Admin', icon: ShieldCheck },
-                  { id: 'hr', label: 'HR', icon: Briefcase },
-                  { id: 'sales', label: 'Sales', icon: User },
-                ].map(r => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setRole(r.id)}
-                    className={`flex items-center justify-center p-3 rounded-lg border text-sm font-medium transition-all ${
-                      role === r.id 
-                        ? 'border-secondary bg-accent text-primary shadow-sm' 
-                        : 'border-foreground/10 text-foreground/60 hover:border-foreground/30 hover:bg-background'
-                    }`}
-                  >
-                    <r.icon className="w-4 h-4 mr-2" />
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground/80">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -149,7 +117,6 @@ export default function LoginPage() {
                   placeholder="name@maxtron.com"
                 />
               </div>
-            </div>
 
             <div className="space-y-2">
               <div className="flex justify-between">
