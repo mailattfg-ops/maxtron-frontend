@@ -1,21 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api/maxtron/employees';
+const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
 export default function EmployeeInformationPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('personal');
+  const [newEmployeePopup, setNewEmployeePopup] = useState<{username: string, password: string} | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Table Pagination and Filtering States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  const pathname = usePathname();
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
   
   // Form State mapped to unified `users` database schema
   const [formData, setFormData] = useState({
@@ -24,12 +35,14 @@ export default function EmployeeInformationPage() {
     username: '',    // The email used for login
     password: '',    // Initial generated password
     date_of_birth: '',
-    address: '',
-    department_id: '',
+    addresses: [
+      { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+      { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+    ],
+    company_id: '',
     has_license: false,
     has_passport: false,
     type: '',
-    permanent_address: '',
     guarantor_name: '',
     is_married: false,
     family_details: '',
@@ -46,42 +59,20 @@ export default function EmployeeInformationPage() {
   });
 
   const [categories, setCategories] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEmployees();
     fetchCompanies();
     fetchCategories();
-    fetchDepartments();
     fetchUserTypes();
   }, []);
 
-  const fetchDepartments = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/maxtron/departments`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        cache: 'no-store'
-      });
-      const data = await res.json();
-      if (data.success) { 
-          setDepartments(data.data); 
-          const maxtronDept = data.data.find((d: any) => d.department_name.toUpperCase() === 'MAXTRON');
-          setFormData(prev => ({ 
-             ...prev, 
-             department_id: prev.department_id || (maxtronDept ? maxtronDept.id : '') 
-          }));
-      }
-    } catch (error) {
-      console.error('Failed to fetch departments', error);
-    }
-  };
 
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('token');
       // We will need to create this route later, for now we will just attempt to fetch it
-      const res = await fetch(`http://localhost:5000/api/maxtron/categories`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/categories`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -95,7 +86,7 @@ export default function EmployeeInformationPage() {
   const fetchUserTypes = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/maxtron/user-types?t=${Date.now()}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/user-types?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -112,12 +103,19 @@ export default function EmployeeInformationPage() {
     try {
       const token = localStorage.getItem('token');
       // Switch endpoint to API fetch dynamic registered companies
-      const res = await fetch(`http://localhost:5000/api/maxtron/companies`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
-      if (data.success) { setCompanies(data.data); }
+      if (data.success) { 
+          setCompanies(data.data); 
+          const activeCo = data.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+          setFormData(prev => ({ 
+             ...prev, 
+             company_id: prev.company_id || (activeCo ? activeCo.id : '') 
+          }));
+      }
     } catch (error) {
       console.error('Failed to fetch companies', error);
     }
@@ -133,7 +131,8 @@ export default function EmployeeInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setEmployees(data.data);
+        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase() === activeTenant);
+        setEmployees(filtered);
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error);
@@ -144,6 +143,12 @@ export default function EmployeeInformationPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleAddressChange = (index: number, field: string, value: string) => {
+    const newAddresses = [...formData.addresses];
+    newAddresses[index] = { ...newAddresses[index], [field]: value };
+    setFormData({ ...formData, addresses: newAddresses });
   };
 
   const handleNestedRowChange = (collection: keyof typeof formData, index: number, field: string, value: any) => {
@@ -176,18 +181,29 @@ export default function EmployeeInformationPage() {
         },
         body: JSON.stringify(formData)
       });
+      const submittedCreds = { username: formData.username, password: formData.password };
       const data = await res.json();
       if (data.success) {
-        alert(`Employee ${editingId ? 'updated' : 'created'} successfully!`);
+        if (!editingId) {
+           setNewEmployeePopup(submittedCreds);
+        } else {
+           alert('Employee updated successfully!');
+        }
         setShowForm(false);
         setEditingId(null);
         fetchEmployees(); // Refresh list
         // Reset form
         setFormData({
-          employee_code: '', name: '', username: '', password: '', date_of_birth: '', address: '', department_id: '', has_license: false, has_passport: false, type: '',
-          permanent_address: '', guarantor_name: '', is_married: false, family_details: '', category_id: '',
+          employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+          addresses: [
+            { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+            { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+          ],
+          company_id: '', has_license: false, has_passport: false, type: '',
+          guarantor_name: '', is_married: false, family_details: '', category_id: '',
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
+        setActiveTab('personal');
       } else {
         alert('Failed to save: ' + (data.message || 'Unknown error'));
       }
@@ -205,12 +221,14 @@ export default function EmployeeInformationPage() {
       username: emp.username || '',
       password: '', // Leave blank unless they want to change it
       date_of_birth: emp.date_of_birth ? emp.date_of_birth.split('T')[0] : '',
-      address: emp.address || '',
-      department_id: emp.department_id || '',
+      addresses: [
+        emp.addresses?.find((a: any) => a.address_type === 'Communication') || { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+        emp.addresses?.find((a: any) => a.address_type === 'Permanent') || { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+      ],
+      company_id: emp.company_id || '',
       has_license: emp.has_license || false,
       has_passport: emp.has_passport || false,
       type: emp.type || '',
-      permanent_address: emp.permanent_address || '',
       guarantor_name: emp.guarantor_name || '',
       is_married: emp.is_married || false,
       family_details: emp.family_details || '',
@@ -225,6 +243,7 @@ export default function EmployeeInformationPage() {
       employee_suspenses: emp.employee_suspenses || [],
       employee_incentive_slabs: emp.employee_incentive_slabs || []
     });
+    setActiveTab('personal');
     setShowForm(true);
   };
 
@@ -251,6 +270,49 @@ export default function EmployeeInformationPage() {
 
   return (
     <div className="space-y-6">
+      {newEmployeePopup && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none">
+            <CardHeader className="bg-emerald-50/80 pb-6 border-b text-center rounded-t-xl">
+              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
+              <CardTitle className="text-2xl text-emerald-800">Employee Registered!</CardTitle>
+              <CardDescription className="text-emerald-600/80 font-medium">System access credentials successfully configured.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl text-sm border border-slate-200 space-y-3">
+                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
+                   <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Username</span>
+                   <span className="font-mono text-base font-bold text-slate-800">{newEmployeePopup.username}</span>
+                 </div>
+                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
+                   <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Password</span>
+                   <span className="font-mono text-base font-bold tracking-wider text-slate-800">{newEmployeePopup.password}</span>
+                 </div>
+              </div>
+              
+              <Button onClick={() => {
+                  navigator.clipboard.writeText(`Maxtron Login Credentials\nUsername: ${newEmployeePopup.username}\nPassword: ${newEmployeePopup.password}`);
+                  alert('Credentials copied to clipboard!');
+                }} 
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" variant="outline"
+              >
+                <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
+              </Button>
+              
+              <div className="flex items-start p-4 bg-amber-50 rounded-xl border border-amber-200 mt-6 shadow-sm">
+                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-amber-550 flex-none" />
+                 <p className="text-xs font-medium leading-relaxed text-amber-800">
+                   <strong>Strict Security Notice:</strong> Please securely provide these initial credentials to the employee. They will be strictly required to change their password upon their immediate first login.
+                 </p>
+              </div>
+            </CardContent>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl">
+              <Button onClick={() => setNewEmployeePopup(null)} className="w-full bg-slate-800 hover:bg-slate-900 shadow-md">Acknowledge & Close</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Employee Information</h1>
@@ -259,19 +321,39 @@ export default function EmployeeInformationPage() {
         {!showForm ? (
           <Button onClick={() => {
             setEditingId(null);
-            const defaultDept = departments.find(d => d.department_name.toUpperCase() === 'MAXTRON');
-            setFormData({ employee_code: '', name: '', username: '', password: '', date_of_birth: '', address: '', department_id: defaultDept ? defaultDept.id : '', has_license: false, has_passport: false, type: '', permanent_address: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] });
+            const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+            setFormData({ 
+              employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+              addresses: [
+                { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+              ],
+              company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+            });
             setShowForm(true);
           }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
             <Plus className="w-5 h-5 mr-2" /> Add Employee
           </Button>
         ) : (
           <div className="flex space-x-3">
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }} className="border-foreground/10">
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
               <X className="w-4 h-4 mr-2" /> Cancel
             </Button>
-            <Button onClick={saveEmployee} className="bg-primary hover:bg-primary/90 text-white shadow-md">
-              <Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}
+            {activeTab !== 'personal' && (
+              <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="border-foreground/10">
+                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+              </Button>
+            )}
+            <Button onClick={() => {
+              if (activeTab === 'personal') setActiveTab('qualifications');
+              else if (activeTab === 'qualifications') setActiveTab('financials');
+              else saveEmployee();
+            }} className="bg-primary hover:bg-primary/90 text-white shadow-md">
+              {activeTab === 'financials' ? (
+                <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}</>
+              ) : (
+                <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
+              )}
             </Button>
           </div>
         )}
@@ -279,7 +361,7 @@ export default function EmployeeInformationPage() {
 
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-          <Tabs defaultValue="personal" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="personal"><UserPlus className="w-4 h-4 mr-2" /> Basic Details</TabsTrigger>
               <TabsTrigger value="qualifications"><Briefcase className="w-4 h-4 mr-2" /> Professional & Experience</TabsTrigger>
@@ -309,13 +391,48 @@ export default function EmployeeInformationPage() {
                   <label className="text-sm font-medium text-foreground/80">Date of Birth</label>
                   <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Residential Address (Communication)</label>
-                  <Input name="address" value={formData.address} onChange={handleInputChange} placeholder="123 Main St, City" />
+                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <h3 className="font-semibold text-primary/80">Communication Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     <div className="space-y-2 lg:col-span-3">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
+                       <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
+                       <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
+                       <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
+                       <Input value={formData.addresses[0]?.zip_code} onChange={(e) => handleAddressChange(0, 'zip_code', e.target.value)} placeholder="Postal Code" />
+                     </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Permanent Address</label>
-                  <Input name="permanent_address" value={formData.permanent_address} onChange={handleInputChange} placeholder="Permanent Home Address" />
+
+                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <h3 className="font-semibold text-primary/80">Permanent Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     <div className="space-y-2 lg:col-span-3">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
+                       <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
+                       <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
+                       <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" />
+                     </div>
+                     <div className="space-y-2">
+                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
+                       <Input value={formData.addresses[1]?.zip_code} onChange={(e) => handleAddressChange(1, 'zip_code', e.target.value)} placeholder="Postal Code" />
+                     </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Guarantor Name</label>
@@ -374,18 +491,17 @@ export default function EmployeeInformationPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Department Appointed</label>
+                <label className="text-sm font-medium text-foreground/80">Company / Department Appointed</label>
                 <select 
-                  name="department_id" 
-                  value={formData.department_id} 
+                  name="company_id" 
+                  value={formData.company_id} 
                   onChange={handleInputChange} 
                   disabled
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
                 >
-                  <option value="651b2d55-9fbc-4209-972f-7d26edd3ec63">MAXTRON</option>
-                  {/* {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>{dept.department_name}</option>
-                  ))} */}
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>{c.company_name}</option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">
@@ -749,36 +865,56 @@ export default function EmployeeInformationPage() {
       )}
 
       {/* Existing Employees Table Section */}
-      <Card className="mt-8">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+      {!showForm && (
+        <Card className="mt-8">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
           <div>
             <CardTitle className="text-xl text-primary">Registered Employees</CardTitle>
             <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
           </div>
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9 w-72 rounded-full border-primary/20" placeholder="Search by name or code..." />
+          <div className="flex gap-4 items-center">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                 className="pl-9 w-72 rounded-full border-primary/20" 
+                 placeholder="Search by name or code..." 
+                 value={searchQuery}
+                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="border rounded-xl mx-2 overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-primary/5 text-primary">
-                <tr>
-                  <th className="p-4 font-semibold w-24">Emp Code</th>
-                  <th className="p-4 font-semibold">Full Name</th>
-                  <th className="p-4 font-semibold">Company Location</th>
-                  <th className="p-4 font-semibold">System Role</th>
-                  <th className="p-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr><td colSpan={5} className="p-4 text-center">Loading employees...</td></tr>
-                ) : employees.length === 0 ? (
-                  <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No employees registered yet.</td></tr>
-                ) : (
-                  employees.map((emp) => (
+          {(() => {
+            const filteredEmployees = employees
+              .filter((emp) => 
+                 (emp.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+                 (emp.employee_code?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+              )
+              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+            const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
+            const currentEmployees = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+            return (
+              <>
+                <div className="border rounded-xl mx-2 overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-primary/5 text-primary">
+                      <tr>
+                        <th className="p-4 font-semibold w-24">Emp Code</th>
+                        <th className="p-4 font-semibold">Full Name</th>
+                        <th className="p-4 font-semibold">Company Location</th>
+                        <th className="p-4 font-semibold">System Role</th>
+                        <th className="p-4 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {loading ? (
+                        <tr><td colSpan={5} className="p-4 text-center">Loading employees...</td></tr>
+                      ) : currentEmployees.length === 0 ? (
+                        <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
+                      ) : (
+                        currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors">
                       <td className="p-4 font-medium text-secondary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-semibold text-foreground">{emp.name}</td>
@@ -800,8 +936,47 @@ export default function EmployeeInformationPage() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="flex justify-between items-center mt-4 mx-2">
+            <div className="text-sm text-muted-foreground">
+              Showing {employees.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mr-4">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
+                <select 
+                  value={rowsPerPage} 
+                  onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <Button 
+                variant="outline" size="sm" 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+              </Button>
+              <Button 
+                variant="outline" size="sm" 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                disabled={currentPage >= totalPages}
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </>
+      );
+    })()}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

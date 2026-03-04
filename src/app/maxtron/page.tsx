@@ -10,7 +10,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     setMounted(true);
-    fetch('http://localhost:5000/api/health')
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/health`)
       .then(res => res.json())
       .then(data => setBackendStatus(data.message))
       .catch(() => setBackendStatus('Backend Unreachable (Make sure it is running on port 5000)'));

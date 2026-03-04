@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Save, Edit, Trash2, Plus, X, Building2, MapPin, Mail, Phone, Briefcase, FileText } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api/maxtron/companies';
+const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`;
 
 export default function CompanyInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isAddingNew, setIsAddingNew] = useState(false);
+  const pathname = usePathname();
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
   const emptyFormData = {
     company_code: '',
@@ -51,7 +53,8 @@ export default function CompanyInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setCompanies(data.data);
+        const filtered = data.data.filter((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+        setCompanies(filtered);
       }
     } catch (error) {
       console.error('Failed to fetch companies:', error);
@@ -104,7 +107,6 @@ export default function CompanyInformationPage() {
       if (data.success) {
         alert(editingId ? 'Company updated successfully!' : 'Company Registered Successfully!');
         setEditingId(null);
-        setIsAddingNew(false);
         fetchCompanies();
       } else {
         alert(`Creation Failed: ${data.message}\nError: ${data.error}`);
@@ -150,47 +152,18 @@ export default function CompanyInformationPage() {
       billing_zip: b.zip_code || '',
     });
     setEditingId(company.id);
-    setIsAddingNew(false);
-  };
-
-  const deleteCompany = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to completely erase ${name} from the system?`)) return;
-
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-            fetchCompanies();
-        } else {
-            alert('Failed to delete Company');
-        }
-    } catch (error) {
-        console.error('Deletion error:', error);
-    }
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setIsAddingNew(false);
     setFormData({ ...emptyFormData });
-  };
-
-  const startAddNew = () => {
-    setFormData({ ...emptyFormData });
-    setEditingId(null);
-    setIsAddingNew(true);
   };
 
   const renderForm = () => (
     <Card className="border-blue-100 shadow-md">
       <CardHeader className="bg-blue-50/50 border-b border-blue-100 pb-4 flex flex-row justify-between items-center">
         <div>
-          <CardTitle>{editingId ? "Edit Company Information" : "Add New Company"}</CardTitle>
+          <CardTitle>Edit Company Information</CardTitle>
           <CardDescription>Enter structural details below.</CardDescription>
         </div>
         <Button variant="ghost" size="icon" onClick={cancelEdit} className="text-slate-500 hover:text-slate-700">
@@ -210,7 +183,7 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Company Name *</label>
-                    <Input name="company_name" value={formData.company_name} onChange={handleInputChange} placeholder="Legal Name" />
+                    <Input name="company_name" value={formData.company_name} disabled placeholder="Legal Name" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">GST No</label>
@@ -352,7 +325,7 @@ export default function CompanyInformationPage() {
         <Button variant="outline" onClick={cancelEdit}>Cancel</Button>
         <Button onClick={saveCompany} className="bg-blue-600 hover:bg-blue-700">
           <Save className="mr-2 h-4 w-4" />
-          {editingId ? "Save Changes" : "Register Company"}
+          Save Changes
         </Button>
       </CardFooter>
     </Card>
@@ -387,19 +360,12 @@ export default function CompanyInformationPage() {
           <h1 className="text-2xl font-bold text-slate-900">Company Information</h1>
           <p className="text-slate-500 mt-1">Manage core enterprise identities and operating locations.</p>
         </div>
-        {!isAddingNew && !editingId && (
-            <Button onClick={startAddNew} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" /> Register New Company
-            </Button>
-        )}
       </div>
 
       {loading ? (
         <div className="text-center p-12 text-slate-500">Loading company data...</div>
       ) : (
         <div className="space-y-8">
-            {isAddingNew && renderForm()}
-            
             <div className="space-y-6">
                 {companies.map(company => (
                     <div key={company.id}>
@@ -420,9 +386,6 @@ export default function CompanyInformationPage() {
                                     <div className="flex gap-2">
                                         <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
                                             <Edit className="h-4 w-4 mr-2" /> Edit Details
-                                        </Button>
-                                        <Button variant="outline" size="sm" onClick={() => deleteCompany(company.id, company.company_name)} className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50">
-                                            <Trash2 className="h-4 w-4 mr-2" /> Delete
                                         </Button>
                                     </div>
                                 </CardHeader>
@@ -495,14 +458,11 @@ export default function CompanyInformationPage() {
                     </div>
                 ))}
 
-                {companies.length === 0 && !isAddingNew && !loading && (
+                {companies.length === 0 && !loading && (
                     <div className="bg-white p-12 text-center rounded-xl border border-dashed border-slate-300">
                         <Building2 className="mx-auto h-12 w-12 text-slate-300 mb-4" />
                         <h3 className="text-lg font-medium text-slate-900 mb-2">No Companies Found</h3>
-                        <p className="text-slate-500 mb-6">You haven't registered any company profiles yet.</p>
-                        <Button onClick={startAddNew} className="bg-blue-600 hover:bg-blue-700">
-                            <Plus className="mr-2 h-4 w-4" /> Register First Company
-                        </Button>
+                        <p className="text-slate-500 mb-6">Database currently missing company records.</p>
                     </div>
                 )}
             </div>
