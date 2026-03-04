@@ -10,6 +10,9 @@ export const metadata = {
   description: 'Enterprise Resource Planning for Polybag manufacturing',
 };
 
+import { ToastProvider } from '@/components/ui/toast';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
+
 export default function RootLayout({
   children,
 }: {
@@ -19,7 +22,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <TooltipProvider>
-          <AppLayout>{children}</AppLayout>
+          <ToastProvider>
+            <ConfirmProvider>
+              <AppLayout>{children}</AppLayout>
+            </ConfirmProvider>
+          </ToastProvider>
         </TooltipProvider>
       </body>
     </html>

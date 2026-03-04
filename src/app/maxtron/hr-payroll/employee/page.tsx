@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
@@ -19,6 +21,8 @@ export default function EmployeeInformationPage() {
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   
   // Table Pagination and Filtering States
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,7 +191,7 @@ export default function EmployeeInformationPage() {
         if (!editingId) {
            setNewEmployeePopup(submittedCreds);
         } else {
-           alert('Employee updated successfully!');
+           success('Employee record updated successfully!');
         }
         setShowForm(false);
         setEditingId(null);
@@ -205,11 +209,10 @@ export default function EmployeeInformationPage() {
         });
         setActiveTab('personal');
       } else {
-        alert('Failed to save: ' + (data.message || 'Unknown error'));
+        error(data.message || 'Operation failed');
       }
-    } catch (error) {
-      console.error('Error saving employee:', error);
-      alert('Network error occurred.');
+    } catch (err) {
+      error('Network error during employee registration.');
     }
   };
 
@@ -248,7 +251,12 @@ export default function EmployeeInformationPage() {
   };
 
   const deleteEmployee = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this employee? This will cascade delete their records.')) return;
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this employee? This will permanently erase their credentials and bio-data.',
+      type: 'danger',
+      confirmLabel: 'Erase Data'
+    });
+    if (!isConfirmed) return;
     
     try {
       const token = localStorage.getItem('token');
@@ -259,9 +267,10 @@ export default function EmployeeInformationPage() {
       
       const data = await res.json();
       if (data.success) {
+        success('Employee records purged.');
         fetchEmployees();
       } else {
-        alert('Failed to delete employee: ' + data.message);
+        error(data.message || 'Failed to delete');
       }
     } catch (error) {
       console.error('Error deleting employee:', error);
@@ -289,11 +298,11 @@ export default function EmployeeInformationPage() {
                    <span className="font-mono text-base font-bold tracking-wider text-slate-800">{newEmployeePopup.password}</span>
                  </div>
               </div>
-              
-              <Button onClick={() => {
+
+               <Button onClick={() => {
                   navigator.clipboard.writeText(`Maxtron Login Credentials\nUsername: ${newEmployeePopup.username}\nPassword: ${newEmployeePopup.password}`);
-                  alert('Credentials copied to clipboard!');
-                }} 
+                  info('Access credentials copied to clipboard.');
+                }}
                 className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" variant="outline"
               >
                 <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard

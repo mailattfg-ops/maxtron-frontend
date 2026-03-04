@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Save, Edit, Trash2, Plus, X, Building2, MapPin, Mail, Phone, Briefcase, FileText } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`;
 
 export default function CompanyInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { success, error } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const pathname = usePathname();
@@ -105,15 +107,14 @@ export default function CompanyInformationPage() {
       const data = await res.json();
 
       if (data.success) {
-        alert(editingId ? 'Company updated successfully!' : 'Company Registered Successfully!');
+        success(editingId ? 'Company updated successfully!' : 'Company Registered Successfully!');
         setEditingId(null);
         fetchCompanies();
       } else {
-        alert(`Creation Failed: ${data.message}\nError: ${data.error}`);
+        error(`Failed: ${data.message || 'Unknown error'}`);
       }
-    } catch (error) {
-        console.error('Submission error:', error);
-        alert('Network error. Check console.');
+    } catch (err) {
+        error('Network error during company registration.');
     }
   };
 
