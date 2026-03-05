@@ -40,13 +40,12 @@ const maxtronSidebarMenu = [
     icon: Users,
     roles: ["admin", "hr"],
     children: [
-      { title: "Employee Information", path: "/maxtron/hr-payroll/employee" },
+      { title: "Employee Management", path: "/maxtron/hr-payroll/employee" },
       { title: "Company Information", path: "/maxtron/hr-payroll/company" },
       { title: "Attendance Details", path: "/maxtron/hr-payroll/attendance" },
-      { title: "Marketing Team Visits", path: "/maxtron/hr-payroll/marketing-visits" },
-      { title: "Employee List", path: "/maxtron/hr-payroll/reports/employees" },
+      { title: "Marketing Operations", path: "/maxtron/hr-payroll/marketing-visits" },
       { title: "Attendance Summary", path: "/maxtron/hr-payroll/reports/attendance" },
-      { title: "Marketing Visit Report", path: "/maxtron/hr-payroll/reports/marketing" }
+
     ]
   },
   {

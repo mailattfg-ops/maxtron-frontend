@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -15,14 +15,17 @@ const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/emplo
 
 export default function AttendancePage() {
   const [showForm, setShowForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  
+  const [bulkData, setBulkData] = useState<any[]>([]);
 
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
   const { confirm } = useConfirm();
 
   const pathname = usePathname();
@@ -47,7 +50,6 @@ export default function AttendancePage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      // Fetch Companies to get current one
       const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -62,16 +64,14 @@ export default function AttendancePage() {
         }
       }
 
-      // Fetch Employees
-      const empRes = await fetch(`${EMPLOYEES_API}`, {
+      const empRes = await fetch(`${EMPLOYEES_API}?company_name=${activeTenant}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const empData = await empRes.json();
       if (empData.success) {
-        setEmployees(empData.data.filter((e: any) => e.companies?.company_name?.toUpperCase() === activeTenant));
+        setEmployees(empData.data);
       }
 
-      // Fetch Attendance
       fetchAttendance(coId);
     } catch (err) {
       console.error('Error fetching initial data:', err);
@@ -83,16 +83,61 @@ export default function AttendancePage() {
   const fetchAttendance = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
+    if (!targetCoId) return; // Don't fetch if no company ID available yet
+
     try {
       const res = await fetch(`${ATTENDANCE_API}?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success) {
-        setAttendanceRecords(data.data);
+        setAttendanceRecords(data.data || []);
       }
     } catch (err) {
       console.error('Error fetching attendance:', err);
+    }
+  };
+
+  const prepareBulkData = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const initialBulk = employees.map(emp => ({
+      employee_id: emp.id,
+      employee_name: emp.name,
+      employee_code: emp.employee_code,
+      date: today,
+      shift: 'GENERAL',
+      status: 'PRESENT',
+      clock_in: '09:00',
+      clock_out: '18:00',
+      remarks: '',
+      company_id: currentCompanyId
+    }));
+    setBulkData(initialBulk);
+    setShowBulkForm(true);
+  };
+
+  const saveBulkAttendance = async () => {
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${ATTENDANCE_API}/bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ attendanceList: bulkData })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Bulk attendance marked successfully!');
+        setShowBulkForm(false);
+        fetchAttendance(currentCompanyId); // Pass ID explicitly
+      } else {
+        error(data.message || 'Bulk marking failed');
+      }
+    } catch (err) {
+      error('Network error during bulk save.');
     }
   };
 
@@ -120,7 +165,11 @@ export default function AttendancePage() {
         success(editingId ? 'Record updated!' : 'Record saved!');
         setShowForm(false);
         setEditingId(null);
-        fetchAttendance();
+        
+        // Update the date filter to match what we just saved so it shows up!
+        setDateFilter(formData.date);
+        
+        fetchAttendance(currentCompanyId); // Pass ID explicitly
         resetForm();
       } else {
         error(data.message || 'Error occurred');
@@ -143,6 +192,7 @@ export default function AttendancePage() {
     });
   };
 
+
   const handleEdit = (rec: any) => {
     setEditingId(rec.id);
     setFormData({
@@ -156,6 +206,37 @@ export default function AttendancePage() {
       company_id: rec.company_id
     });
     setShowForm(true);
+  };
+
+  const downloadAttendance = () => {
+    const activeRecords = attendanceRecords.filter(rec => rec.date.startsWith(dateFilter));
+    if (activeRecords.length === 0) {
+      info('No records found for the selected date to download.');
+      return;
+    }
+
+    const headers = ['Employee', 'Date', 'Shift', 'Clock In', 'Clock Out', 'Status', 'Remarks'];
+    const rows = activeRecords.map(rec => [
+      rec.users?.name || 'N/A',
+      rec.date.split('T')[0],
+      rec.shift,
+      rec.clock_in || 'N/A',
+      rec.clock_out || 'N/A',
+      rec.status,
+      rec.remarks || ''
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendance_report_${dateFilter}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    success('Attendance report downloaded.');
   };
 
   const handleDelete = async (id: string) => {
@@ -181,8 +262,6 @@ export default function AttendancePage() {
     }
   };
 
-
-
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
@@ -190,14 +269,31 @@ export default function AttendancePage() {
           <h1 className="text-2xl font-bold text-primary tracking-tight">Attendance Details</h1>
           <p className="text-muted-foreground text-sm font-medium">Daily shift-wise logging for {activeTenant} staff.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel Entry' : 'Log Attendance'}
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button 
+            onClick={downloadAttendance}
+            variant="outline"
+            className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10"
+          >
+            <Download className="w-4 h-4 mr-2" /> Download Logs
+          </Button>
+          <Button 
+            onClick={prepareBulkData}
+            variant="outline"
+            className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Bulk Entry
+          </Button>
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel' : 'Log Entry'}
+          </Button>
+        </div>
       </div>
+
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
@@ -304,26 +400,123 @@ export default function AttendancePage() {
           </CardContent>
         </Card>
       )}
+      
+      {showBulkForm && (
+        <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
+              <CardDescription>Register attendance for all staff on {new Date().toLocaleDateString()}</CardDescription>
+            </div>
+            <div className="flex gap-2">
+               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive">
+                 <X className="w-4 h-4" />
+               </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold">
+                  <tr>
+                    <th className="px-4 py-3">Employee</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Shift</th>
+                    <th className="px-4 py-3">Clock In / Out</th>
+                    <th className="px-4 py-3">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 italic font-medium">
+                  {bulkData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                         <div className="font-bold text-slate-800">{row.employee_name}</div>
+                         <div className="text-[10px] text-slate-400">{row.employee_code}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                         <select 
+                           value={row.status}
+                           onChange={(e) => {
+                             const nd = [...bulkData];
+                             nd[idx].status = e.target.value;
+                             setBulkData(nd);
+                           }}
+                           className="h-8 rounded border bg-white px-2 text-xs"
+                         >
+                           <option value="PRESENT">Present</option>
+                           <option value="ABSENT">Absent</option>
+                           <option value="LATE">Late</option>
+                           <option value="HALF_DAY">Half Day</option>
+                         </select>
+                      </td>
+                      <td className="px-4 py-3">
+                         <select 
+                           value={row.shift}
+                           onChange={(e) => {
+                             const nd = [...bulkData];
+                             nd[idx].shift = e.target.value;
+                             setBulkData(nd);
+                           }}
+                           className="h-8 rounded border bg-white px-2 text-xs"
+                         >
+                           <option value="GENERAL">General</option>
+                           <option value="DAY">Day</option>
+                           <option value="NIGHT">Night</option>
+                         </select>
+                      </td>
+                      <td className="px-4 py-3 flex items-center gap-1">
+                         <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                         <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                      </td>
+                      <td className="px-4 py-3">
+                         <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
+               <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
+               <div className="flex gap-3">
+                 <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
+                 <Button onClick={saveBulkAttendance} className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10">
+                   <Save className="w-4 h-4 mr-2" /> Mark Attendance
+                 </Button>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <TableView
+
         title="Attendance Logs"
         description={`Daily shift-wise logging for ${activeTenant} staff.`}
         headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
-        data={attendanceRecords.filter(rec => rec.date.startsWith(dateFilter))}
+        data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
         loading={loading}
         searchFields={['users.name', 'users.employee_code', 'remarks']}
         searchPlaceholder="Search staff or notes..."
         actions={
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
-            <Input 
-              type="date"
-              className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
+            <div className="flex gap-1">
+              <Input 
+                type="date"
+                className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+              {dateFilter && (
+                <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
+                   Clear
+                </Button>
+              )}
+            </div>
           </div>
         }
+
         renderRow={(rec: any) => (
           <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
             <td className="px-6 py-4">

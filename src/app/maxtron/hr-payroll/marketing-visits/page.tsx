@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, TrendingUp, Users, CheckCircle } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -23,7 +23,7 @@ export default function MarketingVisitsPage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
 
   const [dateFilter, setDateFilter] = useState(''); // Default to empty to show all records initially
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
   const { confirm } = useConfirm();
 
   const pathname = usePathname();
@@ -177,6 +177,40 @@ export default function MarketingVisitsPage() {
     setShowForm(true);
   };
 
+  const downloadVisitList = () => {
+    const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
+    if (activeRecords.length === 0) {
+      info('No visit records found to export.');
+      return;
+    }
+
+    const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome'];
+    const rows = activeRecords.map(rec => [
+      `"${rec.users?.name || 'N/A'}"`,
+      `"${rec.customer_name}"`,
+      `"${rec.location || 'N/A'}"`,
+      `"${rec.visit_date.split('T')[0]}"`,
+      `"${rec.time_in || 'N/A'}"`,
+      `"${rec.time_out || 'N/A'}"`,
+      `"${rec.purpose || ''}"`,
+      `"${rec.outcome || ''}"`
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    success('Detailed visit list exported successfully!');
+  };
+
+
+
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
       message: 'Are you sure you want to delete this visit report?',
@@ -200,23 +234,88 @@ export default function MarketingVisitsPage() {
     }
   };
 
-
-
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight">Marketing Team Visits</h1>
-          <p className="text-muted-foreground text-sm font-medium">Punching details for field staff tracking.</p>
+          <h1 className="text-3xl font-bold text-primary tracking-tight">Marketing Operations</h1>
+          <p className="text-muted-foreground text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg shadow-primary/20"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel Entry' : 'New Field Visit'}
-        </Button>
+        <div className="flex items-center space-x-3">
+          {!showForm && (
+            <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm">
+               <Download className="w-4 h-4 mr-2" /> Download Visit List
+            </Button>
+          )}
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel Entry' : 'New Field Visit'}
+          </Button>
+        </div>
       </div>
+
+      {!showForm && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Visits</p>
+                  <h3 className="text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
+                </div>
+                <div className="bg-primary/10 p-3 rounded-2xl">
+                  <MapPin className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
+                <TrendingUp className="w-3 h-3 mr-1" /> <span>Activity tracked successfully</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Clients</p>
+                  <h3 className="text-3xl font-black text-blue-600 mt-1">
+                    {new Set(visitRecords.map(r => r.customer_name)).size}
+                  </h3>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl">
+                  <Users className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active pipeline outreach</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Top Performer</p>
+                  <h3 className="text-lg font-black text-emerald-600 mt-1 truncate max-w-[150px]">
+                    {visitRecords.length > 0 ? (
+                      Object.entries(visitRecords.reduce((acc: any, curr) => {
+                        acc[curr.users?.name] = (acc[curr.users?.name] || 0) + 1;
+                        return acc;
+                      }, {})).sort((a: any, b: any) => b[1] - a[1])[0][0]
+                    ) : 'N/A'}
+                  </h3>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-2xl">
+                  <CheckCircle className="w-6 h-6 text-emerald-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Highest visit frequency</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500">

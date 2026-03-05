@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -184,6 +184,40 @@ export default function EmployeeInformationPage() {
     setFormData({ ...formData, [collection]: list });
   };
 
+  const downloadEmployeeList = () => {
+    if (employees.length === 0) {
+      info('No employee data available to export.');
+      return;
+    }
+    
+    // Generate CSV content with all available details
+    const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport'];
+    const rows = employees.map(emp => [
+      `"${emp.employee_code || 'SYS'}"`,
+      `"${emp.name}"`,
+      `"${emp.username}"`,
+      `"${emp.user_types?.name || 'User'}"`,
+      `"${emp.companies?.company_name || 'N/A'}"`,
+      `"${emp.date_of_birth ? emp.date_of_birth.split('T')[0] : 'N/A'}"`,
+      `"${emp.guarantor_name || 'N/A'}"`,
+      `"${emp.is_married ? 'Yes' : 'No'}"`,
+      `"${emp.has_license ? 'Yes' : 'No'}"`,
+      `"${emp.has_passport ? 'Yes' : 'No'}"`
+    ]);
+    
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    success('Detailed employee list exported successfully!');
+  };
+
   const saveEmployee = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -335,53 +369,115 @@ export default function EmployeeInformationPage() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Employee Information</h1>
-          <p className="text-foreground/60 mt-2">Manage employee bio-data, qualifications, and system access.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Employee Management</h1>
+          <p className="text-foreground/60 mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        {!showForm ? (
-          hasPermission('hr_employee_manage', 'can_create') && (
-            <Button onClick={() => {
-              setEditingId(null);
-              const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
-              setFormData({ 
-                employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
-                addresses: [
-                  { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
-                  { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
-                ],
-                company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
-              });
-              setShowForm(true);
-            }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
-              <Plus className="w-5 h-5 mr-2" /> Add Employee
-            </Button>
-          )
-        ) : (
-          <div className="flex space-x-3">
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
-              <X className="w-4 h-4 mr-2" /> Cancel
-            </Button>
-            {activeTab !== 'personal' && (
-              <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="border-foreground/10">
-                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+        <div className="flex items-center space-x-3">
+          {!showForm ? (
+            <>
+              <Button onClick={downloadEmployeeList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex shadow-sm">
+                 <Download className="w-4 h-4 mr-2" /> Download Employee List
               </Button>
-            )}
-            <Button onClick={() => {
-              if (activeTab === 'personal') setActiveTab('qualifications');
-              else if (activeTab === 'qualifications') setActiveTab('financials');
-              else saveEmployee();
-            }} className="bg-primary hover:bg-primary/90 text-white shadow-md">
-              {activeTab === 'financials' ? (
-                <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}</>
-              ) : (
-                <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
+              {hasPermission('hr_employee_manage', 'can_create') && (
+                <Button onClick={() => {
+                  setEditingId(null);
+                  const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+                  setFormData({ 
+                    employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                    addresses: [
+                      { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                      { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+                    ],
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                  });
+                  setShowForm(true);
+                }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
+                  <Plus className="w-5 h-5 mr-2" /> Add Employee
+                </Button>
               )}
-            </Button>
-          </div>
-        )}
+            </>
+          ) : (
+            <div className="flex space-x-3">
+              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
+                <X className="w-4 h-4 mr-2" /> Cancel
+              </Button>
+              {activeTab !== 'personal' && (
+                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="border-foreground/10">
+                  <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                </Button>
+              )}
+              <Button onClick={() => {
+                if (activeTab === 'personal') setActiveTab('qualifications');
+                else if (activeTab === 'qualifications') setActiveTab('financials');
+                else saveEmployee();
+              }} className="bg-primary hover:bg-primary/90 text-white shadow-md">
+                {activeTab === 'financials' ? (
+                  <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}</>
+                ) : (
+                  <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {!showForm && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Staff</p>
+                  <h3 className="text-3xl font-black text-primary mt-1">{employees.length}</h3>
+                </div>
+                <div className="bg-primary/10 p-3 rounded-2xl">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
+                <TrendingUp className="w-3 h-3 mr-1" /> <span>+2 this month</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Management</p>
+                  <h3 className="text-3xl font-black text-rose-600 mt-1">
+                    {employees.filter(e => e.user_types?.name?.includes('ADMIN')).length}
+                  </h3>
+                </div>
+                <div className="bg-rose-50 p-3 rounded-2xl">
+                  <Briefcase className="w-6 h-6 text-rose-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active System Admins</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
+                  <h3 className="text-3xl font-black text-blue-600 mt-1">
+                    {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
+                  </h3>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl">
+                  <TrendingUp className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Floor & Field Staff</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
@@ -927,8 +1023,8 @@ export default function EmployeeInformationPage() {
                       <tr>
                         <th className="p-4 font-semibold w-24">Emp Code</th>
                         <th className="p-4 font-semibold">Full Name</th>
-                        <th className="p-4 font-semibold">Company Location</th>
-                        <th className="p-4 font-semibold">System Role</th>
+                        <th className="p-4 font-semibold">Department / Role</th>
+                        <th className="p-4 font-semibold">Contact Email</th>
                         <th className="p-4 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
@@ -942,10 +1038,17 @@ export default function EmployeeInformationPage() {
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors">
                       <td className="p-4 font-medium text-secondary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-semibold text-foreground">{emp.name}</td>
-                      <td className="p-4 text-foreground/70">
-                        {emp.companies?.company_name || 'Unassigned Tenant'}
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-100 text-rose-700' :
+                          emp.user_types?.name?.includes('HR') ? 'bg-purple-100 text-purple-700' :
+                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {emp.user_types?.name || 'User'}
+                        </span>
                       </td>
-                      <td className="p-4 text-foreground/70">{emp.user_types?.name || 'User'}</td>
+                      <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {hasPermission('hr_employee_manage', 'can_edit') && (
                           <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>

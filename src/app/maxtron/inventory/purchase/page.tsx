@@ -1,0 +1,466 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { 
+  FileCheck, Plus, Search, Edit, Trash2, X, Save, 
+  Truck, Calendar, Hash, User, IndianRupee, 
+  Warehouse, ClipboardList, Trash, Package, AlertCircle, Info
+} from 'lucide-react';
+import { TableView } from '@/components/ui/table-view';
+import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const PURCHASE_API = `${API_BASE}/api/maxtron/purchase-entries`;
+const ORDER_API = `${API_BASE}/api/maxtron/rm-orders`;
+const STOCK_API = `${API_BASE}/api/maxtron/inventory/stock-summary`;
+const SUPPLIER_API = `${API_BASE}/api/maxtron/suppliers`;
+
+export default function PurchaseEntryPage() {
+  const [showForm, setShowForm] = useState(false);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [currentCompanyId, setCurrentCompanyId] = useState('');
+  
+  const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
+
+  const pathname = usePathname();
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+
+  const [formData, setFormData] = useState({
+    entry_number: `GRN-${Date.now().toString().slice(-6)}`,
+    entry_date: new Date().toISOString().split('T')[0],
+    order_id: '',
+    supplier_id: '',
+    invoice_number: '',
+    invoice_date: '',
+    remarks: '',
+    vehicle_number: '',
+    unloading_charges: 0,
+    company_id: '',
+    items: [] as any[]
+  });
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const compData = await compRes.json();
+      let coId = '';
+      if (compData.success) {
+        const activeCo = compData.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+        if (activeCo) {
+          coId = activeCo.id;
+          setCurrentCompanyId(coId);
+          setFormData(prev => ({ ...prev, company_id: coId }));
+        }
+      }
+
+      const [ordRes, supRes, stockRes] = await Promise.all([
+        fetch(`${ORDER_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${SUPPLIER_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${STOCK_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      
+      const ordData = await ordRes.json();
+      const supData = await supRes.json();
+      const stockData = await stockRes.json();
+      
+      if (ordData.success) {
+        // Filter for orders not yet fully received
+        setPendingOrders(ordData.data.filter((o: any) => o.status === 'PENDING' || o.status === 'ORDERED'));
+      }
+      if (supData.success) setSuppliers(supData.data);
+      if (stockData.success) setMaterials(stockData.data);
+
+      fetchEntries(coId);
+    } catch (err) {
+      console.error('Error fetching initial data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEntries = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    try {
+      const res = await fetch(`${PURCHASE_API}?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEntries(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching entries:', err);
+    }
+  };
+
+  const handleOrderSelection = (orderId: string) => {
+    const selectedOrder = pendingOrders.find(o => o.id === orderId);
+    if (selectedOrder) {
+      setFormData({
+        ...formData,
+        order_id: orderId,
+        supplier_id: selectedOrder.supplier_id,
+        items: selectedOrder.rm_order_items.map((i: any) => ({
+            rm_id: i.rm_id,
+            ordered_quantity: Number(i.quantity),
+            received_quantity: Number(i.quantity), // Default to full receipt
+            rate: Number(i.rate),
+            amount: Number(i.amount)
+        }))
+      });
+    } else {
+        setFormData({ ...formData, order_id: '', items: [] });
+    }
+  };
+
+  const addItem = () => {
+    setFormData({
+      ...formData,
+      items: [...formData.items, { rm_id: '', ordered_quantity: 0, received_quantity: 0, rate: 0, amount: 0 }]
+    });
+  };
+
+  const removeItem = (index: number) => {
+    const newItems = [...formData.items];
+    newItems.splice(index, 1);
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const updateItem = (index: number, field: string, value: any) => {
+    const newItems = [...formData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    
+    if (field === 'rm_id') {
+        const mat = materials.find(m => m.id === value);
+        if (mat) {
+            newItems[index].rate = Number(mat.rate_per_unit || 0);
+        }
+    }
+    
+    newItems[index].amount = newItems[index].received_quantity * newItems[index].rate;
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const saveEntry = async () => {
+    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => i.received_quantity <= 0)) {
+      error('Please select Supplier/Order and add items with valid quantities.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${PURCHASE_API}/${editingId}` : PURCHASE_API;
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(editingId ? 'Purchase entry updated!' : 'Material received successfully!');
+        setShowForm(false);
+        setEditingId(null);
+        fetchEntries();
+        resetForm();
+      } else {
+        error(data.message || 'Operation failed.');
+      }
+    } catch (err) {
+      error('Network connectivity issue.');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      entry_number: `GRN-${Date.now().toString().slice(-6)}`,
+      entry_date: new Date().toISOString().split('T')[0],
+      order_id: '',
+      supplier_id: '',
+      invoice_number: '',
+      invoice_date: '',
+      remarks: '',
+      vehicle_number: '',
+      unloading_charges: 0,
+      company_id: currentCompanyId,
+      items: []
+    });
+  };
+
+  const handleEdit = (rec: any) => {
+    setEditingId(rec.id);
+    setFormData({
+      entry_number: rec.entry_number,
+      entry_date: rec.entry_date.split('T')[0],
+      order_id: rec.order_id || '',
+      supplier_id: rec.supplier_id,
+      invoice_number: rec.invoice_number || '',
+      invoice_date: rec.invoice_date ? rec.invoice_date.split('T')[0] : '',
+      remarks: rec.remarks || '',
+      vehicle_number: rec.vehicle_number || '',
+      unloading_charges: Number(rec.unloading_charges || 0),
+      company_id: rec.company_id,
+      items: rec.purchase_entry_items.map((i: any) => ({
+        rm_id: i.rm_id,
+        ordered_quantity: Number(i.ordered_quantity || 0),
+        received_quantity: Number(i.received_quantity),
+        rate: Number(i.rate),
+        amount: Number(i.amount)
+      }))
+    });
+    setShowForm(true);
+  };
+
+  return (
+    <div className="p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+        <div>
+          <h1 className="text-3xl font-bold text-primary tracking-tight font-heading">Raw Material Purchase (GRN)</h1>
+          <p className="text-muted-foreground text-sm font-medium">Record material intake against pending orders with multi-item support and stock validation.</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) { resetForm(); addItem(); } setEditingId(null); }}
+            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel Receipt' : 'Register Material Intake'}
+          </Button>
+        </div>
+      </div>
+
+      {showForm && (
+        <Card className="border-primary/20 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 p-6">
+            <CardTitle className="text-xl font-bold text-primary flex items-center">
+              <ClipboardList className="w-5 h-5 mr-3 text-secondary" />
+              {editingId ? 'Modify Goods Receipt Note' : 'New Goods Receipt Note (GRN)'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 border-b border-slate-100 pb-8">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Pending Order Selection</label>
+                <select 
+                  value={formData.order_id}
+                  onChange={(e) => handleOrderSelection(e.target.value)}
+                  className="w-full h-11 px-3 rounded-md border border-amber-300 bg-amber-50/30 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-amber-200"
+                >
+                  <option value="">-- Select Pending PO --</option>
+                  {pendingOrders.map(o => (
+                    <option key={o.id} value={o.id}>{o.order_number} | {o.suppliers?.supplier_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Intake Date</label>
+                <Input type="date" value={formData.entry_date} onChange={(e) => setFormData({...formData, entry_date: e.target.value})} className="h-11 border-slate-200" />
+              </div>
+
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Vendor Identity</label>
+                <select 
+                   value={formData.supplier_id} 
+                   onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
+                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-bold bg-slate-50"
+                   disabled={!!formData.order_id}
+                >
+                  <option value="">Choose Supplier...</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.supplier_name} ({s.supplier_code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Invoice / Bill No</label>
+                <Input value={formData.invoice_number} onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} className="h-11" placeholder="Bill Number" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Invoice Date</label>
+                <Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} className="h-11" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Vehicle Number</label>
+                <Input value={formData.vehicle_number} onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})} className="h-11 uppercase" placeholder="KA-00-XX-0000" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Unloading Fees (₹)</label>
+                <Input type="number" value={formData.unloading_charges} onChange={(e) => setFormData({...formData, unloading_charges: Number(e.target.value)})} className="h-11" />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+               <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center">
+                    <Warehouse className="w-4 h-4 mr-2 text-primary" /> Multi-Item Receipt Entry
+                  </h3>
+                  {!formData.order_id && (
+                    <Button onClick={addItem} variant="ghost" size="sm" className="text-primary font-bold hover:bg-primary/10 rounded-full h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Manual Row
+                    </Button>
+                  )}
+               </div>
+
+               <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-slate-100 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">Material Item / Current Stock</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Qty Ordered</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Qty Delivered</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Amount</th>
+                        <th className="px-4 py-3 text-center text-[10px] font-black text-slate-500 uppercase w-16"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {formData.items.map((item, idx) => (
+                        <tr key={idx} className="bg-white">
+                          <td className="p-4">
+                            <select 
+                              value={item.rm_id}
+                              onChange={(e) => updateItem(idx, 'rm_id', e.target.value)}
+                              className="w-full h-10 px-2 rounded border border-slate-200 text-sm font-medium"
+                              disabled={!!formData.order_id}
+                            >
+                              <option value="">Select Material...</option>
+                              {materials.map(m => (
+                                <option key={m.id} value={m.id}>
+                                  {m.rm_name} (Global Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-4">
+                            <div className="h-10 flex items-center justify-center font-bold text-slate-400 bg-slate-50 rounded">
+                               {item.ordered_quantity || 0}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <Input 
+                              type="number" 
+                              value={item.received_quantity} 
+                              onChange={(e) => updateItem(idx, 'received_quantity', Number(e.target.value))}
+                              className={`h-10 text-right font-black ${item.received_quantity < item.ordered_quantity ? 'text-amber-600' : 'text-emerald-600'}`}
+                            />
+                          </td>
+                          <td className="p-4">
+                             <div className="h-10 flex items-center justify-end px-3 font-mono font-black text-slate-900 bg-slate-100 rounded">
+                               ₹ {Number(item.amount).toLocaleString()}
+                             </div>
+                          </td>
+                          <td className="p-4 text-center">
+                             {!formData.order_id && (
+                               <Button onClick={() => removeItem(idx)} variant="ghost" size="icon" className="h-8 w-8 text-rose-400 hover:text-rose-600 rounded-full">
+                                 <Trash className="w-3.5 h-3.5" />
+                               </Button>
+                             )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+
+            <div className="mt-8 flex justify-between items-start">
+               <div className="flex-1 max-w-md">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Receipt Comments</label>
+                  <textarea 
+                    className="w-full h-20 p-3 mt-2 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                    placeholder="Shortage, damage or delay notes..."
+                  />
+               </div>
+               <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right ml-8">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Receipt Valuation</p>
+                  <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {formData.items.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</h2>
+               </div>
+            </div>
+
+            <div className="mt-10 flex justify-end space-x-4">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
+                Cancel
+              </Button>
+              <Button onClick={saveEntry} className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg shadow-emerald-200 flex items-center font-bold">
+                <Save className="w-4 h-4 mr-2" />
+                {editingId ? 'Update GRN' : 'Authorize Goods Receipt'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <TableView
+        title="Material Intake Log"
+        description="Verify incoming shipments and audit quantities delivered against orders."
+        headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Actions']}
+        data={entries}
+        loading={loading}
+        searchFields={['entry_number', 'suppliers.supplier_name', 'invoice_number']}
+        renderRow={(e: any) => (
+          <tr key={e.id} className="hover:bg-emerald-50 transition-all border-b border-slate-50 last:border-none">
+            <td className="px-6 py-4">
+               <div className="font-black text-slate-800 text-[13px]">{e.entry_number}</div>
+               <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
+            </td>
+            <td className="px-6 py-4">
+               <div className="font-bold text-slate-700">{e.suppliers?.supplier_name}</div>
+               {e.rm_orders?.order_number && (
+                 <div className="text-[10px] font-black text-amber-600 uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
+               )}
+            </td>
+            <td className="px-6 py-4">
+               <div className="text-lg font-black text-emerald-600">{e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0).toLocaleString()}</div>
+               <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
+            </td>
+            <td className="px-6 py-4">
+               <div className="font-black text-slate-900 tracking-tight">₹ {e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.amount), 0).toLocaleString()}</div>
+            </td>
+            <td className="px-6 py-4">
+               <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>
+               <div className="text-[10px] text-slate-400 font-bold mt-1">Invoice: {e.invoice_number || '---'}</div>
+            </td>
+            <td className="px-6 py-4 text-right space-x-1">
+              <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                <Edit className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => {}} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
+  );
+}
