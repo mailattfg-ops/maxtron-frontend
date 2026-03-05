@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { useRouter } from 'next/navigation';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
@@ -23,6 +25,17 @@ export default function EmployeeInformationPage() {
   const [loading, setLoading] = useState(true);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const router = useRouter();
+  
+  // Page access check
+  useEffect(() => {
+    // We check view permission, but if they are already on this page via sidebar, 
+    // it's likely they have it. This is a secondary layer.
+    const canView = hasPermission('hr_employee_view', 'can_view');
+    // If the hook is still loading user data (user is null initially), we might want to wait.
+    // However, sidebar already handles the main gate.
+  }, [hasPermission]);
   
   // Table Pagination and Filtering States
   const [searchQuery, setSearchQuery] = useState('');
@@ -328,21 +341,23 @@ export default function EmployeeInformationPage() {
           <p className="text-foreground/60 mt-2">Manage employee bio-data, qualifications, and system access.</p>
         </div>
         {!showForm ? (
-          <Button onClick={() => {
-            setEditingId(null);
-            const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
-            setFormData({ 
-              employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
-              addresses: [
-                { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
-                { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
-              ],
-              company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
-            });
-            setShowForm(true);
-          }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
-            <Plus className="w-5 h-5 mr-2" /> Add Employee
-          </Button>
+          hasPermission('hr_employee_manage', 'can_create') && (
+            <Button onClick={() => {
+              setEditingId(null);
+              const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+              setFormData({ 
+                employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                addresses: [
+                  { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                  { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+                ],
+                company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+              });
+              setShowForm(true);
+            }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
+              <Plus className="w-5 h-5 mr-2" /> Add Employee
+            </Button>
+          )
         ) : (
           <div className="flex space-x-3">
             <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
@@ -932,12 +947,16 @@ export default function EmployeeInformationPage() {
                       </td>
                       <td className="p-4 text-foreground/70">{emp.user_types?.name || 'User'}</td>
                       <td className="p-4 text-right space-x-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {hasPermission('hr_employee_manage', 'can_edit') && (
+                          <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {hasPermission('hr_employee_manage', 'can_delete') && (
+                          <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))

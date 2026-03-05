@@ -33,12 +33,12 @@ const maxtronSidebarMenu = [
     title: "Dashboard",
     icon: TrendingUp,
     path: "/maxtron",
-    roles: ["HR", "ADMIN", "PURCHASE", "PRODUCTION", "SALES", "ACCOUNTS"]
+    roles: ["admin", "hr", "sales", "production", "finance"]
   },
   {
     title: "HR & Administration",
     icon: Users,
-    roles: ["HR", "ADMIN", "SUPERVISOR"],
+    roles: ["admin", "hr"],
     children: [
       { title: "Employee Information", path: "/maxtron/hr-payroll/employee" },
       { title: "Company Information", path: "/maxtron/hr-payroll/company" },
@@ -52,7 +52,7 @@ const maxtronSidebarMenu = [
   {
     title: "Inventory & Procurement",
     icon: Package,
-    roles: ["PURCHASE", "STORE", "AUDITOR"],
+    roles: ["admin", "production", "inventory"],
     children: [
       { title: "Raw Material Details", path: "/maxtron/inventory/raw-material" },
       { title: "Supplier Information", path: "/maxtron/inventory/suppliers" },
@@ -68,7 +68,7 @@ const maxtronSidebarMenu = [
   {
     title: "Production MES",
     icon: Settings,
-    roles: ["PRODUCTION", "SHIFT", "OPERATOR"],
+    roles: ["admin", "production"],
     children: [
       { title: "Finished Product Details", path: "/maxtron/production/product" },
       { title: "Production (Extrusion)", path: "/maxtron/production/extrusion" },
@@ -83,7 +83,7 @@ const maxtronSidebarMenu = [
   {
     title: "Sales & Logistics",
     icon: Truck,
-    roles: ["SALES", "DISPATCH", "MARKETING"],
+    roles: ["admin", "sales"],
     children: [
       { title: "Customer Information", path: "/maxtron/sales/customers" },
       { title: "Vehicle Information", path: "/maxtron/sales/vehicles" },
@@ -99,7 +99,7 @@ const maxtronSidebarMenu = [
   {
     title: "Finance & Accounts",
     icon: DollarSign,
-    roles: ["ACCOUNTS", "FINANCE"],
+    roles: ["admin", "finance"],
     children: [
       { title: "Customer Collection Entry", path: "/maxtron/finance/collection" },
       { title: "Supplier Payment Entry", path: "/maxtron/finance/payment" },
@@ -113,38 +113,39 @@ const maxtronSidebarMenu = [
 ];
 
 // -------------------------------------------------------------
-// KEIL SEPARATE MODULES (Placeholder structures to show separation)
+// KEIL SEPARATE MODULES
 // -------------------------------------------------------------
 const keilSidebarMenu = [
   {
     title: "KEIL Dashboard",
     icon: TrendingUp,
-    path: "/keil",
-    roles: ["HR", "ADMIN", "OPERATIONS"]
+    path: "/keil"
   },
   {
     title: "KEIL Operations",
     icon: Settings,
-    roles: ["ADMIN", "MANAGER"],
     children: [
       { title: "Project Assignments", path: "/keil/projects" },
       { title: "Resource Allocation", path: "/keil/resources" }
-    ]
-  },
-  {
-    title: "KEIL Supply Chain",
-    icon: Truck,
-    roles: ["ADMIN", "LOGISTICS"],
-    children: [
-      { title: "Vendor Management", path: "/keil/vendors" },
-      { title: "Shipment Tracking", path: "/keil/tracking" }
     ]
   }
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   
   const pathname = usePathname();
@@ -154,19 +155,61 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
     const token = localStorage.getItem('token');
+    
     if (!token && pathname !== '/login') {
       router.push('/login');
     } else if (token && pathname === '/login') {
       router.push('/maxtron');
-    } else if (token) {
+    } else {
+      // Refresh user state from sync storage just in case
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsed = JSON.parse(storedUser);
+          if (JSON.stringify(parsed) !== JSON.stringify(user)) {
+             setUser(parsed);
+          }
         } catch (e) {}
       }
     }
   }, [pathname, router]);
+
+  // Ultra-robust role detection
+  const userRole = (user?.role_name || '').toLowerCase();
+  const isAdmin = userRole === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+
+  const canShowItem = (allowedRoles?: string[]) => {
+    // 1. Admin always sees everything
+    if (isAdmin) return true;
+    
+    // 2. Fallback check: If role_name is missing, try to detect from common UUIDs
+    // (This helps if the user logged in before the role_name was added to auth)
+    let detectedRole = userRole;
+    if (!detectedRole && user?.type) {
+      if (user.type === 'dfc13a69-5e19-4c72-a589-6f705e547fca') detectedRole = 'sales';
+      if (user.type === '8e7de206-b01d-481e-b91c-8b3abfd3f826') detectedRole = 'hr';
+      if (user.type === '965ecc7e-4678-43b3-a6a5-5ad42778ad39') detectedRole = 'admin';
+    }
+
+    // 3. If no roles restricted, show to all logged in users
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+    
+    // 4. Robust Check
+    if (!detectedRole) return false; 
+    return allowedRoles.some(role => role.toLowerCase() === detectedRole);
+  };
+
+  const hasPermission = (permissionKey: string, action: string) => {
+    // Basic Department logic
+    if (isAdmin) return true;
+    const role = (user?.role_name || '').toLowerCase();
+    
+    if (permissionKey.startsWith('sales_') && role === 'sales') return true;
+    if (permissionKey.startsWith('hr_') && role === 'hr') return true;
+    if (permissionKey.startsWith('prod_') && role === 'production') return true;
+    
+    return false;
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -199,37 +242,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           
           {/* Entity Switcher */}
-          <div className="flex px-4 pb-4 space-x-2">
-            <button 
-              onClick={() => router.push('/maxtron')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
-                activeEntity === 'maxtron' 
-                  ? 'bg-secondary text-white shadow-md' 
-                  : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
-              }`}
-            >
-              MAXTRON
-            </button>
-            <button 
-              onClick={() => router.push('/keil')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
-                activeEntity === 'keil' 
-                  ? 'bg-secondary text-white shadow-md' 
-                  : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
-              }`}
-            >
-              KEIL
-            </button>
-          </div>
+          {hasPermission('company_switching', 'can_view') && (
+            <div className="flex px-4 pb-4 space-x-2">
+              <button 
+                onClick={() => router.push('/maxtron')}
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                  activeEntity === 'maxtron' 
+                    ? 'bg-secondary text-white shadow-md' 
+                    : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
+                }`}
+              >
+                MAXTRON
+              </button>
+              <button 
+                onClick={() => router.push('/keil')}
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                  activeEntity === 'keil' 
+                    ? 'bg-secondary text-white shadow-md' 
+                    : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
+                }`}
+              >
+                KEIL
+              </button>
+            </div>
+          )}
         </div>
         
         <nav className="flex-1 py-6 px-3">
           <ul className="space-y-1">
-            {(activeEntity === 'maxtron' ? maxtronSidebarMenu : keilSidebarMenu).map((moduleItem, idx) => {
+            {(activeEntity === 'maxtron' ? maxtronSidebarMenu : keilSidebarMenu).map((moduleItem: any, idx) => {
               const isModuleExpanded = expanded[moduleItem.title];
               
               if (!moduleItem.children) {
                 // Top level simple link (Dashboard)
+                if (!canShowItem(moduleItem.roles)) return null;
+
                 const isActive = pathname === moduleItem.path;
                 return (
                   <li key={idx}>
@@ -247,6 +294,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </li>
                 );
               }
+
+              // Parent with children
+              if (!canShowItem(moduleItem.roles)) return null;
 
               return (
                 <li key={idx} className="flex flex-col">
@@ -269,7 +319,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   {/* Nested Links */}
                   {isModuleExpanded && (
                     <ul className="ml-8 mt-1 space-y-1 mb-2 border-l border-white/10 pl-2">
-                       {moduleItem.children.map((link, lIdx) => {
+                       {moduleItem.children.map((link: any, lIdx: number) => {
                           const isActive = pathname === link.path;
                           return (
                             <li key={lIdx}>

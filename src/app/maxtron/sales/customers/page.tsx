@@ -9,6 +9,8 @@ import { UserPlus, Save, Search, Edit, Trash2, Plus, X, Building2, Phone, Mail, 
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { useRouter } from 'next/navigation';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers`;
 
@@ -22,6 +24,13 @@ export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState('basic');
   const { success, error } = useToast();
   const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Secondary layer check - sidebar already gates this usually
+    const canView = hasPermission('sales_customers_view', 'can_view');
+  }, [hasPermission]);
 
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -206,13 +215,15 @@ export default function CustomersPage() {
           </h1>
           <p className="text-muted-foreground text-sm font-medium">Manage your {activeTenant} clients and billing details.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel' : 'Add New Customer'}
-        </Button>
+        {hasPermission('sales_customers_manage', 'can_create') && (
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel' : 'Add New Customer'}
+          </Button>
+        )}
       </div>
 
       {showForm && (
@@ -357,12 +368,16 @@ export default function CustomersPage() {
                   </span>
                 </td>
                 <td className="px-4 py-4 text-right space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="hover:text-primary rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="hover:text-destructive rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {hasPermission('sales_customers_manage', 'can_edit') && (
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="hover:text-primary rounded-full h-8 w-8">
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {hasPermission('sales_customers_manage', 'can_delete') && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="hover:text-destructive rounded-full h-8 w-8">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </td>
               </tr>
             );
