@@ -90,14 +90,29 @@ export default function ConsumptionReportPage() {
 
   const downloadCSV = () => {
     if (!filtered.length) { info('No data to export.'); return; }
-    const rows = [['Slip No', 'Date', 'Material', 'Code', 'Qty Used', 'Unit', 'Process', 'Machine', 'Remarks']];
-    filtered.forEach(c => rows.push([
-      c.consumption_slip_no, c.consumption_date,
-      c.raw_materials?.rm_name || '', c.raw_materials?.rm_code || '',
-      c.quantity_used, c.raw_materials?.unit_type || '',
-      c.process_type || '', c.machine_no || '', c.remarks || ''
-    ]));
-    const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const rows = filtered.map(c => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      return [
+        `"${(c.consumption_slip_no || '').replace(/"/g, '""')}"`,
+        `"'${formatDate(c.consumption_date)}"`,
+        `"${(c.raw_materials?.rm_name || '').replace(/"/g, '""')}"`,
+        `"${(c.raw_materials?.rm_code || '').replace(/"/g, '""')}"`,
+        `"${c.quantity_used}"`,
+        `"${(c.raw_materials?.unit_type || '').replace(/"/g, '""')}"`,
+        `"${(c.process_type || '').replace(/"/g, '""')}"`,
+        `"${(c.machine_no || '').replace(/"/g, '""')}"`,
+        `"${(c.remarks || '').replace(/"/g, '""')}"`
+      ];
+    });
+    const headers = ['Slip No', 'Date', 'Material', 'Code', 'Qty Used', 'Unit', 'Process', 'Machine', 'Remarks'];
+    const blob = new Blob([[headers.map(h => `"${h}"`), ...rows].map(r => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `consumption_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;

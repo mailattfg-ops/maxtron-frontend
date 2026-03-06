@@ -412,19 +412,19 @@ export default function CompanyInformationPage() {
                                         <div className="space-y-4">
                                             <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2"><Briefcase className="h-4 w-4" /> Organization</h4>
                                             
-                                            <div className="grid grid-cols-3 gap-1 text-sm border-b pb-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">GST No</span>
                                                 <span className="font-medium text-slate-900 col-span-2">{company.gst_no || '-'}</span>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-1 text-sm border-b pb-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">Employees</span>
                                                 <span className="font-medium text-slate-900 col-span-2">{company.no_of_employees || 0}</span>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-1 text-sm border-b pb-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">Email <Mail className="h-3 w-3 inline text-slate-400" /></span>
                                                 <span className="font-medium text-slate-900 col-span-2">{company.email || '-'}</span>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-1 text-sm">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm">
                                                 <span className="text-slate-500 col-span-1">Phone <Phone className="h-3 w-3 inline text-slate-400" /></span>
                                                 <span className="font-medium text-slate-900 col-span-2">{company.phone || '-'}</span>
                                             </div>

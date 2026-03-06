@@ -56,8 +56,16 @@ export default function StockListPage() {
   const downloadStockReport = () => {
     if (stock.length === 0) return;
     const headers = ['RM Code', 'Material Name', 'Grade', 'Total Purchased', 'Total Consumed', 'Balance Stock', 'Unit'];
-    const rows = stock.map(s => [s.rm_code, s.rm_name, s.grade, s.purchased, s.consumed, s.balance, s.unit_type]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const rows = stock.map(s => [
+      `"${(s.rm_code || '').replace(/"/g, '""')}"`,
+      `"${(s.rm_name || '').replace(/"/g, '""')}"`,
+      `"${(s.grade || '').replace(/"/g, '""')}"`,
+      `"${s.purchased || 0}"`,
+      `"${s.consumed || 0}"`,
+      `"${s.balance || 0}"`,
+      `"${(s.unit_type || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

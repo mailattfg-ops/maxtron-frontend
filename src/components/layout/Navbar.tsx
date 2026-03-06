@@ -13,22 +13,23 @@ import {
 interface NavbarProps {
   user: any;
   handleLogout: () => void;
+  onMenuToggle?: () => void;
 }
 
-export const Navbar = ({ user, handleLogout }: NavbarProps) => {
+export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
   return (
-    <header className="h-20 bg-white shadow-sm flex items-center justify-between px-8 z-10 shrink-0">
+    <header className="h-16 md:h-20 bg-white shadow-sm flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
       <div className="flex items-center">
-        <button className="md:hidden mr-4 text-foreground/70 hover:text-primary">
+        <button onClick={onMenuToggle} className="md:hidden mr-4 text-foreground/70 hover:text-primary transition-colors">
           <Menu className="w-6 h-6" />
         </button>
-        <div className="relative relative-search">
+        <div className="relative hidden sm:block">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-foreground/40">
             <Search className="w-4 h-4" />
           </div>
           <Input 
             type="text" 
-            className="bg-background border-none rounded-full pl-10 pr-4 py-5 w-64 focus-visible:ring-secondary/50 transition-all text-sm" 
+            className="bg-background border-none rounded-full pl-10 pr-4 py-5 w-48 md:w-64 focus-visible:ring-secondary/50 transition-all text-sm" 
             placeholder="Search resources..."
           />
         </div>

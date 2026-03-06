@@ -73,17 +73,31 @@ export default function PurchaseReportPage() {
 
   const downloadCSV = () => {
     if (filtered.length === 0) { info('No data to export.'); return; }
-    const rows: string[][] = [['GRN No', 'Date', 'Supplier', 'Invoice No', 'Material', 'Ordered Qty', 'Received Qty', 'Rate', 'Amount']];
-    filtered.forEach(p => {
-      (p.purchase_entry_items || []).forEach((item: any) => {
-        rows.push([
-          p.entry_number, p.entry_date, p.supplier_master?.supplier_name || '',
-          p.invoice_number || '', item.raw_materials?.rm_name || '',
-          item.ordered_quantity, item.received_quantity, item.rate, item.amount
-        ]);
-      });
+    const rows = filtered.flatMap(p => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      const formattedDate = formatDate(p.entry_date);
+
+      return (p.purchase_entry_items || []).map((item: any) => [
+        `"${(p.entry_number || '').replace(/"/g, '""')}"`,
+        `"'${formattedDate}"`,
+        `"${(p.supplier_master?.supplier_name || '').replace(/"/g, '""')}"`,
+        `"${(p.invoice_number || '').replace(/"/g, '""')}"`,
+        `"${(item.raw_materials?.rm_name || '').replace(/"/g, '""')}"`,
+        `"${item.ordered_quantity}"`,
+        `"${item.received_quantity}"`,
+        `"${item.rate}"`,
+        `"${item.amount}"`
+      ]);
     });
-    const csv = rows.map(r => r.join(',')).join('\n');
+    const headers = ['GRN No', 'Date', 'Supplier', 'Invoice No', 'Material', 'Ordered Qty', 'Received Qty', 'Rate', 'Amount'];
+    const csv = [headers.map(h => `"${h}"`), ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;

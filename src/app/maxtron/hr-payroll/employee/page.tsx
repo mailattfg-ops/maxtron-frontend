@@ -190,22 +190,37 @@ export default function EmployeeInformationPage() {
       return;
     }
     
-    // Generate CSV content with all available details
     const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport'];
-    const rows = employees.map(emp => [
-      `"${emp.employee_code || 'SYS'}"`,
-      `"${emp.name}"`,
-      `"${emp.username}"`,
-      `"${emp.user_types?.name || 'User'}"`,
-      `"${emp.companies?.company_name || 'N/A'}"`,
-      `"${emp.date_of_birth ? emp.date_of_birth.split('T')[0] : 'N/A'}"`,
-      `"${emp.guarantor_name || 'N/A'}"`,
-      `"${emp.is_married ? 'Yes' : 'No'}"`,
-      `"${emp.has_license ? 'Yes' : 'No'}"`,
-      `"${emp.has_passport ? 'Yes' : 'No'}"`
-    ]);
+    const rows = employees.map(emp => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}-${month}-${year}`;
+        } catch (e) {
+          return dateStr;
+        }
+      };
+
+      return [
+        `"${(emp.employee_code || 'SYS').replace(/"/g, '""')}"`,
+        `"${(emp.name || '').replace(/"/g, '""')}"`,
+        `"${(emp.username || '').replace(/"/g, '""')}"`,
+        `"${(emp.user_types?.name || 'User').replace(/"/g, '""')}"`,
+        `"${(emp.companies?.company_name || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(emp.date_of_birth)}'"`, // Prepend single quote after the double quote to force text in Excel
+        `"${(emp.guarantor_name || 'N/A').replace(/"/g, '""')}"`,
+        `"${emp.is_married ? 'Yes' : 'No'}"`,
+        `"${emp.has_license ? 'Yes' : 'No'}"`,
+        `"${emp.has_passport ? 'Yes' : 'No'}"`
+      ];
+    });
     
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -482,11 +497,13 @@ export default function EmployeeInformationPage() {
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="personal"><UserPlus className="w-4 h-4 mr-2" /> Basic Details</TabsTrigger>
-              <TabsTrigger value="qualifications"><Briefcase className="w-4 h-4 mr-2" /> Professional & Experience</TabsTrigger>
-              <TabsTrigger value="financials"><FileText className="w-4 h-4 mr-2" /> Financials & Docs</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto mb-6">
+              <TabsList className="flex w-full min-w-[480px]">
+                <TabsTrigger value="personal" className="flex-1"><UserPlus className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Basic Details</span><span className="sm:hidden">Basic</span></TabsTrigger>
+                <TabsTrigger value="qualifications" className="flex-1"><Briefcase className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Professional & Experience</span><span className="sm:hidden">Work</span></TabsTrigger>
+                <TabsTrigger value="financials" className="flex-1"><FileText className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Financials & Docs</span><span className="sm:hidden">Finance</span></TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -498,7 +515,7 @@ export default function EmployeeInformationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Employee Code</label>
                   <Input 

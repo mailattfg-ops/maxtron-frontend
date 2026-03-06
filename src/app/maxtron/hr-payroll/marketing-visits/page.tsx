@@ -190,18 +190,28 @@ export default function MarketingVisitsPage() {
     }
 
     const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome'];
-    const rows = activeRecords.map(rec => [
-      `"${rec.users?.name || 'N/A'}"`,
-      `"${rec.customer_name}"`,
-      `"${rec.location || 'N/A'}"`,
-      `"${rec.visit_date.split('T')[0]}"`,
-      `"${rec.time_in || 'N/A'}"`,
-      `"${rec.time_out || 'N/A'}"`,
-      `"${rec.purpose || ''}"`,
-      `"${rec.outcome || ''}"`
-    ]);
+    const rows = activeRecords.map(rec => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      return [
+        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.customer_name || '').replace(/"/g, '""')}"`,
+        `"${(rec.location || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(rec.visit_date)}"`,
+        `"${(rec.time_in || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.time_out || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.purpose || '').replace(/"/g, '""')}"`,
+        `"${(rec.outcome || '').replace(/"/g, '""')}"`
+      ];
+    });
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -246,7 +256,7 @@ export default function MarketingVisitsPage() {
           <h1 className="text-3xl font-bold text-primary tracking-tight">Marketing Operations</h1>
           <p className="text-muted-foreground text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           {!showForm && (
             <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm">
                <Download className="w-4 h-4 mr-2" /> Download Visit List
@@ -255,7 +265,7 @@ export default function MarketingVisitsPage() {
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95"
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full sm:w-auto"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel Entry' : 'New Field Visit'}
@@ -456,24 +466,26 @@ export default function MarketingVisitsPage() {
         searchFields={['users.name', 'customer_name', 'purpose']}
         searchPlaceholder="Search staff or client..."
         actions={
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground font-semibold">Filter Date:</span>
-            <Input 
-              type="date"
-              className="w-40 rounded-full border-primary/20 h-9 text-xs"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
-            {dateFilter && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setDateFilter('')}
-                className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-              >
-                Clear
-              </Button>
-            )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
+            <div className="flex items-center gap-2">
+              <Input 
+                type="date"
+                className="w-40 rounded-full border-primary/20 h-9 text-xs"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+              {dateFilter && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setDateFilter('')}
+                  className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         }
         renderRow={(rec: any) => (

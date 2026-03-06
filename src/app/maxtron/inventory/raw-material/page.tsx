@@ -183,8 +183,15 @@ export default function RawMaterialPage() {
       return;
     }
     const headers = ['Code', 'Name', 'Grade', 'Rate', 'Unit', 'Availability'];
-    const rows = materials.map(m => [m.rm_code, m.rm_name, m.grade, m.rate_per_unit, m.unit_type, m.availability]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const rows = materials.map(m => [
+      `"${(m.rm_code || '').replace(/"/g, '""')}"`,
+      `"${(m.rm_name || '').replace(/"/g, '""')}"`,
+      `"${(m.grade || '').replace(/"/g, '""')}"`,
+      `"${m.rate_per_unit || 0}"`,
+      `"${(m.unit_type || '').replace(/"/g, '""')}"`,
+      `"${(m.availability || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

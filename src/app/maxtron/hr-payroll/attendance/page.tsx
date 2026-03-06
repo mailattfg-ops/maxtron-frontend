@@ -226,17 +226,28 @@ export default function AttendancePage() {
     }
 
     const headers = ['Employee', 'Date', 'Shift', 'Clock In', 'Clock Out', 'Status', 'Remarks'];
-    const rows = activeRecords.map(rec => [
-      rec.users?.name || 'N/A',
-      rec.date.split('T')[0],
-      rec.shift,
-      rec.clock_in || 'N/A',
-      rec.clock_out || 'N/A',
-      rec.status,
-      rec.remarks || ''
-    ]);
+    const rows = activeRecords.map(rec => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      
+      return [
+        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(rec.date)}"`,
+        `"${(rec.shift || '').replace(/"/g, '""')}"`,
+        `"${(rec.clock_in || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.clock_out || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.status || '').replace(/"/g, '""')}"`,
+        `"${(rec.remarks || '').replace(/"/g, '""')}"`
+      ];
+    });
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -279,7 +290,7 @@ export default function AttendancePage() {
           <h1 className="text-2xl font-bold text-primary tracking-tight">Attendance Details</h1>
           <p className="text-muted-foreground text-sm font-medium">Daily shift-wise logging for {activeTenant} staff.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           <Button 
             onClick={downloadAttendance}
             variant="outline"
@@ -316,7 +327,7 @@ export default function AttendancePage() {
             <CardDescription>Input shift details and timing for employees.</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
                   <UserCheck className="w-4 h-4 mr-2 text-primary" /> Select Employee

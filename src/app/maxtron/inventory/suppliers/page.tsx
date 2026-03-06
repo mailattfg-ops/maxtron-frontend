@@ -211,15 +211,15 @@ export default function SupplierPage() {
     if (suppliers.length === 0) return;
     const headers = ['Code', 'Name', 'GST', 'Credit Period', 'Limit', 'Balance', 'Address'];
     const rows = suppliers.map(s => [
-        s.supplier_code, 
-        s.supplier_name, 
-        s.gst_no, 
-        s.credit_period, 
-        s.credit_limit, 
-        s.opening_balance, 
-        `${s.office_addr_data?.street || ''}, ${s.office_addr_data?.city || ''}, ${s.office_addr_data?.state || ''}`
+        `"${(s.supplier_code || '').replace(/"/g, '""')}"`,
+        `"${(s.supplier_name || '').replace(/"/g, '""')}"`,
+        `"${(s.gst_no || '').replace(/"/g, '""')}"`,
+        `"${s.credit_period || 0}"`,
+        `"${s.credit_limit || 0}"`,
+        `"${s.opening_balance || 0}"`,
+        `"${(`${s.office_addr_data?.street || ''}, ${s.office_addr_data?.city || ''}, ${s.office_addr_data?.state || ''}`).replace(/"/g, '""')}"`
     ]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
