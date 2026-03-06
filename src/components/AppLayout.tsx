@@ -118,10 +118,22 @@ const keilSidebarMenu = [
   {
     title: "KEIL Dashboard",
     icon: TrendingUp,
-    path: "/keil"
+    path: "/keil",
+    roles: ["admin", "hr", "sales", "production", "finance"]
   },
   {
-    title: "KEIL Operations",
+    title: "HR & Administration",
+    icon: Users,
+    roles: ["admin", "hr"],
+    children: [
+      { title: "Employee Management", path: "/keil/hr-payroll/employee" },
+      { title: "Company Information", path: "/keil/hr-payroll/company" },
+      { title: "Attendance Details", path: "/keil/hr-payroll/attendance" },
+      { title: "Attendance Summary", path: "/keil/hr-payroll/reports/attendance" },
+    ]
+  },
+  {
+    title: "Operations",
     icon: Settings,
     children: [
       { title: "Project Assignments", path: "/keil/projects" },

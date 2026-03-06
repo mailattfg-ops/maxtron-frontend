@@ -51,7 +51,7 @@ export default function AttendancePage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+      const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/companies`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const compData = await compRes.json();
@@ -75,7 +75,6 @@ export default function AttendancePage() {
         );
         setEmployees(filtered);
       }
-
 
       fetchAttendance(coId);
     } catch (err) {
