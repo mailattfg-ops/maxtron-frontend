@@ -9,8 +9,13 @@ import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Downlo
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function AttendancePage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('hr_attendance_view', 'create');
+  const canEdit = hasPermission('hr_attendance_view', 'edit');
+  const canDelete = hasPermission('hr_attendance_view', 'delete');
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = activeEntity.toUpperCase();
@@ -282,20 +287,24 @@ export default function AttendancePage() {
           >
             <Download className="w-4 h-4 mr-2" /> Download Logs
           </Button>
-          <Button 
-            onClick={prepareBulkData}
-            variant="outline"
-            className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Bulk Entry
-          </Button>
-          <Button 
-            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Cancel' : 'Log Entry'}
-          </Button>
+          {canCreate && (
+            <Button 
+              onClick={prepareBulkData}
+              variant="outline"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Bulk Entry
+            </Button>
+          )}
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Cancel' : 'Log Entry'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -556,12 +565,16 @@ export default function AttendancePage() {
               {rec.remarks || '-'}
             </td>
             <td className="px-6 py-4 text-right space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}

@@ -47,6 +47,9 @@ export default function VehiclesPage() {
   const { success, error } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermission();
+  const canCreate = hasPermission('sales_vehicles_view', 'create');
+  const canEdit = hasPermission('sales_vehicles_view', 'edit');
+  const canDelete = hasPermission('sales_vehicles_view', 'delete');
   const router = useRouter();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -225,13 +228,15 @@ export default function VehiclesPage() {
           </h1>
           <p className="text-muted-foreground text-sm font-medium tracking-wide">Manage your {activeTenant} motor fleet and maintenance.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel' : 'Add New Vehicle'}
-        </Button>
+        {canCreate && (
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel' : 'Add New Vehicle'}
+          </Button>
+        )}
       </div>
 
       {showForm && (
@@ -436,12 +441,16 @@ export default function VehiclesPage() {
                   )}
                 </td>
                 <td className="px-4 py-4 text-right space-x-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(v)} className="hover:bg-primary/10 hover:text-primary rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(v.id)} className="hover:bg-rose-50 hover:text-rose-600 rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {canEdit && (
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(v)} className="hover:bg-primary/10 hover:text-primary rounded-full h-8 w-8">
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(v.id)} className="hover:bg-rose-50 hover:text-rose-600 rounded-full h-8 w-8">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </td>
               </tr>
             );

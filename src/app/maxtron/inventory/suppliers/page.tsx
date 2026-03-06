@@ -13,6 +13,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const SUPPLIER_API = `${API_BASE}/api/maxtron/suppliers`;
@@ -26,6 +27,10 @@ const defaultAddress = {
 };
 
 export default function SupplierPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('inv_supplier_view', 'create');
+  const canEdit = hasPermission('inv_supplier_view', 'edit');
+  const canDelete = hasPermission('inv_supplier_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,13 +239,15 @@ export default function SupplierPage() {
           <Button onClick={downloadVendors} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm font-bold">
              <Download className="w-4 h-4 mr-2" /> Export Vendors
           </Button>
-          <Button 
-            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Cancel Registration' : 'Register New Vendor'}
-          </Button>
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Cancel Registration' : 'Register New Vendor'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -471,12 +478,16 @@ export default function SupplierPage() {
                </span>
             </td>
             <td className="px-6 py-4 text-right space-x-1">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(s)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(s)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}

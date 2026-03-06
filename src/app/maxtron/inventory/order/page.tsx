@@ -13,6 +13,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const ORDER_API = `${API_BASE}/api/maxtron/rm-orders`;
@@ -20,6 +21,10 @@ const SUPPLIER_API = `${API_BASE}/api/maxtron/suppliers`;
 const STOCK_API = `${API_BASE}/api/maxtron/inventory/stock-summary`;
 
 export default function RMOrderPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('inv_order_view', 'create');
+  const canEdit = hasPermission('inv_order_view', 'edit');
+  const canDelete = hasPermission('inv_order_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -233,13 +238,15 @@ export default function RMOrderPage() {
           <p className="text-muted-foreground text-sm font-medium">Release multi-item purchase orders to suppliers with automatic stock visibility.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button 
-            onClick={() => { setShowForm(!showForm); if(!showForm) { resetForm(); addItem(); } setEditingId(null); }}
-            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Discard Draft' : 'New Purchase Order'}
-          </Button>
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) { resetForm(); addItem(); } setEditingId(null); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Discard Draft' : 'New Purchase Order'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -412,12 +419,16 @@ export default function RMOrderPage() {
                </span>
             </td>
             <td className="px-6 py-4 text-right space-x-1">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(o)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(o)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}

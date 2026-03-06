@@ -215,7 +215,7 @@ export default function CustomersPage() {
           </h1>
           <p className="text-muted-foreground text-sm font-medium">Manage your {activeTenant} clients and billing details.</p>
         </div>
-        {hasPermission('sales_customers_manage', 'can_create') && (
+        {hasPermission('sales_customers_view', 'create') && (
           <Button 
             onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
             className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
@@ -368,12 +368,12 @@ export default function CustomersPage() {
                   </span>
                 </td>
                 <td className="px-4 py-4 text-right space-x-1">
-                  {hasPermission('sales_customers_manage', 'can_edit') && (
+                  {hasPermission('sales_customers_view', 'edit') && (
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="hover:text-primary rounded-full h-8 w-8">
                       <Edit className="w-3.5 h-3.5" />
                     </Button>
                   )}
-                  {hasPermission('sales_customers_manage', 'can_delete') && (
+                  {hasPermission('sales_customers_view', 'delete') && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="hover:text-destructive rounded-full h-8 w-8">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>

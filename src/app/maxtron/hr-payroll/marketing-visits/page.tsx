@@ -9,11 +9,16 @@ import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
 export default function MarketingVisitsPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('hr_marketing_view', 'create');
+  const canEdit = hasPermission('hr_marketing_view', 'edit');
+  const canDelete = hasPermission('hr_marketing_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [visitRecords, setVisitRecords] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -247,13 +252,15 @@ export default function MarketingVisitsPage() {
                <Download className="w-4 h-4 mr-2" /> Download Visit List
             </Button>
           )}
-          <Button 
-            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Cancel Entry' : 'New Field Visit'}
-          </Button>
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Cancel Entry' : 'New Field Visit'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -499,12 +506,16 @@ export default function MarketingVisitsPage() {
                </div>
             </td>
             <td className="px-6 py-4 text-right space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}

@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Save, Edit, Trash2, Plus, X, Building2, MapPin, Mail, Phone, Briefcase, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function CompanyInformationPage() {
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission('hr_company_view', 'edit');
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = activeEntity.toUpperCase();
@@ -395,9 +398,11 @@ export default function CompanyInformationPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
-                                            <Edit className="h-4 w-4 mr-2" /> Edit Details
-                                        </Button>
+                                        {canEdit && (
+                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
+                                                <Edit className="h-4 w-4 mr-2" /> Edit Details
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-6">

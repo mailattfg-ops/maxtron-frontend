@@ -13,6 +13,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CONSUMPTION_API = `${API_BASE}/api/maxtron/consumptions`;
@@ -20,6 +21,10 @@ const RM_API = `${API_BASE}/api/maxtron/raw-materials`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function ConsumptionPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('inv_consumption_view', 'create');
+  const canEdit = hasPermission('inv_consumption_view', 'edit');
+  const canDelete = hasPermission('inv_consumption_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [consumptions, setConsumptions] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -201,13 +206,15 @@ export default function ConsumptionPage() {
           <p className="text-muted-foreground text-sm font-medium">Issue raw materials to production floor and track floor-side usage.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button 
-            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-            className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Cancel Issue' : 'Issue Material'}
-          </Button>
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Cancel Issue' : 'Issue Material'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -415,12 +422,16 @@ export default function ConsumptionPage() {
                </span>
             </td>
             <td className="px-6 py-4 text-right space-x-1">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}
