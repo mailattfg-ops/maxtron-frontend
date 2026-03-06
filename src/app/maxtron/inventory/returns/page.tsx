@@ -297,7 +297,7 @@ export default function PurchaseReturnPage() {
                   onChange={(e) => {
                     const sel = entries.find(p => p.id === e.target.value);
                     if (sel) {
-                      setFormData({...formData, purchase_entry_id: e.target.value, supplier_id: sel.supplier_id, quantity_returned: Number(sel.received_quantity)});
+                      setFormData({...formData, purchase_entry_id: e.target.value, supplier_id: sel.supplier_id});
                     } else {
                       setFormData({...formData, purchase_entry_id: e.target.value});
                     }
@@ -306,7 +306,7 @@ export default function PurchaseReturnPage() {
                 >
                   <option value="">-- Choose Arrival Entry --</option>
                   {entries.map(e => (
-                    <option key={e.id} value={e.id}>{e.entry_number} - {e.suppliers?.supplier_name}</option>
+                    <option key={e.id} value={e.id}>{e.entry_number} - {e.supplier_master?.supplier_name}</option>
                   ))}
                 </select>
               </div>
@@ -404,7 +404,7 @@ export default function PurchaseReturnPage() {
                <div className="font-bold text-slate-700">{r.purchase_entries?.entry_number || 'Manual'}</div>
             </td>
             <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{r.suppliers?.supplier_name}</div>
+               <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
             </td>
             <td className="px-6 py-4">
                <div className="text-lg font-black text-rose-600">{Number(r.quantity_returned).toLocaleString()}</div>

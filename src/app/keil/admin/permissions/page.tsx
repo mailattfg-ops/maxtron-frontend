@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ShieldCheck, Lock, ChevronRight } from 'lucide-react';
+import { Loader2, ShieldCheck, Lock, Globe, ChevronRight, LayoutPanelTop } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { maxtronSidebarMenu } from '@/config/navigation/maxtron';
 import { keilSidebarMenu } from '@/config/navigation/keil';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -24,6 +25,8 @@ export default function KeilPermissionConsolePage() {
   const [loading, setLoading] = useState(true);
 
   const { success, error } = useToast();
+
+  const menuStructure = keilSidebarMenu;
 
   useEffect(() => {
     fetchInitialData();
@@ -76,11 +79,14 @@ export default function KeilPermissionConsolePage() {
     }
   };
 
-  const handleToggle = async (permissionKey: string, field: string, currentValue: boolean) => {
+  const handleToggle = async (permissionKey: string, field: string, currentValue: boolean, cascadeKeys: string[] = []) => {
     if (!selectedRoleId) return;
 
     try {
       const token = localStorage.getItem('token');
+      const newValue = !currentValue;
+      
+      // 1. Perform primary toggle
       const res = await fetch(`${BASE_API}/permissions/update`, {
         method: 'POST',
         headers: {
@@ -90,26 +96,53 @@ export default function KeilPermissionConsolePage() {
         body: JSON.stringify({
           roleId: selectedRoleId,
           permissionKey,
-          updates: { [field]: !currentValue }
+          updates: { [field]: newValue }
         })
       });
 
       const data = await res.json();
-        if (data.success) {
-          const updatedPerms = [...rolePerms];
-          const index = updatedPerms.findIndex(p => p.permission_key === permissionKey);
-          
+      if (data.success) {
+        let updatedPerms = [...rolePerms];
+        
+        const updateLocalPerm = (key: string, updates: any) => {
+          const index = updatedPerms.findIndex(p => p.permission_key === key);
           if (index > -1) {
-            updatedPerms[index] = { ...updatedPerms[index], [field]: !currentValue };
+            updatedPerms[index] = { ...updatedPerms[index], ...updates };
           } else {
-            updatedPerms.push({ permission_key: permissionKey, [field]: !currentValue });
+            updatedPerms.push({ role_id: selectedRoleId, permission_key: key, ...updates });
           }
-          
-          setRolePerms(updatedPerms);
-          success('Permission updated');
-        } else {
-          error(data.message || 'Update failed');
+        };
+
+        updateLocalPerm(permissionKey, { [field]: newValue });
+
+        // 2. Handle cascade if unchecking a parent
+        if (field === 'can_view' && newValue === false && cascadeKeys.length > 0) {
+          for (const cKey of cascadeKeys) {
+            const childUpdates = { can_view: false, can_create: false, can_edit: false, can_delete: false };
+            
+            // Call API for each child (could be optimized if backend supported batch)
+            await fetch(`${BASE_API}/permissions/update`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                roleId: selectedRoleId,
+                permissionKey: cKey,
+                updates: childUpdates
+              })
+            });
+            
+            updateLocalPerm(cKey, childUpdates);
+          }
         }
+        
+        setRolePerms(updatedPerms);
+        success(newValue === false && cascadeKeys.length > 0 ? 'Permissions revoked for group' : 'Permission updated');
+      } else {
+        error(data.message || 'Update failed');
+      }
     } catch (err) {
       error('Update failed');
     }
@@ -120,7 +153,7 @@ export default function KeilPermissionConsolePage() {
     return p ? p[field] : false;
   };
 
-  const findPermissionKey = (title: string) => {
+  const findPermissionKey = (title: string, moduleName: string) => {
       const matched = dbPermissions.find(p => 
           (p.sub_module?.toLowerCase() === title.toLowerCase()) ||
           (p.sub_module === null && p.module_name?.toLowerCase() === title.toLowerCase())
@@ -133,29 +166,34 @@ export default function KeilPermissionConsolePage() {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-primary/10 sticky top-0 z-10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
-            <ShieldCheck className="w-8 h-8 mr-3 text-secondary" /> KEIL Permission Console
+            <ShieldCheck className="w-8 h-8 mr-3 text-secondary" /> 
+            KEIL Permission Console
           </h1>
-          <p className="text-foreground/60 mt-1">Manage KEIL specific access via sidebar menu options.</p>
+          <p className="text-foreground/60 mt-1">Configure access based on Sidebar Menu structure.</p>
         </div>
         <div className="w-64">
-           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Role</label>
+           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Active Role</label>
            <select 
              value={selectedRoleId}
              onChange={(e) => setSelectedRoleId(e.target.value)}
-             className="w-full h-11 px-4 rounded-xl border border-primary/20 bg-background font-bold text-primary outline-none"
+             className="w-full h-11 px-4 rounded-xl border border-primary/20 bg-background text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
            >
-             <option value="">-- Select Role --</option>
-             {roles.map(r => (
-               <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
-             ))}
+             <option value="">-- Choose Role --</option>
+             {roles
+               .filter(r => r.name.toLowerCase() !== 'admin')
+               .map(r => (
+                 <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
+               ))}
            </select>
         </div>
       </div>
 
       {!selectedRoleId ? (
         <div className="h-96 flex flex-col items-center justify-center border-4 border-dashed border-primary/5 rounded-[3rem] bg-white/40">
-           <Lock className="w-20 h-20 text-primary/10 mb-6" />
-           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest">Select a role to configure</p>
+           <div className="bg-primary/5 p-8 rounded-full mb-6">
+              <Lock className="w-20 h-20 text-primary/20" />
+           </div>
+           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest">Select a role to manage access</p>
         </div>
       ) : loading ? (
         <div className="h-96 flex items-center justify-center">
@@ -163,12 +201,14 @@ export default function KeilPermissionConsolePage() {
         </div>
       ) : (
         <div className="space-y-8">
-           {keilSidebarMenu.map((item) => {
-             const parentKey = item.permissionKey || findPermissionKey(item.title);
+           {menuStructure
+             .filter(item => item.title !== "System Administration")
+             .map((item) => {
+             const parentKey = item.permissionKey || findPermissionKey(item.title, item.title);
              
              return (
-               <Card key={item.title} className="border-none shadow-2xl overflow-hidden rounded-[2rem] bg-background">
-                  <div className="bg-primary p-6 flex items-center justify-between">
+               <Card key={item.title} className="border shadow-2xl overflow-hidden rounded-[2rem] bg-background p-6">
+                  <div className="bg-primary p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-[2rem]">
                      <div className="flex items-center">
                         <div className="bg-white/10 p-3 rounded-2xl mr-4 text-secondary">
                            <item.icon className="w-6 h-6" />
@@ -176,13 +216,16 @@ export default function KeilPermissionConsolePage() {
                         <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
                      </div>
                      {parentKey && (
-                        <div className="flex space-x-6 bg-black/20 p-3 rounded-2xl border border-white/5">
-                            {['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => (
-                                <div key={field} className="flex flex-col items-center px-2">
-                                    <span className="text-[8px] text-white/50 font-black uppercase mb-1.5">{field.replace('can_', '')}</span>
+                        <div className="flex space-x-6 bg-black/20 p-3 rounded-2xl border border-white/5 self-end md:self-auto">
+                            {(item.children ? ['can_view'] : ['can_view', 'can_create', 'can_edit', 'can_delete']).map(field => (
+                                <div key={field} className="flex flex-col items-center px-1">
+                                    <span className="text-[8px] text-white/50 font-black uppercase mb-1">{field.replace('can_', '')}</span>
                                     <Checkbox 
                                         checked={getPermValue(parentKey, field)}
-                                        onCheckedChange={() => handleToggle(parentKey, field, getPermValue(parentKey, field))}
+                                        onCheckedChange={() => {
+                                           const childrenKeys = item.children?.map(c => c.permissionKey || findPermissionKey(c.title, item.title)).filter(Boolean) as string[];
+                                           handleToggle(parentKey, field, getPermValue(parentKey, field), childrenKeys);
+                                        }}
                                         disabled={!canModify}
                                         className="h-5 w-5 border-white/20 data-[state=checked]:bg-secondary data-[state=checked]:border-secondary"
                                     />
@@ -197,14 +240,17 @@ export default function KeilPermissionConsolePage() {
                        <table className="w-full">
                           <tbody className="divide-y divide-primary/5">
                              {item.children.map((child) => {
-                               const childKey = child.permissionKey || findPermissionKey(child.title);
+                               const childKey = child.permissionKey || findPermissionKey(child.title, item.title);
                                
                                return (
                                  <tr key={child.title} className="group hover:bg-slate-50 transition-all duration-300">
                                     <td className="p-6 w-1/3">
                                        <div className="flex items-center">
                                           <ChevronRight className="w-4 h-4 text-primary/20 mr-3 group-hover:translate-x-1 transition-transform" />
-                                          <div className="font-bold text-slate-800 group-hover:text-primary transition-colors">{child.title}</div>
+                                          <div>
+                                             <div className="font-bold text-slate-800 group-hover:text-primary transition-colors">{child.title}</div>
+                                             <div className="text-[9px] text-slate-400 font-medium tracking-wide uppercase mt-1">{child.path}</div>
+                                          </div>
                                        </div>
                                     </td>
                                     <td className="p-6">

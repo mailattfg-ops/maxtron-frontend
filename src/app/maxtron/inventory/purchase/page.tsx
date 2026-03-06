@@ -279,7 +279,7 @@ export default function PurchaseEntryPage() {
                 >
                   <option value="">-- Select Pending PO --</option>
                   {pendingOrders.map(o => (
-                    <option key={o.id} value={o.id}>{o.order_number} | {o.suppliers?.supplier_name}</option>
+                    <option key={o.id} value={o.id}>{o.order_number} | {o.supplier_master?.supplier_name}</option>
                   ))}
                 </select>
               </div>
@@ -441,7 +441,7 @@ export default function PurchaseEntryPage() {
                <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
             </td>
             <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{e.suppliers?.supplier_name}</div>
+               <div className="font-bold text-slate-700">{e.supplier_master?.supplier_name}</div>
                {e.rm_orders?.order_number && (
                  <div className="text-[10px] font-black text-amber-600 uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
                )}

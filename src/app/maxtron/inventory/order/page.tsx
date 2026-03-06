@@ -401,10 +401,10 @@ export default function RMOrderPage() {
               </div>
             </td>
             <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{o.suppliers?.supplier_name}</div>
+               <div className="font-bold text-slate-700">{o.supplier_master?.supplier_name}</div>
             </td>
             <td className="px-6 py-4">
-               <div className="text-sm font-black text-primary">{o.rm_order_items?.length || 0} Lines</div>
+               <div className="text-sm font-black text-primary">{o.rm_order_items?.length || 0} {o.rm_order_items?.length === 1 ? 'Item' : 'Items'}</div>
             </td>
             <td className="px-6 py-4">
                <div className="font-black text-slate-900 tracking-tight">₹ {Number(o.total_amount).toLocaleString()}</div>

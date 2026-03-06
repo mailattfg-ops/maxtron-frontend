@@ -17,7 +17,7 @@ import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CONSUMPTION_API = `${API_BASE}/api/maxtron/consumptions`;
-const RM_API = `${API_BASE}/api/maxtron/raw-materials`;
+const STOCK_API = `${API_BASE}/api/maxtron/inventory/stock-summary`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function ConsumptionPage() {
@@ -74,15 +74,15 @@ export default function ConsumptionPage() {
         }
       }
 
-      const [rmRes, empRes] = await Promise.all([
-        fetch(`${RM_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      const [stockRes, empRes] = await Promise.all([
+        fetch(`${STOCK_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
-      const rmData = await rmRes.json();
+      const stockData = await stockRes.json();
       const empData = await empRes.json();
       
-      if (rmData.success) setMaterials(rmData.data);
+      if (stockData.success) setMaterials(stockData.data);
       if (empData.success) {
         setEmployees(empData.data.filter((e: any) => e.companies?.company_name?.toUpperCase() === activeTenant));
       }
@@ -121,6 +121,11 @@ export default function ConsumptionPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${CONSUMPTION_API}/${editingId}` : CONSUMPTION_API;
 
+    const payload: any = { ...formData };
+    if (!payload.issued_by) delete payload.issued_by;
+    if (!payload.machine_no) delete payload.machine_no;
+    if (!payload.remarks) delete payload.remarks;
+
     try {
       const res = await fetch(url, {
         method,
@@ -128,7 +133,7 @@ export default function ConsumptionPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
@@ -303,7 +308,9 @@ export default function ConsumptionPage() {
                 >
                   <option value="">Select feedstock...</option>
                   {materials.map(m => (
-                    <option key={m.id} value={m.id}>{m.rm_name} ({m.rm_code})</option>
+                    <option key={m.id} value={m.id}>
+                      {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -353,7 +360,7 @@ export default function ConsumptionPage() {
                 >
                   <option value="">Select staff...</option>
                   {employees.map(emp => (
-                    <option key={emp.user_id} value={emp.user_id}>{emp.name}</option>
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
                   ))}
                 </select>
               </div>

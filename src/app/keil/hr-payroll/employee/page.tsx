@@ -34,11 +34,8 @@ export default function EmployeeInformationPage() {
   
   // Page access check
   useEffect(() => {
-    // We check view permission, but if they are already on this page via sidebar, 
-    // it's likely they have it. This is a secondary layer.
-    const canView = hasPermission('hr_employee_view', 'can_view');
-    // If the hook is still loading user data (user is null initially), we might want to wait.
-    // However, sidebar already handles the main gate.
+    // We check view permission
+    const canView = hasPermission('hr_employee_view', 'view');
   }, [hasPermission]);
   
   // Table Pagination and Filtering States
@@ -386,7 +383,7 @@ export default function EmployeeInformationPage() {
               <Button onClick={downloadEmployeeList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex shadow-sm">
                  <Download className="w-4 h-4 mr-2" /> Download Employee List
               </Button>
-              {hasPermission('hr_employee_manage', 'can_create') && (
+              {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
                   setEditingId(null);
                   const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
@@ -1056,12 +1053,12 @@ export default function EmployeeInformationPage() {
                       </td>
                       <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
-                        {hasPermission('hr_employee_manage', 'can_edit') && (
+                        {hasPermission('hr_employee_view', 'edit') && (
                           <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
                             <Edit className="w-4 h-4" />
                           </Button>
                         )}
-                        {hasPermission('hr_employee_manage', 'can_delete') && (
+                        {hasPermission('hr_employee_view', 'delete') && (
                           <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
