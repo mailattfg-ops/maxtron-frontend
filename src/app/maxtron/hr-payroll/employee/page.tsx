@@ -501,7 +501,12 @@ export default function EmployeeInformationPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Employee Code</label>
-                  <Input name="employee_code" value={formData.employee_code} onChange={handleInputChange} placeholder="EMP-001" />
+                  <Input 
+                    name="employee_code" 
+                    value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
+                    disabled={true} 
+                    className="bg-slate-50 font-bold text-secondary"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Full Name</label>
