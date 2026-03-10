@@ -52,6 +52,7 @@ export default function PurchaseEntryPage() {
     vehicle_number: '',
     unloading_charges: 0,
     company_id: '',
+    reorder_missing: false,
     items: [] as any[]
   });
 
@@ -134,7 +135,7 @@ export default function PurchaseEntryPage() {
         }))
       });
     } else {
-        setFormData({ ...formData, order_id: '', items: [] });
+        setFormData({ ...formData, order_id: '', reorder_missing: false, items: [] });
     }
   };
 
@@ -217,6 +218,7 @@ export default function PurchaseEntryPage() {
       vehicle_number: '',
       unloading_charges: 0,
       company_id: currentCompanyId,
+      reorder_missing: false,
       items: []
     });
   };
@@ -234,6 +236,7 @@ export default function PurchaseEntryPage() {
       vehicle_number: rec.vehicle_number || '',
       unloading_charges: Number(rec.unloading_charges || 0),
       company_id: rec.company_id,
+      reorder_missing: false,
       items: rec.purchase_entry_items.map((i: any) => ({
         rm_id: i.rm_id,
         ordered_quantity: Number(i.ordered_quantity || 0),
@@ -413,10 +416,24 @@ export default function PurchaseEntryPage() {
                     placeholder="Shortage, damage or delay notes..."
                   />
                </div>
-               <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right ml-8">
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Receipt Valuation</p>
-                  <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
-               </div>
+                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right ml-8 relative">
+                   {formData.order_id && formData.items.some(i => Number(i.ordered_quantity || 0) > Number(i.received_quantity)) && (
+                     <div className="absolute -top-12 right-0 flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl animate-bounce shadow-sm">
+                       <AlertCircle className="w-4 h-4 text-amber-600 font-black" />
+                       <label className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 cursor-pointer tracking-widest">
+                         <input 
+                           type="checkbox" 
+                           checked={formData.reorder_missing}
+                           onChange={(e) => setFormData({...formData, reorder_missing: e.target.checked})}
+                           className="w-4 h-4 accent-amber-600 rounded"
+                         />
+                         Re-order Missing Qty?
+                       </label>
+                     </div>
+                   )}
+                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Receipt Valuation</p>
+                   <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
+                </div>
             </div>
 
             <div className="mt-10 flex justify-end space-x-4">

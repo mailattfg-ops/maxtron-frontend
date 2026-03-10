@@ -36,8 +36,8 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Supplier Information", path: "/maxtron/inventory/suppliers", permissionKey: "inv_supplier_view" },
             { title: "Raw Material Order", path: "/maxtron/inventory/order", permissionKey: "inv_order_view" },
             { title: "Purchase Entry", path: "/maxtron/inventory/purchase", permissionKey: "inv_purchase_view" },
-            { title: "Material Consumption", path: "/maxtron/inventory/consumption", permissionKey: "inv_consumption_view" },
             { title: "Purchase Returns", path: "/maxtron/inventory/returns", permissionKey: "inv_purchase_view" },
+            { title: "Material Consumption", path: "/maxtron/inventory/consumption", permissionKey: "inv_consumption_view" },
             { title: "Stock List", path: "/maxtron/inventory/reports/stock", permissionKey: "inv_rm_view" },
             { title: "Purchase Report", path: "/maxtron/inventory/reports/purchase", permissionKey: "inv_purchase_view" },
             { title: "Consumption Report", path: "/maxtron/inventory/reports/consumption", permissionKey: "inv_consumption_view" }
@@ -48,13 +48,13 @@ export const maxtronSidebarMenu: NavItem[] = [
         icon: Settings,
         permissionKey: "prod_view",
         children: [
-            { title: "Finished Product Details", path: "/maxtron/production/product", permissionKey: "prod_product_view" },
             { title: "Production (Extrusion)", path: "/maxtron/production/extrusion", permissionKey: "prod_extrusion_view" },
             { title: "Cutting & Sealing", path: "/maxtron/production/cutting", permissionKey: "prod_cutting_view" },
             { title: "Packing Details", path: "/maxtron/production/packing", permissionKey: "prod_packing_view" },
             { title: "Damages & Wastage", path: "/maxtron/production/wastage", permissionKey: "prod_product_view" },
             { title: "Production Summary", path: "/maxtron/production/reports/summary", permissionKey: "prod_extrusion_view" },
             { title: "Packing Summary", path: "/maxtron/production/reports/packing", permissionKey: "prod_packing_view" },
+            { title: "Finished Good Stock List", path: "/maxtron/production/reports/fg-stock", permissionKey: "prod_product_view" },
             { title: "Wastage Analysis", path: "/maxtron/production/reports/wastage", permissionKey: "prod_product_view" }
         ]
     },
@@ -95,6 +95,7 @@ export const maxtronSidebarMenu: NavItem[] = [
         children: [
             { title: "User Roles", path: "/maxtron/admin/user-types", permissionKey: "admin_permissions" },
             { title: "Employee Categories", path: "/maxtron/admin/employee-categories", permissionKey: "admin_permissions" },
+            { title: "Finished Products", path: "/maxtron/production/product", permissionKey: "admin_permissions" },
             { title: "Permission Console", path: "/maxtron/admin/permissions", permissionKey: "admin_permissions" },
         ]
     }

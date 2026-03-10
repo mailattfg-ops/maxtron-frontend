@@ -36,7 +36,7 @@ export default function ExtrusionPage() {
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     batch_number: `BAT-${Date.now().toString().slice(-6)}`,
     product_id: '',
     shift: 'Morning',
@@ -46,8 +46,11 @@ export default function ExtrusionPage() {
     raw_material_consumed_qty: 0,
     extrusion_output_qty: 0,
     date: new Date().toISOString().split('T')[0],
-    company_id: ''
+    company_id: '',
+    consumption_id: ''
   });
+
+  const [consumptions, setConsumptions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -72,23 +75,27 @@ export default function ExtrusionPage() {
         if (activeCo) {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
-          setFormData(prev => ({ ...prev, company_id: coId }));
+          setFormData((prev: any) => ({ ...prev, company_id: coId }));
           console.log(`Matched company: ${activeCo.company_name} (${coId})`);
-        } else {
-          console.warn(`No active company found for tenant: ${activeTenant}`);
         }
       }
 
-      // If we have no coId, it's risky to fetch but we try anyway
-      const [prodRes, empRes] = await Promise.all([
+      const [prodRes, empRes, conRes] = await Promise.all([
         fetch(`${PRODUCT_API}${coId ? `?company_id=${coId}` : ''}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/maxtron/consumptions${coId ? `?company_id=${coId}` : ''}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
       const prodData = await prodRes.json();
       const empData = await empRes.json();
+      const conData = await conRes.json();
       
       if (prodData.success) setProducts(prodData.data);
+      if (conData.success) {
+        // Only show Unlinked or Extrusion process type if needed, but for now all
+        setConsumptions(conData.data);
+      }
+      
       if (empData.success && Array.isArray(empData.data)) {
         setEmployees(empData.data.filter((e: any) => 
           e.companies?.company_name?.toUpperCase() === activeTenant ||
@@ -102,6 +109,24 @@ export default function ExtrusionPage() {
     } catch (err) {
       console.error('Error fetching initial data:', err);
       setLoading(false);
+    }
+  };
+
+  const handleConsumptionSelect = (id: string) => {
+    const consumption = consumptions.find(c => c.id === id);
+    if (consumption) {
+        setFormData({
+            ...formData,
+            consumption_id: id,
+            raw_material_consumed_qty: consumption.quantity_used,
+            machine_no: consumption.machine_no || formData.machine_no
+        });
+    } else {
+        setFormData({
+            ...formData,
+            consumption_id: '',
+            raw_material_consumed_qty: 0
+        });
     }
   };
 
@@ -119,7 +144,6 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        console.log(`Loaded ${data.data?.length || 0} production batches.`);
         setBatches(data.data || []);
       }
     } catch (err) {
@@ -133,6 +157,11 @@ export default function ExtrusionPage() {
     if (!formData.product_id || !formData.operator_id) {
       error('Please select product and operator.');
       return;
+    }
+
+    if (!formData.consumption_id) {
+        error('Please select a material consumption record.');
+        return;
     }
 
     const token = localStorage.getItem('token');
@@ -153,7 +182,8 @@ export default function ExtrusionPage() {
             ...formData,
             batch_number: `BAT-${Date.now().toString().slice(-6)}`,
             raw_material_consumed_qty: 0,
-            extrusion_output_qty: 0
+            extrusion_output_qty: 0,
+            consumption_id: ''
         });
         fetchBatches();
       } else {
@@ -168,16 +198,6 @@ export default function ExtrusionPage() {
     b.batch_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.finished_products?.product_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const columns = [
-    { key: 'date', label: 'Date', icon: Calendar },
-    { key: 'batch_number', label: 'Batch #', icon: Hash },
-    { key: 'finished_products.product_name', label: 'Product', icon: Box },
-    { key: 'shift', label: 'Shift', icon: Clock },
-    { key: 'machine_no', label: 'Machine', icon: Settings },
-    { key: 'extrusion_output_qty', label: 'Output (Kg)', icon: Activity },
-    { key: 'operator.name', label: 'Operator', icon: User }
-  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
@@ -263,8 +283,23 @@ export default function ExtrusionPage() {
                 </select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Select Material Consumption</label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.consumption_id}
+                  onChange={e => handleConsumptionSelect(e.target.value)}
+                >
+                  <option value="">Select Consumption Record</option>
+                  {consumptions.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>
-                <Input type="number" placeholder="0.00" value={formData.raw_material_consumed_qty} onChange={e => setFormData({ ...formData, raw_material_consumed_qty: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" readOnly className="bg-muted cursor-not-allowed" value={formData.raw_material_consumed_qty} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg)</label>
@@ -272,6 +307,21 @@ export default function ExtrusionPage() {
               </div>
             </div>
             <div className="mt-8 flex justify-end gap-3 border-t pt-6">
+              <div className="mr-auto flex items-center gap-4">
+                 <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total RM Input</span>
+                    <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
+                 </div>
+                 <div className="w-[1px] h-8 bg-slate-200"></div>
+                 <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recovery %</span>
+                    <span className="text-xl font-black text-emerald-600">
+                        {formData.raw_material_consumed_qty > 0 
+                            ? ((formData.extrusion_output_qty / formData.raw_material_consumed_qty) * 100).toFixed(1) 
+                            : '0.0'}%
+                    </span>
+                 </div>
+              </div>
               <Button variant="outline" onClick={() => setShowForm(false)} className="px-6">Cancel</Button>
               <Button onClick={saveBatch} className="px-8 shadow-sm hover:shadow-md gap-2 bg-primary">
                 <Save className="w-4 h-4" /> Save Batch Entry
@@ -285,13 +335,12 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Output (Kg)', 'Operator']}
+          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator']}
           data={batches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}
           searchPlaceholder="Search batches or products..."
           renderRow={(b: any) => {
-            // Robustly handle Supabase join structures (can be object or array of 1)
             const product = Array.isArray(b.finished_products) ? b.finished_products[0] : b.finished_products;
             const operator = Array.isArray(b.operator) ? b.operator[0] : b.operator;
             
@@ -311,6 +360,12 @@ export default function ExtrusionPage() {
                    </div>
                 </td>
                 <td className="px-6 py-4 text-xs font-semibold text-foreground/60">{b.machine_no}</td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-700">{b.material_consumptions?.raw_materials?.rm_name || 'N/A'}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{b.material_consumptions?.raw_materials?.rm_code || ''}</span>
+                  </div>
+                </td>
                 <td className="px-6 py-4">
                    <div className="flex flex-col items-end sm:items-start">
                      <span className="font-bold text-base text-foreground/80">{b.extrusion_output_qty} Kg</span>
