@@ -86,7 +86,8 @@ export function TableView<T>({
             <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
               <tr>
                 {headers.map((header, i) => (
-                  <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? 'text-right' : ''}`}>
+                  // <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? 'text-right' : ''}`}>
+                  <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? '' : ''}`}>
                     {header}
                   </th>
                 ))}
