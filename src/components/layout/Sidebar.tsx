@@ -32,7 +32,7 @@ export const Sidebar = ({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="w-72 bg-primary text-primary-foreground hidden md:flex flex-col shadow-xl overflow-y-auto custom-scrollbar flex-shrink-0">
+      <aside className="w-72 bg-primary text-primary-foreground hidden md:flex flex-col shadow-xl overflow-y-auto no-scrollbar flex-shrink-0">
         <SidebarContent
           menuItems={menuItems}
           activeEntity={activeEntity}
@@ -48,7 +48,7 @@ export const Sidebar = ({
       {/* Mobile slide-in drawer */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground
-        flex flex-col shadow-2xl overflow-y-auto custom-scrollbar
+        flex flex-col shadow-2xl overflow-y-auto no-scrollbar
         transform transition-transform duration-300 ease-in-out md:hidden
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>

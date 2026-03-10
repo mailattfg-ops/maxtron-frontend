@@ -16,7 +16,7 @@ import { TableView } from '@/components/ui/table-view';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const DELIVERIES_API = `${API_BASE}/api/maxtron/sales/deliveries`;
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
-const VEHICLES_API = `${API_BASE}/api/maxtron/sales/vehicles`;
+const VEHICLES_API = `${API_BASE}/api/maxtron/vehicles`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 

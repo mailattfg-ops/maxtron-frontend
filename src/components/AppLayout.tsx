@@ -66,7 +66,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const currentMenu = activeEntity === 'maxtron' ? maxtronSidebarMenu : keilSidebarMenu;
 
   return (
-    <div className="min-h-screen flex bg-background font-sans text-foreground">
+    <div className="h-screen flex bg-background font-sans text-foreground overflow-hidden">
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div

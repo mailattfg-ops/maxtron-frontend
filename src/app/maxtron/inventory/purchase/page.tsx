@@ -177,13 +177,18 @@ export default function PurchaseEntryPage() {
     const url = editingId ? `${PURCHASE_API}/${editingId}` : PURCHASE_API;
 
     try {
+      const payload = {
+        ...formData,
+        total_amount: formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
@@ -410,7 +415,7 @@ export default function PurchaseEntryPage() {
                </div>
                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right ml-8">
                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Receipt Valuation</p>
-                  <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {formData.items.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</h2>
+                  <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
                </div>
             </div>
 

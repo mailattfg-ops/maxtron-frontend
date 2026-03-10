@@ -94,6 +94,7 @@ export const maxtronSidebarMenu: NavItem[] = [
         roles: ["admin"],
         children: [
             { title: "User Roles", path: "/maxtron/admin/user-types", permissionKey: "admin_permissions" },
+            { title: "Employee Categories", path: "/maxtron/admin/employee-categories", permissionKey: "admin_permissions" },
             { title: "Permission Console", path: "/maxtron/admin/permissions", permissionKey: "admin_permissions" },
         ]
     }
