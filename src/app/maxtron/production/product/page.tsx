@@ -195,15 +195,15 @@ export default function FinishedProductPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Finished Products</h1>
-          <p className="text-muted-foreground mt-1">Manage technical specifications and product master data.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Finished Products</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage technical specifications and product master data.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2">
+            <Button onClick={() => setShowForm(true)} className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 md:h-11 transition-all font-bold whitespace-nowrap gap-2">
               <Plus className="w-4 h-4" /> Add Product
             </Button>
           )}
@@ -224,45 +224,46 @@ export default function FinishedProductPage() {
             </div>
             <CardDescription>Enter technical details like thickness, color, and size.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CardContent className="p-4 md:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Product Code</label>
-                <Input placeholder="e.g. PP-001" value={formData.product_code} onChange={e => setFormData({ ...formData, product_code: e.target.value })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Product Code</label>
+                <Input placeholder="e.g. PP-001" value={formData.product_code} onChange={e => setFormData({ ...formData, product_code: e.target.value })} className="h-11 font-mono uppercase" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Box className="w-4 h-4 text-primary" /> Product Name</label>
-                <Input placeholder="e.g. Milky Polybag" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Box className="w-4 h-4 text-primary" /> Product Name</label>
+                <Input placeholder="e.g. Milky Polybag" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} className="h-11 font-bold" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Palette className="w-4 h-4 text-primary" /> Color</label>
-                <Input placeholder="e.g. White" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Palette className="w-4 h-4 text-primary" /> Color</label>
+                <Input placeholder="e.g. White" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className="h-11" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Thickness (Microns)</label>
-                <Input type="number" placeholder="0.00" value={formData.thickness_microns} onChange={e => setFormData({ ...formData, thickness_microns: parseFloat(e.target.value) || 0 })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Layers className="w-4 h-4 text-primary" /> Thickness (Microns)</label>
+                <Input type="number" placeholder="0.00" value={formData.thickness_microns} onChange={e => setFormData({ ...formData, thickness_microns: parseFloat(e.target.value) || 0 })} className="h-11" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Ruler className="w-4 h-4 text-primary" /> Size</label>
-                <Input placeholder="e.g. 10x12" value={formData.size} onChange={e => setFormData({ ...formData, size: e.target.value })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Ruler className="w-4 h-4 text-primary" /> Size</label>
+                <Input placeholder="e.g. 10x12" value={formData.size} onChange={e => setFormData({ ...formData, size: e.target.value })} className="h-11" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
-                <Input type="number" placeholder="0" value={formData.avg_count_per_kg} onChange={e => setFormData({ ...formData, avg_count_per_kg: parseFloat(e.target.value) || 0 })} />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
+                <Input type="number" placeholder="0" value={formData.avg_count_per_kg} onChange={e => setFormData({ ...formData, avg_count_per_kg: parseFloat(e.target.value) || 0 })} className="h-11" />
               </div>
               <div className="space-y-2 lg:col-span-3">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
                 <textarea 
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   placeholder="Additional notes or specifications..." 
                   value={formData.description} 
+                  maxLength={50}
                   onChange={e => setFormData({ ...formData, description: e.target.value })} 
                 />
               </div>
             </div>
-            <div className="mt-8 flex justify-end gap-3 border-t pt-6">
-              <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }} className="px-6 hover:bg-muted transition-colors">Cancel</Button>
-              <Button onClick={saveProduct} className="px-8 shadow-sm hover:shadow-md transition-all gap-2 bg-primary hover:bg-primary/90">
+            <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3 border-t pt-6">
+              <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }} className="w-full sm:w-auto px-6 h-11 rounded-full text-slate-500">Cancel</Button>
+              <Button onClick={saveProduct} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-8 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold gap-2">
                 <Save className="w-4 h-4" /> {editingId ? 'Update Product' : 'Save Product'}
               </Button>
             </div>
@@ -288,7 +289,7 @@ export default function FinishedProductPage() {
               <td className="px-6 py-4">{p.size}</td>
               <td className="px-6 py-4">{p.avg_count_per_kg}</td>
               <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
-              <td className="px-6 py-4 text-right space-x-2">
+              <td className="md:px-6 py-4 text-right space-x-2">
                 {canEdit && (
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} className="h-8 w-8 rounded-full">
                     <Edit className="w-4 h-4" />

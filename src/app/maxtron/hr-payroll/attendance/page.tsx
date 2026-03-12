@@ -288,11 +288,11 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight">Attendance Details</h1>
-          <p className="text-muted-foreground text-sm font-medium">Daily shift-wise logging for {activeTenant} staff.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Details</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           <Button 
@@ -330,7 +330,7 @@ export default function AttendancePage() {
             <CardTitle className="text-lg font-semibold text-primary">{editingId ? 'Edit Attendance' : 'Mark Daily Attendance'}</CardTitle>
             <CardDescription>Input shift details and timing for employees.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
@@ -579,7 +579,7 @@ export default function AttendancePage() {
             <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
               {rec.remarks || '-'}
             </td>
-            <td className="px-6 py-4 text-right space-x-2">
+            <td className="md:px-6 py-4 text-right space-x-2">
               {canEdit && (
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
                   <Edit className="w-3.5 h-3.5" />

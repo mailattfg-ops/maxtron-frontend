@@ -141,16 +141,21 @@ export default function EmployeeCategoriesPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Tags className="w-8 h-8 text-indigo-600 p-1.5 bg-indigo-50 rounded-lg" />
-                        Employee Categories
-                    </h1>
-                    <p className="text-slate-500 text-sm mt-1">Configure employee classification groups for HR and Payroll.</p>
+        <div className="max-w-4xl mx-auto md:p-6 space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex items-start gap-3">
+                    <Tags className="w-10 h-10 text-indigo-600 p-2 bg-indigo-50 rounded-lg shrink-0" />
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                            Employee Categories
+                        </h1>
+                        <p className="text-slate-500 text-xs md:text-sm mt-0.5">Configure classification groups for HR and Payroll.</p>
+                    </div>
                 </div>
-                <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} className="gap-2 shadow-lg">
+                <Button 
+                    onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} 
+                    className="w-full md:w-auto gap-2 shadow-lg h-10 md:h-11 rounded-full font-bold"
+                >
                     {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     {showForm ? "Cancel" : "Add Category"}
                 </Button>
@@ -163,8 +168,8 @@ export default function EmployeeCategoriesPage() {
                             {editingId ? "Modify Classification" : "New Classification Entry"}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
-                        <form onSubmit={handleSubmit} className="flex gap-4 items-end">
+                    <CardContent className="p-4 md:p-6">
+                        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-stretch md:items-end">
                             <div className="flex-1 space-y-1.5">
                                 <label className="text-[10px] font-black uppercase text-slate-500 px-1">Category Name</label>
                                 <Input 
@@ -175,7 +180,7 @@ export default function EmployeeCategoriesPage() {
                                     required
                                 />
                             </div>
-                            <Button type="submit" className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                            <Button type="submit" className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 rounded-full font-bold">
                                 <Save className="w-4 h-4" /> {editingId ? "Update" : "Save Category"}
                             </Button>
                         </form>
@@ -183,7 +188,6 @@ export default function EmployeeCategoriesPage() {
                 </Card>
             )}
 
-            <Card className="border-none shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
                 <TableView
                     title="Available Classifications"
                     description="Standard groupings used across both Maxtron and Keil operations."
@@ -216,7 +220,6 @@ export default function EmployeeCategoriesPage() {
                         </tr>
                     )}
                 />
-            </Card>
 
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-4">
                 <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5" />

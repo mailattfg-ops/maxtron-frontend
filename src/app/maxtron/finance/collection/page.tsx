@@ -449,6 +449,7 @@ export default function CustomerCollectionPage() {
                                             rows={2}
                                             placeholder="Collection notes..."
                                             value={formData.remarks}
+                                            maxLength={50}
                                             onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm resize-none"
                                         />

@@ -86,8 +86,8 @@ export function TableView<T>({
             <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
               <tr>
                 {headers.map((header, i) => (
-                  // <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? 'text-right' : ''}`}>
-                  <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? '' : ''}`}>
+                  <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? 'text-right' : ''}`}>
+                  {/* <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? '' : ''}`}> */}
                     {header}
                   </th>
                 ))}
@@ -122,8 +122,8 @@ export function TableView<T>({
           <div className="text-sm text-muted-foreground font-medium order-2 sm:order-1">
             Showing <span className="text-foreground font-bold">{startIdx}</span> to <span className="text-foreground font-bold">{endIdx}</span> of <span className="text-foreground font-bold">{filteredData.length}</span> entries
           </div>
-          <div className="flex items-center gap-4 order-1 sm:order-2">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-4 order-1 sm:order-2">
+            <div className="flex items-center md:gap-2">
               <span className="text-xs text-muted-foreground font-semibold whitespace-nowrap">Rows:</span>
               <select
                 value={rowsPerPage}

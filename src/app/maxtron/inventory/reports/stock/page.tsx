@@ -78,16 +78,16 @@ export default function StockListPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Raw Material Stock List</h1>
-          <p className="text-muted-foreground text-sm font-medium">Real-time inventory levels, consumption tracking, and replenishment alerts.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Stock Registry</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Real-time inventory levels and floor issuance.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alert Threshold</span>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-inner">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Alert Threshold</span>
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 shadow-inner">
               <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
               <input 
                 type="number" 
@@ -95,60 +95,68 @@ export default function StockListPage() {
                 onChange={(e) => setThreshold(Number(e.target.value))}
                 className="bg-transparent border-none outline-none text-xs font-black text-slate-700 w-16"
               />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Units</span>
+              <span className="text-[10px] font-bold text-slate-400">UNITS</span>
             </div>
           </div>
-          <Button onClick={downloadStockReport} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11">
-             <Download className="w-4 h-4 mr-2" /> Download Report
+          <Button onClick={downloadStockReport} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11 transition-all active:scale-95">
+             <Download className="w-4 h-4 mr-2" /> Report
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white border-primary/10 overflow-hidden group">
-          <CardContent className="p-6 relative">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total SKU items</p>
-                <h3 className="text-3xl font-black text-primary mt-1">{stock.length}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Unique SKUs</p>
+                <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{stock.length}</h3>
               </div>
-              <Warehouse className="w-8 h-8 text-primary/20 group-hover:scale-110 transition-transform" />
+              <div className="bg-primary/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                <Warehouse className="w-5 h-5 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-primary/10 overflow-hidden group">
-          <CardContent className="p-6 relative">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Low Stock Alerts</p>
-                <h3 className="text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < threshold).length}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Low Stock</p>
+                <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < threshold).length}</h3>
               </div>
-              <AlertCircle className="w-8 h-8 text-rose-500/20" />
+              <div className="bg-rose-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                <AlertCircle className="w-5 h-5 text-rose-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-white border-primary/10 overflow-hidden group">
-          <CardContent className="p-6 relative">
+ 
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stock Movement</p>
-                <h3 className="text-3xl font-black text-emerald-600 mt-1">High</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Movement</p>
+                <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">High</h3>
               </div>
-              <ArrowRightLeft className="w-8 h-8 text-emerald-500/20" />
+              <div className="bg-emerald-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                <ArrowRightLeft className="w-5 h-5 text-emerald-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-white border-primary/10 overflow-hidden group">
-          <CardContent className="p-6 relative">
+ 
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">In-Transit Qty</p>
-                <h3 className="text-3xl font-black text-blue-600 mt-1">1.2K</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">In-Transit</p>
+                <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">1.2K</h3>
               </div>
-              <TrendingUp className="w-8 h-8 text-blue-500/20" />
+              <div className="bg-blue-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-5 h-5 text-blue-500" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -191,12 +199,13 @@ export default function StockListPage() {
                   <div className={`h-full ${s.balance < threshold ? 'bg-rose-500 animate-pulse' : 'bg-primary'}`} style={{ width: `${Math.min((s.balance/s.purchased)*100 || 0, 100)}%` }}></div>
                </div>
             </td>
-            <td className="px-6 py-4">
+            <td className="px-3 md:px-6 py-4">
                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
                  s.balance < threshold ? 'bg-rose-100 text-rose-700 border border-rose-200' : 
                  'bg-emerald-100 text-emerald-700 border border-emerald-200'
                }`}>
-                 {s.balance < threshold ? 'LOW STOCK' : 'AVAILABLE'}
+                 <span className="hidden md:inline">{s.balance < threshold ? 'LOW STOCK' : 'AVAILABLE'}</span>
+                 <span className="md:hidden">{s.balance < threshold ? 'LOW' : 'AVBL'}</span>
                </span>
             </td>
           </tr>

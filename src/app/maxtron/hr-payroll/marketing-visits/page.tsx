@@ -250,11 +250,11 @@ export default function MarketingVisitsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Marketing Operations</h1>
-          <p className="text-muted-foreground text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Marketing Operations</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           {!showForm && (
@@ -281,7 +281,7 @@ export default function MarketingVisitsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Visits</p>
-                  <h3 className="text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
                 </div>
                 <div className="bg-primary/10 p-3 rounded-2xl">
                   <MapPin className="w-6 h-6 text-primary" />
@@ -298,7 +298,7 @@ export default function MarketingVisitsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Clients</p>
-                  <h3 className="text-3xl font-black text-blue-600 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
                     {new Set(visitRecords.map(r => r.customer_name)).size}
                   </h3>
                 </div>
@@ -340,7 +340,7 @@ export default function MarketingVisitsPage() {
             <CardTitle>{editingId ? 'Edit Visit Details' : 'Record Field Visit'}</CardTitle>
             <CardDescription>Log time of entry, exit, and visit outcome.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
@@ -432,6 +432,7 @@ export default function MarketingVisitsPage() {
                   className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                   placeholder="Sales pitch, follow-up, payment collection..."
                   value={formData.purpose}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, purpose: e.target.value})}
                 />
               </div>
@@ -442,6 +443,7 @@ export default function MarketingVisitsPage() {
                   className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                   placeholder="Result of the meeting..."
                   value={formData.outcome}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, outcome: e.target.value})}
                 />
               </div>
@@ -517,7 +519,7 @@ export default function MarketingVisitsPage() {
                  <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{rec.outcome || 'No outcome recorded'}</div>
                </div>
             </td>
-            <td className="px-6 py-4 text-right space-x-2">
+            <td className="md:px-6 py-4 text-right space-x-2">
               {canEdit && (
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
                   <Edit className="w-3.5 h-3.5" />

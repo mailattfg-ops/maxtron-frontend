@@ -145,15 +145,15 @@ export default function KeilUserTypesPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+    <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">{activeTenant} User Roles</h1>
-          <p className="text-foreground/60 mt-2">Manage system access levels for {activeTenant} Operations.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">{activeTenant} User Roles</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage system access levels for {activeTenant} Operations.</p>
         </div>
         <Button 
           onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '', company_id: currentCompanyId }); }}
-          className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 shadow-lg shadow-primary/20"
+          className="bg-primary hover:bg-primary/95 text-white rounded-full px-6 shadow-lg h-10 transition-all font-bold"
         >
           {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? 'Cancel' : 'Add New Role'}
@@ -167,7 +167,7 @@ export default function KeilUserTypesPage() {
               {editingId ? 'Edit Role' : 'Create New Role'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-4 md:p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80">Role Name</label>

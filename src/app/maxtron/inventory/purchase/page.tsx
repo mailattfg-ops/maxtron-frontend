@@ -249,20 +249,20 @@ export default function PurchaseEntryPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight font-heading">Raw Material Purchase (GRN)</h1>
-          <p className="text-muted-foreground text-sm font-medium">Record material intake against pending orders with multi-item support and stock validation.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Purchase Registry</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Record material intake against pending orders with multi-item support.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center w-full md:w-auto">
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) { resetForm(); addItem(); } setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+              className="w-full md:w-auto h-10 md:h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold transition-all whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {showForm ? 'Cancel Receipt' : 'Register Material Intake'}
+              {showForm ? 'Cancel Receipt' : 'Register Intake'}
             </Button>
           )}
         </div>
@@ -270,20 +270,20 @@ export default function PurchaseEntryPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 p-6">
-            <CardTitle className="text-xl font-bold text-primary flex items-center">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl font-bold text-primary flex items-center">
               <ClipboardList className="w-5 h-5 mr-3 text-secondary" />
-              {editingId ? 'Modify Goods Receipt Note' : 'New Goods Receipt Note (GRN)'}
+              {editingId ? 'Modify Goods Receipt' : 'Goods Receipt Note (GRN)'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 border-b border-slate-100 pb-8">
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 border-b border-slate-100 pb-8">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Pending Order Selection</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pending Order Selection</label>
                 <select 
                   value={formData.order_id}
                   onChange={(e) => handleOrderSelection(e.target.value)}
-                  className="w-full h-11 px-3 rounded-md border border-amber-300 bg-amber-50/30 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-amber-200"
+                  className="w-full h-11 px-3 rounded-md border border-amber-300 bg-amber-50/30 text-xs font-black shadow-sm outline-none focus:ring-2 focus:ring-amber-200"
                 >
                   <option value="">-- Select Pending PO --</option>
                   {pendingOrders.map(o => (
@@ -291,62 +291,62 @@ export default function PurchaseEntryPage() {
                   ))}
                 </select>
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Intake Date</label>
-                <Input type="date" value={formData.entry_date} onChange={(e) => setFormData({...formData, entry_date: e.target.value})} className="h-11 border-slate-200" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Intake Date</label>
+                <Input type="date" value={formData.entry_date} onChange={(e) => setFormData({...formData, entry_date: e.target.value})} className="h-11 font-bold" />
               </div>
-
-              <div className="space-y-2 lg:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Vendor Identity</label>
+ 
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 text-primary italic font-black">Vendor Identity</label>
                 <select 
                    value={formData.supplier_id} 
                    onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-bold bg-slate-50"
+                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-xs font-black bg-slate-50"
                    disabled={!!formData.order_id}
                 >
                   <option value="">Choose Supplier...</option>
                   {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.supplier_name} ({s.supplier_code})</option>
+                    <option key={s.id} value={s.id}>{s.supplier_name.toUpperCase()} ({s.supplier_code})</option>
                   ))}
                 </select>
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Invoice / Bill No</label>
-                <Input value={formData.invoice_number} onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} className="h-11" placeholder="Bill Number" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Invoice / Bill No</label>
+                <Input value={formData.invoice_number} onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} className="h-11 font-bold" placeholder="Bill Number" />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Invoice Date</label>
-                <Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} className="h-11" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Invoice Date</label>
+                <Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} className="h-11 font-bold" />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Vehicle Number</label>
-                <Input value={formData.vehicle_number} onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})} className="h-11 uppercase" placeholder="KA-00-XX-0000" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1"><Truck className="w-3 h-3 text-primary" /> Vehicle Number</label>
+                <Input value={formData.vehicle_number} onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})} className="h-11 uppercase font-black" placeholder="KA-00-XX-0000" />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Unloading Fees (₹)</label>
-                <Input type="number" value={formData.unloading_charges} onChange={(e) => setFormData({...formData, unloading_charges: Number(e.target.value)})} className="h-11" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Unloading Fees (₹)</label>
+                <Input type="number" value={formData.unloading_charges} onChange={(e) => setFormData({...formData, unloading_charges: Number(e.target.value)})} className="h-11 font-black text-rose-500" />
               </div>
             </div>
 
             <div className="space-y-4">
                <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center">
-                    <Warehouse className="w-4 h-4 mr-2 text-primary" /> Multi-Item Receipt Entry
+                    <Warehouse className="hidden md:inline w-4 h-4 mr-2 text-primary" /> Multi-Item Receipt Entry
                   </h3>
                   {!formData.order_id && (
                     <Button onClick={addItem} variant="ghost" size="sm" className="text-primary font-bold hover:bg-primary/10 rounded-full h-8">
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Manual Row
+                      <Plus className="w-3.5 h-3.5 mr-1" /> <span className="hidden md:inline">Add Manual Row</span>
                     </Button>
                   )}
                </div>
 
-               <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
-                  <table className="w-full">
+               <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[750px]">
                     <thead className="bg-slate-100 border-b border-slate-200">
                       <tr>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">Material Item / Current Stock</th>
@@ -406,17 +406,18 @@ export default function PurchaseEntryPage() {
                </div>
             </div>
 
-            <div className="mt-8 flex justify-between items-start">
-               <div className="flex-1 max-w-md">
+            <div className="mt-8 flex flex-col lg:flex-row justify-between items-stretch lg:items-start gap-6">
+               <div className="flex-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Receipt Comments</label>
                   <textarea 
                     className="w-full h-20 p-3 mt-2 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                     value={formData.remarks}
+                    maxLength={50}
                     onChange={(e) => setFormData({...formData, remarks: e.target.value})}
                     placeholder="Shortage, damage or delay notes..."
                   />
                </div>
-                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right ml-8 relative">
+                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-right relative">
                    {formData.order_id && formData.items.some(i => Number(i.ordered_quantity || 0) > Number(i.received_quantity)) && (
                      <div className="absolute -top-12 right-0 flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl animate-bounce shadow-sm">
                        <AlertCircle className="w-4 h-4 text-amber-600 font-black" />
@@ -427,22 +428,23 @@ export default function PurchaseEntryPage() {
                            onChange={(e) => setFormData({...formData, reorder_missing: e.target.checked})}
                            className="w-4 h-4 accent-amber-600 rounded"
                          />
-                         Re-order Missing Qty?
+                         <span className="hidden sm:inline">Re-order Missing Qty?</span>
+                         <span className="sm:hidden">Re-order?</span>
                        </label>
                      </div>
                    )}
                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Receipt Valuation</p>
-                   <h2 className="text-4xl font-black text-emerald-700 tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
+                   <h2 className="text-3xl md:text-4xl font-black text-emerald-700 tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
                 </div>
             </div>
 
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
-                Cancel
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 font-bold">
+                Cancel Receipt
               </Button>
-              <Button onClick={saveEntry} className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg shadow-emerald-200 flex items-center font-bold">
+              <Button onClick={saveEntry} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center">
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update GRN' : 'Authorize Goods Receipt'}
+                {editingId ? 'Update GRN' : 'Authorize Receipt'}
               </Button>
             </div>
           </CardContent>

@@ -230,71 +230,70 @@ export default function SupplierPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight font-heading">Supplier Information</h1>
-          <p className="text-muted-foreground text-sm font-medium">Manage procurement partners, financial terms, and logistics preferences.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Suppliers</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage procurement partners and terms.</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button onClick={downloadVendors} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm font-bold">
-             <Download className="w-4 h-4 mr-2" /> Export Vendors
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+          <Button onClick={downloadVendors} variant="outline" className="h-10 border-secondary text-secondary hover:bg-secondary/5 rounded-full px-5 shadow-sm font-bold order-2 sm:order-1">
+             <Download className="w-4 h-4 mr-2" /> Export
           </Button>
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+              className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold order-1 sm:order-2 active:scale-95 transition-all whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {showForm ? 'Cancel Registration' : 'Register New Vendor'}
+              {showForm ? 'Cancel Registration' : 'New Vendor'}
             </Button>
           )}
         </div>
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-in slide-in-from-bottom-4 duration-500">
-          {/* Summary widgets remain the same */}
-          <Card className="bg-white border-primary/10 shadow-sm">
-            <CardContent className="p-6 flex items-center justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Active Vendors</p>
-                <h3 className="text-2xl font-black text-primary mt-1">{suppliers.length}</h3>
+                <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Active Vendors</p>
+                <h3 className="text-xl md:text-2xl font-black text-primary mt-1">{suppliers.length}</h3>
               </div>
-              <div className="bg-primary/10 p-2.5 rounded-xl">
+              <div className="bg-primary/10 p-2.5 rounded-xl shrink-0">
                 <Building2 className="w-5 h-5 text-primary" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-primary/10 shadow-sm">
-            <CardContent className="p-6 flex items-center justify-between">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">GST Registered</p>
-                <h3 className="text-2xl font-black text-emerald-600 mt-1">{suppliers.filter(s => s.gst_no).length}</h3>
+                <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">GST Registered</p>
+                <h3 className="text-xl md:text-2xl font-black text-emerald-600 mt-1">{suppliers.filter(s => s.gst_no).length}</h3>
               </div>
-              <div className="bg-emerald-50 p-2.5 rounded-xl">
+              <div className="bg-emerald-50 p-2.5 rounded-xl shrink-0">
                 <FileCheck className="w-5 h-5 text-emerald-500" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-primary/10 shadow-sm">
-            <CardContent className="p-6 flex items-center justify-between">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Limit</p>
-                <h3 className="text-2xl font-black text-blue-600 mt-1">₹ {suppliers.reduce((acc, curr) => acc + Number(curr.credit_limit || 0), 0).toLocaleString()}</h3>
+                <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Limit</p>
+                <h3 className="text-lg md:text-xl font-black text-blue-600 mt-1">₹ {suppliers.reduce((acc, curr) => acc + Number(curr.credit_limit || 0), 0).toLocaleString()}</h3>
               </div>
-              <div className="bg-blue-50 p-2.5 rounded-xl">
+              <div className="bg-blue-50 p-2.5 rounded-xl shrink-0">
                 <CreditCard className="w-5 h-5 text-blue-500" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white border-primary/10 shadow-sm">
-            <CardContent className="p-6 flex items-center justify-between">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Opening Exp.</p>
-                <h3 className="text-2xl font-black text-slate-800 mt-1">₹ {suppliers.reduce((acc, curr) => acc + Number(curr.opening_balance || 0), 0).toLocaleString()}</h3>
+                <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Opening Exp.</p>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 mt-1">₹ {suppliers.reduce((acc, curr) => acc + Number(curr.opening_balance || 0), 0).toLocaleString()}</h3>
               </div>
-              <div className="bg-slate-100 p-2.5 rounded-xl">
+              <div className="bg-slate-100 p-2.5 rounded-xl shrink-0">
                 <Wallet className="w-5 h-5 text-slate-700" />
               </div>
             </CardContent>
@@ -304,29 +303,28 @@ export default function SupplierPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 p-6">
-            <CardTitle className="text-xl font-bold text-primary flex items-center">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl font-bold text-primary flex items-center">
                <Building2 className="w-5 h-5 mr-3 text-secondary" />
-               {editingId ? 'Edit Vendor Profile' : 'Supplier Onboarding'}
+               {editingId ? 'Edit Profile' : 'Vendor Onboarding'}
             </CardTitle>
-            <CardDescription>Setup procurement terms, and multi-field address details.</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Setup procurement terms and address details.</CardDescription>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
-              {/* Main Information */}
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Supplier Code</label>
-                <Input value={formData.supplier_code} onChange={(e) => setFormData({...formData, supplier_code: e.target.value})} className="h-11 font-mono uppercase" placeholder="e.g. VEN-001" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Code</label>
+                <Input value={formData.supplier_code} onChange={(e) => setFormData({...formData, supplier_code: e.target.value})} className="h-11 font-mono uppercase font-bold" placeholder="e.g. VEN-001" />
               </div>
-
-              <div className="space-y-2 lg:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Supplier Name</label>
+ 
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Name</label>
                 <Input value={formData.supplier_name} onChange={(e) => setFormData({...formData, supplier_name: e.target.value})} className="h-11 font-bold" placeholder="Company Name" />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">GST No</label>
-                <Input value={formData.gst_no} onChange={(e) => setFormData({...formData, gst_no: e.target.value})} className="h-11 uppercase" placeholder="29XXXXX..." />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">GST No</label>
+                <Input value={formData.gst_no} onChange={(e) => setFormData({...formData, gst_no: e.target.value})} className="h-11 uppercase font-bold text-emerald-600" placeholder="29XXXXX..." />
               </div>
             </div>
 
@@ -433,11 +431,11 @@ export default function SupplierPage() {
               </div>
             </div>
 
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-muted-foreground">
-                Discard
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-muted-foreground font-bold">
+                Discard Changes
               </Button>
-              <Button onClick={saveSupplier} className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center font-bold transition-all">
+              <Button onClick={saveSupplier} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center transition-all">
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Profile' : 'Complete Onboarding'}
               </Button>
@@ -456,7 +454,9 @@ export default function SupplierPage() {
         renderRow={(s: any) => (
           <tr key={s.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
             <td className="px-6 py-4">
-               <div className="font-black text-slate-800 text-[13px]">{s.supplier_name}</div>
+               <div className="font-black text-slate-800 text-[13px]">
+                {s.supplier_name?.length > 30 ? s.supplier_name.slice(0, 30) + "..." : s.supplier_name}
+               </div>
                <div className="text-[10px] text-muted-foreground flex items-center font-mono mt-0.5 uppercase tracking-tighter">
                 <Package className="w-2.5 h-2.5 mr-1" /> {s.supplier_code} | GST: {s.gst_no || 'NA'}
                </div>

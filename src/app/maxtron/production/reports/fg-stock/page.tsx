@@ -79,7 +79,7 @@ export default function FGStockListPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
+    <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold text-primary tracking-tight">Finished Good Stock List</h1>

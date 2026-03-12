@@ -197,17 +197,17 @@ export default function PurchaseReturnPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Purchase Returns</h1>
-          <p className="text-muted-foreground text-sm font-medium">Issue debit notes and track materials sent back to vendors due to quality issues.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Purchase Returns</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Issue debit notes and track materials sent back to vendors due to quality issues.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 w-full md:w-auto">
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+              className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 md:h-11 transition-all font-bold whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <RotateCcw className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel Return' : 'New Purchase Return'}
@@ -217,15 +217,15 @@ export default function PurchaseReturnPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-right-4 duration-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in slide-in-from-right-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-rose-400">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rejections MTD</p>
-                  <h3 className="text-3xl font-black text-rose-600 mt-1">{returns.length}</h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-rose-600 mt-1">{returns.length}</h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl">
+                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
                   <Undo2 className="w-6 h-6 text-rose-500" />
                 </div>
               </div>
@@ -233,29 +233,29 @@ export default function PurchaseReturnPage() {
           </Card>
 
           <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-orange-400">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pending Dispatch</p>
-                  <h3 className="text-3xl font-black text-orange-600 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-orange-600 mt-1">
                     {returns.filter(r => r.status === 'PENDING').length}
                   </h3>
                 </div>
-                <div className="bg-orange-50 p-3 rounded-2xl">
+                <div className="bg-orange-50 p-3 rounded-2xl shrink-0">
                   <Truck className="w-6 h-6 text-orange-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-primary">
+          <Card className="hidden lg:block bg-white border-primary/10 shadow-sm border-r-4 border-r-primary">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Top Reason</p>
                   <h3 className="text-xl font-black text-primary mt-1">Quality Mismatch</h3>
                 </div>
-                <div className="bg-primary/5 p-3 rounded-2xl">
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
                   <AlertTriangle className="w-6 h-6 text-primary" />
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function PurchaseReturnPage() {
             </CardTitle>
             <CardDescription>Link return to a specific GRN entry and specify rejection reason.</CardDescription>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="p-4 md:p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Debit Note No</label>
@@ -365,6 +365,7 @@ export default function PurchaseReturnPage() {
                 <textarea 
                   className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 transition-all resize-none"
                   value={formData.reason}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, reason: e.target.value})}
                   placeholder="Specific quality defects, color mismatch, chemical imbalance..."
                 />

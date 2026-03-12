@@ -17,8 +17,10 @@ import {
     Clock,
     Activity,
     LineChart as ChartIcon,
-    UserCheck
+    UserCheck,
+    RefreshCw
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { 
     AreaChart, 
     Area, 
@@ -35,10 +37,11 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function Dashboard() {
+    const { theme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
-    const companyId = localStorage.getItem('companyId') || '24ea3bef-1e0c-4490-9d40-7063fb9067e9';
+    const companyId = typeof window !== 'undefined' ? (localStorage.getItem('companyId') || '24ea3bef-1e0c-4490-9d40-7063fb9067e9') : '';
 
     useEffect(() => {
         setMounted(true);
@@ -112,37 +115,37 @@ export default function Dashboard() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Enterprise Overview</h1>
-                    <p className="text-slate-500 font-medium mt-1">Real-time analytical baseline for Maxtron Operations.</p>
+                    <h1 className="text-4xl font-black text-foreground tracking-tight">Enterprise Overview</h1>
+                    <p className="text-muted-foreground font-medium mt-1">Real-time analytical baseline for Maxtron Operations.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
+                    <div className="px-4 py-2 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">System Live</span>
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">System Live</span>
                     </div>
-                    <Button onClick={fetchDashboardData} variant="outline" className="rounded-2xl border-slate-200 hover:bg-slate-50 h-10 px-6 font-bold text-slate-700">Refresh Data</Button>
+                    <Button onClick={fetchDashboardData} variant="outline" className="rounded-2xl border-border hover:bg-accent h-10 px-6 font-bold">Refresh Data</Button>
                 </div>
             </div>
 
             {/* Main Stats Hub */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
-                    <Card key={i} className="relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-none bg-white shadow-sm ring-1 ring-slate-100">
-                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} rounded-bl-full opacity-40 -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
+                    <Card key={i} className="relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-none bg-card shadow-sm ring-1 ring-border/50">
+                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} ${theme === 'dark' ? 'opacity-10' : 'opacity-40'} rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
                         <CardHeader className="pb-2">
                             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-2 group-hover:rotate-6 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
                             </div>
-                            <CardTitle className="text-slate-500 text-xs font-black uppercase tracking-widest leading-none">{stat.label}</CardTitle>
+                            <CardTitle className="text-muted-foreground text-xs font-black uppercase tracking-widest leading-none">{stat.label}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-3xl font-black text-slate-900 tracking-tight">{loading ? '...' : stat.value}</p>
+                            <p className="text-3xl font-black text-foreground tracking-tight">{loading ? '...' : stat.value}</p>
                             <div className="mt-4 flex items-center gap-2">
-                                <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-black tracking-widest ${stat.isPos ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-black tracking-widest ${stat.isPos ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                     {stat.isPos ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                     {stat.trend}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">vs last month</span>
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">vs last month</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -152,13 +155,13 @@ export default function Dashboard() {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Revenue Chart */}
-                <Card className="border-none shadow-sm ring-1 ring-slate-100 bg-white rounded-3xl overflow-hidden group">
+                <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden group">
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <ChartIcon className="w-5 h-5 text-indigo-600" /> Revenue vs Collections
+                            <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
+                                <ChartIcon className="w-5 h-5 text-indigo-500" /> Revenue vs Collections
                             </CardTitle>
-                            <CardDescription className="text-slate-500 font-medium italic">Financial performance monitoring</CardDescription>
+                            <CardDescription className="text-muted-foreground font-medium italic">Financial performance monitoring</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="h-[300px] p-4 pr-8">
@@ -174,7 +177,7 @@ export default function Dashboard() {
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
                                 <XAxis 
                                     dataKey="date" 
                                     axisLine={false} 
@@ -189,30 +192,30 @@ export default function Dashboard() {
                                     tickFormatter={(val) => `₹${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`}
                                 />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                                    cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
+                                    contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
+                                    cursor={{ stroke: theme === 'dark' ? '#334155' : '#e2e8f0', strokeWidth: 2 }}
                                 />
-                                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: '#fff', stroke: '#4f46e5' }} />
-                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: '#fff', stroke: '#10b981' }} />
+                                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#4f46e5' }} />
+                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#10b981' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
                 {/* Attendance Chart */}
-                <Card className="border-none shadow-sm ring-1 ring-slate-100 bg-white rounded-3xl overflow-hidden group">
+                <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden group">
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
-                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <UserCheck className="w-5 h-5 text-violet-600" /> Attendance Trends
+                            <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
+                                <UserCheck className="w-5 h-5 text-violet-500" /> Attendance Trends
                             </CardTitle>
-                            <CardDescription className="text-slate-500 font-medium italic">Staff presence analysis (Last 7 Days)</CardDescription>
+                            <CardDescription className="text-muted-foreground font-medium italic">Staff presence analysis (Last 7 Days)</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="h-[300px] p-4 pr-8">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={attendanceData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
                                 <XAxis 
                                     dataKey="date" 
                                     axisLine={false} 
@@ -226,8 +229,8 @@ export default function Dashboard() {
                                     tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}}
                                 />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                                    cursor={{ fill: '#f1f5f9' }}
+                                    contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
+                                    cursor={{ fill: theme === 'dark' ? '#1e293b' : '#f1f5f9' }}
                                 />
                                 <Bar dataKey="present" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={20} />
                                 <Bar dataKey="absent" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={20} />
@@ -240,15 +243,15 @@ export default function Dashboard() {
             {/* Analytics & Alerts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Center Panel: Recent Transactions */}
-                <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-slate-100 bg-white rounded-3xl overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between bg-slate-50/50 border-b p-6">
+                <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
                         <div>
-                            <CardTitle className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                            <CardTitle className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
                                 <Activity className="w-5 h-5 text-primary" /> Recent Operations
                             </CardTitle>
-                            <CardDescription className="text-slate-500 font-medium">Latest invoices and order lifecycle</CardDescription>
+                            <CardDescription className="text-muted-foreground font-medium">Latest invoices and order lifecycle</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" className="font-bold text-primary gap-1">
+                        <Button variant="ghost" size="sm" className="font-bold text-primary gap-1 hover:bg-primary/10">
                             Operational Hub <ChevronRight className="w-4 h-4" />
                         </Button>
                     </CardHeader>
@@ -256,42 +259,42 @@ export default function Dashboard() {
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b bg-slate-50/30">
-                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Entity</th>
-                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Party</th>
-                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
-                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <tr className="border-b border-border bg-muted/10">
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Entity</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Party</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-border/40">
                                     {(data?.recentActivity?.invoices || []).map((inv: any, i: number) => (
-                                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={i} className="hover:bg-muted/10 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-[10px]">INV</div>
-                                                    <span className="text-sm font-bold text-slate-800">{inv.invoice_number}</span>
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-[10px]">INV</div>
+                                                    <span className="text-sm font-bold text-foreground/90">{inv.invoice_number}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-slate-600">{inv.customers?.customer_name}</td>
-                                            <td className="px-6 py-4 text-sm font-black text-slate-900">₹{Number(inv.net_amount).toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-muted-foreground">{inv.customers?.customer_name}</td>
+                                            <td className="px-6 py-4 text-sm font-black text-foreground">₹{Number(inv.net_amount).toLocaleString()}</td>
                                             <td className="px-6 py-4">
-                                                <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-widest">Billed</span>
+                                                <span className="px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest">Billed</span>
                                             </td>
                                         </tr>
                                     ))}
                                     {(data?.recentActivity?.orders || []).slice(0, 2).map((ord: any, i: number) => (
-                                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={i} className="hover:bg-muted/10 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">ORD</div>
-                                                    <span className="text-sm font-bold text-slate-800">{ord.order_number}</span>
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px]">ORD</div>
+                                                    <span className="text-sm font-bold text-foreground/90">{ord.order_number}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-slate-600">{ord.customers?.customer_name}</td>
-                                            <td className="px-6 py-4 text-sm font-black text-slate-900">₹{Number(ord.total_amount).toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-muted-foreground">{ord.customers?.customer_name}</td>
+                                            <td className="px-6 py-4 text-sm font-black text-foreground">₹{Number(ord.total_amount).toLocaleString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                                    ord.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                    ord.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
                                                 }`}>
                                                     {ord.status}
                                                 </span>
@@ -306,33 +309,33 @@ export default function Dashboard() {
 
                 {/* Right Panel: Alerts & Stock */}
                 <div className="space-y-6">
-                    <Card className="border-none shadow-sm ring-1 ring-slate-100 bg-white rounded-3xl overflow-hidden">
-                        <CardHeader className="bg-rose-50/50 border-b border-rose-100">
-                            <CardTitle className="text-lg font-black text-rose-900 uppercase tracking-tight flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-rose-600" /> Critical Alerts
+                    <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
+                        <CardHeader className="bg-rose-500/10 border-b border-rose-500/20">
+                            <CardTitle className="text-lg font-black text-rose-500 uppercase tracking-tight flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-rose-500" /> Critical Alerts
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {data?.alerts?.length > 0 ? (
-                                <div className="divide-y divide-rose-50">
+                                <div className="divide-y divide-rose-500/10">
                                     {data.alerts.map((alert: any, i: number) => (
-                                        <div key={i} className="flex items-center gap-4 p-5 hover:bg-rose-50/30 transition-colors group">
-                                            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                        <div key={i} className="flex items-center gap-4 p-5 hover:bg-rose-500/5 transition-colors group">
+                                            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                                 <Package className="w-5 h-5" />
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{alert.name}</p>
-                                                <p className="text-xs text-rose-600 font-bold mt-0.5 animate-pulse">Low Stock: {alert.balance} {alert.unit}</p>
+                                                <p className="text-sm font-black text-foreground uppercase tracking-tight">{alert.name}</p>
+                                                <p className="text-xs text-rose-500 font-bold mt-0.5 animate-pulse">Low Stock: {alert.balance} {alert.unit}</p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="p-10 text-center space-y-3">
-                                    <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-100">
+                                    <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-500/20">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
                                     </div>
-                                    <p className="text-slate-400 font-bold text-sm tracking-tight">Inventory Health Optimal</p>
+                                    <p className="text-muted-foreground font-bold text-sm tracking-tight">Inventory Health Optimal</p>
                                 </div>
                             )}
                         </CardContent>
@@ -360,23 +363,23 @@ export default function Dashboard() {
             </div>
 
             {/* Production Matrix Holder */}
-            <Card className="border-none shadow-sm ring-1 ring-slate-100 bg-white rounded-3xl overflow-hidden">
+            <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
                 <CardHeader className="p-8 pb-0">
-                    <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+                    <CardTitle className="text-xl font-black text-foreground uppercase tracking-tighter flex items-center gap-3">
                         <Activity className="w-6 h-6 text-secondary" /> Production Output Matrix
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         {(data?.recentActivity?.production || []).map((batch: any, i: number) => (
-                            <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-secondary/30 transition-all hover:bg-white hover:shadow-xl group">
+                            <div key={i} className="p-6 bg-muted/20 rounded-2xl border border-border/40 hover:border-secondary/30 transition-all hover:bg-card hover:shadow-xl group">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="text-[10px] font-black text-secondary tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-secondary group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
-                                    <Clock className="w-4 h-4 text-slate-300" />
+                                    <Clock className="w-4 h-4 text-muted-foreground/40" />
                                 </div>
-                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-1">{batch.batch_number}</h4>
-                                <div className="text-2xl font-black text-slate-900 leading-none mb-1">{batch.extrusion_output_qty} <span className="text-[10px] text-slate-400 ml-1 tracking-widest uppercase">KG</span></div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{new Date(batch.date).toLocaleDateString()}</p>
+                                <h4 className="text-sm font-black text-foreground/90 uppercase tracking-tight mb-1">{batch.batch_number}</h4>
+                                <div className="text-2xl font-black text-foreground leading-none mb-1">{batch.extrusion_output_qty} <span className="text-[10px] text-muted-foreground ml-1 tracking-widest uppercase">KG</span></div>
+                                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">{new Date(batch.date).toLocaleDateString()}</p>
                             </div>
                         ))}
                     </div>

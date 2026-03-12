@@ -261,36 +261,36 @@ export default function ExpendituresPage() {
     };
 
     return (
-        <div className="p-6 space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-primary/5">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
-                        <Wallet className="w-10 h-10 text-emerald-600" />
-                        Expenditure Register
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-2 md:gap-3">
+                        <Wallet className="w-8 h-8 md:w-10 md:h-10 text-emerald-600" />
+                        Expenditures
                     </h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                        Financial Operations & Outlet Expenses
+                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        Financial Operations Register
                     </p>
                 </div>
                 {!isFormOpen && (
                     <Button 
                         onClick={() => setIsFormOpen(true)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs h-12 px-8 shadow-lg shadow-emerald-100"
+                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-10 md:h-12 px-6 md:px-8 shadow-lg shadow-emerald-100"
                     >
-                        <Plus className="w-4 h-4 mr-2" /> Log Expenditure
+                        <Plus className="w-4 h-4 mr-2" /> Log Expense
                     </Button>
                 )}
             </div>
 
             {isFormOpen ? (
-                <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white animate-in slide-in-from-bottom-8 duration-500">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-8 flex flex-row items-center justify-between">
+                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white animate-in slide-in-from-bottom-8 duration-500">
+                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-xl font-black uppercase tracking-tighter text-slate-800 italic">
-                                {editingId ? 'Modify Expenditure Record' : 'Log New Expenditure'}
+                            <CardTitle className="text-lg md:text-xl font-black uppercase tracking-tighter text-slate-800 italic">
+                                {editingId ? 'Modify Record' : 'Log Expense'}
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Record financial outflows against defined heads.
+                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Financial outflow registration
                             </CardDescription>
                         </div>
                         <Button 
@@ -305,7 +305,7 @@ export default function ExpendituresPage() {
                             <X className="w-5 h-5" />
                         </Button>
                     </CardHeader>
-                    <CardContent className="p-8">
+                    <CardContent className="p-4 md:p-8">
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 <div className="space-y-3">
@@ -436,25 +436,23 @@ export default function ExpendituresPage() {
                                 </div>
                             </div>
                             
-                            <div className="flex justify-end pt-4 border-t border-slate-100">
-                                <Button type="submit" className="bg-slate-900 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs h-14 px-10 shadow-xl transition-colors duration-300">
+                             <div className="flex justify-end pt-6 border-t border-slate-100">
+                                <Button type="submit" className="w-full md:w-auto bg-slate-900 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-12 md:h-14 px-10 shadow-xl transition-colors duration-300">
                                     <Save className="w-4 h-4 mr-3" />
-                                    {editingId ? 'Update Ledger Execution' : 'Commit Ledger Execution'}
+                                    {editingId ? 'Update Ledger' : 'Commit Ledger'}
                                 </Button>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Operational Expenditure Ledger</CardTitle>
-                                <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    Complete audit trail of documented expenses.
-                                </CardDescription>
-                            </div>
+                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
+                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8">
+                        <div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Expenditure Ledger</CardTitle>
+                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Complete audit trail of documented expenses.
+                            </CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">

@@ -135,39 +135,40 @@ export default function ConsumptionReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 space-y-6 animate-in fade-in duration-500">
-
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-primary/10 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-200">
-            <Flame className="w-6 h-6 text-white" />
+      <div className="bg-white rounded-2xl shadow-sm border border-primary/10 p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-200 shrink-0">
+            <Flame className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Consumption Report</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Raw material usage by process, line, and material type</p>
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight font-heading">Consumption</h1>
+            <p className="text-slate-400 text-[10px] md:text-sm mt-0.5">Raw material usage by process and line</p>
           </div>
         </div>
-        <Button onClick={downloadCSV} className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg shadow-primary/20 font-bold h-11 flex-shrink-0">
-          <Download className="w-4 h-4 mr-2" /> Export CSV
+        <Button onClick={downloadCSV} className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 font-bold h-11 flex-shrink-0 order-2 md:order-1">
+          <Download className="w-4 h-4 mr-2" /> Export Report
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Slips', value: filtered.length, icon: Zap, color: 'from-primary to-blue-700', iconBg: 'bg-primary/10 text-primary' },
           { label: 'Total Consumed', value: `${totalQty.toLocaleString()}`, sub: 'units', icon: TrendingDown, color: 'from-rose-500 to-rose-700', iconBg: 'bg-rose-100 text-rose-600' },
           { label: 'Active Processes', value: processTypes.length, icon: Settings, color: 'from-amber-500 to-orange-600', iconBg: 'bg-amber-100 text-amber-600' },
           { label: 'Materials Used', value: materialSummary.length, icon: Package, color: 'from-emerald-500 to-teal-600', iconBg: 'bg-emerald-100 text-emerald-600' },
         ].map((kpi, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-start justify-between group hover:shadow-md transition-shadow">
+          <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 flex items-center justify-between group hover:shadow-md transition-all">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{kpi.label}</p>
-              <p className="text-3xl font-black text-slate-900 mt-1 leading-none">{kpi.value}</p>
-              {kpi.sub && <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{kpi.sub}</p>}
+              <div className="flex items-baseline gap-1 mt-1">
+                <p className="text-xl md:text-3xl font-black text-slate-900 leading-none">{kpi.value}</p>
+                {kpi.sub && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{kpi.sub}</span>}
+              </div>
             </div>
-            <div className={`w-10 h-10 rounded-xl ${kpi.iconBg} flex items-center justify-center`}>
+            <div className={`w-10 h-10 rounded-xl shrink-0 ${kpi.iconBg} flex items-center justify-center`}>
               <kpi.icon className="w-5 h-5" />
             </div>
           </div>
@@ -234,45 +235,50 @@ export default function ConsumptionReportPage() {
         </div>
       </div>
 
-      {/* Filters */}
+       {/* Filters */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="relative flex-1 min-w-[180px]">
+        <div className="flex flex-col gap-4">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               placeholder="Search slip, material, process..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 border-slate-200 bg-slate-50 focus:bg-white"
+              className="pl-9 h-11 border-slate-200 bg-slate-50 focus:bg-white rounded-xl text-sm"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From</label>
-            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 w-40 border-slate-200" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">From Date</label>
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 border-slate-200 rounded-xl text-xs" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">To Date</label>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 border-slate-200 rounded-xl text-xs" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Process Type</label>
+              <select
+                value={filterProcess}
+                onChange={e => setFilterProcess(e.target.value)}
+                className="h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 focus:bg-white w-full uppercase font-bold"
+              >
+                <option value="">All Processes</option>
+                {processTypes.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => fetchReport()} className="flex-1 bg-slate-900 text-white h-10 rounded-xl text-xs font-bold">Apply Filters</Button>
+              {hasFilters && (
+                <Button variant="ghost" onClick={clearFilters} className="h-10 rounded-xl text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2 border border-rose-100">
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To</label>
-            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 w-40 border-slate-200" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Process</label>
-            <select
-              value={filterProcess}
-              onChange={e => setFilterProcess(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none bg-slate-50 focus:bg-white w-40"
-            >
-              <option value="">All Processes</option>
-              {processTypes.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          {hasFilters && (
-            <Button variant="ghost" onClick={clearFilters} className="h-10 rounded-lg text-sm text-slate-500 hover:text-rose-500 px-3">
-              <X className="w-4 h-4 mr-1" /> Clear
-            </Button>
-          )}
         </div>
         {hasFilters && (
-          <p className="text-[11px] text-slate-400 mt-2 font-medium">
+          <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wider ml-1">
             Showing {filtered.length} of {consumptions.length} records
           </p>
         )}

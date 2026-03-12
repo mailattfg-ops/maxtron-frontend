@@ -231,17 +231,17 @@ export default function RMOrderPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight font-heading">Raw Material Order</h1>
-          <p className="text-muted-foreground text-sm font-medium">Release multi-item purchase orders to suppliers with automatic stock visibility.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Raw Material Order</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Release multi-item purchase orders to suppliers with automatic stock visibility.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 w-full md:w-auto">
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) { resetForm(); addItem(); } setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+              className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 md:h-11 transition-all font-bold whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Discard Draft' : 'New Purchase Order'}
@@ -258,15 +258,15 @@ export default function RMOrderPage() {
                Purchase Order: {formData.order_number}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 border-b border-slate-100 pb-8">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Order Date</label>
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 border-b border-slate-100 pb-8">
+              <div className="space-y-2 text-sm">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Order Date</label>
                 <Input type="date" value={formData.order_date} onChange={(e) => setFormData({...formData, order_date: e.target.value})} className="h-11" />
               </div>
-
+ 
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Supplier Details</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Details</label>
                 <select 
                   value={formData.supplier_id}
                   onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
@@ -278,10 +278,10 @@ export default function RMOrderPage() {
                   ))}
                 </select>
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Expected Delivery</label>
-                <Input type="date" value={formData.expected_delivery_date} onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})} className="h-11" />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Expected Delivery</label>
+                <Input type="date" value={formData.expected_delivery_date} onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})} className="h-11 border-amber-200 bg-amber-50/10" />
               </div>
             </div>
 
@@ -295,8 +295,8 @@ export default function RMOrderPage() {
                   </Button>
                </div>
 
-               <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
-                  <table className="w-full">
+                <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[700px]">
                     <thead className="bg-slate-100 border-b border-slate-200">
                       <tr>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">Material (Name / Stock)</th>
@@ -356,29 +356,30 @@ export default function RMOrderPage() {
                </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
                <div className="lg:col-span-2 space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Order Remarks</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Order Remarks</label>
                   <textarea 
-                    className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                    className="w-full h-24 p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                     value={formData.remarks}
+                    maxLength={50}
                     onChange={(e) => setFormData({...formData, remarks: e.target.value})}
                     placeholder="Specific instructions for vendor..."
                   />
                </div>
-               <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col justify-center text-right">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Estimated Total Order Value</p>
-                  <h2 className="text-4xl font-black text-primary tracking-tighter">₹ {formData.total_amount.toLocaleString()}</h2>
+               <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col justify-center text-center md:text-right">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Total Order Value</p>
+                  <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {formData.total_amount.toLocaleString()}</h2>
                </div>
             </div>
-
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
+ 
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm">
                 Cancel Order
               </Button>
-              <Button onClick={saveOrder} className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center font-bold">
+              <Button onClick={saveOrder} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold">
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update PO' : 'Finalize & Release PO'}
+                {editingId ? 'Update PO' : 'Release PO'}
               </Button>
             </div>
           </CardContent>
@@ -410,12 +411,13 @@ export default function RMOrderPage() {
                <div className="font-black text-slate-900 tracking-tight">₹ {Number(o.total_amount).toLocaleString()}</div>
             </td>
             <td className="px-6 py-4">
-               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
                  o.status === 'RECEIVED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
                  o.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
                  'bg-amber-100 text-amber-700 border border-amber-200'
                }`}>
-                 {o.status}
+                 <span className="hidden md:inline">{o.status}</span>
+                 <span className="md:hidden">{o.status.charAt(0)}</span>
                </span>
             </td>
             <td className="px-6 py-4 text-right space-x-1">

@@ -203,41 +203,41 @@ export default function RawMaterialPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Raw Materials</h1>
-          <p className="text-muted-foreground text-sm font-medium">Manage manufacturing feedstock, grades, and pricing.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Raw Materials</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage manufacturing feedstock, grades, and pricing.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
           {!showForm && (
-            <Button onClick={downloadMaterialList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm font-semibold">
-               <Download className="w-4 h-4 mr-2" /> Export
+            <Button onClick={downloadMaterialList} variant="outline" className="h-10 border-secondary text-secondary hover:bg-secondary/5 rounded-full px-5 shadow-sm font-bold order-2 sm:order-1">
+               <Download className="w-4 h-4 mr-2" /> Export List
             </Button>
           )}
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all active:scale-95"
+              className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold order-1 sm:order-2 active:scale-95 transition-all whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {showForm ? 'Cancel' : 'Add Raw Material'}
+              {showForm ? 'Cancel' : 'New Registration'}
             </Button>
           )}
         </div>
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-bottom-4 duration-500">
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Items</p>
-                  <h3 className="text-3xl font-black text-primary mt-1">{materials.length}</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Items</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{materials.length}</h3>
                 </div>
-                <div className="bg-primary/10 p-3 rounded-2xl">
-                  <Package className="w-6 h-6 text-primary" />
+                <div className="bg-primary/10 p-2 md:p-3 rounded-xl md:rounded-2xl">
+                  <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
               </div>
               <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
@@ -245,35 +245,35 @@ export default function RawMaterialPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+ 
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Global Grades</p>
-                  <h3 className="text-3xl font-black text-blue-600 mt-1">
+                  <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Global Grades</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
                     {new Set(materials.map(m => m.grade).filter(Boolean)).size}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl">
-                  <Layers className="w-6 h-6 text-blue-500" />
+                <div className="bg-blue-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
+                  <Layers className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
                 </div>
               </div>
               <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Standardized manufacturing quality</p>
             </CardContent>
           </Card>
-
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+ 
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all sm:col-span-2 lg:col-span-1">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Price/Unit</p>
-                  <h3 className="text-lg font-black text-emerald-600 mt-1">
+                  <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Price/Unit</p>
+                  <h3 className="text-xl md:text-2xl font-black text-emerald-600 mt-1">
                     ₹ {materials.length > 0 ? (materials.reduce((acc, curr) => acc + (Number(curr.rate_per_unit) || 0), 0) / materials.length).toFixed(2) : '0.00'}
                   </h3>
                 </div>
-                <div className="bg-emerald-50 p-3 rounded-2xl">
-                  <TrendingUp className="w-6 h-6 text-emerald-500" />
+                <div className="bg-emerald-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                 </div>
               </div>
               <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Market rate fluctuations tracking</p>
@@ -283,52 +283,52 @@ export default function RawMaterialPage() {
       )}
 
       {showForm && (
-        <Card className="border-primary/20 shadow-xl animate-in zoom-in-95 duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 p-6">
-            <CardTitle className="text-xl font-bold text-primary">{editingId ? 'Edit Raw Material' : 'New Material Registration'}</CardTitle>
-            <CardDescription>Enter technical specifications and procurement rates.</CardDescription>
+        <Card className="border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl font-bold text-primary">{editingId ? 'Edit Material' : 'New Registration'}</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Enter technical specifications and procurement rates.</CardDescription>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/70 flex items-center">
-                  <Tag className="w-4 h-4 mr-2 text-primary" /> Material Code
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Tag className="w-3 h-3 mr-2 text-primary" /> Material Code
                 </label>
                 <Input 
                   placeholder="e.g. RM-LDPE-001"
                   value={formData.rm_code}
                   onChange={(e) => setFormData({...formData, rm_code: e.target.value})}
-                  className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                  className="h-11 font-bold"
                 />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/70 flex items-center">
-                  <Package className="w-4 h-4 mr-2 text-primary" /> Material Name
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Package className="w-3 h-3 mr-2 text-primary" /> Material Name
                 </label>
                 <Input 
                   placeholder="e.g. Virgin LDPE Granules"
                   value={formData.rm_name}
                   onChange={(e) => setFormData({...formData, rm_name: e.target.value})}
-                  className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                  className="h-11 font-bold"
                 />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/70 flex items-center">
-                  <Layers className="w-4 h-4 mr-2 text-primary" /> Grade
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Layers className="w-3 h-3 mr-2 text-primary" /> Grade
                 </label>
                 <Input 
                   placeholder="e.g. Grade A+"
                   value={formData.grade}
                   onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                  className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                  className="h-11 font-bold"
                 />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/70 flex items-center">
-                  <IndianRupee className="w-4 h-4 mr-2 text-primary" /> Rate per Unit
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit
                 </label>
                 <div className="relative">
                   <Input 
@@ -336,10 +336,10 @@ export default function RawMaterialPage() {
                     placeholder="0.00"
                     value={formData.rate_per_unit}
                     onChange={(e) => setFormData({...formData, rate_per_unit: Number(e.target.value)})}
-                    className="h-11 bg-slate-50 border-slate-200 focus:bg-white pr-20"
+                    className="h-11 font-black text-emerald-600 pr-20"
                   />
-                  <div className="absolute right-2 top-1.5 bottom-1.5 flex items-center bg-slate-200 px-3 rounded text-[10px] font-bold">
-                    PER KG/TON
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
+                    PER {formData.unit_type.toUpperCase()}
                   </div>
                 </div>
               </div>
@@ -381,16 +381,17 @@ export default function RawMaterialPage() {
                   className="w-full h-24 p-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm resize-none"
                   placeholder="Notes about quality, chemical properties or vendor specifics..."
                   value={formData.rm_description}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, rm_description: e.target.value})}
                 />
               </div>
             </div>
 
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="outline" className="px-8 h-11 rounded-full border-slate-200 text-slate-600 hover:bg-slate-50">
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="outline" className="w-full sm:w-auto px-8 h-11 rounded-full border-slate-200 text-slate-600 font-bold hover:bg-slate-50">
                 Discard Changes
               </Button>
-              <Button onClick={saveMaterial} className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center font-bold">
+              <Button onClick={saveMaterial} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center">
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Material' : 'Confirm Registration'}
               </Button>
@@ -413,7 +414,7 @@ export default function RawMaterialPage() {
               <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-bold uppercase">{m.rm_code}</span>
             </td>
             <td className="px-6 py-4">
-              <div className="font-bold text-slate-800">{m.rm_name}</div>
+              <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
               <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
             </td>
             <td className="px-6 py-4">
@@ -437,7 +438,7 @@ export default function RawMaterialPage() {
             <td className="px-6 py-4 text-[11px] text-slate-400">
               {new Date(m.created_at).toLocaleDateString()}
             </td>
-            <td className="px-6 py-4 text-right space-x-1.5">
+            <td className="md:px-6 py-4 text-right space-x-1.5">
               {canEdit && (
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(m)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all">
                   <Edit className="w-3.5 h-3.5" />

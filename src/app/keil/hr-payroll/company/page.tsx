@@ -171,46 +171,44 @@ export default function CompanyInformationPage() {
   };
 
   const renderForm = () => (
-    <Card className="border-blue-100 shadow-md">
-      <CardHeader className="bg-blue-50/50 border-b border-blue-100 pb-4 flex flex-row justify-between items-center">
-        <div>
-          <CardTitle>Edit Company Information</CardTitle>
-          <CardDescription>Enter structural details below.</CardDescription>
+    <Card className="border-blue-100 shadow-2xl animate-in zoom-in-95 duration-300">
+      <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 flex flex-row justify-between items-center">
+        <div className="space-y-1">
+          <CardTitle className="text-xl md:text-2xl font-bold text-primary">Company Profile</CardTitle>
+          <CardDescription className="text-xs md:text-sm">Configure legal and operational identities.</CardDescription>
         </div>
-        <Button variant="ghost" size="icon" onClick={cancelEdit} className="text-slate-500 hover:text-slate-700">
+        <Button variant="ghost" size="icon" onClick={cancelEdit} className="text-slate-500 hover:text-slate-700 rounded-full h-10 w-10">
           <X className="h-5 w-5" />
         </Button>
       </CardHeader>
-      <CardContent className="pt-6">
-        <div className="grid grid-cols-1 gap-6">
-          
-          {/* Section: Core Identification */}
+      <CardContent className="p-4 md:p-8">
+        <div className="space-y-10">
           <div>
-              <h3 className="font-semibold text-slate-800 border-b pb-2 mb-4">Core Identification</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Company Code *</label>
-                    <Input name="company_code" value={formData.company_code} onChange={handleInputChange} placeholder="e.g. MAX" />
+              <h3 className="text-sm font-black text-primary uppercase tracking-widest border-b border-slate-100 pb-3 mb-6">Core Identification</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Company Code *</label>
+                    <Input name="company_code" value={formData.company_code} onChange={handleInputChange} placeholder="e.g. MAX" className="h-11 font-bold" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Company Name *</label>
-                    <Input name="company_name" value={formData.company_name} disabled placeholder="Legal Name" />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Company Name *</label>
+                    <Input name="company_name" value={formData.company_name} disabled placeholder="Legal Name" className="h-11 bg-slate-50 font-black text-primary border-primary/10" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">GST No</label>
-                    <Input name="gst_no" value={formData.gst_no} onChange={handleInputChange} placeholder="Tax Identification" />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">GST No</label>
+                    <Input name="gst_no" value={formData.gst_no} onChange={handleInputChange} placeholder="Tax Identification" className="h-11 font-bold uppercase" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Email Address</label>
-                    <Input name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="hq@company.com" />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+                    <Input name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="hq@company.com" className="h-11 font-medium" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Phone</label>
-                    <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone</label>
+                    <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" className="h-11 font-bold" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Number of Employees</label>
-                    <Input type="number" name="no_of_employees" value={formData.no_of_employees} onChange={handleInputChange} />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Employees</label>
+                    <Input type="number" name="no_of_employees" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
                 </div>
               </div>
           </div>
@@ -365,11 +363,11 @@ export default function CompanyInformationPage() {
   };
 
   return (
-    <div className="p-8 space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+    <div className="p-4 md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl border border-primary/10 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Company Information</h1>
-          <p className="text-slate-500 mt-1">Manage core enterprise identities and operating locations.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Company Information</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage core enterprise identities and operating locations.</p>
         </div>
       </div>
 

@@ -179,20 +179,20 @@ export default function PermissionConsolePage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-primary/10 sticky top-0 z-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-card p-6 rounded-2xl shadow-sm border border-border/40 sticky top-0 z-10 backdrop-blur-md">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
             <ShieldCheck className="w-8 h-8 mr-3 text-secondary" /> 
             {activeEntity.toUpperCase()} Permission Console
           </h1>
-          <p className="text-foreground/60 mt-1">Configure access based on Sidebar Menu structure.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Configure access based on Sidebar Menu structure.</p>
         </div>
-        <div className="w-64">
-           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Active Role</label>
+        <div className="w-64 mt-4 md:mt-0">
+           <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Active Role</label>
            <select 
              value={selectedRoleId}
              onChange={(e) => setSelectedRoleId(e.target.value)}
-             className="w-full h-11 px-4 rounded-xl border border-primary/20 bg-background text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
+             className="w-full h-11 px-4 rounded-xl border border-border bg-muted/20 text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
            >
              <option value="">-- Choose Role --</option>
              {roles
@@ -205,11 +205,11 @@ export default function PermissionConsolePage() {
       </div>
 
       {!selectedRoleId ? (
-        <div className="h-96 flex flex-col items-center justify-center border-4 border-dashed border-primary/5 rounded-[3rem] bg-white/40">
+        <div className="h-96 flex flex-col items-center justify-center border-4 border-dashed border-primary/10 rounded-[3rem] bg-card/40">
            <div className="bg-primary/5 p-8 rounded-full mb-6">
               <Lock className="w-20 h-20 text-primary/20" />
            </div>
-           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest">Select a role to manage access</p>
+           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest text-center">Select a role to manage access</p>
         </div>
       ) : loading ? (
         <div className="h-96 flex items-center justify-center">
@@ -223,7 +223,7 @@ export default function PermissionConsolePage() {
              const parentKey = item.permissionKey || findPermissionKey(item.title, item.title);
              
              return (
-               <Card key={item.title} className="border shadow-2xl overflow-hidden rounded-[2rem] bg-background p-6">
+               <Card key={item.title} className="border-border/40 shadow-2xl overflow-hidden rounded-[2rem] bg-card p-6">
                   <div className="bg-primary p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-[2rem]">
                      <div className="flex items-center">
                         <div className="bg-white/10 p-3 rounded-2xl mr-4 text-secondary">
@@ -259,13 +259,13 @@ export default function PermissionConsolePage() {
                                const childKey = child.permissionKey || findPermissionKey(child.title, item.title);
                                
                                return (
-                                 <tr key={child.title} className="group hover:bg-slate-50 transition-all duration-300">
+                                 <tr key={child.title} className="group hover:bg-muted/30 transition-all duration-300">
                                     <td className="p-6 w-1/3">
                                        <div className="flex items-center">
                                           <ChevronRight className="w-4 h-4 text-primary/20 mr-3 group-hover:translate-x-1 transition-transform" />
                                           <div>
-                                             <div className="font-bold text-slate-800 group-hover:text-primary transition-colors">{child.title}</div>
-                                             <div className="text-[9px] text-slate-400 font-medium tracking-wide uppercase mt-1">{child.path}</div>
+                                             <div className="font-bold text-foreground group-hover:text-primary transition-colors">{child.title}</div>
+                                             <div className="text-[9px] text-muted-foreground font-medium tracking-wide uppercase mt-1">{child.path}</div>
                                           </div>
                                        </div>
                                     </td>
@@ -274,19 +274,19 @@ export default function PermissionConsolePage() {
                                           {childKey ? (
                                              ['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => (
                                                 <div key={field} className="flex flex-col items-center group/check">
-                                                   <span className="text-[9px] text-slate-400 font-bold uppercase mb-2 group-hover/check:text-primary transition-colors">
+                                                   <span className="text-[9px] text-muted-foreground font-bold uppercase mb-2 group-hover/check:text-primary transition-colors">
                                                       {field.replace('can_', '')}
                                                    </span>
                                                    <Checkbox 
                                                       checked={getPermValue(childKey, field)}
                                                       onCheckedChange={() => handleToggle(childKey, field, getPermValue(childKey, field))}
                                                       disabled={!canModify}
-                                                      className="h-6 w-6 border-slate-200 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                      className="h-6 w-6 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                                    />
                                                 </div>
                                              ))
                                           ) : (
-                                             <div className="text-slate-300 text-[10px] font-bold italic py-2">No permission mapping found</div>
+                                             <div className="text-muted-foreground/40 text-[10px] font-bold italic py-2">No permission mapping found</div>
                                           )}
                                        </div>
                                     </td>

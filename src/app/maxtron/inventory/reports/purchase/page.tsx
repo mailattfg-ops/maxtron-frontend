@@ -109,72 +109,87 @@ export default function PurchaseReportPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Purchase Report</h1>
-          <p className="text-muted-foreground text-sm font-medium">Detailed breakdown of all raw material purchases and GRN entries.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Purchase History</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Detailed breakdown of all procurement and intake entries (GRN).</p>
         </div>
-        <Button onClick={downloadCSV} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold">
-          <Download className="w-4 h-4 mr-2" /> Export CSV
-        </Button>
+        <div className="flex items-center w-full md:w-auto">
+          <Button onClick={downloadCSV} className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11 transition-all active:scale-95 whitespace-nowrap">
+            <Download className="w-4 h-4 mr-2" /> Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <Card className="bg-white border-primary/10">
-          <CardContent className="p-5 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total GRNs</p>
-              <h3 className="text-3xl font-black text-primary mt-1">{filtered.length}</h3>
+              <h3 className="text-xl md:text-3xl font-black text-primary mt-1">{filtered.length}</h3>
             </div>
-            <ShoppingCart className="w-8 h-8 text-primary/20" />
+            <div className="bg-primary/10 p-2.5 rounded-xl shrink-0">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-white border-primary/10">
-          <CardContent className="p-5 flex items-center justify-between">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Qty Received</p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">{totalQty.toLocaleString()}</h3>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Intake</p>
+              <h3 className="text-xl md:text-2xl font-black text-emerald-600 mt-1">{totalQty.toLocaleString()}</h3>
             </div>
-            <Package className="w-8 h-8 text-emerald-500/20" />
+            <div className="bg-emerald-50 p-2.5 rounded-xl shrink-0">
+              <Package className="w-5 h-5 text-emerald-500" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-white border-primary/10">
-          <CardContent className="p-5 flex items-center justify-between">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Purchase Value</p>
-              <h3 className="text-xl font-black text-slate-900 mt-1">₹ {totalValue.toLocaleString()}</h3>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Purchase Value</p>
+              <h3 className="text-lg md:text-xl font-black text-slate-900 mt-1">₹ {totalValue.toLocaleString()}</h3>
             </div>
-            <IndianRupee className="w-8 h-8 text-slate-400/40" />
+            <div className="bg-slate-100 p-2.5 rounded-xl shrink-0">
+              <IndianRupee className="w-5 h-5 text-slate-700" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-white border-primary/10">
-          <CardContent className="p-5 flex items-center justify-between">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Unique Suppliers</p>
-              <h3 className="text-3xl font-black text-blue-600 mt-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Global Vendors</p>
+              <h3 className="text-xl md:text-3xl font-black text-blue-600 mt-1">
                 {new Set(filtered.map(p => p.supplier_id)).size}
               </h3>
             </div>
-            <Truck className="w-8 h-8 text-blue-500/20" />
+            <div className="bg-blue-50 p-2.5 rounded-xl shrink-0">
+              <Truck className="w-5 h-5 text-blue-500" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Date Filter */}
-      <div className="bg-white rounded-xl border border-primary/10 p-4 flex flex-wrap gap-4 items-end shadow-sm">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">From Date</label>
-          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 w-44" />
+      <div className="bg-white rounded-xl border border-primary/10 p-4 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">From Date</label>
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-10 w-full rounded-full text-xs" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">To Date</label>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 w-full rounded-full text-xs" />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => fetchReport()} className="flex-1 bg-slate-900 text-white h-10 rounded-full text-xs font-bold">Apply Range</Button>
+            <Button variant="outline" onClick={() => { setDateFrom(''); setDateTo(''); }} className="h-10 rounded-full px-4 text-xs font-bold border-slate-200">
+              Clear
+            </Button>
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To Date</label>
-          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-10 w-44" />
-        </div>
-        <Button variant="outline" onClick={() => { setDateFrom(''); setDateTo(''); }} className="h-10 rounded-full px-5 text-sm">
-          Clear Filter
-        </Button>
       </div>
 
       {/* Table */}

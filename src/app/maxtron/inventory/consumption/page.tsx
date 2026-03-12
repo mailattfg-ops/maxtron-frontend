@@ -204,17 +204,17 @@ export default function ConsumptionPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold text-primary tracking-tight">Material Consumption</h1>
-          <p className="text-muted-foreground text-sm font-medium">Issue raw materials to production floor and track floor-side usage.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Material Consumption</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Issue raw materials to production floor and track floor-side usage.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 w-full md:w-auto">
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 transition-all font-bold"
+              className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 md:h-11 transition-all font-bold whitespace-nowrap"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel Issue' : 'Issue Material'}
@@ -224,48 +224,48 @@ export default function ConsumptionPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-top-4 duration-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in slide-in-from-top-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm border-t-4 border-t-amber-500">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Slips Issued</p>
-                  <h3 className="text-3xl font-black text-amber-600 mt-1">{consumptions.length}</h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-amber-600 mt-1">{consumptions.length}</h3>
                 </div>
-                <div className="bg-amber-50 p-3 rounded-2xl">
-                  <Zap className="w-6 h-6 text-amber-500" />
+                <div className="bg-amber-50 p-2 md:p-3 rounded-2xl shrink-0">
+                  <Zap className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
+ 
           <Card className="bg-white border-primary/10 shadow-sm border-t-4 border-t-blue-500">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Volume Consumed</p>
-                  <h3 className="text-3xl font-black text-blue-600 mt-1">
-                    {consumptions.reduce((acc, curr) => acc + Number(curr.quantity_used), 0).toLocaleString()} <span className="text-sm font-medium">Units</span>
+                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
+                    {consumptions.reduce((acc, curr) => acc + Number(curr.quantity_used), 0).toLocaleString()} <span className="text-[10px] md:text-xs md:text-sm font-bold opacity-70 uppercase">Units</span>
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl">
-                  <Flame className="w-6 h-6 text-blue-500" />
+                <div className="bg-blue-50 p-2 md:p-3 rounded-2xl shrink-0">
+                  <Flame className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-white border-primary/10 shadow-sm border-t-4 border-t-emerald-500">
-            <CardContent className="p-6">
+ 
+          <Card className="hidden sm:block lg:block bg-white border-primary/10 shadow-sm border-t-4 border-t-emerald-500">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Active Processes</p>
-                  <h3 className="text-3xl font-black text-emerald-600 mt-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Processes</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">
                     {new Set(consumptions.map(c => c.process_type)).size}
                   </h3>
                 </div>
-                <div className="bg-emerald-50 p-3 rounded-2xl">
-                  <Activity className="w-6 h-6 text-emerald-500" />
+                <div className="bg-emerald-50 p-2 md:p-3 rounded-2xl shrink-0">
+                  <Activity className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                 </div>
               </div>
             </CardContent>
@@ -275,36 +275,36 @@ export default function ConsumptionPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl animate-in zoom-in-95 duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 p-6">
-            <CardTitle className="text-xl font-bold text-primary flex items-center">
-              <Settings className="w-5 h-5 mr-3 text-secondary animate-spin-slow" />
+          <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl font-bold text-primary flex items-center">
+              <Settings className="w-5 h-5 mr-3 text-secondary" />
               {editingId ? 'Edit Consumption Slip' : 'Material Issuance Slip'}
             </CardTitle>
-            <CardDescription>Release raw materials for specific production processes.</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Release raw materials for specific production processes.</CardDescription>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Slip Number</label>
-                <Input value={formData.consumption_slip_no} readOnly className="h-11 bg-slate-50 font-mono text-sm" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Slip Number</label>
+                <Input value={formData.consumption_slip_no} readOnly className="h-11 bg-slate-50 font-mono text-sm font-bold border-slate-200" />
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Issue Date</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Issue Date</label>
                 <Input 
                   type="date"
                   value={formData.consumption_date}
                   onChange={(e) => setFormData({...formData, consumption_date: e.target.value})}
-                  className="h-11"
+                  className="h-11 font-bold"
                 />
               </div>
 
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Raw Material Link</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Raw Material Link</label>
                 <select 
                   value={formData.rm_id}
                   onChange={(e) => setFormData({...formData, rm_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-black focus:ring-2 focus:ring-primary/20 outline-none"
                 >
                   <option value="">Select feedstock...</option>
                   {materials.map(m => (
@@ -314,15 +314,15 @@ export default function ConsumptionPage() {
                   ))}
                 </select>
               </div>
-
+ 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Quantity Issued</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Quantity Issued</label>
                 <Input 
                   type="number"
                   placeholder="0.00"
                   value={formData.quantity_used}
                   onChange={(e) => setFormData({...formData, quantity_used: Number(e.target.value)})}
-                  className="h-11 text-lg font-black text-secondary"
+                  className="h-11 text-xl font-black text-primary border-primary/20 bg-primary/[0.02]"
                 />
               </div>
 
@@ -370,19 +370,20 @@ export default function ConsumptionPage() {
                 <textarea 
                   className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   value={formData.remarks}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, remarks: e.target.value})}
                   placeholder="e.g. Specific production batch # or quality check bypass notes..."
                 />
               </div>
             </div>
 
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
-                Cancel
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm">
+                Cancel Issue
               </Button>
-              <Button onClick={saveConsumption} className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center font-bold">
+              <Button onClick={saveConsumption} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold">
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Record' : 'Authorize Material Issue'}
+                {editingId ? 'Update Record' : 'Authorize Issue'}
               </Button>
             </div>
           </CardContent>
@@ -423,9 +424,9 @@ export default function ConsumptionPage() {
                  )}
                </div>
             </td>
-            <td className="px-6 py-4">
+            <td className="px-3 md:px-6 py-4">
                <span className="flex items-center text-[10px] font-bold text-emerald-600">
-                <CheckCircle className="w-3 h-3 mr-1" /> CONSUMED
+                <CheckCircle className="w-3 h-3 mr-1" /> <span className="hidden md:inline">CONSUMED</span>
                </span>
             </td>
             <td className="px-6 py-4 text-right space-x-1">

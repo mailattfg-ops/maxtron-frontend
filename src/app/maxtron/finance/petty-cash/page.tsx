@@ -230,6 +230,7 @@ export default function PettyCashPage() {
                                     rows={3}
                                     placeholder="Enter details of expense..."
                                     value={formData.remarks}
+                                    maxLength={50}
                                     onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
                                 />

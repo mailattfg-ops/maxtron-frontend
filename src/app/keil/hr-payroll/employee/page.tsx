@@ -47,7 +47,6 @@ export default function EmployeeInformationPage() {
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
   useEffect(() => {
-    fetchEmployees();
     fetchCompanies();
   }, []);
   
@@ -140,9 +139,11 @@ export default function EmployeeInformationPage() {
           if (activeCo) {
             fetchCategories(activeCo.id);
             fetchUserTypes(activeCo.id);
+            fetchEmployees(activeCo.id);
           } else {
             fetchCategories();
             fetchUserTypes();
+            fetchEmployees();
           }
       }
     } catch (error) {
@@ -150,11 +151,16 @@ export default function EmployeeInformationPage() {
     }
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (coId?: string) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL(activeEntity)}?t=${Date.now()}`, {
+      const baseUrl = API_URL(activeEntity);
+      const url = coId 
+        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
+        : `${baseUrl}?t=${Date.now()}`;
+
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -268,7 +274,7 @@ export default function EmployeeInformationPage() {
         }
         setShowForm(false);
         setEditingId(null);
-        fetchEmployees(); // Refresh list
+        fetchEmployees(formData.company_id); // Refresh list for active company
         // Reset form
         setFormData({
           employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
@@ -341,7 +347,7 @@ export default function EmployeeInformationPage() {
       const data = await res.json();
       if (data.success) {
         success('Employee records purged.');
-        fetchEmployees();
+        fetchEmployees(formData.company_id);
       } else {
         error(data.message || 'Failed to delete');
       }
@@ -395,16 +401,16 @@ export default function EmployeeInformationPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Employee Management</h1>
-          <p className="text-foreground/60 mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {!showForm ? (
             <>
-              <Button onClick={downloadEmployeeList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex shadow-sm">
-                 <Download className="w-4 h-4 mr-2" /> Download Employee List
+              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
+                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
               </Button>
               {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
@@ -419,28 +425,28 @@ export default function EmployeeInformationPage() {
                     company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                   });
                   setShowForm(true);
-                }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
+                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
                   <Plus className="w-5 h-5 mr-2" /> Add Employee
                 </Button>
               )}
             </>
           ) : (
-            <div className="flex space-x-3">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
-                <X className="w-4 h-4 mr-2" /> Cancel
+            <div className="flex space-x-2 md:space-x-3 w-full">
+              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
               </Button>
               {activeTab !== 'personal' && (
-                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="border-foreground/10">
-                  <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
                 </Button>
               )}
               <Button onClick={() => {
                 if (activeTab === 'personal') setActiveTab('qualifications');
                 else if (activeTab === 'qualifications') setActiveTab('financials');
                 else saveEmployee();
-              }} className="bg-primary hover:bg-primary/90 text-white shadow-md">
+              }} className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold">
                 {activeTab === 'financials' ? (
-                  <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}</>
+                  <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Save'}</>
                 ) : (
                   <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
                 )}
@@ -451,55 +457,50 @@ export default function EmployeeInformationPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Staff</p>
-                  <h3 className="text-3xl font-black text-primary mt-1">{employees.length}</h3>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Staff</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{employees.length}</h3>
                 </div>
-                <div className="bg-primary/10 p-3 rounded-2xl">
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
                   <Users className="w-6 h-6 text-primary" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
-                <TrendingUp className="w-3 h-3 mr-1" /> <span>+2 this month</span>
-              </div>
             </CardContent>
           </Card>
-
+ 
           <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Management</p>
-                  <h3 className="text-3xl font-black text-rose-600 mt-1">
-                    {employees.filter(e => e.user_types?.name?.includes('ADMIN')).length}
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
+                    {employees.filter(e => e.employee_categories?.category_name === "Management").length}
                   </h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl">
+                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
                   <Briefcase className="w-6 h-6 text-rose-500" />
                 </div>
               </div>
-              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active System Admins</p>
             </CardContent>
           </Card>
-
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+ 
+          <Card className="hidden lg:block bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
-                  <h3 className="text-3xl font-black text-blue-600 mt-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
+                  <h3 className="text-3xl font-black text-blue-500 mt-1">
                     {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl">
+                <div className="bg-blue-50 p-3 rounded-2xl shrink-0">
                   <TrendingUp className="w-6 h-6 text-blue-500" />
                 </div>
               </div>
-              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Floor & Field Staff</p>
             </CardContent>
           </Card>
         </div>
@@ -519,104 +520,96 @@ export default function EmployeeInformationPage() {
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-            <CardHeader>
-              <CardTitle className="text-xl text-primary flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                {editingId ? 'Edit Personal Details' : 'Personal Details'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Employee Code</label>
-                  <Input 
-                    name="employee_code" 
-                    value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
-                    disabled={true} 
-                    className="bg-slate-50 font-bold text-secondary"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Full Name</label>
-                  <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="John Doe" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Date of Birth</label>
-                  <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
-                </div>
-                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="font-semibold text-primary/80">Communication Address</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <div className="space-y-2 lg:col-span-3">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
-                       <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
-                       <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
-                       <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
-                       <Input value={formData.addresses[0]?.zip_code} onChange={(e) => handleAddressChange(0, 'zip_code', e.target.value)} placeholder="Postal Code" />
-                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="font-semibold text-primary/80">Permanent Address</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <div className="space-y-2 lg:col-span-3">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
-                       <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
-                       <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
-                       <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
-                       <Input value={formData.addresses[1]?.zip_code} onChange={(e) => handleAddressChange(1, 'zip_code', e.target.value)} placeholder="Postal Code" />
-                     </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Guarantor Name</label>
-                  <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} placeholder="Name of Guarantor (if any)" />
-                </div>
-                <div className="space-y-2 col-span-2 md:col-span-1">
-                  <label className="flex items-center space-x-2 text-sm font-medium text-foreground/80 mt-6 cursor-pointer">
-                    <input 
-                       type="checkbox" 
-                       name="is_married" 
-                       checked={formData.is_married} 
-                       onChange={(e) => setFormData({...formData, is_married: e.target.checked})} 
-                       className="rounded border-gray-300 text-primary focus:border-primary focus:ring focus:ring-primary/20"
-                    />
-                    <span>Is Married?</span>
-                  </label>
-                </div>
-                {formData.is_married && (
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-sm font-medium text-foreground/80">Family Details</label>
-                      <textarea 
-                          name="family_details" 
-                          value={formData.family_details} 
-                          onChange={handleInputChange as any} 
-                          placeholder="Spouse / Children details..."
-                          className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      />
+                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+                    <CardTitle className="text-lg md:text-xl text-primary flex items-center">
+                      <UserPlus className="w-5 h-5 mr-3 text-secondary" />
+                      {editingId ? 'Edit Personal Details' : 'Personal Details'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 md:p-6 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee Code</label>
+                        <Input 
+                          name="employee_code" 
+                          value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
+                          disabled={true} 
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-secondary text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
+                        <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
+                        <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} className="h-10 md:h-11" />
+                      </div>
+                      <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2 sm:col-span-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
+                             <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." className="h-10 text-sm" />
+                           </div>
+                           <div className="space-y-2 text-sm">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
+                             <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" className="h-10" />
+                           </div>
+                           <div className="space-y-2 text-sm">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
+                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" className="h-10" />
+                           </div>
+                        </div>
+                      </div>
+ 
+                      <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2 sm:col-span-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
+                             <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." className="h-10 text-sm" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
+                             <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" className="h-10" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
+                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" className="h-10" />
+                           </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Guarantor Name</label>
+                        <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} placeholder="Name of Guarantor" className="h-10" />
+                      </div>
+                      <div className="space-y-2 flex items-center h-full pt-4">
+                        <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
+                          <input 
+                             type="checkbox" 
+                             name="is_married" 
+                             checked={formData.is_married} 
+                             onChange={(e) => setFormData({...formData, is_married: e.target.checked})} 
+                             className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                          />
+                          <span>Is Married?</span>
+                        </label>
+                      </div>
+                      {formData.is_married && (
+                          <div className="space-y-2 col-span-full">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Family Details</label>
+                            <textarea 
+                                name="family_details" 
+                                value={formData.family_details} 
+                                onChange={handleInputChange as any} 
+                                placeholder="Spouse / Children details..."
+                                className="w-full h-20 p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/10 transition-all resize-none"
+                            />
+                          </div>
+                      )}
                     </div>
-                )}
-              </div>
-            </CardContent>
+                  </CardContent>
           </Card>
 
           <Card>
@@ -757,7 +750,7 @@ export default function EmployeeInformationPage() {
                                 <Input value={exp.responsibilities} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'responsibilities', e.target.value)} placeholder="Job duties..." />
                               </div>
                               <Button size="icon" variant="ghost" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_experiences', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -790,13 +783,13 @@ export default function EmployeeInformationPage() {
                         </label>
                         {formData.has_license && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_licenses', { license_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> Add License
+                               <Plus className="w-4 h-4 mr-1" /> <span className='hidden lg:block'>Add License</span>
                             </Button>
                         )}
                       </div>
                       <div className="space-y-3">
                         {formData.has_license && formData.employee_licenses.map((lic, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">License No.</label>
                                 <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} />
@@ -828,13 +821,13 @@ export default function EmployeeInformationPage() {
                         </label>
                         {formData.has_passport && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_passports', { passport_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> Add Passport
+                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Passport</span>
                             </Button>
                         )}
                       </div>
                       <div className="space-y-3">
                         {formData.has_passport && formData.employee_passports.map((ppt, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Passport No.</label>
                                 <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} />
@@ -866,13 +859,13 @@ export default function EmployeeInformationPage() {
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-semibold text-foreground/90">Certifications (Medical / Police)</h3>
                       <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_certificates', { certificate_type: 'MEDICAL', issued: false, issue_date: '', expiry_date: '' })}>
-                         <Plus className="w-4 h-4 mr-1" /> Add Certificate
+                         <Plus className="w-4 h-4 mr-1" /> <span className="hidden md:block">Add Certificate</span>
                       </Button>
                     </div>
                     <div className="space-y-3">
                       {formData.employee_certificates.map((cert, idx) => (
-                         <div key={idx} className="flex gap-3 items-center animate-in fade-in bg-secondary/5 p-3 rounded-lg">
-                            <div className="space-y-1 flex-none w-48">
+                         <div key={idx} className="grid lg:flex gap-3 items-center animate-in fade-in bg-secondary/5 p-3 rounded-lg">
+                            <div className="space-y-1 flex-none w-full lg:w-48">
                               <label className="text-xs text-muted-foreground">Type</label>
                               <select 
                                 value={cert.certificate_type} 
@@ -921,7 +914,7 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
                                 <Input type="number" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} />
@@ -936,7 +929,7 @@ export default function EmployeeInformationPage() {
                               </div>
                               <div className="pt-5">
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_loans', idx)}>
-                                  <X className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                            </div>
@@ -957,7 +950,7 @@ export default function EmployeeInformationPage() {
                               <Input type="number" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} />
                               <Input type="number" placeholder="Balance Recv ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -981,7 +974,7 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
                               <Input type="number" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -997,12 +990,12 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <Input type="number" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} />
                               <Input type="number" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} />
                               <Input type="number" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -1020,7 +1013,7 @@ export default function EmployeeInformationPage() {
       {/* Existing Employees Table Section */}
       {!showForm && (
         <Card className="mt-8">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+          <CardHeader className="grid md:flex flex-row items-center justify-between pb-2 border-b">
           <div>
             <CardTitle className="text-xl text-primary">Registered Employees</CardTitle>
             <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
@@ -1037,7 +1030,7 @@ export default function EmployeeInformationPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="px-0 md:px-6 pt-6">
           {(() => {
             const filteredEmployees = employees
               .filter((emp) => 

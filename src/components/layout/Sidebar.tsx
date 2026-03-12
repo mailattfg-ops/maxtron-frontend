@@ -55,7 +55,7 @@ export const Sidebar = ({
         {/* Close button */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-primary font-bold text-base shadow-inner">
+            <div className="w-8 h-8 bg-white dark:bg-slate-200 rounded-lg flex items-center justify-center text-primary font-bold text-base shadow-inner">
               {activeEntity === 'maxtron' ? 'M' : 'K'}
             </div>
             <h1 className="text-xl font-bold tracking-wider">
@@ -95,7 +95,7 @@ function SidebarContent({
       {!isMobile && (
         <div className="flex flex-col flex-shrink-0 border-b border-primary/20 bg-primary sticky top-0 z-10">
           <div className="p-6 flex items-center justify-center pb-4">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3 text-primary font-bold text-xl shadow-inner transition-colors">
+            <div className="w-10 h-10 bg-white dark:bg-slate-200 rounded-lg flex items-center justify-center mr-3 text-primary font-bold text-xl shadow-inner transition-colors">
               {activeEntity === 'maxtron' ? 'M' : 'K'}
             </div>
             <h1 className="text-2xl font-bold tracking-wider transition-all">

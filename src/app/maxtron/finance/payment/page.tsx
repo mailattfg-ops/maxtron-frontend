@@ -17,6 +17,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function SupplierPaymentPage() {
     const [payments, setPayments] = useState<any[]>([]);
@@ -445,12 +446,11 @@ export default function SupplierPaymentPage() {
                                                     <option value="CHECK">Check / DD</option>
                                                 </select>
                                             </div>
-                                            <input
-                                                type="text"
+                                            <Input
                                                 placeholder="Ref / UTR No"
                                                 value={formData.reference_no}
                                                 onChange={(e) => setFormData({ ...formData, reference_no: e.target.value })}
-                                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
+                                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-11"
                                             />
                                         </div>
                                     </div>
@@ -458,6 +458,7 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Remarks</label>
                                         <textarea
                                             rows={2}
+                                            maxLength={50}
                                             placeholder="Notes about this transaction..."
                                             value={formData.remarks}
                                             onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}

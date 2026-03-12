@@ -1,4 +1,6 @@
-import { Menu, Search, Bell, ChevronDown } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -17,8 +19,16 @@ interface NavbarProps {
 }
 
 export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
-    <header className="h-16 md:h-20 bg-white shadow-sm flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
+    <header className="h-16 md:h-20 bg-card/80 backdrop-blur-md shadow-sm border-b border-border/40 flex items-center justify-between px-4 md:px-8 z-10 shrink-0 sticky top-0">
       <div className="flex items-center">
         <button onClick={onMenuToggle} className="md:hidden mr-4 text-foreground/70 hover:text-primary transition-colors">
           <Menu className="w-6 h-6" />
@@ -36,10 +46,24 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
       </div>
       
       <div className="flex items-center space-x-6">
-        <button className="relative text-foreground/70 hover:text-primary transition-colors">
+        {mounted && false && (
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2.5 rounded-xl bg-accent/50 text-accent-foreground hover:bg-accent transition-all duration-300 group"
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5 group-hover:rotate-45 transition-transform" />
+            ) : (
+              <Moon className="w-5 h-5 group-hover:-rotate-12 transition-transform" />
+            )}
+          </button>
+        )}
+        
+        {/* <button className="relative text-foreground/70 hover:text-primary transition-colors">
           <Bell className="w-6 h-6" />
           <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        </button> */}
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

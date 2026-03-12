@@ -211,7 +211,7 @@ export default function VehicleRepairLogPage() {
     };
 
     return (
-        <div className="p-6 space-y-6 animate-in fade-in duration-500">
+        <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase flex items-center gap-2">

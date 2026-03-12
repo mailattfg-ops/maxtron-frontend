@@ -47,14 +47,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-1/2 bg-primary transform -skew-y-3 origin-top-right -z-10 shadow-lg"></div>
+      <div className="absolute top-0 left-0 w-full h-1/2 bg-primary transform -skew-y-3 origin-top-right -z-10 shadow-lg opacity-90"></div>
 
-      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl flex overflow-hidden border border-foreground/5 animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="w-full max-w-5xl bg-card rounded-3xl shadow-2xl flex overflow-hidden border border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
         {/* Left Side: Information / Branding */}
-        <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground p-12 flex-col justify-between relative overflow-hidden">
+        <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground p-12 flex-col justify-between relative overflow-hidden border-r border-border/10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-bl-full -z-0"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/20 rounded-tr-full -z-0"></div>
           
@@ -84,7 +84,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 p-10 sm:p-14 flex flex-col justify-center bg-white">
+        <div className="w-full lg:w-1/2 p-10 sm:p-14 flex flex-col justify-center bg-card">
           <div className="mb-10 lg:hidden flex items-center space-x-3">
              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-inner">M</div>
              <h1 className="text-2xl font-bold text-primary tracking-wider">Maxtron</h1>
@@ -92,31 +92,33 @@ export default function LoginPage() {
 
           <div className="mb-10 text-center lg:text-left">
             <h2 className="text-3xl font-bold text-foreground mb-2">Welcome Back</h2>
-            <p className="text-foreground/50">Please sign in to your unified workstation</p>
+            <p className="text-muted-foreground">Please sign in to your unified workstation</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium rounded-r-lg flex items-center">
+            <div className="mb-6 p-4 bg-red-500/10 border-l-4 border-red-500 text-red-500 text-sm font-medium rounded-r-lg flex items-center">
               <ShieldCheck className="w-5 h-5 mr-2" />
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground/80">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-foreground/40" />
+                  <User className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <Input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-foreground/10 focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-background/50"
+                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-border focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-muted/20"
                   placeholder="name@maxtron.com"
                 />
               </div>
+            </div>
 
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -125,14 +127,14 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-foreground/40" />
+                  <Lock className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <Input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-foreground/10 focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-background/50"
+                  className="w-full pl-10 pr-4 py-6 rounded-xl border border-border focus-visible:ring-secondary/50 focus-visible:border-secondary transition-all text-base bg-muted/20"
                   placeholder="••••••••"
                 />
               </div>
@@ -154,8 +156,8 @@ export default function LoginPage() {
           </form>
 
           {/* Quick Demo Fill - Remove in production */}
-          <div className="mt-8 text-center border-t border-foreground/10 pt-6">
-             <button onClick={handleDemoFill} className="text-xs font-semibold text-foreground/40 hover:text-foreground transition-colors px-4 py-2 bg-background rounded-full">
+          <div className="mt-8 text-center border-t border-border pt-6">
+             <button onClick={handleDemoFill} className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-4 py-2 bg-muted/30 rounded-full border border-border">
                Auto-fill Admin Credentials for Demo
              </button>
           </div>
@@ -164,7 +166,7 @@ export default function LoginPage() {
       </div>
       
       {/* Footer Text */}
-      <div className="mt-8 text-foreground/50 text-sm font-medium">
+      <div className="mt-8 text-muted-foreground text-sm font-medium">
         © {new Date().getFullYear()} Maxtron Enterprises. All rights reserved.
       </div>
     </div>
