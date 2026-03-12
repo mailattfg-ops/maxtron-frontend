@@ -12,7 +12,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { useRouter } from 'next/navigation';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
+const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
 export default function EmployeeInformationPage() {
   const [showForm, setShowForm] = useState(false);
@@ -43,7 +43,13 @@ export default function EmployeeInformationPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
   const pathname = usePathname();
+  const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchCompanies();
+  }, []);
   
   // Form State mapped to unified `users` database schema
   const [formData, setFormData] = useState({
@@ -77,19 +83,14 @@ export default function EmployeeInformationPage() {
 
   const [categories, setCategories] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchCompanies();
-    fetchCategories();
-    fetchUserTypes();
-  }, []);
-
-
-  const fetchCategories = async () => {
+  const fetchCategories = async (coId?: string) => {
     try {
       const token = localStorage.getItem('token');
-      // We will need to create this route later, for now we will just attempt to fetch it
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/categories`, {
+      const url = coId 
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/categories?company_id=${coId}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/categories`;
+        
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -100,10 +101,14 @@ export default function EmployeeInformationPage() {
     }
   };
 
-  const fetchUserTypes = async () => {
+  const fetchUserTypes = async (coId?: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/user-types?t=${Date.now()}`, {
+      const url = coId
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types?company_id=${coId}&t=${Date.now()}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types?t=${Date.now()}`;
+
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -119,8 +124,7 @@ export default function EmployeeInformationPage() {
   const fetchCompanies = async () => {
     try {
       const token = localStorage.getItem('token');
-      // Switch endpoint to API fetch dynamic registered companies
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/companies`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -132,6 +136,14 @@ export default function EmployeeInformationPage() {
              ...prev, 
              company_id: prev.company_id || (activeCo ? activeCo.id : '') 
           }));
+
+          if (activeCo) {
+            fetchCategories(activeCo.id);
+            fetchUserTypes(activeCo.id);
+          } else {
+            fetchCategories();
+            fetchUserTypes();
+          }
       }
     } catch (error) {
       console.error('Failed to fetch companies', error);
@@ -142,14 +154,13 @@ export default function EmployeeInformationPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}?t=${Date.now()}`, {
+      const res = await fetch(`${API_URL(activeEntity)}?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
       if (data.success) {
-        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase().includes(activeTenant));
-        setEmployees(filtered);
+        setEmployees(data.data);
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error);
@@ -236,7 +247,7 @@ export default function EmployeeInformationPage() {
   const saveEmployee = async () => {
     try {
       const token = localStorage.getItem('token');
-      const url = editingId ? `${API_URL}/${editingId}` : API_URL;
+      const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -322,7 +333,7 @@ export default function EmployeeInformationPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${API_URL(activeEntity)}/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

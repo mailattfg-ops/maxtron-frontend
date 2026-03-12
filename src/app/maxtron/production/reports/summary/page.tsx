@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const BATCH_API = `${API_BASE}/api/maxtron/production/batches`;
@@ -68,25 +69,25 @@ export default function ProductionSummaryReport() {
     }
   };
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (data.length === 0) { info('No data to export.'); return; }
     const headers = ['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Consumed', 'Extrusion Output'];
     const rows = data.map(b => [
-      `"'${b.date}"`,
-      `"${b.batch_number}"`,
-      `"${b.finished_products?.product_name || 'N/A'}"`,
-      `"${b.shift}"`,
-      `"${b.machine_no}"`,
-      `"${b.raw_material_consumed_qty}"`,
-      `"${b.extrusion_output_qty}"`
+      b.date || '',
+      b.batch_number || '',
+      b.finished_products?.product_name || 'N/A',
+      b.shift || '',
+      b.machine_no || '',
+      Number(b.raw_material_consumed_qty || 0),
+      Number(b.extrusion_output_qty || 0)
     ]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `production_summary_${activeTenant.toLowerCase()}.csv`;
-    link.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `production_summary_${activeTenant.toLowerCase()}.xlsx`,
+      sheetName: 'Production Summary'
+    });
   };
 
   const filtered = data.filter(item => {
@@ -104,7 +105,7 @@ export default function ProductionSummaryReport() {
           <p className="text-muted-foreground mt-1">Detailed view of extrusion output and batch efficiency.</p>
         </div>
         <Button onClick={downloadCSV} variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 shadow-sm transition-all duration-300">
-          <Download className="w-4 h-4 text-primary" /> Export CSV
+          <Download className="w-4 h-4 text-primary" /> Export Excel
         </Button>
       </div>
 

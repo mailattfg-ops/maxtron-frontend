@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, CalendarDays, LineChart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 export default function AttendanceReportPage() {
   const pathname = usePathname();
@@ -76,28 +77,28 @@ export default function AttendanceReportPage() {
     presenceRate: records.length > 0 ? Math.round((records.filter(r => r.status === 'PRESENT').length / records.length) * 100) : 0
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
     if (records.length === 0) {
       info('No records to export.');
       return;
     }
     const headers = ['Date', 'Emp Code', 'Name', 'In', 'Out', 'Status', 'Remarks'];
     const rows = records.map(r => [
-      r.date.split('T')[0],
-      r.users?.employee_code,
-      r.users?.name,
-      r.clock_in,
-      r.clock_out,
-      r.status,
-      r.remarks
+      r.date.split('T')[0] || '',
+      r.users?.employee_code || '',
+      r.users?.name || '',
+      r.clock_in || '',
+      r.clock_out || '',
+      r.status || '',
+      r.remarks || ''
     ]);
-    const csv = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Attendance_Report_${startDate}_to_${endDate}.csv`;
-    a.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `Attendance_Report_${startDate}_to_${endDate}.xlsx`,
+      sheetName: 'Attendance Summary'
+    });
     success('Report downloaded.');
   };
 
@@ -109,7 +110,7 @@ export default function AttendanceReportPage() {
           <p className="text-foreground/60 mt-2">Analytics and date-range logs for {activeTenant}.</p>
         </div>
         <Button onClick={downloadExcel} className="bg-secondary text-white hover:bg-secondary/90 rounded-full px-6">
-          <Download className="w-4 h-4 mr-2" /> Download CSV
+          <Download className="w-4 h-4 mr-2" /> Download Excel
         </Button>
       </div>
 

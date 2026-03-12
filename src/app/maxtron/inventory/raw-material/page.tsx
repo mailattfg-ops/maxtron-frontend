@@ -14,6 +14,7 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const RM_API = `${API_BASE}/api/maxtron/raw-materials`;
@@ -177,27 +178,27 @@ export default function RawMaterialPage() {
     }
   };
 
-  const downloadMaterialList = () => {
+  const downloadMaterialList = async () => {
     if (materials.length === 0) {
       info('No data for export.');
       return;
     }
     const headers = ['Code', 'Name', 'Grade', 'Rate', 'Unit', 'Availability'];
     const rows = materials.map(m => [
-      `"${(m.rm_code || '').replace(/"/g, '""')}"`,
-      `"${(m.rm_name || '').replace(/"/g, '""')}"`,
-      `"${(m.grade || '').replace(/"/g, '""')}"`,
-      `"${m.rate_per_unit || 0}"`,
-      `"${(m.unit_type || '').replace(/"/g, '""')}"`,
-      `"${(m.availability || '').replace(/"/g, '""')}"`
+      m.rm_code || '',
+      m.rm_name || '',
+      m.grade || '',
+      Number(m.rate_per_unit || 0),
+      m.unit_type || '',
+      m.availability || ''
     ]);
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `raw_materials_${activeTenant.toLowerCase()}.csv`;
-    link.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `raw_materials_${activeTenant.toLowerCase()}.xlsx`,
+      sheetName: 'Raw Materials'
+    });
     success('Material list exported.');
   };
 

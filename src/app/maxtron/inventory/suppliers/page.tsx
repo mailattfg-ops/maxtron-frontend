@@ -14,6 +14,7 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const SUPPLIER_API = `${API_BASE}/api/maxtron/suppliers`;
@@ -207,25 +208,25 @@ export default function SupplierPage() {
     }
   };
 
-  const downloadVendors = () => {
+  const downloadVendors = async () => {
     if (suppliers.length === 0) return;
     const headers = ['Code', 'Name', 'GST', 'Credit Period', 'Limit', 'Balance', 'Address'];
     const rows = suppliers.map(s => [
-        `"${(s.supplier_code || '').replace(/"/g, '""')}"`,
-        `"${(s.supplier_name || '').replace(/"/g, '""')}"`,
-        `"${(s.gst_no || '').replace(/"/g, '""')}"`,
-        `"${s.credit_period || 0}"`,
-        `"${s.credit_limit || 0}"`,
-        `"${s.opening_balance || 0}"`,
-        `"${(`${s.office_addr_data?.street || ''}, ${s.office_addr_data?.city || ''}, ${s.office_addr_data?.state || ''}`).replace(/"/g, '""')}"`
+        s.supplier_code || '',
+        s.supplier_name || '',
+        s.gst_no || '',
+        Number(s.credit_period || 0),
+        Number(s.credit_limit || 0),
+        Number(s.opening_balance || 0),
+        `${s.office_addr_data?.street || ''}, ${s.office_addr_data?.city || ''}, ${s.office_addr_data?.state || ''}`
     ]);
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `suppliers_${activeTenant.toLowerCase()}.csv`;
-    link.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `suppliers_${activeTenant.toLowerCase()}.xlsx`,
+      sheetName: 'Suppliers'
+    });
   };
 
   return (

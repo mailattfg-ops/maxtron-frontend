@@ -44,8 +44,23 @@ export default function PermissionConsolePage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // 1. Fetch companies first to get current company ID
+      const coRes = await fetch(`${BASE_API}/companies`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const coData = await coRes.json();
+      let rolesUrl = `${BASE_API}/user-types`;
+      
+      if (coData.success && Array.isArray(coData.data)) {
+        const activeTenantName = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+        const activeCo = coData.data.find((c: any) => c.company_name?.toUpperCase().includes(activeTenantName));
+        if (activeCo) {
+          rolesUrl += `?company_id=${activeCo.id}`;
+        }
+      }
+
+      // 2. Fetch roles (filtered) and permissions
       const [rolesRes, permsRes] = await Promise.all([
-        fetch(`${BASE_API}/user-types`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(rolesUrl, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${BASE_API}/permissions`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 

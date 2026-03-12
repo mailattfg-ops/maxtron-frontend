@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -71,7 +72,7 @@ export default function PurchaseReportPage() {
     return acc + items.reduce((a: number, i: any) => a + Number(i.received_quantity || 0), 0);
   }, 0);
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (filtered.length === 0) { info('No data to export.'); return; }
     const rows = filtered.flatMap(p => {
       const formatDate = (dateStr: any) => {
@@ -85,24 +86,25 @@ export default function PurchaseReportPage() {
       const formattedDate = formatDate(p.entry_date);
 
       return (p.purchase_entry_items || []).map((item: any) => [
-        `"${(p.entry_number || '').replace(/"/g, '""')}"`,
-        `"'${formattedDate}"`,
-        `"${(p.supplier_master?.supplier_name || '').replace(/"/g, '""')}"`,
-        `"${(p.invoice_number || '').replace(/"/g, '""')}"`,
-        `"${(item.raw_materials?.rm_name || '').replace(/"/g, '""')}"`,
-        `"${item.ordered_quantity}"`,
-        `"${item.received_quantity}"`,
-        `"${item.rate}"`,
-        `"${item.amount}"`
+        p.entry_number || '',
+        formattedDate,
+        p.supplier_master?.supplier_name || '',
+        p.invoice_number || '',
+        item.raw_materials?.rm_name || '',
+        Number(item.ordered_quantity || 0),
+        Number(item.received_quantity || 0),
+        Number(item.rate || 0),
+        Number(item.amount || 0)
       ]);
     });
     const headers = ['GRN No', 'Date', 'Supplier', 'Invoice No', 'Material', 'Ordered Qty', 'Received Qty', 'Rate', 'Amount'];
-    const csv = [headers.map(h => `"${h}"`), ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `purchase_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `purchase_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Purchase Report'
+    });
     info('Purchase report exported.');
   };
 

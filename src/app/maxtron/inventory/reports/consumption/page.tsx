@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -88,7 +89,7 @@ export default function ConsumptionReportPage() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [filtered]);
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (!filtered.length) { info('No data to export.'); return; }
     const rows = filtered.map(c => {
       const formatDate = (dateStr: any) => {
@@ -100,23 +101,25 @@ export default function ConsumptionReportPage() {
         } catch (e) { return dateStr; }
       };
       return [
-        `"${(c.consumption_slip_no || '').replace(/"/g, '""')}"`,
-        `"'${formatDate(c.consumption_date)}"`,
-        `"${(c.raw_materials?.rm_name || '').replace(/"/g, '""')}"`,
-        `"${(c.raw_materials?.rm_code || '').replace(/"/g, '""')}"`,
-        `"${c.quantity_used}"`,
-        `"${(c.raw_materials?.unit_type || '').replace(/"/g, '""')}"`,
-        `"${(c.process_type || '').replace(/"/g, '""')}"`,
-        `"${(c.machine_no || '').replace(/"/g, '""')}"`,
-        `"${(c.remarks || '').replace(/"/g, '""')}"`
+        c.consumption_slip_no || '',
+        formatDate(c.consumption_date),
+        c.raw_materials?.rm_name || '',
+        c.raw_materials?.rm_code || '',
+        Number(c.quantity_used || 0),
+        c.raw_materials?.unit_type || '',
+        c.process_type || '',
+        c.machine_no || '',
+        c.remarks || ''
       ];
     });
     const headers = ['Slip No', 'Date', 'Material', 'Code', 'Qty Used', 'Unit', 'Process', 'Machine', 'Remarks'];
-    const blob = new Blob([[headers.map(h => `"${h}"`), ...rows].map(r => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `consumption_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `consumption_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Consumption Report'
+    });
     info('Report exported.');
   };
 

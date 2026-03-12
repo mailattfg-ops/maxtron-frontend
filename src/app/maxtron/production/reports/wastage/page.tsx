@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const WASTAGE_API = `${API_BASE}/api/maxtron/production/wastage`;
@@ -68,23 +69,23 @@ export default function WastageAnalysisReport() {
     }
   };
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (data.length === 0) { info('No data to export.'); return; }
     const headers = ['Date', 'Stage', 'Waste Qty', 'Reason', 'Remarks'];
     const rows = data.map(w => [
-      `"'${w.date}"`,
-      `"${w.stage}"`,
-      `"${w.wastage_qty}"`,
-      `"${w.reason_code}"`,
-      `"${(w.remarks || '').replace(/"/g, '""')}"`
+      w.date || '',
+      w.stage || '',
+      Number(w.wastage_qty || 0),
+      w.reason_code || '',
+      w.remarks || ''
     ]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `wastage_analysis_${activeTenant.toLowerCase()}.csv`;
-    link.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `wastage_analysis_${activeTenant.toLowerCase()}.xlsx`,
+      sheetName: 'Wastage Report'
+    });
   };
 
   const filtered = data.filter(item => {
@@ -104,7 +105,7 @@ export default function WastageAnalysisReport() {
           <p className="text-muted-foreground mt-1 text-rose-700/60">Report on material loss and scrap generation during production phases.</p>
         </div>
         <Button onClick={downloadCSV} variant="outline" className="gap-2 border-rose-200 hover:bg-rose-50 text-rose-700 shadow-sm transition-all hover:border-rose-300">
-          <Download className="w-4 h-4 text-rose-600" /> Export Analysis
+          <Download className="w-4 h-4 text-rose-600" /> Export Excel
         </Button>
       </div>
 

@@ -148,8 +148,8 @@ export default function KeilUserTypesPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">KEIL User Roles</h1>
-          <p className="text-foreground/60 mt-2">Manage system access levels for KEIL Operations.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">{activeTenant} User Roles</h1>
+          <p className="text-foreground/60 mt-2">Manage system access levels for {activeTenant} Operations.</p>
         </div>
         <Button 
           onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '', company_id: currentCompanyId }); }}
@@ -196,8 +196,8 @@ export default function KeilUserTypesPage() {
       )}
 
       <TableView
-        title="Active KEIL Roles"
-        description="List of all roles defined for the KEIL entity."
+        title={`Active ${activeTenant} Roles`}
+        description={`List of all roles available for the ${activeTenant} entity.`}
         headers={['Role Name', 'Description', 'Actions']}
         data={userTypes}
         loading={loading}
@@ -211,12 +211,18 @@ export default function KeilUserTypesPage() {
             </td>
             <td className="p-4 text-sm text-muted-foreground">{role.description || '-'}</td>
             <td className="p-4 text-right space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {role.company_id ? (
+                <>
+                  <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
+              )}
             </td>
           </tr>
         )}

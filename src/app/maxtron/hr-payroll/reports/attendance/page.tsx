@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, CalendarDays, LineChart, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const ATTENDANCE_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/attendance`;
 
@@ -74,7 +75,7 @@ export default function AttendanceReportPage() {
     presenceRate: records.length > 0 ? Math.round((records.filter(r => r.status === 'PRESENT').length / records.length) * 100) : 0
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
     if (records.length === 0) {
       info('No records to export.');
       return;
@@ -90,22 +91,22 @@ export default function AttendanceReportPage() {
         } catch (e) { return dateStr; }
       };
       return [
-        `"'${formatDate(r.date)}"`,
-        `"${(r.users?.employee_code || '').replace(/"/g, '""')}"`,
-        `"${(r.users?.name || '').replace(/"/g, '""')}"`,
-        `"${(r.clock_in || '').replace(/"/g, '""')}"`,
-        `"${(r.clock_out || '').replace(/"/g, '""')}"`,
-        `"${(r.status || '').replace(/"/g, '""')}"`,
-        `"${(r.remarks || '').replace(/"/g, '""')}"`
+        formatDate(r.date),
+        r.users?.employee_code || '',
+        r.users?.name || '',
+        r.clock_in || '',
+        r.clock_out || '',
+        r.status || '',
+        r.remarks || ''
       ];
     });
-    const csv = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Attendance_Report_${startDate}_to_${endDate}.csv`;
-    a.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `Attendance_Report_${startDate}_to_${endDate}.xlsx`,
+      sheetName: 'Attendance Summary'
+    });
     success('Report downloaded.');
   };
 
@@ -117,7 +118,7 @@ export default function AttendanceReportPage() {
           <p className="text-foreground/60 mt-2">Analytics and date-range logs for {activeTenant}.</p>
         </div>
         <Button onClick={downloadExcel} className="bg-secondary text-white hover:bg-secondary/90 rounded-full px-6 w-full sm:w-auto h-11 sm:h-auto">
-          <Download className="w-4 h-4 mr-2" /> Download CSV
+          <Download className="w-4 h-4 mr-2" /> Download Excel
         </Button>
       </div>
 

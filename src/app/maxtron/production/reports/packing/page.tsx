@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const PACKING_API = `${API_BASE}/api/maxtron/production/packing`;
@@ -68,27 +69,27 @@ export default function PackingSummaryReport() {
     }
   };
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (data.length === 0) { info('No data to export.'); return; }
     const headers = ['Date', 'Batch No', 'Product', 'Bundle Count', 'Qty / Bundle', 'Total Packed'];
     const rows = data.map(p => {
       const batch = p.production_conversions?.production_batches;
       return [
-        `"'${p.date}"`,
-        `"${batch?.batch_number || 'N/A'}"`,
-        `"${batch?.finished_products?.product_name || 'N/A'}"`,
-        `"${p.bundle_count}"`,
-        `"${p.qty_per_bundle}"`,
-        `"${p.total_packed_qty}"`
+        p.date || '',
+        batch?.batch_number || 'N/A',
+        batch?.finished_products?.product_name || 'N/A',
+        Number(p.bundle_count || 0),
+        Number(p.qty_per_bundle || 0),
+        Number(p.total_packed_qty || 0)
       ];
     });
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `packing_summary_${activeTenant.toLowerCase()}.csv`;
-    link.click();
+    
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `packing_summary_${activeTenant.toLowerCase()}.xlsx`,
+      sheetName: 'Packing Summary'
+    });
   };
 
   const filtered = data.filter(item => {
@@ -106,7 +107,7 @@ export default function PackingSummaryReport() {
           <p className="text-muted-foreground mt-1 text-emerald-700/60">Report on finished goods bundling and inventory readiness.</p>
         </div>
         <Button onClick={downloadCSV} variant="outline" className="gap-2 border-emerald-200 hover:bg-emerald-50 text-emerald-700 shadow-sm transition-all">
-          <Download className="w-4 h-4" /> Export CSV
+          <Download className="w-4 h-4" /> Export Excel
         </Button>
       </div>
 

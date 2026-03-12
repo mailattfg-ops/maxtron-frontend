@@ -23,7 +23,7 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
         <button onClick={onMenuToggle} className="md:hidden mr-4 text-foreground/70 hover:text-primary transition-colors">
           <Menu className="w-6 h-6" />
         </button>
-        <div className="relative hidden sm:block">
+        {/* <div className="relative hidden sm:block">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-foreground/40">
             <Search className="w-4 h-4" />
           </div>
@@ -32,7 +32,7 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
             className="bg-background border-none rounded-full pl-10 pr-4 py-5 w-48 md:w-64 focus-visible:ring-secondary/50 transition-all text-sm" 
             placeholder="Search resources..."
           />
-        </div>
+        </div> */}
       </div>
       
       <div className="flex items-center space-x-6">

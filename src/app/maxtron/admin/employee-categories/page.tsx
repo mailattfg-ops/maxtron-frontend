@@ -18,11 +18,11 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-const CATEGORIES_API = `${API_BASE}/api/maxtron/categories`;
-
 export default function EmployeeCategoriesPage() {
     const pathname = usePathname();
+    const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
     const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+    const CATEGORIES_API = `${API_BASE}/api/${activeEntity}/categories`;
     
     const [categories, setCategories] = useState<any[]>([]);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
@@ -44,7 +44,7 @@ export default function EmployeeCategoriesPage() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
+            const compRes = await fetch(`${API_BASE}/api/${activeEntity}/companies`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const compData = await compRes.json();
@@ -203,8 +203,14 @@ export default function EmployeeCategoriesPage() {
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    {cat.company_id ? (
+                                        <>
+                                            <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                        </>
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
+                                    )}
                                 </div>
                             </td>
                         </tr>

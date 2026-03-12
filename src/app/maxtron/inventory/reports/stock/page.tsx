@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -54,25 +55,25 @@ export default function StockListPage() {
     }
   };
 
-  const downloadStockReport = () => {
+  const downloadStockReport = async () => {
     if (stock.length === 0) return;
     const headers = ['RM Code', 'Material Name', 'Grade', 'Total Purchased', 'Total Consumed', 'Balance Stock', 'Unit'];
     const rows = stock.map(s => [
-      `"${(s.rm_code || '').replace(/"/g, '""')}"`,
-      `"${(s.rm_name || '').replace(/"/g, '""')}"`,
-      `"${(s.grade || '').replace(/"/g, '""')}"`,
-      `"${s.purchased || 0}"`,
-      `"${s.consumed || 0}"`,
-      `"${s.balance || 0}"`,
-      `"${(s.unit_type || '').replace(/"/g, '""')}"`
+      s.rm_code || '',
+      s.rm_name || '',
+      s.grade || '',
+      Number(s.purchased || 0),
+      Number(s.consumed || 0),
+      Number(s.balance || 0),
+      s.unit_type || ''
     ]);
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `stock_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    
+    await exportToExcel({
+        headers,
+        rows,
+        filename: `stock_report_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+        sheetName: 'Stock List'
+    });
     info('Stock report exported successfully.');
   };
 
