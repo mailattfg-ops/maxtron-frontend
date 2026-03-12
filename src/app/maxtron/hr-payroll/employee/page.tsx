@@ -127,7 +127,7 @@ export default function EmployeeInformationPage() {
       const data = await res.json();
       if (data.success) { 
           setCompanies(data.data); 
-          const activeCo = data.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+          const activeCo = data.data.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
           setFormData(prev => ({ 
              ...prev, 
              company_id: prev.company_id || (activeCo ? activeCo.id : '') 
@@ -148,7 +148,7 @@ export default function EmployeeInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase() === activeTenant);
+        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase().includes(activeTenant));
         setEmployees(filtered);
       }
     } catch (error) {
@@ -398,7 +398,7 @@ export default function EmployeeInformationPage() {
               {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
                   setEditingId(null);
-                  const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+                  const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
                   setFormData({ 
                     employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
                     addresses: [
@@ -498,7 +498,7 @@ export default function EmployeeInformationPage() {
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="overflow-x-auto mb-6">
-              <TabsList className="flex w-full min-w-[480px]">
+              <TabsList className="flex w-full min-w-[480px] overflow-hidden">
                 <TabsTrigger value="personal" className="flex-1"><UserPlus className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Basic Details</span><span className="sm:hidden">Basic</span></TabsTrigger>
                 <TabsTrigger value="qualifications" className="flex-1"><Briefcase className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Professional & Experience</span><span className="sm:hidden">Work</span></TabsTrigger>
                 <TabsTrigger value="financials" className="flex-1"><FileText className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Financials & Docs</span><span className="sm:hidden">Finance</span></TabsTrigger>

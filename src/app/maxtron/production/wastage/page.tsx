@@ -157,13 +157,13 @@ export default function DamagesWastagePage() {
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Damages & Wastage</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Damages </h1>
           <p className="text-muted-foreground mt-1">Track scrap and damaged goods during various production phases.</p>
         </div>
         <div className="flex items-center gap-3">
           {!showForm && canCreate && (
             <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
-              <Plus className="w-4 h-4" /> Record New Wastage
+              <Plus className="w-4 h-4" /> Record New Damages
             </Button>
           )}
         </div>
@@ -197,7 +197,7 @@ export default function DamagesWastagePage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-rose-600" /> Wastage Qty (Kg)</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-rose-600" />Damages Qty (Kg)</label>
                 <Input type="number" step="0.001" placeholder="0.000" value={formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">

@@ -371,15 +371,15 @@ export default function MarketingVisitsPage() {
                   {customers.map(cust => (
                     <option key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</option>
                   ))}
-                  <option value="New Customer">+ Add New (Type below)</option>
+                  {/* <option value="New Customer">+ Add New (Type below)</option> */}
                 </select>
-                {formData.customer_name === 'New Customer' && (
+                {/* {formData.customer_name === 'New Customer' && (
                   <Input 
                     placeholder="Enter new company name"
                     className="mt-2"
                     onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
                   />
-                )}
+                )} */}
               </div>
 
               <div className="space-y-2">

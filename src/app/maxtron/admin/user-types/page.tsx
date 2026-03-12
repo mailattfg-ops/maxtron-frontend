@@ -9,35 +9,62 @@ import { Plus, Edit, Trash2, Shield, Save, X } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { usePermission } from '@/hooks/usePermission';
 
-export default function UserTypesPage() {
-  const { hasPermission } = usePermission();
-  const canCreate = hasPermission('admin_permissions', 'create');
-  const canEdit = hasPermission('admin_permissions', 'edit');
-  const canDelete = hasPermission('admin_permissions', 'delete');
+export default function KeilUserTypesPage() {
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
   const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types`;
 
   const [userTypes, setUserTypes] = useState<any[]>([]);
+  const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', company_id: '' });
 
   const { success, error } = useToast();
   const { confirm } = useConfirm();
 
   useEffect(() => {
-    fetchUserTypes();
+    fetchInitialData();
   }, []);
 
-  const fetchUserTypes = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
+        const token = localStorage.getItem('token');
+        const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const compData = await compRes.json();
+        
+        let coId = '';
+        if (compData.success && Array.isArray(compData.data)) {
+            const activeCo = compData.data.find((c: any) => 
+                c.company_name?.toUpperCase().includes(activeTenant)
+            );
+            if (activeCo) {
+                coId = activeCo.id;
+                setCurrentCompanyId(coId);
+                setFormData(prev => ({ ...prev, company_id: coId }));
+            }
+        }
+
+        if (coId) {
+            await fetchUserTypes(coId);
+        }
+    } catch (err) {
+        console.error('Error fetching initial data:', err);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const fetchUserTypes = async (coId: string) => {
+    try {
       const token = localStorage.getItem('token');
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}?company_id=${coId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -46,8 +73,6 @@ export default function UserTypesPage() {
       }
     } catch (err) {
       error('Failed to fetch user roles');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -76,8 +101,8 @@ export default function UserTypesPage() {
         success(editingId ? 'Role updated successfully' : 'Role created successfully');
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: '', description: '' });
-        fetchUserTypes();
+        setFormData({ name: '', description: '', company_id: currentCompanyId });
+        fetchUserTypes(currentCompanyId);
       } else {
         error(data.message || 'Action failed');
       }
@@ -103,7 +128,7 @@ export default function UserTypesPage() {
         const data = await res.json();
         if (data.success) {
           success('Role deleted');
-          fetchUserTypes();
+          fetchUserTypes(currentCompanyId);
         } else {
           error(data.message);
         }
@@ -115,7 +140,7 @@ export default function UserTypesPage() {
 
   const startEdit = (role: any) => {
     setEditingId(role.id);
-    setFormData({ name: role.name, description: role.description || '' });
+    setFormData({ name: role.name, description: role.description || '', company_id: currentCompanyId });
     setShowForm(true);
   };
 
@@ -123,18 +148,16 @@ export default function UserTypesPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">User Roles</h1>
-          <p className="text-foreground/60 mt-2">Manage system access levels and role definitions.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">KEIL User Roles</h1>
+          <p className="text-foreground/60 mt-2">Manage system access levels for KEIL Operations.</p>
         </div>
-        {canCreate && (
-          <Button 
-            onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '' }); }}
-            className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 shadow-lg shadow-primary/20"
-          >
-            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-            {showForm ? 'Cancel' : 'Add New Role'}
-          </Button>
-        )}
+        <Button 
+          onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '', company_id: currentCompanyId }); }}
+          className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 shadow-lg shadow-primary/20"
+        >
+          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+          {showForm ? 'Cancel' : 'Add New Role'}
+        </Button>
       </div>
 
       {showForm && (
@@ -149,10 +172,9 @@ export default function UserTypesPage() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80">Role Name</label>
                 <Input 
-                  placeholder="e.g. Production Manager"
+                  placeholder="e.g. Project Lead"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  disabled={editingId ? !canEdit : !canCreate}
                 />
               </div>
               <div className="space-y-2">
@@ -161,16 +183,11 @@ export default function UserTypesPage() {
                   placeholder="Role responsibilities..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={editingId ? !canEdit : !canCreate}
                 />
               </div>
             </div>
             <div className="flex justify-end pt-4">
-              <Button 
-                onClick={handleCreateOrUpdate} 
-                className="bg-secondary text-white hover:bg-secondary/90 px-8 rounded-full"
-                disabled={editingId ? !canEdit : !canCreate}
-              >
+              <Button onClick={handleCreateOrUpdate} className="bg-secondary text-white hover:bg-secondary/90 px-8 rounded-full">
                 <Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Role' : 'Save Role'}
               </Button>
             </div>
@@ -179,8 +196,8 @@ export default function UserTypesPage() {
       )}
 
       <TableView
-        title="Active Roles"
-        description="List of all roles defined in the system."
+        title="Active KEIL Roles"
+        description="List of all roles defined for the KEIL entity."
         headers={['Role Name', 'Description', 'Actions']}
         data={userTypes}
         loading={loading}
@@ -194,16 +211,12 @@ export default function UserTypesPage() {
             </td>
             <td className="p-4 text-sm text-muted-foreground">{role.description || '-'}</td>
             <td className="p-4 text-right space-x-2">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
+              <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                <Edit className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
             </td>
           </tr>
         )}

@@ -13,26 +13,58 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 export default function KeilUserTypesPage() {
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
   const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types`;
 
   const [userTypes, setUserTypes] = useState<any[]>([]);
+  const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', company_id: '' });
 
   const { success, error } = useToast();
   const { confirm } = useConfirm();
 
   useEffect(() => {
-    fetchUserTypes();
+    fetchInitialData();
   }, []);
 
-  const fetchUserTypes = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
+        const token = localStorage.getItem('token');
+        const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const compData = await compRes.json();
+        
+        let coId = '';
+        if (compData.success && Array.isArray(compData.data)) {
+            const activeCo = compData.data.find((c: any) => 
+                c.company_name?.toUpperCase().includes(activeTenant)
+            );
+            if (activeCo) {
+                coId = activeCo.id;
+                setCurrentCompanyId(coId);
+                setFormData(prev => ({ ...prev, company_id: coId }));
+            }
+        }
+
+        if (coId) {
+            await fetchUserTypes(coId);
+        }
+    } catch (err) {
+        console.error('Error fetching initial data:', err);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const fetchUserTypes = async (coId: string) => {
+    try {
       const token = localStorage.getItem('token');
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}?company_id=${coId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -41,8 +73,6 @@ export default function KeilUserTypesPage() {
       }
     } catch (err) {
       error('Failed to fetch user roles');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -71,8 +101,8 @@ export default function KeilUserTypesPage() {
         success(editingId ? 'Role updated successfully' : 'Role created successfully');
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: '', description: '' });
-        fetchUserTypes();
+        setFormData({ name: '', description: '', company_id: currentCompanyId });
+        fetchUserTypes(currentCompanyId);
       } else {
         error(data.message || 'Action failed');
       }
@@ -98,7 +128,7 @@ export default function KeilUserTypesPage() {
         const data = await res.json();
         if (data.success) {
           success('Role deleted');
-          fetchUserTypes();
+          fetchUserTypes(currentCompanyId);
         } else {
           error(data.message);
         }
@@ -110,7 +140,7 @@ export default function KeilUserTypesPage() {
 
   const startEdit = (role: any) => {
     setEditingId(role.id);
-    setFormData({ name: role.name, description: role.description || '' });
+    setFormData({ name: role.name, description: role.description || '', company_id: currentCompanyId });
     setShowForm(true);
   };
 
@@ -122,7 +152,7 @@ export default function KeilUserTypesPage() {
           <p className="text-foreground/60 mt-2">Manage system access levels for KEIL Operations.</p>
         </div>
         <Button 
-          onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '' }); }}
+          onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '', company_id: currentCompanyId }); }}
           className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 shadow-lg shadow-primary/20"
         >
           {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}

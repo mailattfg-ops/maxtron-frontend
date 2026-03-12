@@ -40,7 +40,7 @@ export default function AttendancePage() {
   const [formData, setFormData] = useState({
     employee_id: '',
     date: new Date().toISOString().split('T')[0],
-    shift: 'GENERAL',
+    shift: 'DAY',
     clock_in: '',
     clock_out: '',
     status: 'PRESENT',
@@ -115,7 +115,7 @@ export default function AttendancePage() {
       employee_name: emp.name,
       employee_code: emp.employee_code,
       date: today,
-      shift: 'GENERAL',
+      shift: 'DAY',
       status: 'PRESENT',
       clock_in: '09:00',
       clock_out: '18:00',
@@ -127,16 +127,20 @@ export default function AttendancePage() {
   };
 
   const saveBulkAttendance = async () => {
-
     const token = localStorage.getItem('token');
     try {
+      // Strip out non-database fields like employee_name/code before sending
+      const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
+        ...rest
+      }));
+
       const res = await fetch(`${ATTENDANCE_API}/bulk`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ attendanceList: bulkData })
+        body: JSON.stringify({ attendanceList: cleanList })
       });
       const data = await res.json();
       if (data.success) {
@@ -193,7 +197,7 @@ export default function AttendancePage() {
     setFormData({
       employee_id: '',
       date: new Date().toISOString().split('T')[0],
-      shift: 'GENERAL',
+      shift: 'DAY',
       clock_in: '',
       clock_out: '',
       status: 'PRESENT',
@@ -366,7 +370,7 @@ export default function AttendancePage() {
                   onChange={(e) => setFormData({...formData, shift: e.target.value})}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
                 >
-                  <option value="GENERAL">General Shift</option>
+                  {/* <option value="GENERAL">General Shift</option> */}
                   <option value="DAY">Day Shift</option>
                   <option value="NIGHT">Night Shift</option>
                 </select>
@@ -484,7 +488,7 @@ export default function AttendancePage() {
                            }}
                            className="h-8 rounded border bg-white px-2 text-xs"
                          >
-                           <option value="GENERAL">General</option>
+                           {/* <option value="GENERAL">General</option> */}
                            <option value="DAY">Day</option>
                            <option value="NIGHT">Night</option>
                          </select>

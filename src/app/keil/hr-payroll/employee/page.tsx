@@ -12,14 +12,10 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { useRouter } from 'next/navigation';
 
+const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
+
 export default function EmployeeInformationPage() {
-  const pathname = usePathname();
-  const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
-  const activeTenant = activeEntity.toUpperCase();
-  const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
-
   const [showForm, setShowForm] = useState(false);
-
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('personal');
   const [newEmployeePopup, setNewEmployeePopup] = useState<{username: string, password: string} | null>(null);
@@ -34,18 +30,22 @@ export default function EmployeeInformationPage() {
   
   // Page access check
   useEffect(() => {
-    // We check view permission
-    const canView = hasPermission('hr_employee_view', 'view');
+    // We check view permission, but if they are already on this page via sidebar, 
+    // it's likely they have it. This is a secondary layer.
+    const canView = hasPermission('hr_employee_view', 'can_view');
+    // If the hook is still loading user data (user is null initially), we might want to wait.
+    // However, sidebar already handles the main gate.
   }, [hasPermission]);
   
   // Table Pagination and Filtering States
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
+  
+  const pathname = usePathname();
+  const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
   
   // Form State mapped to unified `users` database schema
-
   const [formData, setFormData] = useState({
     employee_code: '',
     name: '',
@@ -89,8 +89,7 @@ export default function EmployeeInformationPage() {
     try {
       const token = localStorage.getItem('token');
       // We will need to create this route later, for now we will just attempt to fetch it
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/categories`, {
-
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/categories`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -104,8 +103,7 @@ export default function EmployeeInformationPage() {
   const fetchUserTypes = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types?t=${Date.now()}`, {
-
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/user-types?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -122,15 +120,14 @@ export default function EmployeeInformationPage() {
     try {
       const token = localStorage.getItem('token');
       // Switch endpoint to API fetch dynamic registered companies
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/companies`, {
-
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
       if (data.success) { 
           setCompanies(data.data); 
-          const activeCo = data.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+          const activeCo = data.data.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
           setFormData(prev => ({ 
              ...prev, 
              company_id: prev.company_id || (activeCo ? activeCo.id : '') 
@@ -151,7 +148,7 @@ export default function EmployeeInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase() === activeTenant);
+        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase().includes(activeTenant));
         setEmployees(filtered);
       }
     } catch (error) {
@@ -193,22 +190,37 @@ export default function EmployeeInformationPage() {
       return;
     }
     
-    // Generate CSV content with all available details
     const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport'];
-    const rows = employees.map(emp => [
-      `"${emp.employee_code || 'SYS'}"`,
-      `"${emp.name}"`,
-      `"${emp.username}"`,
-      `"${emp.user_types?.name || 'User'}"`,
-      `"${emp.companies?.company_name || 'N/A'}"`,
-      `"${emp.date_of_birth ? emp.date_of_birth.split('T')[0] : 'N/A'}"`,
-      `"${emp.guarantor_name || 'N/A'}"`,
-      `"${emp.is_married ? 'Yes' : 'No'}"`,
-      `"${emp.has_license ? 'Yes' : 'No'}"`,
-      `"${emp.has_passport ? 'Yes' : 'No'}"`
-    ]);
+    const rows = employees.map(emp => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}-${month}-${year}`;
+        } catch (e) {
+          return dateStr;
+        }
+      };
+
+      return [
+        `"${(emp.employee_code || 'SYS').replace(/"/g, '""')}"`,
+        `"${(emp.name || '').replace(/"/g, '""')}"`,
+        `"${(emp.username || '').replace(/"/g, '""')}"`,
+        `"${(emp.user_types?.name || 'User').replace(/"/g, '""')}"`,
+        `"${(emp.companies?.company_name || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(emp.date_of_birth)}'"`, // Prepend single quote after the double quote to force text in Excel
+        `"${(emp.guarantor_name || 'N/A').replace(/"/g, '""')}"`,
+        `"${emp.is_married ? 'Yes' : 'No'}"`,
+        `"${emp.has_license ? 'Yes' : 'No'}"`,
+        `"${emp.has_passport ? 'Yes' : 'No'}"`
+      ];
+    });
     
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -386,7 +398,7 @@ export default function EmployeeInformationPage() {
               {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
                   setEditingId(null);
-                  const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
+                  const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
                   setFormData({ 
                     employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
                     addresses: [
@@ -485,11 +497,13 @@ export default function EmployeeInformationPage() {
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="personal"><UserPlus className="w-4 h-4 mr-2" /> Basic Details</TabsTrigger>
-              <TabsTrigger value="qualifications"><Briefcase className="w-4 h-4 mr-2" /> Professional & Experience</TabsTrigger>
-              <TabsTrigger value="financials"><FileText className="w-4 h-4 mr-2" /> Financials & Docs</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto mb-6">
+              <TabsList className="flex w-full min-w-[480px] overflow-hidden">
+                <TabsTrigger value="personal" className="flex-1"><UserPlus className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Basic Details</span><span className="sm:hidden">Basic</span></TabsTrigger>
+                <TabsTrigger value="qualifications" className="flex-1"><Briefcase className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Professional & Experience</span><span className="sm:hidden">Work</span></TabsTrigger>
+                <TabsTrigger value="financials" className="flex-1"><FileText className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Financials & Docs</span><span className="sm:hidden">Finance</span></TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -501,10 +515,15 @@ export default function EmployeeInformationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Employee Code</label>
-                  <Input name="employee_code" value={formData.employee_code} onChange={handleInputChange} placeholder="EMP-001" />
+                  <Input 
+                    name="employee_code" 
+                    value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
+                    disabled={true} 
+                    className="bg-slate-50 font-bold text-secondary"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground/80">Full Name</label>

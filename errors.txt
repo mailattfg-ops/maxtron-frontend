@@ -1,0 +1,12 @@
+src/app/keil/fleet/logs/page.tsx(346,22): error TS2741: Property 'searchFields' is missing in type '{ title: string; description: string; headers: string[]; data: any[]; loading: boolean; renderRow: (l: any) => Element; }' but required in type 'TableViewProps<any>'.
+src/app/keil/fleet/repairs/page.tsx(325,22): error TS2741: Property 'searchFields' is missing in type '{ title: string; description: string; headers: string[]; data: any[]; loading: boolean; renderRow: (r: any) => Element; }' but required in type 'TableViewProps<any>'.
+src/app/keil/hr-payroll/expenditures/page.tsx(197,13): error TS2322: Type '"destructive"' is not assignable to type '"info" | "danger" | undefined'.
+src/app/keil/hr-payroll/expenditures/page.tsx(414,29): error TS2322: Type '(ex: any, index: any) => Element' is not assignable to type '(item: unknown) => ReactNode'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/app/keil/hr-payroll/expenditures/page.tsx(414,41): error TS7006: Parameter 'ex' implicitly has an 'any' type.
+src/app/keil/hr-payroll/expenditures/page.tsx(414,45): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/app/keil/hr-payroll/expense-heads/page.tsx(147,13): error TS2322: Type '"destructive"' is not assignable to type '"info" | "danger" | undefined'.
+src/app/keil/hr-payroll/expense-heads/page.tsx(314,29): error TS2322: Type '(head: any, index: any) => Element' is not assignable to type '(item: unknown) => ReactNode'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/app/keil/hr-payroll/expense-heads/page.tsx(314,41): error TS7006: Parameter 'head' implicitly has an 'any' type.
+src/app/keil/hr-payroll/expense-heads/page.tsx(314,47): error TS7006: Parameter 'index' implicitly has an 'any' type.
