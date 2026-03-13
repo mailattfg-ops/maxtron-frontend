@@ -12,6 +12,7 @@ export const metadata = {
 
 import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export default function RootLayout({
   children,
@@ -19,15 +20,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <TooltipProvider>
-          <ToastProvider>
-            <ConfirmProvider>
-              <AppLayout>{children}</AppLayout>
-            </ConfirmProvider>
-          </ToastProvider>
-        </TooltipProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            <ToastProvider>
+              <ConfirmProvider>
+                <AppLayout>{children}</AppLayout>
+              </ConfirmProvider>
+            </ToastProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

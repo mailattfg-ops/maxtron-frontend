@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { useRouter } from 'next/navigation';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
+const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
 export default function EmployeeInformationPage() {
   const [showForm, setShowForm] = useState(false);
@@ -23,6 +25,17 @@ export default function EmployeeInformationPage() {
   const [loading, setLoading] = useState(true);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const router = useRouter();
+  
+  // Page access check
+  useEffect(() => {
+    // We check view permission, but if they are already on this page via sidebar, 
+    // it's likely they have it. This is a secondary layer.
+    const canView = hasPermission('hr_employee_view', 'can_view');
+    // If the hook is still loading user data (user is null initially), we might want to wait.
+    // However, sidebar already handles the main gate.
+  }, [hasPermission]);
   
   // Table Pagination and Filtering States
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,7 +43,12 @@ export default function EmployeeInformationPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
   const pathname = usePathname();
+  const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
   
   // Form State mapped to unified `users` database schema
   const [formData, setFormData] = useState({
@@ -64,19 +82,14 @@ export default function EmployeeInformationPage() {
 
   const [categories, setCategories] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchCompanies();
-    fetchCategories();
-    fetchUserTypes();
-  }, []);
-
-
-  const fetchCategories = async () => {
+  const fetchCategories = async (coId?: string) => {
     try {
       const token = localStorage.getItem('token');
-      // We will need to create this route later, for now we will just attempt to fetch it
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/categories`, {
+      const url = coId 
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/categories?company_id=${coId}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/categories`;
+        
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -87,10 +100,14 @@ export default function EmployeeInformationPage() {
     }
   };
 
-  const fetchUserTypes = async () => {
+  const fetchUserTypes = async (coId?: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/user-types?t=${Date.now()}`, {
+      const url = coId
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types?company_id=${coId}&t=${Date.now()}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/user-types?t=${Date.now()}`;
+
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -106,37 +123,52 @@ export default function EmployeeInformationPage() {
   const fetchCompanies = async () => {
     try {
       const token = localStorage.getItem('token');
-      // Switch endpoint to API fetch dynamic registered companies
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/companies`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
       if (data.success) { 
           setCompanies(data.data); 
-          const activeCo = data.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+          const activeCo = data.data.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
           setFormData(prev => ({ 
              ...prev, 
              company_id: prev.company_id || (activeCo ? activeCo.id : '') 
           }));
+
+          if (activeCo) {
+            fetchCategories(activeCo.id);
+            fetchUserTypes(activeCo.id);
+            fetchEmployees(activeCo.id);
+          } else {
+            fetchCategories();
+            fetchUserTypes();
+            fetchEmployees();
+          }
       }
     } catch (error) {
       console.error('Failed to fetch companies', error);
     }
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (coId?: string) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}?t=${Date.now()}`, {
+      const baseUrl = API_URL(activeEntity);
+      const url = coId 
+        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
+        : `${baseUrl}?t=${Date.now()}`;
+
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
       if (data.success) {
-        const filtered = data.data.filter((emp: any) => emp.companies?.company_name?.toUpperCase() === activeTenant);
-        setEmployees(filtered);
+        console.log("sj",data.data);
+        
+        setEmployees(data.data);
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error);
@@ -171,10 +203,59 @@ export default function EmployeeInformationPage() {
     setFormData({ ...formData, [collection]: list });
   };
 
+  const downloadEmployeeList = () => {
+    if (employees.length === 0) {
+      info('No employee data available to export.');
+      return;
+    }
+    
+    const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport'];
+    const rows = employees.map(emp => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}-${month}-${year}`;
+        } catch (e) {
+          return dateStr;
+        }
+      };
+
+      return [
+        `"${(emp.employee_code || 'SYS').replace(/"/g, '""')}"`,
+        `"${(emp.name || '').replace(/"/g, '""')}"`,
+        `"${(emp.username || '').replace(/"/g, '""')}"`,
+        `"${(emp.user_types?.name || 'User').replace(/"/g, '""')}"`,
+        `"${(emp.companies?.company_name || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(emp.date_of_birth)}'"`, // Prepend single quote after the double quote to force text in Excel
+        `"${(emp.guarantor_name || 'N/A').replace(/"/g, '""')}"`,
+        `"${emp.is_married ? 'Yes' : 'No'}"`,
+        `"${emp.has_license ? 'Yes' : 'No'}"`,
+        `"${emp.has_passport ? 'Yes' : 'No'}"`
+      ];
+    });
+    
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    success('Detailed employee list exported successfully!');
+  };
+
   const saveEmployee = async () => {
     try {
       const token = localStorage.getItem('token');
-      const url = editingId ? `${API_URL}/${editingId}` : API_URL;
+      const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -195,7 +276,7 @@ export default function EmployeeInformationPage() {
         }
         setShowForm(false);
         setEditingId(null);
-        fetchEmployees(); // Refresh list
+        fetchEmployees(formData.company_id); // Refresh list for active company
         // Reset form
         setFormData({
           employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
@@ -260,7 +341,7 @@ export default function EmployeeInformationPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${API_URL(activeEntity)}/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -268,7 +349,7 @@ export default function EmployeeInformationPage() {
       const data = await res.json();
       if (data.success) {
         success('Employee records purged.');
-        fetchEmployees();
+        fetchEmployees(formData.company_id);
       } else {
         error(data.message || 'Failed to delete');
       }
@@ -281,21 +362,21 @@ export default function EmployeeInformationPage() {
     <div className="space-y-6">
       {newEmployeePopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none">
-            <CardHeader className="bg-emerald-50/80 pb-6 border-b text-center rounded-t-xl">
+          <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none bg-card">
+            <CardHeader className="bg-emerald-500/10 pb-6 border-b border-border text-center rounded-t-xl">
               <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
-              <CardTitle className="text-2xl text-emerald-800">Employee Registered!</CardTitle>
-              <CardDescription className="text-emerald-600/80 font-medium">System access credentials successfully configured.</CardDescription>
+              <CardTitle className="text-2xl text-emerald-500">Employee Registered!</CardTitle>
+              <CardDescription className="text-emerald-500/80 font-medium">System access credentials successfully configured.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
-              <div className="bg-slate-50 p-4 rounded-xl text-sm border border-slate-200 space-y-3">
-                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                   <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Username</span>
-                   <span className="font-mono text-base font-bold text-slate-800">{newEmployeePopup.username}</span>
+              <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border space-y-3">
+                 <div className="flex justify-between items-center bg-card p-3 rounded-lg border border-border shadow-sm">
+                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Username</span>
+                   <span className="font-mono text-base font-bold text-foreground">{newEmployeePopup.username}</span>
                  </div>
-                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                   <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Password</span>
-                   <span className="font-mono text-base font-bold tracking-wider text-slate-800">{newEmployeePopup.password}</span>
+                 <div className="flex justify-between items-center bg-card p-3 rounded-lg border border-border shadow-sm">
+                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Password</span>
+                   <span className="font-mono text-base font-bold tracking-wider text-foreground">{newEmployeePopup.password}</span>
                  </div>
               </div>
 
@@ -322,157 +403,216 @@ export default function EmployeeInformationPage() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Employee Information</h1>
-          <p className="text-foreground/60 mt-2">Manage employee bio-data, qualifications, and system access.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        {!showForm ? (
-          <Button onClick={() => {
-            setEditingId(null);
-            const defaultCompany = companies.find((c: any) => (c.company_name || '').toUpperCase() === activeTenant);
-            setFormData({ 
-              employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
-              addresses: [
-                { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
-                { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
-              ],
-              company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
-            });
-            setShowForm(true);
-          }} className="bg-secondary hover:bg-secondary/90 text-white shadow-md transition-all hover:-translate-y-0.5">
-            <Plus className="w-5 h-5 mr-2" /> Add Employee
-          </Button>
-        ) : (
-          <div className="flex space-x-3">
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="border-foreground/10">
-              <X className="w-4 h-4 mr-2" /> Cancel
-            </Button>
-            {activeTab !== 'personal' && (
-              <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="border-foreground/10">
-                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {!showForm ? (
+            <>
+              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
+                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
               </Button>
-            )}
-            <Button onClick={() => {
-              if (activeTab === 'personal') setActiveTab('qualifications');
-              else if (activeTab === 'qualifications') setActiveTab('financials');
-              else saveEmployee();
-            }} className="bg-primary hover:bg-primary/90 text-white shadow-md">
-              {activeTab === 'financials' ? (
-                <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Record'}</>
-              ) : (
-                <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
+              {hasPermission('hr_employee_view', 'create') && (
+                <Button onClick={() => {
+                  setEditingId(null);
+                  const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
+                  setFormData({ 
+                    employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                    addresses: [
+                      { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                      { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+                    ],
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                  });
+                  setShowForm(true);
+                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
+                  <Plus className="w-5 h-5 mr-2" /> Add Employee
+                </Button>
               )}
-            </Button>
-          </div>
-        )}
+            </>
+          ) : (
+            <div className="flex space-x-2 md:space-x-3 w-full">
+              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
+              </Button>
+              {activeTab !== 'personal' && (
+                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
+                </Button>
+              )}
+              <Button onClick={() => {
+                if (activeTab === 'personal') setActiveTab('qualifications');
+                else if (activeTab === 'qualifications') setActiveTab('financials');
+                else saveEmployee();
+              }} className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold">
+                {activeTab === 'financials' ? (
+                  <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Save'}</>
+                ) : (
+                  <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {!showForm && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Staff</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{employees.length}</h3>
+                </div>
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
+                    {employees.filter(e => e.employee_categories?.category_name === "Management").length}
+                  </h3>
+                </div>
+                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
+                  <Briefcase className="w-6 h-6 text-rose-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hidden lg:block bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
+                  <h3 className="text-3xl font-black text-blue-500 mt-1">
+                    {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
+                  </h3>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl shrink-0">
+                  <TrendingUp className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-300">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="personal"><UserPlus className="w-4 h-4 mr-2" /> Basic Details</TabsTrigger>
-              <TabsTrigger value="qualifications"><Briefcase className="w-4 h-4 mr-2" /> Professional & Experience</TabsTrigger>
-              <TabsTrigger value="financials"><FileText className="w-4 h-4 mr-2" /> Financials & Docs</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto mb-6">
+              <TabsList className="flex w-full min-w-[480px] overflow-hidden">
+                <TabsTrigger value="personal" className="flex-1"><UserPlus className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Basic Details</span><span className="sm:hidden">Basic</span></TabsTrigger>
+                <TabsTrigger value="qualifications" className="flex-1"><Briefcase className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Professional & Experience</span><span className="sm:hidden">Work</span></TabsTrigger>
+                <TabsTrigger value="financials" className="flex-1"><FileText className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Financials & Docs</span><span className="sm:hidden">Finance</span></TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-            <CardHeader>
-              <CardTitle className="text-xl text-primary flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                {editingId ? 'Edit Personal Details' : 'Personal Details'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Employee Code</label>
-                  <Input name="employee_code" value={formData.employee_code} onChange={handleInputChange} placeholder="EMP-001" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Full Name</label>
-                  <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="John Doe" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Date of Birth</label>
-                  <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
-                </div>
-                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="font-semibold text-primary/80">Communication Address</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <div className="space-y-2 lg:col-span-3">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
-                       <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
-                       <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
-                       <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
-                       <Input value={formData.addresses[0]?.zip_code} onChange={(e) => handleAddressChange(0, 'zip_code', e.target.value)} placeholder="Postal Code" />
-                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="font-semibold text-primary/80">Permanent Address</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <div className="space-y-2 lg:col-span-3">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Street / Building</label>
-                       <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">City</label>
-                       <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">State / Province</label>
-                       <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" />
-                     </div>
-                     <div className="space-y-2">
-                       <label className="text-xs font-medium text-foreground/70 tracking-wide uppercase">Zip Code</label>
-                       <Input value={formData.addresses[1]?.zip_code} onChange={(e) => handleAddressChange(1, 'zip_code', e.target.value)} placeholder="Postal Code" />
-                     </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground/80">Guarantor Name</label>
-                  <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} placeholder="Name of Guarantor (if any)" />
-                </div>
-                <div className="space-y-2 col-span-2 md:col-span-1">
-                  <label className="flex items-center space-x-2 text-sm font-medium text-foreground/80 mt-6 cursor-pointer">
-                    <input 
-                       type="checkbox" 
-                       name="is_married" 
-                       checked={formData.is_married} 
-                       onChange={(e) => setFormData({...formData, is_married: e.target.checked})} 
-                       className="rounded border-gray-300 text-primary focus:border-primary focus:ring focus:ring-primary/20"
-                    />
-                    <span>Is Married?</span>
-                  </label>
-                </div>
-                {formData.is_married && (
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-sm font-medium text-foreground/80">Family Details</label>
-                      <textarea 
-                          name="family_details" 
-                          value={formData.family_details} 
-                          onChange={handleInputChange as any} 
-                          placeholder="Spouse / Children details..."
-                          className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      />
+                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+                    <CardTitle className="text-lg md:text-xl text-primary flex items-center">
+                      <UserPlus className="w-5 h-5 mr-3 text-secondary" />
+                      {editingId ? 'Edit Personal Details' : 'Personal Details'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 md:p-6 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee Code</label>
+                        <Input 
+                          name="employee_code" 
+                          value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
+                          disabled={true} 
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-secondary text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
+                        <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
+                        <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} className="h-10 md:h-11" />
+                      </div>
+                      <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2 sm:col-span-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
+                             <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." className="h-10 text-sm" />
+                           </div>
+                           <div className="space-y-2 text-sm">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
+                             <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" className="h-10" />
+                           </div>
+                           <div className="space-y-2 text-sm">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
+                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" className="h-10" />
+                           </div>
+                        </div>
+                      </div>
+ 
+                      <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2 sm:col-span-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
+                             <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." className="h-10 text-sm" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
+                             <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" className="h-10" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
+                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" className="h-10" />
+                           </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Guarantor Name</label>
+                        <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} placeholder="Name of Guarantor" className="h-10" />
+                      </div>
+                      <div className="space-y-2 flex items-center h-full pt-4">
+                        <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
+                          <input 
+                             type="checkbox" 
+                             name="is_married" 
+                             checked={formData.is_married} 
+                             onChange={(e) => setFormData({...formData, is_married: e.target.checked})} 
+                             className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                          />
+                          <span>Is Married?</span>
+                        </label>
+                      </div>
+                      {formData.is_married && (
+                          <div className="space-y-2 col-span-full">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Family Details</label>
+                            <textarea 
+                                name="family_details" 
+                                value={formData.family_details} 
+                                maxLength={50}
+                                onChange={handleInputChange as any} 
+                                placeholder="Spouse / Children details..."
+                                className="w-full h-20 p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/10 transition-all resize-none"
+                            />
+                          </div>
+                      )}
                     </div>
-                )}
-              </div>
-            </CardContent>
+                  </CardContent>
           </Card>
 
           <Card>
@@ -591,7 +731,7 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-4">
                         {formData.employee_experiences.map((exp, idx) => (
-                           <div key={idx} className="grid grid-cols-2 md:grid-cols-12 gap-3 items-start animate-in fade-in bg-secondary/5 p-4 rounded-lg relative">
+                           <div key={idx} className="grid grid-cols-2 md:grid-cols-12 gap-3 items-start animate-in fade-in bg-muted/20 p-4 rounded-lg relative">
                               <div className="col-span-2 md:col-span-3 space-y-1">
                                 <label className="text-xs text-muted-foreground">Company Name</label>
                                 <Input value={exp.company_name} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'company_name', e.target.value)} placeholder="Previous Employer" />
@@ -613,7 +753,7 @@ export default function EmployeeInformationPage() {
                                 <Input value={exp.responsibilities} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'responsibilities', e.target.value)} placeholder="Job duties..." />
                               </div>
                               <Button size="icon" variant="ghost" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_experiences', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -646,13 +786,13 @@ export default function EmployeeInformationPage() {
                         </label>
                         {formData.has_license && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_licenses', { license_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> Add License
+                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add License</span>
                             </Button>
                         )}
                       </div>
                       <div className="space-y-3">
                         {formData.has_license && formData.employee_licenses.map((lic, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">License No.</label>
                                 <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} />
@@ -684,13 +824,13 @@ export default function EmployeeInformationPage() {
                         </label>
                         {formData.has_passport && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_passports', { passport_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> Add Passport
+                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Passport</span>
                             </Button>
                         )}
                       </div>
                       <div className="space-y-3">
                         {formData.has_passport && formData.employee_passports.map((ppt, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Passport No.</label>
                                 <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} />
@@ -722,18 +862,18 @@ export default function EmployeeInformationPage() {
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-semibold text-foreground/90">Certifications (Medical / Police)</h3>
                       <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_certificates', { certificate_type: 'MEDICAL', issued: false, issue_date: '', expiry_date: '' })}>
-                         <Plus className="w-4 h-4 mr-1" /> Add Certificate
+                         <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Certificate</span>
                       </Button>
                     </div>
                     <div className="space-y-3">
                       {formData.employee_certificates.map((cert, idx) => (
-                         <div key={idx} className="flex gap-3 items-center animate-in fade-in bg-secondary/5 p-3 rounded-lg">
-                            <div className="space-y-1 flex-none w-48">
+                         <div key={idx} className="grid lg:flex gap-3 items-center animate-in fade-in bg-muted/20 p-3 rounded-lg">
+                            <div className="space-y-1 flex-none w-full lg:w-48">
                               <label className="text-xs text-muted-foreground">Type</label>
                               <select 
                                 value={cert.certificate_type} 
                                 onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
+                                className="flex h-9 w-full rounded-md border border-input bg-card/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary"
                               >
                                 <option value="MEDICAL">Medical Certificate</option>
                                 <option value="POLICE_VERIFICATION">Police Verification</option>
@@ -742,7 +882,7 @@ export default function EmployeeInformationPage() {
                             <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
                               <div className="h-9 flex items-center">
-                                <input type="checkbox" checked={cert.issued} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} className="rounded w-4 h-4" />
+                                <input type="checkbox" checked={cert.issued} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} className="rounded w-4 h-4 text-primary focus:ring-primary" />
                               </div>
                             </div>
                             <div className="space-y-1 flex-1">
@@ -754,7 +894,7 @@ export default function EmployeeInformationPage() {
                               <Input type="date" value={cert.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'expiry_date', e.target.value)} />
                             </div>
                             <div className="pt-5 flex-none w-10 text-right">
-                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_certificates', idx)}>
+                                <Button size="icon" variant="ghost" className="text-destructive shrink-0 hover:bg-destructive/10" onClick={() => removeNestedRow('employee_certificates', idx)}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>
@@ -777,7 +917,7 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
                                 <Input type="number" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} />
@@ -792,7 +932,7 @@ export default function EmployeeInformationPage() {
                               </div>
                               <div className="pt-5">
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_loans', idx)}>
-                                  <X className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                            </div>
@@ -813,7 +953,7 @@ export default function EmployeeInformationPage() {
                               <Input type="number" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} />
                               <Input type="number" placeholder="Balance Recv ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -837,7 +977,7 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
                               <Input type="number" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -853,12 +993,12 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <Input type="number" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} />
                               <Input type="number" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} />
                               <Input type="number" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} />
                               <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         ))}
@@ -875,17 +1015,17 @@ export default function EmployeeInformationPage() {
 
       {/* Existing Employees Table Section */}
       {!showForm && (
-        <Card className="mt-8">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+        <Card className="mt-8 border-border/40 shadow-sm overflow-hidden bg-card">
+          <CardHeader className="grid md:flex flex-row items-center justify-between pb-6 border-b border-border">
           <div>
-            <CardTitle className="text-xl text-primary">Registered Employees</CardTitle>
-            <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
+            <CardTitle className="text-xl text-primary font-bold">Registered Employees</CardTitle>
+            <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="flex gap-4 items-center">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                 className="pl-9 w-72 rounded-full border-primary/20" 
+                 className="pl-9 w-72 rounded-full border-border bg-muted/20" 
                  placeholder="Search by name or code..." 
                  value={searchQuery}
                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
@@ -893,7 +1033,7 @@ export default function EmployeeInformationPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="px-0 md:px-6 pt-6">
           {(() => {
             const filteredEmployees = employees
               .filter((emp) => 
@@ -906,15 +1046,15 @@ export default function EmployeeInformationPage() {
 
             return (
               <>
-                <div className="border rounded-xl mx-2 overflow-hidden shadow-sm">
+                <div className="border border-border/60 rounded-xl mx-2 overflow-x-auto lg:overflow-hidden shadow-sm">
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-primary/5 text-primary">
+                    <thead className="bg-primary/5 text-primary border-b border-border/60">
                       <tr>
-                        <th className="p-4 font-semibold w-24">Emp Code</th>
-                        <th className="p-4 font-semibold">Full Name</th>
-                        <th className="p-4 font-semibold">Company Location</th>
-                        <th className="p-4 font-semibold">System Role</th>
-                        <th className="p-4 font-semibold text-right">Actions</th>
+                        <th className="p-4 font-bold w-24 uppercase tracking-wider text-[11px]">Emp Code</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Full Name</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Department / Role</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Contact Email</th>
+                        <th className="p-4 font-bold text-right uppercase tracking-wider text-[11px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -924,20 +1064,31 @@ export default function EmployeeInformationPage() {
                         <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
                       ) : (
                         currentEmployees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-primary/5 transition-colors">
-                      <td className="p-4 font-medium text-secondary">{emp.employee_code || 'SYS'}</td>
-                      <td className="p-4 font-semibold text-foreground">{emp.name}</td>
-                      <td className="p-4 text-foreground/70">
-                        {emp.companies?.company_name || 'Unassigned Tenant'}
+                    <tr key={emp.id} className="hover:bg-primary/5 transition-colors group">
+                      <td className="p-4 font-bold text-secondary">{emp.employee_code || 'SYS'}</td>
+                      <td className="p-4 font-bold text-foreground">{emp.name}</td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                          emp.user_types?.name?.includes('HR') ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                        }`}>
+                          {emp.user_types?.name || 'User'}
+                        </span>
                       </td>
-                      <td className="p-4 text-foreground/70">{emp.user_types?.name || 'User'}</td>
+                      <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {hasPermission('hr_employee_view', 'edit') && (
+                          <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {hasPermission('hr_employee_view', 'delete') && (
+                          <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -946,12 +1097,12 @@ export default function EmployeeInformationPage() {
             </table>
           </div>
           
-          <div className="flex justify-between items-center mt-4 mx-2">
+          <div className="md:flex md:justify-between items-center mt-4 mx-2">
             <div className="text-sm text-muted-foreground">
               Showing {employees.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
             </div>
             <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2 mr-4">
+              <div className="hidden md:flex items-center space-x-2 mr-4">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
                 <select 
                   value={rowsPerPage} 

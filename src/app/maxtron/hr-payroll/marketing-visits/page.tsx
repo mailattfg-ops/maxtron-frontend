@@ -5,15 +5,20 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, TrendingUp, Users, CheckCircle } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
 export default function MarketingVisitsPage() {
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission('hr_marketing_view', 'create');
+  const canEdit = hasPermission('hr_marketing_view', 'edit');
+  const canDelete = hasPermission('hr_marketing_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [visitRecords, setVisitRecords] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -23,7 +28,7 @@ export default function MarketingVisitsPage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
 
   const [dateFilter, setDateFilter] = useState(''); // Default to empty to show all records initially
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
   const { confirm } = useConfirm();
 
   const pathname = usePathname();
@@ -177,6 +182,50 @@ export default function MarketingVisitsPage() {
     setShowForm(true);
   };
 
+  const downloadVisitList = () => {
+    const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
+    if (activeRecords.length === 0) {
+      info('No visit records found to export.');
+      return;
+    }
+
+    const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome'];
+    const rows = activeRecords.map(rec => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      return [
+        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.customer_name || '').replace(/"/g, '""')}"`,
+        `"${(rec.location || 'N/A').replace(/"/g, '""')}"`,
+        `"'${formatDate(rec.visit_date)}"`,
+        `"${(rec.time_in || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.time_out || 'N/A').replace(/"/g, '""')}"`,
+        `"${(rec.purpose || '').replace(/"/g, '""')}"`,
+        `"${(rec.outcome || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    success('Detailed visit list exported successfully!');
+  };
+
+
+
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
       message: 'Are you sure you want to delete this visit report?',
@@ -200,23 +249,90 @@ export default function MarketingVisitsPage() {
     }
   };
 
-
-
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight">Marketing Team Visits</h1>
-          <p className="text-muted-foreground text-sm font-medium">Punching details for field staff tracking.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Marketing Operations</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg shadow-primary/20"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel Entry' : 'New Field Visit'}
-        </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+          {!showForm && (
+            <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm">
+               <Download className="w-4 h-4 mr-2" /> Download Visit List
+            </Button>
+          )}
+          {canCreate && (
+            <Button 
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full sm:w-auto"
+            >
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {showForm ? 'Cancel Entry' : 'New Field Visit'}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {!showForm && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Visits</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
+                </div>
+                <div className="bg-primary/10 p-3 rounded-2xl">
+                  <MapPin className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
+                <TrendingUp className="w-3 h-3 mr-1" /> <span>Activity tracked successfully</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Clients</p>
+                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
+                    {new Set(visitRecords.map(r => r.customer_name)).size}
+                  </h3>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl">
+                  <Users className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active pipeline outreach</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Top Performer</p>
+                  <h3 className="text-lg font-black text-emerald-600 mt-1 truncate max-w-[150px]">
+                    {visitRecords.length > 0 ? (
+                      Object.entries(visitRecords.reduce((acc: any, curr) => {
+                        acc[curr.users?.name] = (acc[curr.users?.name] || 0) + 1;
+                        return acc;
+                      }, {})).sort((a: any, b: any) => b[1] - a[1])[0][0]
+                    ) : 'N/A'}
+                  </h3>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-2xl">
+                  <CheckCircle className="w-6 h-6 text-emerald-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Highest visit frequency</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500">
@@ -224,7 +340,7 @@ export default function MarketingVisitsPage() {
             <CardTitle>{editingId ? 'Edit Visit Details' : 'Record Field Visit'}</CardTitle>
             <CardDescription>Log time of entry, exit, and visit outcome.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
@@ -255,15 +371,15 @@ export default function MarketingVisitsPage() {
                   {customers.map(cust => (
                     <option key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</option>
                   ))}
-                  <option value="New Customer">+ Add New (Type below)</option>
+                  {/* <option value="New Customer">+ Add New (Type below)</option> */}
                 </select>
-                {formData.customer_name === 'New Customer' && (
+                {/* {formData.customer_name === 'New Customer' && (
                   <Input 
                     placeholder="Enter new company name"
                     className="mt-2"
                     onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
                   />
-                )}
+                )} */}
               </div>
 
               <div className="space-y-2">
@@ -316,6 +432,7 @@ export default function MarketingVisitsPage() {
                   className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                   placeholder="Sales pitch, follow-up, payment collection..."
                   value={formData.purpose}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, purpose: e.target.value})}
                 />
               </div>
@@ -326,6 +443,7 @@ export default function MarketingVisitsPage() {
                   className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                   placeholder="Result of the meeting..."
                   value={formData.outcome}
+                  maxLength={50}
                   onChange={(e) => setFormData({...formData, outcome: e.target.value})}
                 />
               </div>
@@ -350,24 +468,26 @@ export default function MarketingVisitsPage() {
         searchFields={['users.name', 'customer_name', 'purpose']}
         searchPlaceholder="Search staff or client..."
         actions={
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground font-semibold">Filter Date:</span>
-            <Input 
-              type="date"
-              className="w-40 rounded-full border-primary/20 h-9 text-xs"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
-            {dateFilter && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setDateFilter('')}
-                className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-              >
-                Clear
-              </Button>
-            )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
+            <div className="flex items-center gap-2">
+              <Input 
+                type="date"
+                className="w-40 rounded-full border-primary/20 h-9 text-xs"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+              {dateFilter && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setDateFilter('')}
+                  className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         }
         renderRow={(rec: any) => (
@@ -399,13 +519,17 @@ export default function MarketingVisitsPage() {
                  <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{rec.outcome || 'No outcome recorded'}</div>
                </div>
             </td>
-            <td className="px-6 py-4 text-right space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+            <td className="md:px-6 py-4 text-right space-x-2">
+              {canEdit && (
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
             </td>
           </tr>
         )}

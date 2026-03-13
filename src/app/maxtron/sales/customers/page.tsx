@@ -9,6 +9,8 @@ import { UserPlus, Save, Search, Edit, Trash2, Plus, X, Building2, Phone, Mail, 
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { useRouter } from 'next/navigation';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers`;
 
@@ -22,6 +24,13 @@ export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState('basic');
   const { success, error } = useToast();
   const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Secondary layer check - sidebar already gates this usually
+    const canView = hasPermission('sales_customers_view', 'can_view');
+  }, [hasPermission]);
 
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -198,52 +207,56 @@ export default function CustomersPage() {
 
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight flex items-center">
-            <Building2 className="w-6 h-6 mr-2" /> Customer Information
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight flex items-center font-heading">
+            <Building2 className="w-6 h-6 md:w-7 md:h-7 mr-2 shrink-0" /> Customer Information
           </h1>
-          <p className="text-muted-foreground text-sm font-medium">Manage your {activeTenant} clients and billing details.</p>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage your {activeTenant} clients and billing details.</p>
         </div>
-        <Button 
-          onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-          className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full shadow-lg"
-        >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel' : 'Add New Customer'}
-        </Button>
+        {hasPermission('sales_customers_view', 'create') && (
+          <Button 
+            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+            className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg h-10 md:h-11 font-bold whitespace-nowrap"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Cancel' : 'Add New Customer'}
+          </Button>
+        )}
       </div>
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in zoom-in duration-300">
-          <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-primary">{editingId ? 'Edit Customer' : 'Create New Customer'}</CardTitle>
-              <CardDescription>Enter company details, tax info, and credit terms.</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant={activeTab === 'basic' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setActiveTab('basic')}
-                className="rounded-full"
-              >Basic</Button>
-              <Button 
-                variant={activeTab === 'address' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setActiveTab('address')}
-                className="rounded-full"
-              >Addresses</Button>
-              <Button 
-                variant={activeTab === 'financial' ? 'default' : 'outline'} 
-                size="sm" 
-                onClick={() => setActiveTab('financial')}
-                className="rounded-full"
-              >Financials</Button>
+          <CardHeader className="bg-primary/5 border-b p-4 md:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg md:text-xl font-bold text-primary">{editingId ? 'Edit Customer' : 'Create New Customer'}</CardTitle>
+                <CardDescription className="text-xs">Enter company details, tax info, and credit terms.</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={activeTab === 'basic' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setActiveTab('basic')}
+                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
+                >Basic</Button>
+                <Button 
+                  variant={activeTab === 'address' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setActiveTab('address')}
+                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
+                >Addresses</Button>
+                <Button 
+                  variant={activeTab === 'financial' ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => setActiveTab('financial')}
+                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
+                >Financials</Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             {activeTab === 'basic' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                 <div className="space-y-2">
@@ -339,30 +352,45 @@ export default function CustomersPage() {
           searchPlaceholder="Search customers, codes or GST..."
           renderRow={(c: any) => {
             return (
-              <tr key={c.id} className="hover:bg-primary/5 transition-colors group">
-                <td className="px-4 py-4 font-mono text-xs font-bold text-secondary">{c.customer_code}</td>
-                <td className="px-4 py-4 font-bold text-foreground group-hover:text-primary transition-colors">{c.customer_name}</td>
-                <td className="px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
-                <td className="px-4 py-4">
-                  <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
-                  <div className="text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>
+              <tr key={c.id} className="hover:bg-primary/5 transition-colors group border-b border-primary/5 last:border-0">
+                <td className="px-4 py-4 font-mono text-[10px] md:text-xs font-bold text-secondary">
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1">CODE</span>
+                  {c.customer_code}
                 </td>
                 <td className="px-4 py-4">
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1 font-bold">CLIENT NAME</span>
+                  <div className="font-bold text-foreground group-hover:text-primary transition-colors text-sm md:text-base">{c.customer_name}</div>
+                  <div className="md:hidden mt-2 text-[10px] font-semibold text-slate-500">GST: {c.gst_no || 'NA'}</div>
+                </td>
+                <td className="hidden md:table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
+                <td className="px-4 py-4">
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1">CREDIT</span>
+                  <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
+                  <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>
+                </td>
+                <td className="hidden lg:table-cell px-4 py-4">
                   <div className="text-xs font-semibold">{c.delivery_mode || 'N/A'}</div>
                   <div className="text-[10px] text-muted-foreground">Period: {c.delivery_period || 'N/A'}</div>
                 </td>
                 <td className="px-4 py-4">
-                  <span className={`${c.opening_balance > 0 ? 'text-rose-600' : 'text-emerald-600'} font-bold text-xs`}>
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1">BALANCE</span>
+                  <span className={`${c.opening_balance > 0 ? 'text-rose-600' : 'text-emerald-600'} font-bold text-xs md:text-sm`}>
                     ₹{c.opening_balance?.toLocaleString()}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-right space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="hover:text-primary rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="hover:text-destructive rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                <td className="px-4 py-4 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    {hasPermission('sales_customers_view', 'edit') && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="hover:text-primary rounded-full h-8 w-8 shrink-0">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {hasPermission('sales_customers_view', 'delete') && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="hover:text-destructive rounded-full h-8 w-8 shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

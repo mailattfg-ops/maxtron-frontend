@@ -6,30 +6,30 @@ import { Map, Download, Briefcase, Calendar } from 'lucide-react';
 export default function MarketingReportPage() {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Marketing Executive Visits</h1>
           <p className="text-foreground/60 mt-2">Analytics on field force movement and customer coverage.</p>
         </div>
-        <Button className="bg-secondary text-white hover:bg-secondary/90">
+        <Button className="bg-secondary text-white hover:bg-secondary/90 w-full sm:w-auto">
           <Download className="w-4 h-4 mr-2" /> Export Logs
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
         <Card className="col-span-1 lg:col-span-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b">
             <CardTitle className="text-xl flex items-center text-primary">
               <Map className="w-5 h-5 mr-3 text-secondary" />
               Visit History Log
             </CardTitle>
-            <div className="flex space-x-2">
-              <span className="text-xs font-semibold text-foreground/50 self-center">Filter:</span>
-              <Input type="date" className="h-8 text-xs w-32" />
+            <div className="flex items-center space-x-2 w-full sm:w-auto group">
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Filter Date:</span>
+              <Input type="date" className="h-9 text-xs w-full sm:w-36 rounded-md border-primary/20" />
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="border rounded-xl mx-2 overflow-hidden shadow-sm">
+          <CardContent className="p-0 pt-6">
+            <div className="border border-slate-100 mx-0 overflow-x-auto shadow-sm">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-primary/5 text-primary">
                   <tr>
