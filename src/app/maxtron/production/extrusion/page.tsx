@@ -331,60 +331,62 @@ export default function ExtrusionPage() {
         </Card>
       )}
 
-      <Card className="border-border/40 shadow-sm">
-        <TableView
-          title="Batch History"
-          description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator']}
-          data={batches}
-          loading={loading}
-          searchFields={['batch_number', 'finished_products.product_name']}
-          searchPlaceholder="Search batches or products..."
-          renderRow={(b: any) => {
-            const product = Array.isArray(b.finished_products) ? b.finished_products[0] : b.finished_products;
-            const operator = Array.isArray(b.operator) ? b.operator[0] : b.operator;
-            
-            return (
-              <tr key={b.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
-                <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(b.date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-mono font-bold text-foreground/80">{b.batch_number}</td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-primary">{product?.product_name || 'N/A'}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{product?.product_code || ''}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold w-fit uppercase border">
-                      <Clock className="w-3 h-3 text-slate-400" /> {b.shift}
-                   </div>
-                </td>
-                <td className="px-6 py-4 text-xs font-semibold text-foreground/60">{b.machine_no}</td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-700">{b.material_consumptions?.raw_materials?.rm_name || 'N/A'}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{b.material_consumptions?.raw_materials?.rm_code || ''}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex flex-col items-end sm:items-start">
-                     <span className="font-bold text-base text-foreground/80">{b.extrusion_output_qty} Kg</span>
-                     <span className="text-[10px] text-muted-foreground">RM: {b.raw_material_consumed_qty} Kg</span>
-                   </div>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2">
-                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                        {operator?.name?.charAt(0) || '?'}
+      {!showForm && (
+        <Card className="border-border/40 shadow-sm">
+          <TableView
+            title="Batch History"
+            description="History of production batches and machine assignments."
+            headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator']}
+            data={batches}
+            loading={loading}
+            searchFields={['batch_number', 'finished_products.product_name']}
+            searchPlaceholder="Search batches or products..."
+            renderRow={(b: any) => {
+              const product = Array.isArray(b.finished_products) ? b.finished_products[0] : b.finished_products;
+              const operator = Array.isArray(b.operator) ? b.operator[0] : b.operator;
+              
+              return (
+                <tr key={b.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
+                  <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(b.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-mono font-bold text-foreground/80">{b.batch_number}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-primary">{product?.product_name || 'N/A'}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{product?.product_code || ''}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold w-fit uppercase border">
+                        <Clock className="w-3 h-3 text-slate-400" /> {b.shift}
                      </div>
-                     <span className="text-xs font-medium">{operator?.name || 'Unknown'}</span>
-                   </div>
-                </td>
-              </tr>
-            );
-          }}
-        />
-      </Card>
+                  </td>
+                  <td className="px-6 py-4 text-xs font-semibold text-foreground/60">{b.machine_no}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-slate-700">{b.material_consumptions?.raw_materials?.rm_name || 'N/A'}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{b.material_consumptions?.raw_materials?.rm_code || ''}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                     <div className="flex flex-col items-end sm:items-start">
+                       <span className="font-bold text-base text-foreground/80">{b.extrusion_output_qty} Kg</span>
+                       <span className="text-[10px] text-muted-foreground">RM: {b.raw_material_consumed_qty} Kg</span>
+                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                     <div className="flex items-center gap-2">
+                       <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                          {operator?.name?.charAt(0) || '?'}
+                       </div>
+                       <span className="text-xs font-medium">{operator?.name || 'Unknown'}</span>
+                     </div>
+                  </td>
+                </tr>
+              );
+            }}
+          />
+        </Card>
+      )}
     </div>
   );
 }

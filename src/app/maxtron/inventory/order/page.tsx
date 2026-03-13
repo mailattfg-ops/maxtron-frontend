@@ -32,6 +32,7 @@ export default function RMOrderPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -148,6 +149,7 @@ export default function RMOrderPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${ORDER_API}/${editingId}` : ORDER_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -169,6 +171,8 @@ export default function RMOrderPage() {
       }
     } catch (err) {
       error('Network error.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -377,7 +381,11 @@ export default function RMOrderPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm">
                 Cancel Order
               </Button>
-              <Button onClick={saveOrder} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold">
+              <Button 
+                onClick={saveOrder} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update PO' : 'Release PO'}
               </Button>
@@ -386,55 +394,57 @@ export default function RMOrderPage() {
         </Card>
       )}
 
-      <TableView
-        title="Procurement History"
-        description="Release and track purchase orders with current stock visibility."
-        headers={['PO Details', 'Supplier Partner', 'Total Items', 'Order Value', 'Status', 'Action']}
-        data={orders}
-        loading={loading}
-        searchFields={['order_number', 'suppliers.supplier_name']}
-        renderRow={(o: any) => (
-          <tr key={o.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-              <div className="font-black text-slate-800 text-[13px]">{o.order_number}</div>
-              <div className="text-[10px] text-muted-foreground flex items-center font-bold mt-0.5">
-                <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(o.order_date).toLocaleDateString()}
-              </div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{o.supplier_master?.supplier_name}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-sm font-black text-primary">{o.rm_order_items?.length || 0} {o.rm_order_items?.length === 1 ? 'Item' : 'Items'}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-black text-slate-900 tracking-tight">₹ {Number(o.total_amount).toLocaleString()}</div>
-            </td>
-            <td className="px-6 py-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
-                 o.status === 'RECEIVED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                 o.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                 'bg-amber-100 text-amber-700 border border-amber-200'
-               }`}>
-                 <span className="hidden md:inline">{o.status}</span>
-                 <span className="md:hidden">{o.status.charAt(0)}</span>
-               </span>
-            </td>
-            <td className="px-6 py-4 text-right space-x-1">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(o)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title="Procurement History"
+          description="Release and track purchase orders with current stock visibility."
+          headers={['PO Details', 'Supplier Partner', 'Total Items', 'Order Value', 'Status', 'Action']}
+          data={orders}
+          loading={loading}
+          searchFields={['order_number', 'suppliers.supplier_name']}
+          renderRow={(o: any) => (
+            <tr key={o.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                <div className="font-black text-slate-800 text-[13px]">{o.order_number}</div>
+                <div className="text-[10px] text-muted-foreground flex items-center font-bold mt-0.5">
+                  <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(o.order_date).toLocaleDateString()}
+                </div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-bold text-slate-700">{o.supplier_master?.supplier_name}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-sm font-black text-primary">{o.rm_order_items?.length || 0} {o.rm_order_items?.length === 1 ? 'Item' : 'Items'}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-black text-slate-900 tracking-tight">₹ {Number(o.total_amount).toLocaleString()}</div>
+              </td>
+              <td className="px-6 py-4">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
+                   o.status === 'RECEIVED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                   o.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                   'bg-amber-100 text-amber-700 border border-amber-200'
+                 }`}>
+                   <span className="hidden md:inline">{o.status}</span>
+                   <span className="md:hidden">{o.status.charAt(0)}</span>
+                 </span>
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(o)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

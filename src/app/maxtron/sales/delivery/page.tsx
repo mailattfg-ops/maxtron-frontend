@@ -447,42 +447,44 @@ export default function DeliveryDetails() {
         </Card>
       )}
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-        <TableView
-          title="Dispatch Logs"
-          description="Recent delivery tracking and vehicle assignments."
-          headers={['Del No', 'Date', 'Delivery Person', 'Receiver', 'DC No', 'Status', 'Actions']}
-          data={deliveries}
-          loading={loading}
-          searchFields={['delivery_number', 'vehicles.registration_number', 'invoices.invoice_number', 'receiver_name', 'dc_no']}
-          renderRow={(del: any) => (
-            <tr key={del.id} className="hover:bg-primary/5 transition-all group border-b last:border-0">
-              <td className="px-6 py-4 font-mono font-black text-primary">{del.delivery_number}</td>
-              <td className="px-6 py-4 text-xs font-semibold">{new Date(del.delivery_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold">{del.delivery_person?.name || 'Unassigned'}</td>
-              <td className="px-6 py-4">
-                <div className="font-bold text-slate-800">{del.receiver_name || 'N/A'}</div>
-                <div className="text-[10px] text-slate-400 uppercase">{del.receiver_section}</div>
-              </td>
-              <td className="px-6 py-4 text-xs italic">{del.dc_no || 'N/A'}</td>
-              <td className="px-6 py-4">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                    del.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
-                    del.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
-                }`}>
-                    {del.status.replace(/_/g, ' ')}
-                </span>
-              </td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(del)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border"><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(del.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border"><Trash2 className="w-4 h-4" /></Button>
-                 </div>
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+          <TableView
+            title="Dispatch Logs"
+            description="Recent delivery tracking and vehicle assignments."
+            headers={['Del No', 'Date', 'Delivery Person', 'Receiver', 'DC No', 'Status', 'Actions']}
+            data={deliveries}
+            loading={loading}
+            searchFields={['delivery_number', 'vehicles.registration_number', 'invoices.invoice_number', 'receiver_name', 'dc_no']}
+            renderRow={(del: any) => (
+              <tr key={del.id} className="hover:bg-primary/5 transition-all group border-b last:border-0">
+                <td className="px-6 py-4 font-mono font-black text-primary">{del.delivery_number}</td>
+                <td className="px-6 py-4 text-xs font-semibold">{new Date(del.delivery_date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 font-bold">{del.delivery_person?.name || 'Unassigned'}</td>
+                <td className="px-6 py-4">
+                  <div className="font-bold text-slate-800">{del.receiver_name || 'N/A'}</div>
+                  <div className="text-[10px] text-slate-400 uppercase">{del.receiver_section}</div>
+                </td>
+                <td className="px-6 py-4 text-xs italic">{del.dc_no || 'N/A'}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                      del.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
+                      del.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                  }`}>
+                      {del.status.replace(/_/g, ' ')}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(del)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border"><Edit2 className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(del.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border"><Trash2 className="w-4 h-4" /></Button>
+                   </div>
+                </td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

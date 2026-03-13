@@ -28,6 +28,7 @@ export default function EmployeeCategoriesPage() {
     const [currentCompanyId, setCurrentCompanyId] = useState('');
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         category_name: '',
@@ -87,6 +88,7 @@ export default function EmployeeCategoriesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
         try {
             const url = editingId ? `${CATEGORIES_API}/${editingId}` : CATEGORIES_API;
             const method = editingId ? 'PUT' : 'POST';
@@ -110,8 +112,8 @@ export default function EmployeeCategoriesPage() {
             } else {
                 error(result.message || 'Action failed');
             }
-        } catch (err) {
-            error('Something went wrong');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -123,6 +125,7 @@ export default function EmployeeCategoriesPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this category?')) return;
+        setSubmitting(true);
         try {
             const res = await fetch(`${CATEGORIES_API}/${id}`, {
                 method: 'DELETE',
@@ -137,6 +140,8 @@ export default function EmployeeCategoriesPage() {
             }
         } catch (err) {
             error('Failed to delete');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -180,7 +185,11 @@ export default function EmployeeCategoriesPage() {
                                     required
                                 />
                             </div>
-                            <Button type="submit" className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 rounded-full font-bold">
+                             <Button 
+                                type="submit" 
+                                loading={submitting}
+                                className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 rounded-full font-bold"
+                             >
                                 <Save className="w-4 h-4" /> {editingId ? "Update" : "Save Category"}
                             </Button>
                         </form>
@@ -188,6 +197,7 @@ export default function EmployeeCategoriesPage() {
                 </Card>
             )}
 
+            {!showForm && (
                 <TableView
                     title="Available Classifications"
                     description="Standard groupings used across both Maxtron and Keil operations."
@@ -220,6 +230,7 @@ export default function EmployeeCategoriesPage() {
                         </tr>
                     )}
                 />
+            )}
 
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-4">
                 <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5" />

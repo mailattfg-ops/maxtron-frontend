@@ -111,13 +111,29 @@ export default function ConsumptionPage() {
     }
   };
 
-  const saveConsumption = async () => {
-    if (!formData.rm_id || formData.quantity_used <= 0) {
-      error('Please select Material and enter Quantity.');
-      return;
-    }
+    const saveConsumption = async () => {
+        if (!formData.rm_id || formData.quantity_used <= 0) {
+            error('Please select Material and enter Quantity.');
+            return;
+        }
 
-    const token = localStorage.getItem('token');
+        // Stock check
+        const selectedMaterial = materials.find(m => m.id === formData.rm_id);
+        const availableStock = Number(selectedMaterial?.balance || 0);
+        
+        // If editing, we should account for the original quantity in the "budget"
+        let limit = availableStock;
+        if (editingId) {
+            const originalRecord = consumptions.find(c => c.id === editingId);
+            limit += Number(originalRecord?.quantity_used || 0);
+        }
+
+        if (formData.quantity_used > limit) {
+            error(`Insufficient stock. Current balance: ${availableStock} ${selectedMaterial?.unit_type || ''}.`);
+            return;
+        }
+
+        const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${CONSUMPTION_API}/${editingId}` : CONSUMPTION_API;
 
@@ -390,60 +406,62 @@ export default function ConsumptionPage() {
         </Card>
       )}
 
-      <TableView
-        title="Issuance History"
-        description="Daily log of materials issued for production activities."
-        headers={['Slip / Date', 'Raw Material', 'Quantity', 'Process / Line', 'Status', 'Actions']}
-        data={consumptions}
-        loading={loading}
-        searchFields={['consumption_slip_no', 'raw_materials.rm_name', 'process_type']}
-        searchPlaceholder="Find slip or material..."
-        renderRow={(c: any) => (
-          <tr key={c.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-               <div className="font-black text-slate-800 text-[13px]">{c.consumption_slip_no}</div>
-               <div className="text-[10px] text-muted-foreground flex items-center mt-1">
-                <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(c.consumption_date).toLocaleDateString()}
-               </div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{c.raw_materials?.rm_name}</div>
-               <div className="text-[10px] font-bold text-primary uppercase tracking-tighter">{c.raw_materials?.rm_code || '---'}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-xl font-black text-secondary">{Number(c.quantity_used).toLocaleString()}</div>
-               <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{c.raw_materials?.unit_type || 'KG'} ISSUED</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="flex items-center">
-                 <span className="px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-black tracking-widest rounded border border-slate-200">
-                   {c.process_type || 'GENERAL'}
+      {!showForm && (
+        <TableView
+          title="Issuance History"
+          description="Daily log of materials issued for production activities."
+          headers={['Slip / Date', 'Raw Material', 'Quantity', 'Process / Line', 'Status', 'Actions']}
+          data={consumptions}
+          loading={loading}
+          searchFields={['consumption_slip_no', 'raw_materials.rm_name', 'process_type']}
+          searchPlaceholder="Find slip or material..."
+          renderRow={(c: any) => (
+            <tr key={c.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                 <div className="font-black text-slate-800 text-[13px]">{c.consumption_slip_no}</div>
+                 <div className="text-[10px] text-muted-foreground flex items-center mt-1">
+                  <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(c.consumption_date).toLocaleDateString()}
+                 </div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-bold text-slate-700">{c.raw_materials?.rm_name}</div>
+                 <div className="text-[10px] font-bold text-primary uppercase tracking-tighter">{c.raw_materials?.rm_code || '---'}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-xl font-black text-secondary">{Number(c.quantity_used).toLocaleString()}</div>
+                 <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{c.raw_materials?.unit_type || 'KG'} ISSUED</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="flex items-center">
+                   <span className="px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-black tracking-widest rounded border border-slate-200">
+                     {c.process_type || 'GENERAL'}
+                   </span>
+                   {c.machine_no && (
+                     <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase">LINE: {c.machine_no}</span>
+                   )}
+                 </div>
+              </td>
+              <td className="px-3 md:px-6 py-4">
+                 <span className="flex items-center text-[10px] font-bold text-emerald-600">
+                  <CheckCircle className="w-3 h-3 mr-1" /> <span className="hidden md:inline">CONSUMED</span>
                  </span>
-                 {c.machine_no && (
-                   <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase">LINE: {c.machine_no}</span>
-                 )}
-               </div>
-            </td>
-            <td className="px-3 md:px-6 py-4">
-               <span className="flex items-center text-[10px] font-bold text-emerald-600">
-                <CheckCircle className="w-3 h-3 mr-1" /> <span className="hidden md:inline">CONSUMED</span>
-               </span>
-            </td>
-            <td className="px-6 py-4 text-right space-x-1">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

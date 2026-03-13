@@ -403,37 +403,39 @@ export default function SalesReturns() {
         </Card>
       )}
 
-      <Card className="border-slate-200">
-        <TableView
-          title="Return History"
-          description="Log of all customer returns and reversals."
-          headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Actions']}
-          data={returns}
-          loading={loading}
-          searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number']}
-          renderRow={(ret: any) => (
-            <tr key={ret.id} className="hover:bg-rose-50 transition-all border-b last:border-0">
-              <td className="px-6 py-4 font-mono font-black text-rose-600">
-                <div>{ret.return_number}</div>
-                <div className="text-[10px] font-medium text-slate-400">Inv: {ret.invoices?.invoice_number || 'N/A'}</div>
-              </td>
-              <td className="px-6 py-4 text-xs font-semibold">{new Date(ret.return_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold">{ret.customers?.customer_name}</td>
-              <td className="px-6 py-4">
-                <div className="text-xs font-bold text-slate-700">{ret.return_through}</div>
-                <div className="text-[10px] text-slate-500 uppercase">{ret.return_through === 'DIRECT' ? ret.return_employee?.name || 'Unassigned' : ret.courier_name || 'N/A'}</div>
-              </td>
-              <td className="px-6 py-4 font-black">₹ {ret.total_return_value?.toLocaleString()}</td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(ret)} className="h-8 w-8 p-0 text-primary border"><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(ret.id)} className="h-8 w-8 p-0 text-rose-600 border"><Trash2 className="w-4 h-4" /></Button>
-                 </div>
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-slate-200">
+          <TableView
+            title="Return History"
+            description="Log of all customer returns and reversals."
+            headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Actions']}
+            data={returns}
+            loading={loading}
+            searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number']}
+            renderRow={(ret: any) => (
+              <tr key={ret.id} className="hover:bg-rose-50 transition-all border-b last:border-0">
+                <td className="px-6 py-4 font-mono font-black text-rose-600">
+                  <div>{ret.return_number}</div>
+                  <div className="text-[10px] font-medium text-slate-400">Inv: {ret.invoices?.invoice_number || 'N/A'}</div>
+                </td>
+                <td className="px-6 py-4 text-xs font-semibold">{new Date(ret.return_date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 font-bold">{ret.customers?.customer_name}</td>
+                <td className="px-6 py-4">
+                  <div className="text-xs font-bold text-slate-700">{ret.return_through}</div>
+                  <div className="text-[10px] text-slate-500 uppercase">{ret.return_through === 'DIRECT' ? ret.return_employee?.name || 'Unassigned' : ret.courier_name || 'N/A'}</div>
+                </td>
+                <td className="px-6 py-4 font-black">₹ {ret.total_return_value?.toLocaleString()}</td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(ret)} className="h-8 w-8 p-0 text-primary border"><Edit2 className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(ret.id)} className="h-8 w-8 p-0 text-rose-600 border"><Trash2 className="w-4 h-4" /></Button>
+                   </div>
+                </td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

@@ -36,6 +36,7 @@ export default function MarketingVisitsPage() {
 
   const [formData, setFormData] = useState({
     employee_id: '',
+    customer_id: '',
     customer_name: '',
     location: '',
     visit_date: new Date().toISOString().split('T')[0],
@@ -124,6 +125,13 @@ export default function MarketingVisitsPage() {
       return;
     }
 
+    if (formData.time_in && formData.time_out) {
+      if (formData.time_out <= formData.time_in) {
+        error('Time Out must be strictly later than Time In.');
+        return;
+      }
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${MARKETING_API}/${editingId}` : MARKETING_API;
@@ -155,6 +163,7 @@ export default function MarketingVisitsPage() {
   const resetForm = () => {
     setFormData({
       employee_id: '',
+      customer_id: '',
       customer_name: '',
       location: '',
       visit_date: new Date().toISOString().split('T')[0],
@@ -170,6 +179,7 @@ export default function MarketingVisitsPage() {
     setEditingId(rec.id);
     setFormData({
       employee_id: rec.employee_id,
+      customer_id: rec.customer_id || '',
       customer_name: rec.customer_name,
       location: rec.location || '',
       visit_date: rec.visit_date.split('T')[0],
@@ -224,8 +234,6 @@ export default function MarketingVisitsPage() {
     success('Detailed visit list exported successfully!');
   };
 
-
-
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
       message: 'Are you sure you want to delete this visit report?',
@@ -253,7 +261,7 @@ export default function MarketingVisitsPage() {
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Marketing Operations</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading" id="page-title">Marketing Operations</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
@@ -364,22 +372,22 @@ export default function MarketingVisitsPage() {
                 </label>
                 <select 
                   value={formData.customer_name}
-                  onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
+                  onChange={(e) => {
+                    const selectedName = e.target.value;
+                    const selectedCust = customers.find(c => c.customer_name === selectedName);
+                    setFormData({
+                      ...formData, 
+                      customer_name: selectedName,
+                      customer_id: selectedCust?.id || ''
+                    });
+                  }}
                   className="w-full h-10 px-3 rounded-md border border-input text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
                 >
                   <option value="">Select customer...</option>
                   {customers.map(cust => (
                     <option key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</option>
                   ))}
-                  {/* <option value="New Customer">+ Add New (Type below)</option> */}
                 </select>
-                {/* {formData.customer_name === 'New Customer' && (
-                  <Input 
-                    placeholder="Enter new company name"
-                    className="mt-2"
-                    onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
-                  />
-                )} */}
               </div>
 
               <div className="space-y-2">
@@ -459,81 +467,83 @@ export default function MarketingVisitsPage() {
         </Card>
       )}
 
-      <TableView
-        title="Field Visit Logs"
-        description="Punching details for field staff tracking."
-        headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Status / Outcome', 'Action']}
-        data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
-        loading={loading}
-        searchFields={['users.name', 'customer_name', 'purpose']}
-        searchPlaceholder="Search staff or client..."
-        actions={
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
-            <div className="flex items-center gap-2">
-              <Input 
-                type="date"
-                className="w-40 rounded-full border-primary/20 h-9 text-xs"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              />
-              {dateFilter && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setDateFilter('')}
-                  className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        }
-        renderRow={(rec: any) => (
-          <tr key={rec.id} className="hover:bg-primary/5 transition-all group">
-            <td className="px-6 py-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs">
-                  {rec.users?.name?.charAt(0) || 'U'}
-                </div>
-                <div>
-                  <div className="font-semibold">{rec.users?.name || 'Unknown Staff'}</div>
-                  <div className="text-[10px] text-muted-foreground">{rec.users?.employee_code || '#---'}</div>
-                </div>
+      {!showForm && (
+        <TableView
+          title="Field Visit Logs"
+          description="Punching details for field staff tracking."
+          headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Status / Outcome', 'Action']}
+          data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
+          loading={loading}
+          searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
+          searchPlaceholder="Search staff name/ID, client name/ID..."
+          actions={
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="date"
+                  className="w-40 rounded-full border-primary/20 h-9 text-xs"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+                {dateFilter && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setDateFilter('')}
+                    className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
-            </td>
-            <td className="px-6 py-4 font-medium text-foreground">
-              {rec.customer_name}
-            </td>
-            <td className="px-6 py-4 text-xs text-muted-foreground">
-               <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
-            </td>
-            <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
-            <td className="px-6 py-4 font-mono text-[11px] text-primary">
-              {rec.time_in?.substring(0,5) || '--:--'} - {rec.time_out?.substring(0,5) || '--:--'}
-            </td>
-            <td className="px-6 py-4">
-               <div className="flex flex-col gap-1">
-                 <div className="text-xs font-semibold">{rec.purpose}</div>
-                 <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{rec.outcome || 'No outcome recorded'}</div>
-               </div>
-            </td>
-            <td className="md:px-6 py-4 text-right space-x-2">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+            </div>
+          }
+          renderRow={(rec: any) => (
+            <tr key={rec.id} className="hover:bg-primary/5 transition-all group">
+              <td className="px-6 py-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs">
+                    {rec.users?.name?.charAt(0) || 'U'}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{rec.users?.name || 'Unknown Staff'}</div>
+                    <div className="text-[10px] text-muted-foreground">{rec.users?.employee_code || '#---'}</div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 font-medium text-foreground">
+                {rec.customer_name}
+              </td>
+              <td className="px-6 py-4 text-xs text-muted-foreground">
+                 <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
+              </td>
+              <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
+              <td className="px-6 py-4 font-mono text-[11px] text-primary">
+                {rec.time_in?.substring(0,5) || '--:--'} - {rec.time_out?.substring(0,5) || '--:--'}
+              </td>
+              <td className="px-6 py-4">
+                 <div className="flex flex-col gap-1">
+                   <div className="text-xs font-semibold">{rec.purpose}</div>
+                   <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{rec.outcome || 'No outcome recorded'}</div>
+                 </div>
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-2">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

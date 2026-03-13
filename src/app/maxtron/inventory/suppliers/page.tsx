@@ -444,55 +444,57 @@ export default function SupplierPage() {
         </Card>
       )}
 
-      <TableView
-        title="Supplier Database"
-        description="Comprehensive directory of vendors with multi-part address tracking."
-        headers={['Vendor Identity', 'Office Location', 'Financial Terms', 'Product Line', 'Actions']}
-        data={suppliers}
-        loading={loading}
-        searchFields={['supplier_name', 'supplier_code', 'gst_no']}
-        renderRow={(s: any) => (
-          <tr key={s.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-               <div className="font-black text-slate-800 text-[13px]">
-                {s.supplier_name?.length > 30 ? s.supplier_name.slice(0, 30) + "..." : s.supplier_name}
-               </div>
-               <div className="text-[10px] text-muted-foreground flex items-center font-mono mt-0.5 uppercase tracking-tighter">
-                <Package className="w-2.5 h-2.5 mr-1" /> {s.supplier_code} | GST: {s.gst_no || 'NA'}
-               </div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-[11px] font-bold text-slate-700 flex items-center italic">
-                 <MapPin className="w-3 h-3 mr-1 text-primary" /> {s.office_addr_data?.city || 'N/A'}, {s.office_addr_data?.state || ''}
-               </div>
-               <div className="text-[10px] text-slate-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
-                 {s.office_addr_data?.street || ''} {s.office_addr_data?.zip_code}
-               </div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>
-               <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period || 0} DAYS CREDIT</div>
-            </td>
-            <td className="px-6 py-4">
-               <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[9px] font-black tracking-widest rounded border border-slate-200">
-                 {s.product_supplied || 'GENERAL'}
-               </span>
-            </td>
-            <td className="px-6 py-4 text-right space-x-1">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(s)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title="Supplier Database"
+          description="Comprehensive directory of vendors with multi-part address tracking."
+          headers={['Vendor Identity', 'Office Location', 'Financial Terms', 'Product Line', 'Actions']}
+          data={suppliers}
+          loading={loading}
+          searchFields={['supplier_name', 'supplier_code', 'gst_no']}
+          renderRow={(s: any) => (
+            <tr key={s.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                 <div className="font-black text-slate-800 text-[13px]">
+                  {s.supplier_name?.length > 30 ? s.supplier_name.slice(0, 30) + "..." : s.supplier_name}
+                 </div>
+                 <div className="text-[10px] text-muted-foreground flex items-center font-mono mt-0.5 uppercase tracking-tighter">
+                  <Package className="w-2.5 h-2.5 mr-1" /> {s.supplier_code} | GST: {s.gst_no || 'NA'}
+                 </div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-[11px] font-bold text-slate-700 flex items-center italic">
+                   <MapPin className="w-3 h-3 mr-1 text-primary" /> {s.office_addr_data?.city || 'N/A'}, {s.office_addr_data?.state || ''}
+                 </div>
+                 <div className="text-[10px] text-slate-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                   {s.office_addr_data?.street || ''} {s.office_addr_data?.zip_code}
+                 </div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>
+                 <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period || 0} DAYS CREDIT</div>
+              </td>
+              <td className="px-6 py-4">
+                 <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[9px] font-black tracking-widest rounded border border-slate-200">
+                   {s.product_supplied || 'GENERAL'}
+                 </span>
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(s)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

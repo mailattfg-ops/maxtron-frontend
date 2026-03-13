@@ -24,6 +24,7 @@ export default function SupplierPaymentPage() {
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [pendingBills, setPendingBills] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     
     const [formData, setFormData] = useState({
@@ -159,6 +160,7 @@ export default function SupplierPaymentPage() {
             return;
         }
 
+        setSubmitting(true);
         try {
             // Prepare allocation list for backend
             const allocationList = Object.entries(allocations)
@@ -199,8 +201,8 @@ export default function SupplierPaymentPage() {
             } else {
                 toastError(data.message);
             }
-        } catch (error) {
-            toastError('Failed to save payment');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -245,30 +247,32 @@ export default function SupplierPaymentPage() {
                 </Button>
             </div>
 
-            <TableView
-                title="Recent Payments"
-                headers={['Voucher No', 'Date', 'Supplier', 'Mode', 'Amount', 'Actions']}
-                data={payments}
-                loading={loading}
-                searchFields={['voucher_no', 'supplier_master.supplier_name']}
-                searchPlaceholder="Search voucher or supplier..."
-                renderRow={(row: any) => (
-                    <tr key={row.id} className="hover:bg-primary/5 transition-all border-b border-slate-50 last:border-none">
-                        <td className="px-6 py-4 font-mono text-xs">{row.voucher_no}</td>
-                        <td className="px-6 py-4">{new Date(row.payment_date).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 font-bold">{row.supplier_master?.supplier_name}</td>
-                        <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase">{row.payment_mode}</span>
-                        </td>
-                        <td className="px-6 py-4 font-black text-red-600">₹{Number(row.amount).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-right">
-                             <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
-                        </td>
-                    </tr>
-                )}
-            />
+            {!isModalOpen && (
+                <TableView
+                    title="Recent Payments"
+                    headers={['Voucher No', 'Date', 'Supplier', 'Mode', 'Amount', 'Actions']}
+                    data={payments}
+                    loading={loading}
+                    searchFields={['voucher_no', 'supplier_master.supplier_name']}
+                    searchPlaceholder="Search voucher or supplier..."
+                    renderRow={(row: any) => (
+                        <tr key={row.id} className="hover:bg-primary/5 transition-all border-b border-slate-50 last:border-none">
+                            <td className="px-6 py-4 font-mono text-xs">{row.voucher_no}</td>
+                            <td className="px-6 py-4">{new Date(row.payment_date).toLocaleDateString()}</td>
+                            <td className="px-6 py-4 font-bold">{row.supplier_master?.supplier_name}</td>
+                            <td className="px-6 py-4">
+                                <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase">{row.payment_mode}</span>
+                            </td>
+                            <td className="px-6 py-4 font-black text-red-600">₹{Number(row.amount).toLocaleString()}</td>
+                            <td className="px-6 py-4 text-right">
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </td>
+                        </tr>
+                    )}
+                />
+            )}
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -478,6 +482,7 @@ export default function SupplierPaymentPage() {
                                     </Button>
                                     <Button
                                         type="submit"
+                                        loading={submitting}
                                         className="flex-1 py-7 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-2xl shadow-primary/20 transition-all uppercase tracking-widest"
                                     >
                                         Confirm & Post Entry

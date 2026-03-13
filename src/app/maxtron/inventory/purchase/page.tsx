@@ -34,6 +34,7 @@ export default function PurchaseEntryPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -177,6 +178,7 @@ export default function PurchaseEntryPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${PURCHASE_API}/${editingId}` : PURCHASE_API;
 
+    setSubmitting(true);
     try {
       const payload = {
         ...formData,
@@ -203,6 +205,8 @@ export default function PurchaseEntryPage() {
       }
     } catch (err) {
       error('Network connectivity issue.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -442,7 +446,11 @@ export default function PurchaseEntryPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 font-bold">
                 Cancel Receipt
               </Button>
-              <Button onClick={saveEntry} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center">
+              <Button 
+                onClick={saveEntry} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update GRN' : 'Authorize Receipt'}
               </Button>
@@ -451,51 +459,53 @@ export default function PurchaseEntryPage() {
         </Card>
       )}
 
-      <TableView
-        title="Material Intake Log"
-        description="Verify incoming shipments and audit quantities delivered against orders."
-        headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Actions']}
-        data={entries}
-        loading={loading}
-        searchFields={['entry_number', 'suppliers.supplier_name', 'invoice_number']}
-        renderRow={(e: any) => (
-          <tr key={e.id} className="hover:bg-emerald-50 transition-all border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-               <div className="font-black text-slate-800 text-[13px]">{e.entry_number}</div>
-               <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{e.supplier_master?.supplier_name}</div>
-               {e.rm_orders?.order_number && (
-                 <div className="text-[10px] font-black text-amber-600 uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
-               )}
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-lg font-black text-emerald-600">{e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0).toLocaleString()}</div>
-               <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-black text-slate-900 tracking-tight">₹ {e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.amount), 0).toLocaleString()}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>
-               <div className="text-[10px] text-slate-400 font-bold mt-1">Invoice: {e.invoice_number || '---'}</div>
-            </td>
-            <td className="px-6 py-4 text-right space-x-1">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => {}} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title="Material Intake Log"
+          description="Verify incoming shipments and audit quantities delivered against orders."
+          headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Actions']}
+          data={entries}
+          loading={loading}
+          searchFields={['entry_number', 'suppliers.supplier_name', 'invoice_number']}
+          renderRow={(e: any) => (
+            <tr key={e.id} className="hover:bg-emerald-50 transition-all border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                 <div className="font-black text-slate-800 text-[13px]">{e.entry_number}</div>
+                 <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-bold text-slate-700">{e.supplier_master?.supplier_name}</div>
+                 {e.rm_orders?.order_number && (
+                   <div className="text-[10px] font-black text-amber-600 uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
+                 )}
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-lg font-black text-emerald-600">{e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0).toLocaleString()}</div>
+                 <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-black text-slate-900 tracking-tight">₹ {e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.amount), 0).toLocaleString()}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>
+                 <div className="text-[10px] text-slate-400 font-bold mt-1">Invoice: {e.invoice_number || '---'}</div>
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => {}} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

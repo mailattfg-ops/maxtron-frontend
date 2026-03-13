@@ -29,6 +29,7 @@ export default function CustomerOrderEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -229,6 +230,8 @@ export default function CustomerOrderEntry() {
       return;
     }
 
+
+    setSubmitting(true);
     try {
       const url = editingId ? `${ORDERS_API}/${editingId}` : ORDERS_API;
       const method = editingId ? 'PUT' : 'POST';
@@ -279,6 +282,8 @@ export default function CustomerOrderEntry() {
         title: 'System Error',
         message: 'A network or server error occurred. Please try again later.'
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -538,7 +543,11 @@ export default function CustomerOrderEntry() {
               </div>
 
               <div className="flex justify-end pt-4 gap-3">
-                <Button type="submit" className="gap-2 px-10 h-12 text-base font-bold shadow-xl animate-pulse hover:animate-none">
+                <Button 
+                  type="submit" 
+                  loading={submitting}
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl animate-pulse hover:animate-none"
+                >
                   <Save className="w-5 h-5" /> {editingId ? "Update Order Details" : "Confirm & Post Order"}
                 </Button>
               </div>
@@ -547,67 +556,69 @@ export default function CustomerOrderEntry() {
         </Card>
       )}
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-        <TableView
-          title="Recent Orders"
-          description="Log of latest customer orders and their status."
-          headers={['Order No', 'Date', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
-          data={orders}
-          loading={loading}
-          searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
-          renderRow={(o: any) => (
-            <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">
-              <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
-              <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4">
-                 <div className="flex flex-col">
-                    <span className="font-bold text-slate-800">{o.customers?.customer_name}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">{o.customers?.customer_code}</span>
-                 </div>
-              </td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-600 border">
-                        {o.executive?.name?.charAt(0) || '?'}
-                    </div>
-                    <span className="text-xs font-medium">{o.executive?.name || 'N/A'}</span>
-                 </div>
-              </td>
-              <td className="px-6 py-4 font-black text-slate-900">₹ {o.total_value?.toLocaleString()}</td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-1">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 border">
-                        {o.items?.length || 0}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Products</span>
-                 </div>
-              </td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2 transition-opacity">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => { e.stopPropagation(); handleEdit(o); }}
-                        className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/10"
-                        title="Edit Order"
-                    >
-                        <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }}
-                        className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"
-                        title="Delete Order"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
-                 </div>
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+          <TableView
+            title="Recent Orders"
+            description="Log of latest customer orders and their status."
+            headers={['Order No', 'Date', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
+            data={orders}
+            loading={loading}
+            searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
+            renderRow={(o: any) => (
+              <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">
+                <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
+                <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
+                <td className="px-6 py-4">
+                   <div className="flex flex-col">
+                      <span className="font-bold text-slate-800">{o.customers?.customer_name}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{o.customers?.customer_code}</span>
+                   </div>
+                </td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-600 border">
+                          {o.executive?.name?.charAt(0) || '?'}
+                      </div>
+                      <span className="text-xs font-medium">{o.executive?.name || 'N/A'}</span>
+                   </div>
+                </td>
+                <td className="px-6 py-4 font-black text-slate-900">₹ {o.total_value?.toLocaleString()}</td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-1">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 border">
+                          {o.items?.length || 0}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Products</span>
+                   </div>
+                </td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-2 transition-opacity">
+                      <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); handleEdit(o); }}
+                          className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/10"
+                          title="Edit Order"
+                      >
+                          <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }}
+                          className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"
+                          title="Delete Order"
+                      >
+                          <Trash2 className="w-4 h-4" />
+                      </Button>
+                   </div>
+                </td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

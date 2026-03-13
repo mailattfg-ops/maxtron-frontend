@@ -19,6 +19,7 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
 
   const [activeTab, setActiveTab] = useState('basic');
@@ -120,6 +121,7 @@ export default function CustomersPage() {
       return;
     }
 
+    setSubmitting(true);
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${API_URL}/${editingId}` : API_URL;
@@ -145,6 +147,8 @@ export default function CustomersPage() {
       }
     } catch (err) {
       console.error('Error saving customer:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -190,6 +194,7 @@ export default function CustomersPage() {
     if (!isConfirmed) return;
     
     const token = localStorage.getItem('token');
+    setSubmitting(true);
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
@@ -202,6 +207,8 @@ export default function CustomersPage() {
       }
     } catch (err) {
       error('Failed to eliminate customer record.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -332,7 +339,11 @@ export default function CustomersPage() {
             )}
 
             <div className="mt-8 pt-6 border-t flex justify-end">
-              <Button onClick={saveCustomer} className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg">
+              <Button 
+                onClick={saveCustomer} 
+                loading={submitting}
+                className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Customer' : 'Save Customer'}
               </Button>

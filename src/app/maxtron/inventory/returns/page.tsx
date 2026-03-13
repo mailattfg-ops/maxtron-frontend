@@ -385,59 +385,61 @@ export default function PurchaseReturnPage() {
         </Card>
       )}
 
-      <TableView
-        title="Material Return Log"
-        description="History of raw materials rejected and returned to suppliers."
-        headers={['Debit / Date', 'Source GRN', 'Supplier Partner', 'Returned Qty', 'Reason', 'Status', 'Actions']}
-        data={returns}
-        loading={loading}
-        searchFields={['return_no', 'suppliers.supplier_name', 'purchase_entries.entry_number']}
-        searchPlaceholder="Find DN or vendor..."
-        renderRow={(r: any) => (
-          <tr key={r.id} className="hover:bg-rose-50 transition-all group border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-               <div className="font-black text-rose-500 text-[13px]">{r.return_no}</div>
-               <div className="text-[10px] text-muted-foreground flex items-center mt-0.5">
-                <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(r.return_date).toLocaleDateString()}
-               </div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{r.purchase_entries?.entry_number || 'Manual'}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-lg font-black text-rose-600">{Number(r.quantity_returned).toLocaleString()}</div>
-               <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="text-[11px] text-slate-500 italic max-w-[200px] truncate">{r.reason || 'No reason specified'}</div>
-            </td>
-            <td className="px-6 py-4">
-               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
-                 r.status === 'CREDITED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                 r.status === 'DISPATCHED' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                 'bg-amber-100 text-amber-700 border border-amber-200'
-               }`}>
-                 {r.status}
-               </span>
-            </td>
-            <td className="px-6 py-4 text-right space-x-1">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title="Material Return Log"
+          description="History of raw materials rejected and returned to suppliers."
+          headers={['Debit / Date', 'Source GRN', 'Supplier Partner', 'Returned Qty', 'Reason', 'Status', 'Actions']}
+          data={returns}
+          loading={loading}
+          searchFields={['return_no', 'suppliers.supplier_name', 'purchase_entries.entry_number']}
+          searchPlaceholder="Find DN or vendor..."
+          renderRow={(r: any) => (
+            <tr key={r.id} className="hover:bg-rose-50 transition-all group border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                 <div className="font-black text-rose-500 text-[13px]">{r.return_no}</div>
+                 <div className="text-[10px] text-muted-foreground flex items-center mt-0.5">
+                  <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(r.return_date).toLocaleDateString()}
+                 </div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-bold text-slate-700">{r.purchase_entries?.entry_number || 'Manual'}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-lg font-black text-rose-600">{Number(r.quantity_returned).toLocaleString()}</div>
+                 <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
+              </td>
+              <td className="px-6 py-4">
+                 <div className="text-[11px] text-slate-500 italic max-w-[200px] truncate">{r.reason || 'No reason specified'}</div>
+              </td>
+              <td className="px-6 py-4">
+                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
+                   r.status === 'CREDITED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                   r.status === 'DISPATCHED' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                   'bg-amber-100 text-amber-700 border border-amber-200'
+                 }`}>
+                   {r.status}
+                 </span>
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

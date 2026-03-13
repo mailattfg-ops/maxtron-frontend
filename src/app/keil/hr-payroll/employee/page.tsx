@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -18,6 +18,8 @@ export default function EmployeeInformationPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('personal');
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [newEmployeePopup, setNewEmployeePopup] = useState<{username: string, password: string} | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [userTypes, setUserTypes] = useState<any[]>([]);
@@ -251,6 +253,7 @@ export default function EmployeeInformationPage() {
   };
 
   const saveEmployee = async () => {
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
@@ -290,8 +293,8 @@ export default function EmployeeInformationPage() {
       } else {
         error(data.message || 'Operation failed');
       }
-    } catch (err) {
-      error('Network error during employee registration.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -325,8 +328,14 @@ export default function EmployeeInformationPage() {
       employee_suspenses: emp.employee_suspenses || [],
       employee_incentive_slabs: emp.employee_incentive_slabs || []
     });
+    setIsViewMode(false);
     setActiveTab('personal');
     setShowForm(true);
+  };
+
+  const viewEmployee = (emp: any) => {
+    editEmployee(emp);
+    setIsViewMode(true);
   };
 
   const deleteEmployee = async (id: string) => {
@@ -338,6 +347,7 @@ export default function EmployeeInformationPage() {
     if (!isConfirmed) return;
     
     try {
+      setSubmitting(true);
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL(activeEntity)}/${id}`, {
         method: 'DELETE',
@@ -353,6 +363,8 @@ export default function EmployeeInformationPage() {
       }
     } catch (error) {
       console.error('Error deleting employee:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -424,6 +436,7 @@ export default function EmployeeInformationPage() {
                     ],
                     company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                   });
+                  setIsViewMode(false);
                   setShowForm(true);
                 }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
                   <Plus className="w-5 h-5 mr-2" /> Add Employee
@@ -443,9 +456,15 @@ export default function EmployeeInformationPage() {
               <Button onClick={() => {
                 if (activeTab === 'personal') setActiveTab('qualifications');
                 else if (activeTab === 'qualifications') setActiveTab('financials');
+                else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
                 else saveEmployee();
-              }} className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold">
-                {activeTab === 'financials' ? (
+              }} 
+              loading={submitting}
+              className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
+              >
+                {isViewMode && activeTab === 'financials' ? (
+                  <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
+                ) : activeTab === 'financials' ? (
                   <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Save'}</>
                 ) : (
                   <>Next <ChevronRight className="w-4 h-4 ml-2" /></>
@@ -523,7 +542,7 @@ export default function EmployeeInformationPage() {
                   <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
                     <CardTitle className="text-lg md:text-xl text-primary flex items-center">
                       <UserPlus className="w-5 h-5 mr-3 text-secondary" />
-                      {editingId ? 'Edit Personal Details' : 'Personal Details'}
+                      {isViewMode ? 'View Employee Details' : editingId ? 'Edit Personal Details' : 'Personal Details'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 md:p-6 space-y-4">
@@ -539,26 +558,26 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
-                        <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} className="h-10 md:h-11" />
+                        <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} disabled={isViewMode} className="h-10 md:h-11" />
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
                         <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
-                             <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} placeholder="123 Main St..." className="h-10 text-sm" />
+                             <Input value={formData.addresses[0]?.street} onChange={(e) => handleAddressChange(0, 'street', e.target.value)} disabled={isViewMode} placeholder="123 Main St..." className="h-10 text-sm" />
                            </div>
                            <div className="space-y-2 text-sm">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
-                             <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} placeholder="City" className="h-10" />
+                             <Input value={formData.addresses[0]?.city} onChange={(e) => handleAddressChange(0, 'city', e.target.value)} disabled={isViewMode} placeholder="City" className="h-10" />
                            </div>
                            <div className="space-y-2 text-sm">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} placeholder="State" className="h-10" />
+                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
                            </div>
                         </div>
                       </div>
@@ -568,21 +587,21 @@ export default function EmployeeInformationPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
-                             <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} placeholder="Permanent home street..." className="h-10 text-sm" />
+                             <Input value={formData.addresses[1]?.street} onChange={(e) => handleAddressChange(1, 'street', e.target.value)} disabled={isViewMode} placeholder="Permanent home street..." className="h-10 text-sm" />
                            </div>
                            <div className="space-y-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">City</label>
-                             <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} placeholder="City" className="h-10" />
+                             <Input value={formData.addresses[1]?.city} onChange={(e) => handleAddressChange(1, 'city', e.target.value)} disabled={isViewMode} placeholder="City" className="h-10" />
                            </div>
                            <div className="space-y-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} placeholder="State" className="h-10" />
+                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
                            </div>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Guarantor Name</label>
-                        <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} placeholder="Name of Guarantor" className="h-10" />
+                        <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} disabled={isViewMode} placeholder="Name of Guarantor" className="h-10" />
                       </div>
                       <div className="space-y-2 flex items-center h-full pt-4">
                         <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
@@ -590,7 +609,8 @@ export default function EmployeeInformationPage() {
                              type="checkbox" 
                              name="is_married" 
                              checked={formData.is_married} 
-                             onChange={(e) => setFormData({...formData, is_married: e.target.checked})} 
+                             onChange={(e) => !isViewMode && setFormData({...formData, is_married: e.target.checked})} 
+                             disabled={isViewMode}
                              className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
                           />
                           <span>Is Married?</span>
@@ -603,6 +623,7 @@ export default function EmployeeInformationPage() {
                                 name="family_details" 
                                 value={formData.family_details} 
                                 onChange={handleInputChange as any} 
+                                disabled={isViewMode}
                                 placeholder="Spouse / Children details..."
                                 className="w-full h-20 p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/10 transition-all resize-none"
                             />
@@ -623,7 +644,8 @@ export default function EmployeeInformationPage() {
                   name="category_id" 
                   value={formData.category_id} 
                   onChange={handleInputChange} 
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                  disabled={isViewMode}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
                 >
                   <option value="" disabled>Select Category</option>
                   {categories.map((cat) => (
@@ -633,7 +655,7 @@ export default function EmployeeInformationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} placeholder="john@maxtron.com" />
+                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
               </div>
 
               <div className="space-y-2">
@@ -642,8 +664,8 @@ export default function EmployeeInformationPage() {
                   name="company_id" 
                   value={formData.company_id} 
                   onChange={handleInputChange} 
-                  disabled
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                  disabled={true}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
                 >
                   {companies.map((c) => (
                     <option key={c.id} value={c.id}>{c.company_name}</option>
@@ -652,7 +674,7 @@ export default function EmployeeInformationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
-                <Input type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder={editingId ? 'Leave blank to keep unchanged' : '••••••••'} />
+                <Input type="password" name="password" value={formData.password} onChange={handleInputChange} disabled={isViewMode} placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
@@ -660,7 +682,8 @@ export default function EmployeeInformationPage() {
                   name="type" 
                   value={formData.type} 
                   onChange={handleInputChange} 
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
+                  disabled={isViewMode}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
                 >
                   <option value="" disabled>Select System Role</option>
                   {userTypes.map((role) => (
@@ -687,9 +710,11 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Educational Qualifications</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_qualifications', { qualification_type: 'BASIC', qualification_name: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Qualification
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_qualifications', { qualification_type: 'BASIC', qualification_name: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Qualification
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                         {formData.employee_qualifications.map((q, idx) => (
@@ -697,7 +722,8 @@ export default function EmployeeInformationPage() {
                               <select 
                                 value={q.qualification_type} 
                                 onChange={(e) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', e.target.value)}
-                                className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                disabled={isViewMode}
+                                className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                               >
                                 <option value="BASIC">Basic</option>
                                 <option value="ADDITIONAL">Additional</option>
@@ -706,11 +732,14 @@ export default function EmployeeInformationPage() {
                                 placeholder="Qualification Details (e.g. Master's in IT)" 
                                 value={q.qualification_name}
                                 onChange={(e) => handleNestedRowChange('employee_qualifications', idx, 'qualification_name', e.target.value)}
+                                disabled={isViewMode}
                                 className="flex-1"
                               />
-                              <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_qualifications', idx)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {!isViewMode && (
+                                <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_qualifications', idx)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                            </div>
                         ))}
                         {formData.employee_qualifications.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-4 text-center">No qualifications recorded yet.</p>}
@@ -722,36 +751,40 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Past Work Experience</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_experiences', { company_name: '', from_period: '', to_period: '', post: '', responsibilities: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Experience
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_experiences', { company_name: '', from_period: '', to_period: '', post: '', responsibilities: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Experience
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-4">
                         {formData.employee_experiences.map((exp, idx) => (
                            <div key={idx} className="grid grid-cols-2 md:grid-cols-12 gap-3 items-start animate-in fade-in bg-secondary/5 p-4 rounded-lg relative">
                               <div className="col-span-2 md:col-span-3 space-y-1">
                                 <label className="text-xs text-muted-foreground">Company Name</label>
-                                <Input value={exp.company_name} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'company_name', e.target.value)} placeholder="Previous Employer" />
+                                <Input value={exp.company_name} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'company_name', e.target.value)} disabled={isViewMode} placeholder="Previous Employer" />
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">From</label>
-                                <Input type="date" value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} />
+                                <Input type="date" value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">To</label>
-                                <Input type="date" value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} />
+                                <Input type="date" value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-2 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">Post/Job Title</label>
-                                <Input value={exp.post} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'post', e.target.value)} placeholder="Engineer" />
+                                <Input value={exp.post} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'post', e.target.value)} disabled={isViewMode} placeholder="Engineer" />
                               </div>
                               <div className="col-span-2 md:col-span-3 space-y-1">
                                 <label className="text-xs text-muted-foreground">Responsibilities</label>
-                                <Input value={exp.responsibilities} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'responsibilities', e.target.value)} placeholder="Job duties..." />
+                                <Input value={exp.responsibilities} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'responsibilities', e.target.value)} disabled={isViewMode} placeholder="Job duties..." />
                               </div>
-                              <Button size="icon" variant="ghost" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_experiences', idx)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {!isViewMode && (
+                                <Button size="icon" variant="ghost" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeNestedRow('employee_experiences', idx)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                            </div>
                         ))}
                         {formData.employee_experiences.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-4 text-center">No experience history documented.</p>}
@@ -778,10 +811,10 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_license} onChange={(e) => setFormData({...formData, has_license: e.target.checked})} className="rounded text-primary focus:ring-primary" />
+                            <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>License Holder (YES/NO)</span>
                         </label>
-                        {formData.has_license && (
+                        {formData.has_license && !isViewMode && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_licenses', { license_no: '', issue_date: '', expiry_date: '' })}>
                                <Plus className="w-4 h-4 mr-1" /> <span className='hidden lg:block'>Add License</span>
                             </Button>
@@ -792,20 +825,22 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">License No.</label>
-                                <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} />
+                                <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Issue Date</label>
-                                <Input type="date" value={lic.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'issue_date', e.target.value)} />
+                                <Input type="date" value={lic.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                <Input type="date" value={lic.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'expiry_date', e.target.value)} />
+                                <Input type="date" value={lic.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="pt-5">
-                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_licenses', idx)}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                               {!isViewMode && (
+                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_licenses', idx)}>
+                                   <Trash2 className="w-4 h-4" />
+                                 </Button>
+                               )}
                               </div>
                            </div>
                         ))}
@@ -816,10 +851,10 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_passport} onChange={(e) => setFormData({...formData, has_passport: e.target.checked})} className="rounded text-primary focus:ring-primary" />
+                            <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
-                        {formData.has_passport && (
+                        {formData.has_passport && !isViewMode && (
                             <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_passports', { passport_no: '', issue_date: '', expiry_date: '' })}>
                                <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Passport</span>
                             </Button>
@@ -830,20 +865,22 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Passport No.</label>
-                                <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} />
+                                 <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Issue Date</label>
-                                <Input type="date" value={ppt.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'issue_date', e.target.value)} />
+                                 <Input type="date" value={ppt.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                <Input type="date" value={ppt.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'expiry_date', e.target.value)} />
+                                 <Input type="date" value={ppt.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="pt-5">
-                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_passports', idx)}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                               {!isViewMode && (
+                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_passports', idx)}>
+                                   <Trash2 className="w-4 h-4" />
+                                 </Button>
+                               )}
                               </div>
                            </div>
                         ))}
@@ -858,9 +895,11 @@ export default function EmployeeInformationPage() {
                   <div>
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-semibold text-foreground/90">Certifications (Medical / Police)</h3>
-                      <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_certificates', { certificate_type: 'MEDICAL', issued: false, issue_date: '', expiry_date: '' })}>
-                         <Plus className="w-4 h-4 mr-1" /> <span className="hidden md:block">Add Certificate</span>
-                      </Button>
+                      {!isViewMode && (
+                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_certificates', { certificate_type: 'MEDICAL', issued: false, issue_date: '', expiry_date: '' })}>
+                           <Plus className="w-4 h-4 mr-1" /> <span className="hidden md:block">Add Certificate</span>
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-3">
                       {formData.employee_certificates.map((cert, idx) => (
@@ -870,7 +909,8 @@ export default function EmployeeInformationPage() {
                               <select 
                                 value={cert.certificate_type} 
                                 onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
+                                disabled={isViewMode}
+                                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                               >
                                 <option value="MEDICAL">Medical Certificate</option>
                                 <option value="POLICE_VERIFICATION">Police Verification</option>
@@ -879,21 +919,23 @@ export default function EmployeeInformationPage() {
                             <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
                               <div className="h-9 flex items-center">
-                                <input type="checkbox" checked={cert.issued} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} className="rounded w-4 h-4" />
+                                <input type="checkbox" checked={cert.issued} onChange={(e) => !isViewMode && handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} disabled={isViewMode} className="rounded w-4 h-4 text-primary focus:ring-primary" />
                               </div>
                             </div>
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Issue Date</label>
-                              <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} />
+                               <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
                             </div>
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Expiry Date</label>
-                              <Input type="date" value={cert.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'expiry_date', e.target.value)} />
+                               <Input type="date" value={cert.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
                             </div>
                             <div className="pt-5 flex-none w-10 text-right">
-                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_certificates', idx)}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                               {!isViewMode && (
+                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0 hover:bg-destructive/10" onClick={() => removeNestedRow('employee_certificates', idx)}>
+                                   <Trash2 className="w-4 h-4" />
+                                 </Button>
+                               )}
                             </div>
                          </div>
                       ))}
@@ -908,52 +950,62 @@ export default function EmployeeInformationPage() {
                      <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Advanced Loans</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Row
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Row
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
-                                <Input type="number" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} />
+                                 <Input type="number" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recv ₹</label>
-                                <Input type="number" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} />
+                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
+                                 <Input type="number" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Date Issued</label>
-                                <Input type="date" value={loan.loan_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_date', e.target.value)} />
+                                 <Input type="date" value={loan.loan_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_date', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="pt-5">
-                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_loans', idx)}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                               {!isViewMode && (
+                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_loans', idx)}>
+                                   <Trash2 className="w-4 h-4" />
+                                 </Button>
+                               )}
                               </div>
                            </div>
                         ))}
+                        {formData.employee_loans.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No advanced loans recorded.</p>}
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Suspense Amounts</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Row
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Row
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                          {formData.employee_suspenses.map((susp, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} />
-                              <Input type="number" placeholder="Balance Recv ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} />
-                              <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <Input type="number" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                              {!isViewMode && (
+                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                            </div>
                         ))}
+                        {formData.employee_suspenses.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No suspense amounts recorded.</p>}
                       </div>
                     </div>
                   </div>
@@ -965,40 +1017,50 @@ export default function EmployeeInformationPage() {
                      <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Minimum Targets</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_targets', { minimum_target: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Target
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_targets', { minimum_target: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Target
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                         {formData.employee_targets.map((tgt, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} />
-                              <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <Input type="number" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
+                              {!isViewMode && (
+                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                            </div>
                         ))}
+                        {formData.employee_targets.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No minimum targets recorded.</p>}
                       </div>
                      </div>
 
                      <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Incentive Slabs</h3>
-                        <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_incentive_slabs', { slab_from: '', slab_to: '', incentive_percent: '' })}>
-                           <Plus className="w-4 h-4 mr-1" /> Add Slab
-                        </Button>
+                        {!isViewMode && (
+                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_incentive_slabs', { slab_from: '', slab_to: '', incentive_percent: '' })}>
+                             <Plus className="w-4 h-4 mr-1" /> Add Slab
+                          </Button>
+                        )}
                       </div>
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} />
-                              <Input type="number" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} />
-                              <Input type="number" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} />
-                              <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <Input type="number" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                              {!isViewMode && (
+                                <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                            </div>
                         ))}
+                        {formData.employee_incentive_slabs.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No incentive slabs recorded.</p>}
                       </div>
                      </div>
                   </div>
@@ -1076,6 +1138,9 @@ export default function EmployeeInformationPage() {
                       </td>
                       <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         {hasPermission('hr_employee_view', 'edit') && (
                           <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
                             <Edit className="w-4 h-4" />

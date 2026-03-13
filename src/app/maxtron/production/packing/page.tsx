@@ -219,30 +219,32 @@ export default function PackingDetailsPage() {
         </Card>
       )}
 
-      <Card className="border-border/40 shadow-sm">
-        <TableView
-          title="Packed Unit Explorer"
-          description="History of bundled finished products."
-          headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed']}
-          data={packingRecords}
-          loading={loading}
-          searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
-          searchPlaceholder="Search packing records..."
-          renderRow={(p: any) => {
-            const batch = p.production_conversions?.production_batches;
-            return (
-              <tr key={p.id} className="hover:bg-emerald-50/50 border-b last:border-none transition-all">
-                <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-mono font-bold text-emerald-700">{batch?.batch_number}</td>
-                <td className="px-6 py-4 font-bold">{batch?.finished_products?.product_name}</td>
-                <td className="px-6 py-4 font-black">{p.bundle_count}</td>
-                <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
-                <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
-              </tr>
-            );
-          }}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-border/40 shadow-sm">
+          <TableView
+            title="Packed Unit Explorer"
+            description="History of bundled finished products."
+            headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed']}
+            data={packingRecords}
+            loading={loading}
+            searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
+            searchPlaceholder="Search packing records..."
+            renderRow={(p: any) => {
+              const batch = p.production_conversions?.production_batches;
+              return (
+                <tr key={p.id} className="hover:bg-emerald-50/50 border-b last:border-none transition-all">
+                  <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-mono font-bold text-emerald-700">{batch?.batch_number}</td>
+                  <td className="px-6 py-4 font-bold">{batch?.finished_products?.product_name}</td>
+                  <td className="px-6 py-4 font-black">{p.bundle_count}</td>
+                  <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
+                  <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
+                </tr>
+              );
+            }}
+          />
+        </Card>
+      )}
     </div>
   );
 }

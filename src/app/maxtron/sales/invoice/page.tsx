@@ -31,6 +31,7 @@ export default function SalesInvoiceEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -193,6 +194,8 @@ export default function SalesInvoiceEntry() {
         return; 
     }
 
+
+    setSubmitting(true);
     try {
       const url = editingId ? `${INVOICES_API}/${editingId}` : INVOICES_API;
       const method = editingId ? 'PUT' : 'POST';
@@ -238,6 +241,8 @@ export default function SalesInvoiceEntry() {
       }
     } catch (err) {
         setAlert({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.' });
+    } finally {
+        setSubmitting(false);
     }
   };
 
@@ -458,7 +463,11 @@ export default function SalesInvoiceEntry() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button type="submit" className="gap-2 px-10 h-12 text-base font-bold shadow-xl">
+                <Button 
+                  type="submit" 
+                  loading={submitting}
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl"
+                >
                   <Save className="w-5 h-5" /> {editingId ? "Update Invoice" : "Generate Invoice"}
                 </Button>
               </div>
@@ -467,31 +476,33 @@ export default function SalesInvoiceEntry() {
         </Card>
       )}
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-        <TableView
-          title="Posted Invoices"
-          description="History of all sales invoices generated."
-          headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'Actions']}
-          data={invoices}
-          loading={loading}
-          searchFields={['invoice_number', 'customers.customer_name']}
-          renderRow={(inv: any) => (
-            <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
-              <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
-              <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
-              <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
-              <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
-              <td className="px-6 py-4">
-                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-rose-600 border border-rose-100"><Trash2 className="w-4 h-4" /></Button>
-                 </div>
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+          <TableView
+            title="Posted Invoices"
+            description="History of all sales invoices generated."
+            headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'Actions']}
+            data={invoices}
+            loading={loading}
+            searchFields={['invoice_number', 'customers.customer_name']}
+            renderRow={(inv: any) => (
+              <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
+                <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
+                <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
+                <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
+                <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
+                <td className="px-6 py-4">
+                   <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10"><Edit2 className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-rose-600 border border-rose-100"><Trash2 className="w-4 h-4" /></Button>
+                   </div>
+                </td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

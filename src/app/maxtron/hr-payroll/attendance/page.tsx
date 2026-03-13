@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [bulkData, setBulkData] = useState<any[]>([]);
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
 
@@ -128,6 +129,7 @@ export default function AttendancePage() {
 
   const saveBulkAttendance = async () => {
     const token = localStorage.getItem('token');
+    setSubmitting(true);
     try {
       // Strip out non-database fields like employee_name/code before sending
       const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
@@ -144,14 +146,17 @@ export default function AttendancePage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Bulk attendance marked successfully!');
+        const msg = data.message ? `Success. ${data.message}` : 'Bulk attendance marked successfully!';
+        success(msg);
         setShowBulkForm(false);
-        fetchAttendance(currentCompanyId); // Pass ID explicitly
+        fetchAttendance(currentCompanyId); 
       } else {
         error(data.message || 'Bulk marking failed');
       }
     } catch (err) {
       error('Network error during bulk save.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -161,10 +166,23 @@ export default function AttendancePage() {
       return;
     }
 
+    // Client-side duplicate check
+    if (!editingId) {
+      const isDup = attendanceRecords.some(r => 
+        r.employee_id === formData.employee_id && 
+        (r.date.split('T')[0]) === formData.date
+      );
+      if (isDup) {
+        error('Attendance already marked for this employee on this date.');
+        return;
+      }
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${ATTENDANCE_API}/${editingId}` : ATTENDANCE_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -190,6 +208,8 @@ export default function AttendancePage() {
       }
     } catch (err) {
       console.error('Error saving attendance:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -421,7 +441,11 @@ export default function AttendancePage() {
             </div>
 
             <div className="mt-8 flex justify-end">
-              <Button onClick={saveAttendance} className="bg-primary hover:bg-primary/95 text-white px-8 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center">
+              <Button 
+                onClick={saveAttendance} 
+                loading={submitting}
+                className="bg-primary hover:bg-primary/95 text-white px-8 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Record' : 'Save Attendance'}
               </Button>
@@ -509,91 +533,95 @@ export default function AttendancePage() {
                <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
                <div className="flex gap-3">
                  <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
-                 <Button onClick={saveBulkAttendance} className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10">
-                   <Save className="w-4 h-4 mr-2" /> Mark Attendance
-                 </Button>
+                  <Button 
+                    onClick={saveBulkAttendance} 
+                    loading={submitting}
+                    className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10"
+                  >
+                    <Save className="w-4 h-4 mr-2" /> Mark Attendance
+                  </Button>
                </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <TableView
-
-        title="Attendance Logs"
-        description={`Daily shift-wise logging for ${activeTenant} staff.`}
-        headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
-        data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
-        loading={loading}
-        searchFields={['users.name', 'users.employee_code', 'remarks']}
-        searchPlaceholder="Search staff or notes..."
-        actions={
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
-            <div className="flex gap-1">
-              <Input 
-                type="date"
-                className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              />
-              {dateFilter && (
-                <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
-                   Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        }
-
-        renderRow={(rec: any) => (
-          <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
-            <td className="px-6 py-4">
-              <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                {rec.users?.name}
+      {!showForm && !showBulkForm && (
+        <TableView
+          title="Attendance Logs"
+          description={`Daily shift-wise logging for ${activeTenant} staff.`}
+          headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
+          data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
+          loading={loading}
+          searchFields={['users.name', 'users.employee_code', 'remarks']}
+          searchPlaceholder="Search staff or notes..."
+          actions={
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+              <div className="flex gap-1">
+                <Input 
+                  type="date"
+                  className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+                {dateFilter && (
+                  <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
+                    Clear
+                  </Button>
+                )}
               </div>
-              <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
-            </td>
-            <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
-            <td className="px-6 py-4">
-              <span className={`px-2 py-1 rounded text-[11px] font-bold ${
-                rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
-                rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
-                'bg-blue-100 text-blue-700'
-              }`}>
-                {rec.shift}
-              </span>
-            </td>
-            <td className="px-6 py-4 font-mono text-xs">
-              {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
-            </td>
-            <td className="px-6 py-4">
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
-                rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
-                'bg-amber-100 text-amber-700'
-              }`}>
-                {rec.status}
-              </span>
-            </td>
-            <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
-              {rec.remarks || '-'}
-            </td>
-            <td className="md:px-6 py-4 text-right space-x-2">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+            </div>
+          }
+          renderRow={(rec: any) => (
+            <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
+              <td className="px-6 py-4">
+                <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {rec.users?.name}
+                </div>
+                <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
+              </td>
+              <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
+              <td className="px-6 py-4">
+                <span className={`px-2 py-1 rounded text-[11px] font-bold ${
+                  rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
+                  rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {rec.shift}
+                </span>
+              </td>
+              <td className="px-6 py-4 font-mono text-xs">
+                {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
+              </td>
+              <td className="px-6 py-4">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
+                  rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {rec.status}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
+                {rec.remarks || '-'}
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-2">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }
