@@ -232,26 +232,28 @@ export default function DamagesWastagePage() {
         </Card>
       )}
 
-      <Card className="border-border/40 shadow-sm">
-        <TableView
-          title="Wastage Audit Log"
-          description="Detailed log of production scrap and reason codes."
-          headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks']}
-          data={wastageRecords}
-          loading={loading}
-          searchFields={['stage', 'reason_code', 'remarks']}
-          searchPlaceholder="Search reason or stage..."
-          renderRow={(w: any) => (
-            <tr key={w.id} className="hover:bg-rose-50/50 border-b last:border-none transition-all">
-              <td className="px-6 py-4 text-xs">{new Date(w.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold text-rose-700">{w.stage}</td>
-              <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
-              <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
-              <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-border/40 shadow-sm">
+          <TableView
+            title="Wastage Audit Log"
+            description="Detailed log of production scrap and reason codes."
+            headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks']}
+            data={wastageRecords}
+            loading={loading}
+            searchFields={['stage', 'reason_code', 'remarks']}
+            searchPlaceholder="Search reason or stage..."
+            renderRow={(w: any) => (
+              <tr key={w.id} className="hover:bg-rose-50/50 border-b last:border-none transition-all">
+                <td className="px-6 py-4 text-xs">{new Date(w.date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 font-bold text-rose-700">{w.stage}</td>
+                <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
+                <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
+                <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

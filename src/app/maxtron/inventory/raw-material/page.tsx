@@ -29,6 +29,7 @@ export default function RawMaterialPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -45,7 +46,8 @@ export default function RawMaterialPage() {
     unit_type: 'Kg',
     grade: '',
     availability: 'Local',
-    company_id: ''
+    company_id: '',
+    stock_threshold: 100
   });
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export default function RawMaterialPage() {
       return;
     }
 
+    setSubmitting(true);
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${RM_API}/${editingId}` : RM_API;
@@ -124,6 +127,8 @@ export default function RawMaterialPage() {
       }
     } catch (err) {
       error('Network error.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -136,7 +141,8 @@ export default function RawMaterialPage() {
       unit_type: 'Kg',
       grade: '',
       availability: 'Local',
-      company_id: currentCompanyId
+      company_id: currentCompanyId,
+      stock_threshold: 100
     });
   };
 
@@ -150,7 +156,8 @@ export default function RawMaterialPage() {
       unit_type: rec.unit_type || 'Kg',
       grade: rec.grade || '',
       availability: rec.availability || 'Local',
-      company_id: rec.company_id
+      company_id: rec.company_id,
+      stock_threshold: rec.stock_threshold || 100
     });
     setShowForm(true);
   };
@@ -163,6 +170,7 @@ export default function RawMaterialPage() {
     if (!isConfirmed) return;
     
     const token = localStorage.getItem('token');
+    setSubmitting(true);
     try {
       const res = await fetch(`${RM_API}/${id}`, {
         method: 'DELETE',
@@ -175,6 +183,8 @@ export default function RawMaterialPage() {
       }
     } catch (err) {
       error('Deletion failed.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -183,14 +193,15 @@ export default function RawMaterialPage() {
       info('No data for export.');
       return;
     }
-    const headers = ['Code', 'Name', 'Grade', 'Rate', 'Unit', 'Availability'];
+    const headers = ['Code', 'Name', 'Grade', 'Rate', 'Unit', 'Availability', 'Threshold'];
     const rows = materials.map(m => [
       m.rm_code || '',
       m.rm_name || '',
       m.grade || '',
       Number(m.rate_per_unit || 0),
       m.unit_type || '',
-      m.availability || ''
+      m.availability || '',
+      m.stock_threshold || 100
     ]);
     
     await exportToExcel({
@@ -359,6 +370,24 @@ export default function RawMaterialPage() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                   <Activity className="w-3 h-3 mr-2 text-primary" /> Stock Threshold
+                </label>
+                <div className="relative">
+                  <Input 
+                    type="number"
+                    placeholder="100.00"
+                    value={formData.stock_threshold}
+                    onChange={(e) => setFormData({...formData, stock_threshold: Number(e.target.value)})}
+                    className="h-11 font-black text-rose-500 pr-12"
+                  />
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
+                    {formData.unit_type.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground/70 flex items-center">
                   <Globe2 className="w-4 h-4 mr-2 text-primary" /> Availability 
                 </label>
@@ -391,7 +420,11 @@ export default function RawMaterialPage() {
               <Button onClick={() => setShowForm(false)} variant="outline" className="w-full sm:w-auto px-8 h-11 rounded-full border-slate-200 text-slate-600 font-bold hover:bg-slate-50">
                 Discard Changes
               </Button>
-              <Button onClick={saveMaterial} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center">
+              <Button 
+                onClick={saveMaterial} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Material' : 'Confirm Registration'}
               </Button>
@@ -400,59 +433,65 @@ export default function RawMaterialPage() {
         </Card>
       )}
 
-      <TableView
-        title="Raw Material Registry"
-        description="Comprehensive list of production inputs and market rates."
-        headers={['Code', 'Material Name', 'Grade / Quality', 'Procurement Rate', 'Availability', 'Created', 'Actions']}
-        data={materials.filter(m => m.rm_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rm_code.toLowerCase().includes(searchQuery.toLowerCase()))}
-        loading={loading}
-        searchFields={['rm_code', 'rm_name', 'grade']}
-        searchPlaceholder="Filter items by code or name..."
-        renderRow={(m: any) => (
-          <tr key={m.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
-            <td className="px-6 py-4">
-              <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-bold uppercase">{m.rm_code}</span>
-            </td>
-            <td className="px-6 py-4">
-              <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
-              <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
-            </td>
-            <td className="px-6 py-4">
-              <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
-                {m.grade || 'STD'}
-              </span>
-            </td>
-            <td className="px-6 py-4">
-              <div className="font-black text-slate-900 group-hover:text-primary transition-colors">₹ {m.rate_per_unit}</div>
-              <div className="text-[9px] font-bold text-muted-foreground uppercase">PER {m.unit_type || 'KG'}</div>
-            </td>
-            <td className="px-6 py-4">
-              <span className={`flex items-center text-[11px] font-bold ${
-                m.availability === 'Abroad' ? 'text-purple-600' : 
-                m.availability === 'Outstation' ? 'text-amber-600' : 'text-emerald-600'
-              }`}>
-                {m.availability === 'Abroad' ? <Globe2 className="w-3 h-3 mr-1" /> : <MapPin className="w-3 h-3 mr-1" />}
-                {m.availability}
-              </span>
-            </td>
-            <td className="px-6 py-4 text-[11px] text-slate-400">
-              {new Date(m.created_at).toLocaleDateString()}
-            </td>
-            <td className="md:px-6 py-4 text-right space-x-1.5">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(m)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-all">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title="Raw Material Registry"
+          description="Comprehensive list of production inputs and market rates."
+          headers={['Code', 'Material Name', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
+          data={materials.filter(m => m.rm_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rm_code.toLowerCase().includes(searchQuery.toLowerCase()))}
+          loading={loading}
+          searchFields={['rm_code', 'rm_name', 'grade']}
+          searchPlaceholder="Filter items by code or name..."
+          renderRow={(m: any) => (
+            <tr key={m.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
+              <td className="px-6 py-4">
+                <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-bold uppercase">{m.rm_code}</span>
+              </td>
+              <td className="px-6 py-4">
+                <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
+                <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
+                  {m.grade || 'STD'}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                <div className="font-black text-slate-900 group-hover:text-primary transition-colors">₹ {m.rate_per_unit}</div>
+                <div className="text-[9px] font-bold text-muted-foreground uppercase">PER {m.unit_type || 'KG'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <div className="font-bold text-rose-600 tracking-tighter">{m.stock_threshold || 100}</div>
+                <div className="text-[9px] font-bold text-muted-foreground uppercase">{m.unit_type || 'KG'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <span className={`flex items-center text-[11px] font-bold ${
+                  m.availability === 'Abroad' ? 'text-purple-600' : 
+                  m.availability === 'Outstation' ? 'text-amber-600' : 'text-emerald-600'
+                }`}>
+                  {m.availability === 'Abroad' ? <Globe2 className="w-3 h-3 mr-1" /> : <MapPin className="w-3 h-3 mr-1" />}
+                  {m.availability}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-[11px] text-slate-400">
+                {new Date(m.created_at).toLocaleDateString()}
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-1.5">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(m)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-all">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

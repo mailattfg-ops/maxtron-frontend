@@ -171,4 +171,13 @@
   }
 
   div {}
+
+}
+
+td {
+  min-width: 130px !important;
+}
+
+th {
+  min-width: 130px !important;
 }

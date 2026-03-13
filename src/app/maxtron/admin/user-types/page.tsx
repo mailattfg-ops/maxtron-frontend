@@ -20,6 +20,7 @@ export default function KeilUserTypesPage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '', company_id: '' });
 
@@ -82,6 +83,7 @@ export default function KeilUserTypesPage() {
       return;
     }
 
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
       const method = editingId ? 'PUT' : 'POST';
@@ -106,8 +108,8 @@ export default function KeilUserTypesPage() {
       } else {
         error(data.message || 'Action failed');
       }
-    } catch (err) {
-      error('An error occurred');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -119,6 +121,7 @@ export default function KeilUserTypesPage() {
     });
 
     if (isConfirmed) {
+      setSubmitting(true);
       try {
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/${id}`, {
@@ -134,6 +137,8 @@ export default function KeilUserTypesPage() {
         }
       } catch (err) {
         error('Delete failed');
+      } finally {
+        setSubmitting(false);
       }
     }
   };
@@ -187,7 +192,11 @@ export default function KeilUserTypesPage() {
               </div>
             </div>
             <div className="flex justify-end pt-4">
-              <Button onClick={handleCreateOrUpdate} className="bg-secondary text-white hover:bg-secondary/90 px-8 rounded-full">
+              <Button 
+                onClick={handleCreateOrUpdate} 
+                loading={submitting}
+                className="bg-secondary text-white hover:bg-secondary/90 px-8 rounded-full"
+              >
                 <Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Role' : 'Save Role'}
               </Button>
             </div>
@@ -195,38 +204,40 @@ export default function KeilUserTypesPage() {
         </Card>
       )}
 
-      <TableView
-        title={`Active ${activeTenant} Roles`}
-        description={`List of all roles available for the ${activeTenant} entity.`}
-        headers={['Role Name', 'Description', 'Actions']}
-        data={userTypes}
-        loading={loading}
-        searchFields={['name', 'description']}
-        searchPlaceholder="Search roles..."
-        renderRow={(role: any) => (
-          <tr key={role.id} className="hover:bg-primary/5 transition-colors">
-            <td className="p-4 font-bold text-primary flex items-center">
-              <Shield className="w-4 h-4 mr-2 text-secondary" />
-              {role.name.toUpperCase()}
-            </td>
-            <td className="p-4 text-sm text-muted-foreground">{role.description || '-'}</td>
-            <td className="p-4 text-right space-x-2">
-              {role.company_id ? (
-                <>
-                  <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </>
-              ) : (
-                <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+      {!showForm && (
+        <TableView
+          title={`Active ${activeTenant} Roles`}
+          description={`List of all roles available for the ${activeTenant} entity.`}
+          headers={['Role Name', 'Description', 'Actions']}
+          data={userTypes}
+          loading={loading}
+          searchFields={['name', 'description']}
+          searchPlaceholder="Search roles..."
+          renderRow={(role: any) => (
+            <tr key={role.id} className="hover:bg-primary/5 transition-colors">
+              <td className="p-4 font-bold text-primary flex items-center">
+                <Shield className="w-4 h-4 mr-2 text-secondary" />
+                {role.name.toUpperCase()}
+              </td>
+              <td className="p-4 text-sm text-muted-foreground">{role.description || '-'}</td>
+              <td className="p-4 text-right space-x-2">
+                {role.company_id ? (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(role)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(role.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

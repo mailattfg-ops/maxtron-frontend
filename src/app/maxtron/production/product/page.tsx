@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   Plus, Search, Edit, Trash2, X, Save, 
-  Settings, Layers, Ruler, Palette, Hash, Box, Package, FileText
+  Settings, Layers, Ruler, Palette, Hash, Box, Package, FileText, AlertCircle
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
@@ -43,7 +43,8 @@ export default function FinishedProductPage() {
     size: '',
     avg_count_per_kg: 0,
     company_id: '',
-    description: ''
+    description: '',
+    stock_threshold: 50
   });
 
   useEffect(() => {
@@ -135,7 +136,8 @@ export default function FinishedProductPage() {
       size: prod.size || '',
       avg_count_per_kg: prod.avg_count_per_kg || 0,
       company_id: prod.company_id,
-      description: prod.description || ''
+      description: prod.description || '',
+      stock_threshold: prod.stock_threshold || 50
     });
     setShowForm(true);
   };
@@ -175,7 +177,8 @@ export default function FinishedProductPage() {
       size: '',
       avg_count_per_kg: 0,
       company_id: currentCompanyId,
-      description: ''
+      description: '',
+      stock_threshold: 50
     });
     setEditingId(null);
   };
@@ -191,7 +194,8 @@ export default function FinishedProductPage() {
     { key: 'color', label: 'Color', icon: Palette },
     { key: 'thickness_microns', label: 'Thickness (µ)', icon: Layers },
     { key: 'size', label: 'Size', icon: Ruler },
-    { key: 'avg_count_per_kg', label: 'Count/Kg', icon: Hash }
+    { key: 'avg_count_per_kg', label: 'Count/Kg', icon: Hash },
+    { key: 'stock_threshold', label: 'Threshold', icon: AlertCircle }
   ];
 
   return (
@@ -250,11 +254,15 @@ export default function FinishedProductPage() {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
                 <Input type="number" placeholder="0" value={formData.avg_count_per_kg} onChange={e => setFormData({ ...formData, avg_count_per_kg: parseFloat(e.target.value) || 0 })} className="h-11" />
               </div>
-              <div className="space-y-2 lg:col-span-3">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)</label>
+                <Input type="number" placeholder="50" value={formData.stock_threshold} onChange={e => setFormData({ ...formData, stock_threshold: parseFloat(e.target.value) || 0 })} className="h-11" />
+              </div>
+              <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
                 <textarea 
-                  className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                  placeholder="Additional notes or specifications..." 
+                  className="w-full h-11 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                  placeholder="Additional notes..." 
                   value={formData.description} 
                   maxLength={50}
                   onChange={e => setFormData({ ...formData, description: e.target.value })} 
@@ -271,40 +279,43 @@ export default function FinishedProductPage() {
         </Card>
       )}
 
-      <Card className="border-border/40 shadow-sm">
-        <TableView
-          title="Master Data Explorer"
-          description="Explore and manage finished product specifications."
-          headers={['Code', 'Name', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Description', 'Actions']}
-          data={products}
-          loading={loading}
-          searchFields={['product_code', 'product_name', 'color']}
-          searchPlaceholder="Search products..."
-          renderRow={(p: any) => (
-            <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none">
-              <td className="px-6 py-4 font-mono text-xs font-bold">{p.product_code}</td>
-              <td className="px-6 py-4 font-bold">{p.product_name}</td>
-              <td className="px-6 py-4">{p.color}</td>
-              <td className="px-6 py-4">{p.thickness_microns}</td>
-              <td className="px-6 py-4">{p.size}</td>
-              <td className="px-6 py-4">{p.avg_count_per_kg}</td>
-              <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} className="h-8 w-8 rounded-full">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      {!showForm && (
+        <Card className="border-border/40 shadow-sm">
+          <TableView
+            title="Master Data Explorer"
+            description="Explore and manage finished product specifications."
+            headers={['Code', 'Name', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
+            data={products}
+            loading={loading}
+            searchFields={['product_code', 'product_name', 'color']}
+            searchPlaceholder="Search products..."
+            renderRow={(p: any) => (
+              <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none">
+                <td className="px-6 py-4 font-mono text-xs font-bold">{p.product_code}</td>
+                <td className="px-6 py-4 font-bold">{p.product_name}</td>
+                <td className="px-6 py-4">{p.color}</td>
+                <td className="px-6 py-4">{p.thickness_microns}</td>
+                <td className="px-6 py-4">{p.size}</td>
+                <td className="px-6 py-4">{p.avg_count_per_kg}</td>
+                <td className="px-6 py-4 font-bold text-amber-600 underline decoration-amber-200 underline-offset-4">{p.stock_threshold || 50} Kg</td>
+                <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
+                <td className="md:px-6 py-4 text-right space-x-2">
+                  {canEdit && (
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} className="h-8 w-8 rounded-full">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            )}
+          />
+        </Card>
+      )}
     </div>
   );
 }

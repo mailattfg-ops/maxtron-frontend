@@ -17,7 +17,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function StockListPage() {
   const [stock, setStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [threshold, setThreshold] = useState(100);
   const { info } = useToast();
   
   const pathname = usePathname();
@@ -85,19 +84,6 @@ export default function StockListPage() {
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Real-time inventory levels and floor issuance.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Alert Threshold</span>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 shadow-inner">
-              <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
-              <input 
-                type="number" 
-                value={threshold}
-                onChange={(e) => setThreshold(Number(e.target.value))}
-                className="bg-transparent border-none outline-none text-xs font-black text-slate-700 w-16"
-              />
-              <span className="text-[10px] font-bold text-slate-400">UNITS</span>
-            </div>
-          </div>
           <Button onClick={downloadStockReport} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11 transition-all active:scale-95">
              <Download className="w-4 h-4 mr-2" /> Report
           </Button>
@@ -124,7 +110,7 @@ export default function StockListPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Low Stock</p>
-                <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < threshold).length}</h3>
+                <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < (s.stock_threshold || 100)).length}</h3>
               </div>
               <div className="bg-rose-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
                 <AlertCircle className="w-5 h-5 text-rose-500" />
@@ -172,7 +158,9 @@ export default function StockListPage() {
         renderRow={(s: any) => (
           <tr key={s.id} className="hover:bg-slate-50 transition-all group border-b border-slate-50 last:border-none">
             <td className="px-6 py-4">
-               <div className="font-bold text-slate-800">{s.rm_name}</div>
+               <div className="font-bold text-slate-800">
+                {s.rm_name?.length > 20 ? s.rm_name.slice(0, 20) + "..." : s.rm_name}
+               </div>
                <div className="flex items-center mt-1">
                  <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase">{s.rm_code}</span>
                  <span className="ml-2 text-[9px] font-bold text-primary uppercase tracking-widest">{s.grade} GRADE</span>
@@ -195,17 +183,20 @@ export default function StockListPage() {
                  {Number(s.balance).toLocaleString()}
                  <span className="text-[10px] font-bold text-slate-400 ml-1 uppercase">{s.unit_type}</span>
                </div>
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-[9px] font-bold text-slate-500">Threshold: {s.stock_threshold || 100} {s.unit_type}</span>
+               </div>
                <div className="mt-2 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-full ${s.balance < threshold ? 'bg-rose-500 animate-pulse' : 'bg-primary'}`} style={{ width: `${Math.min((s.balance/s.purchased)*100 || 0, 100)}%` }}></div>
+                  <div className={`h-full ${s.balance < (s.stock_threshold || 100) ? 'bg-rose-500 animate-pulse' : 'bg-primary'}`} style={{ width: `${Math.min((s.balance/s.purchased)*100 || 0, 100)}%` }}></div>
                </div>
             </td>
             <td className="px-3 md:px-6 py-4">
                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
-                 s.balance < threshold ? 'bg-rose-100 text-rose-700 border border-rose-200' : 
+                 s.balance < (s.stock_threshold || 100) ? 'bg-rose-100 text-rose-700 border border-rose-200' : 
                  'bg-emerald-100 text-emerald-700 border border-emerald-200'
                }`}>
-                 <span className="hidden md:inline">{s.balance < threshold ? 'LOW STOCK' : 'AVAILABLE'}</span>
-                 <span className="md:hidden">{s.balance < threshold ? 'LOW' : 'AVBL'}</span>
+                 <span className="hidden md:inline">{s.balance < (s.stock_threshold || 100) ? 'LOW STOCK' : 'AVAILABLE'}</span>
+                 <span className="md:hidden">{s.balance < (s.stock_threshold || 100) ? 'LOW' : 'AVBL'}</span>
                </span>
             </td>
           </tr>

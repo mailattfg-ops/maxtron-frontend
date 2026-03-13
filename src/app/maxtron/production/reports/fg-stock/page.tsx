@@ -17,7 +17,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function FGStockListPage() {
   const [stock, setStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [threshold, setThreshold] = useState(50);
   const { info } = useToast();
   
   const pathname = usePathname();
@@ -86,20 +85,7 @@ export default function FGStockListPage() {
           <p className="text-muted-foreground text-sm font-medium">Real-time inventory levels, production tracking, and billed shipment balance.</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alert Threshold</span>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-inner">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-              <input 
-                type="number" 
-                value={threshold}
-                onChange={(e) => setThreshold(Number(e.target.value))}
-                className="bg-transparent border-none outline-none text-xs font-black text-slate-700 w-16"
-              />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Kg</span>
-            </div>
-          </div>
-          <Button onClick={downloadStockReport} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11">
+          <Button onClick={downloadStockReport} className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold h-11 transition-all active:scale-95">
              <Download className="w-4 h-4 mr-2" /> Download Report
           </Button>
         </div>
@@ -123,7 +109,7 @@ export default function FGStockListPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Low Stock Alerts</p>
-                <h3 className="text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < threshold).length}</h3>
+                <h3 className="text-3xl font-black text-rose-500 mt-1">{stock.filter(s => s.balance < (s.stock_threshold || 50)).length}</h3>
               </div>
               <AlertCircle className="w-8 h-8 text-rose-500/20" />
             </div>
@@ -194,16 +180,19 @@ export default function FGStockListPage() {
                  {Number(s.balance).toLocaleString()}
                  <span className="text-[10px] font-black text-slate-400 ml-1">KG</span>
                </div>
-               <div className="mt-2.5 w-full bg-slate-100/50 rounded-full h-2 overflow-hidden border border-slate-100">
-                  <div className={`h-full ${s.balance < threshold ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/s.produced)*100 || 0, 100)}%` }}></div>
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-[9px] font-bold text-slate-500">Threshold: {s.stock_threshold || 50} Kg</span>
+               </div>
+               <div className="mt-1.5 w-full bg-slate-100/50 rounded-full h-2 overflow-hidden border border-slate-100">
+                  <div className={`h-full ${s.balance < (s.stock_threshold || 50) ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/s.produced)*100 || 0, 100)}%` }}></div>
                </div>
             </td>
             <td className="px-6 py-4">
                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border-2 ${
-                 s.balance < threshold ? 'bg-amber-50 text-amber-600 border-amber-200' : 
+                 s.balance < (s.stock_threshold || 50) ? 'bg-amber-50 text-amber-600 border-amber-200' : 
                  'bg-emerald-50 text-emerald-700 border-emerald-200'
                }`}>
-                 {s.balance < threshold ? 'REORDER' : 'AVAIL'}
+                 {s.balance < (s.stock_threshold || 50) ? 'REORDER' : 'AVAIL'}
                </span>
             </td>
           </tr>

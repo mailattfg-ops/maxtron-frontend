@@ -41,21 +41,25 @@ export default function Dashboard() {
     const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
-    const companyId = typeof window !== 'undefined' ? (localStorage.getItem('companyId') || '24ea3bef-1e0c-4490-9d40-7063fb9067e9') : '';
+    const [companyId, setCompanyId] = useState<string>(
+        typeof window !== 'undefined' ? (localStorage.getItem('companyId') || '24ea3bef-1e0c-4490-9d40-7063fb9067e9') : ''
+    );
 
-    useEffect(() => {
-        setMounted(true);
-        fetchDashboardData();
-    }, []);
-
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (forcedId?: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/maxtron/dashboard-summary?companyId=${companyId}`, {
+            const targetId = forcedId || companyId;
+            if (!targetId) {
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch(`${API_BASE}/api/maxtron/dashboard-summary?companyId=${targetId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const result = await res.json();
             if (result.success) {
+                console.log("sj",result.data);
                 setData(result.data);
             }
         } catch (error) {
@@ -64,6 +68,38 @@ export default function Dashboard() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const initializeDashboard = async () => {
+            setMounted(true);
+            const token = localStorage.getItem('token');
+            let cId = localStorage.getItem('companyId');
+
+            // Robust check: if no companyId or we want to ensure it's MAXTRON
+            try {
+                const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const compData = await compRes.json();
+                if (compData.success) {
+                    const maxtronCo = compData.data.find((c: any) => c.company_name.toUpperCase() === 'MAXTRON');
+                    if (maxtronCo) {
+                        cId = maxtronCo.id;
+                        setCompanyId(maxtronCo.id);
+                        localStorage.setItem('companyId', maxtronCo.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Error verifying company:', err);
+            }
+
+            if (cId) {
+                fetchDashboardData(cId);
+            }
+        };
+
+        initializeDashboard();
+    }, []);
 
     if (!mounted) return null;
 
@@ -97,7 +133,7 @@ export default function Dashboard() {
         },
         { 
             label: 'Active Staff', 
-            value: data?.stats?.employeeCount || '0', 
+            value: data?.stats?.presentToday !== undefined ? `${data?.stats?.presentToday}/${data?.stats?.employeeCount || 0}` : (data?.stats?.employeeCount || '0'), 
             icon: Users, 
             color: 'text-violet-600', 
             bg: 'bg-violet-50',
@@ -123,7 +159,7 @@ export default function Dashboard() {
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">System Live</span>
                     </div>
-                    <Button onClick={fetchDashboardData} variant="outline" className="rounded-2xl border-border hover:bg-accent h-10 px-6 font-bold">Refresh Data</Button>
+                    <Button onClick={() => fetchDashboardData()} variant="outline" className="rounded-2xl border-border hover:bg-accent h-10 px-6 font-bold">Refresh Data</Button>
                 </div>
             </div>
 
@@ -324,7 +360,9 @@ export default function Dashboard() {
                                                 <Package className="w-5 h-5" />
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-sm font-black text-foreground uppercase tracking-tight">{alert.name}</p>
+                                                <p className="text-sm font-black text-foreground uppercase tracking-tight">
+                                                    {alert.name?.length > 30 ?alert.name.slice(0, 30) + "..." : alert.name}
+                                                </p>
                                                 <p className="text-xs text-rose-500 font-bold mt-0.5 animate-pulse">Low Stock: {alert.balance} {alert.unit}</p>
                                             </div>
                                         </div>
