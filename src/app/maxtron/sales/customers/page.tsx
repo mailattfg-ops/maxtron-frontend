@@ -373,13 +373,13 @@ export default function CustomersPage() {
                   <div className="font-bold text-foreground group-hover:text-primary transition-colors text-sm md:text-base">{c.customer_name}</div>
                   <div className="md:hidden mt-2 text-[10px] font-semibold text-slate-500">GST: {c.gst_no || 'NA'}</div>
                 </td>
-                <td className="hidden md:table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
+                <td className="table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
                 <td className="px-4 py-4">
                   <span className="md:hidden text-[9px] text-slate-400 block mb-1">CREDIT</span>
                   <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
                   <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>
                 </td>
-                <td className="hidden lg:table-cell px-4 py-4">
+                <td className="table-cell px-4 py-4">
                   <div className="text-xs font-semibold">{c.delivery_mode || 'N/A'}</div>
                   <div className="text-[10px] text-muted-foreground">Period: {c.delivery_period || 'N/A'}</div>
                 </td>
