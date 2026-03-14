@@ -22,12 +22,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
+        {/* <ThemeProvider
           attribute="class"
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
-        >
+        > */}
           <TooltipProvider>
             <ToastProvider>
               <ConfirmProvider>
@@ -35,7 +35,7 @@ export default function RootLayout({
               </ConfirmProvider>
             </ToastProvider>
           </TooltipProvider>
-        </ThemeProvider>
+        {/* </ThemeProvider> */}
       </body>
     </html>
   );

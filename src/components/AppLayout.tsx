@@ -27,9 +27,29 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     if (!token && pathname !== '/login') {
       router.push('/login');
     } else if (token && pathname === '/login') {
-      router.push('/maxtron');
+      const userObj = storedUser ? JSON.parse(storedUser) : null;
+      const isAdmin = userObj?.role_name?.toLowerCase() === 'admin' || userObj?.email?.toLowerCase() === 'admin@maxtron.com';
+      
+      if (isAdmin) {
+        router.push('/maxtron');
+      } else {
+        const companyCode = userObj?.company?.company_code?.toLowerCase() || 'maxtron';
+        router.push(`/${companyCode}`);
+      }
     } else if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const userObj = JSON.parse(storedUser);
+      setUser(userObj);
+
+      // Restriction: Only admin can switch company. 
+      // Non-admins should be redirected back to their company if they try to access another.
+      const isAdmin = userObj?.role_name?.toLowerCase() === 'admin' || userObj?.email?.toLowerCase() === 'admin@maxtron.com';
+      if (!isAdmin) {
+        const companyCode = userObj?.company?.company_code?.toLowerCase() || 'maxtron';
+        const expectedPrefix = `/${companyCode}`;
+        if (!pathname.startsWith(expectedPrefix)) {
+          router.push(expectedPrefix);
+        }
+      }
     }
   }, [pathname, router]);
 

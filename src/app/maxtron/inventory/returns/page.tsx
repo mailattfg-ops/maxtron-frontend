@@ -115,6 +115,16 @@ export default function PurchaseReturnPage() {
       return;
     }
 
+    const linkedEntry = entries.find(e => e.id === formData.purchase_entry_id);
+    const maxQty = linkedEntry 
+      ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 
+      : 0;
+
+    if (maxQty > 0 && formData.quantity_returned > maxQty) {
+      error(`Cannot return more than the received quantity (${maxQty}).`);
+      return;
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${RETURN_API}/${editingId}` : RETURN_API;
@@ -284,6 +294,7 @@ export default function PurchaseReturnPage() {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Return Date</label>
                 <Input 
                   type="date"
+                  max={new Date().toISOString().split('T')[0]}
                   value={formData.return_date}
                   onChange={(e) => setFormData({...formData, return_date: e.target.value})}
                   className="h-11"
@@ -327,13 +338,31 @@ export default function PurchaseReturnPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Quantity Returned</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex justify-between">
+                  <span>Quantity Returned</span>
+                  {formData.purchase_entry_id && (() => {
+                    const linkedEntry = entries.find(e => e.id === formData.purchase_entry_id);
+                    const maxQty = linkedEntry ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 : 0;
+                    return <span className="text-[10px] font-black text-emerald-600">Max: {maxQty}</span>;
+                  })()}
+                </label>
                 <Input 
                   type="number"
                   placeholder="Items going back"
-                  value={formData.quantity_returned}
-                  onChange={(e) => setFormData({...formData, quantity_returned: Number(e.target.value)})}
-                  className="h-11 text-lg font-black text-rose-600"
+                  disabled={!formData.purchase_entry_id}
+                  value={formData.quantity_returned === 0 ? '' : formData.quantity_returned}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    const linkedEntry = entries.find(entry => entry.id === formData.purchase_entry_id);
+                    const maxQty = linkedEntry ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 : 0;
+                    if (maxQty > 0 && val > maxQty) {
+                      setFormData({...formData, quantity_returned: maxQty});
+                      error(`Maximum returnable quantity is ${maxQty}`);
+                    } else {
+                      setFormData({...formData, quantity_returned: val});
+                    }
+                  }}
+                  className="h-11 text-lg font-black text-rose-600 disabled:opacity-50"
                 />
               </div>
 

@@ -18,6 +18,7 @@ import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const SUPPLIER_API = `${API_BASE}/api/maxtron/suppliers`;
+const STOCK_API = `${API_BASE}/api/maxtron/inventory/stock-summary`;
 
 const defaultAddress = {
     street: '',
@@ -34,6 +35,7 @@ export default function SupplierPage() {
   const canDelete = hasPermission('inv_supplier_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
   const [gstChecking, setGstChecking] = useState(false);
   const [gstExists, setGstExists] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,8 @@ export default function SupplierPage() {
     delivery_period: '',
     delivery_mode: '',
     opening_balance: 0,
-    company_id: ''
+    company_id: '',
+    supplied_materials: [] as string[]
   });
 
   useEffect(() => {
@@ -79,7 +82,14 @@ export default function SupplierPage() {
         if (activeCo) {
           setCurrentCompanyId(activeCo.id);
           setFormData(prev => ({ ...prev, company_id: activeCo.id }));
+          
           fetchSuppliers(activeCo.id);
+
+          const stockRes = await fetch(`${STOCK_API}?company_id=${activeCo.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          const stockData = await stockRes.json();
+          if (stockData.success) {
+             setMaterials(stockData.data);
+          }
         }
       }
     } catch (err) {
@@ -183,6 +193,7 @@ export default function SupplierPage() {
       delivery_period: '',
       delivery_mode: '',
       opening_balance: 0,
+      supplied_materials: [],
       company_id: currentCompanyId
     });
   };
@@ -213,6 +224,7 @@ export default function SupplierPage() {
       delivery_period: s.delivery_period || '',
       delivery_mode: s.delivery_mode || '',
       opening_balance: s.opening_balance || 0,
+      supplied_materials: s.supplied_materials ? s.supplied_materials.map((sm: any) => sm.rm_id) : [],
       company_id: s.company_id
     });
     setShowForm(true);
@@ -448,9 +460,36 @@ export default function SupplierPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Product Supplied</label>
+              <div className="space-y-2 lg:col-span-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Product Category Supplied</label>
                 <Input value={formData.product_supplied} onChange={(e) => setFormData({...formData, product_supplied: e.target.value})} className="h-11" placeholder="Resins, Chemicals, etc." />
+              </div>
+              
+              <div className="space-y-2 lg:col-span-3">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex justify-between">
+                  <span>Specific Raw Materials Supplied</span>
+                  <span className="text-[10px] text-emerald-600 font-black">{formData.supplied_materials.length} Selected</span>
+                </label>
+                <div className="border border-slate-200 rounded-md p-3 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 bg-slate-50">
+                  {materials.map(m => (
+                    <label key={m.id} className="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.supplied_materials.includes(m.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({...formData, supplied_materials: [...formData.supplied_materials, m.id]});
+                          } else {
+                            setFormData({...formData, supplied_materials: formData.supplied_materials.filter(id => id !== m.id)});
+                          }
+                        }}
+                        className="rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary w-4 h-4"
+                      />
+                      <span className="truncate">{m.rm_name}</span>
+                    </label>
+                  ))}
+                  {materials.length === 0 && <span className="text-xs text-slate-400 font-bold col-span-full">No active materials in inventory.</span>}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -535,6 +574,12 @@ export default function SupplierPage() {
                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[9px] font-black tracking-widest rounded border border-slate-200">
                    {s.product_supplied || 'GENERAL'}
                  </span>
+                 {s.supplied_materials && s.supplied_materials.length > 0 && (
+                   <div className="mt-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest flex items-center">
+                     <Package className="w-3 h-3 mr-1" />
+                     {s.supplied_materials.length} ITEM(S)
+                   </div>
+                 )}
               </td>
               <td className="md:px-6 py-4 text-right space-x-1">
                 {canEdit && (

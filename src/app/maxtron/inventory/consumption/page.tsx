@@ -41,7 +41,7 @@ export default function ConsumptionPage() {
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
   const [formData, setFormData] = useState({
-    consumption_slip_no: `CSN-${Date.now().toString().slice(-6)}`,
+    consumption_slip_no: '',
     consumption_date: new Date().toISOString().split('T')[0],
     rm_id: '',
     quantity_used: 0,
@@ -156,8 +156,10 @@ export default function ConsumptionPage() {
         success(editingId ? 'Slip updated!' : 'Material issued for production!');
         setShowForm(false);
         setEditingId(null);
-        fetchConsumptions();
-        resetForm();
+        await fetchConsumptions();
+        // Since resetForm reads from the consumptions state which is updated asynchronously,
+        // it's safer to just rely on the click handler of the 'Issue Material' button to call resetForm() dynamically.
+
       } else {
         error(data.message || 'Error occurred');
       }
@@ -166,9 +168,24 @@ export default function ConsumptionPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestConsumptions: any[] = consumptions) => {
+    let nextSlipNo = 'CSN-000001';
+    if (latestConsumptions && latestConsumptions.length > 0) {
+      let max = 0;
+      latestConsumptions.forEach(c => {
+        if (c.consumption_slip_no && c.consumption_slip_no.startsWith('CSN-')) {
+          const numStr = c.consumption_slip_no.substring(4);
+          const num = parseInt(numStr, 10);
+          if (!isNaN(num) && num > max) {
+            max = num;
+          }
+        }
+      });
+      nextSlipNo = `CSN-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      consumption_slip_no: `CSN-${Date.now().toString().slice(-6)}`,
+      consumption_slip_no: nextSlipNo,
       consumption_date: new Date().toISOString().split('T')[0],
       rm_id: '',
       quantity_used: 0,
@@ -323,7 +340,7 @@ export default function ConsumptionPage() {
                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-black focus:ring-2 focus:ring-primary/20 outline-none"
                 >
                   <option value="">Select feedstock...</option>
-                  {materials.map(m => (
+                  {materials.filter(m => Number(m.balance || 0) > 0 || m.id === formData.rm_id).map(m => (
                     <option key={m.id} value={m.id}>
                       {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
                     </option>

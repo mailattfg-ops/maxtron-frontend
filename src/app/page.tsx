@@ -9,8 +9,18 @@ export default function Home() {
   useEffect(() => {
     // Check if token exists on client side
     const token = localStorage.getItem('token');
-    if (token) {
-      router.replace('/maxtron');
+    const storedUser = localStorage.getItem('user');
+
+    if (token && storedUser) {
+      const user = JSON.parse(storedUser);
+      const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+      
+      if (isAdmin) {
+        router.replace('/maxtron');
+      } else {
+        const companyCode = user?.company?.company_code?.toLowerCase() || 'maxtron';
+        router.replace(`/${companyCode}`);
+      }
     } else {
       router.replace('/login');
     }

@@ -69,7 +69,6 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
         const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
         if (isAdmin) return true;
 
-        if (permissionKey === 'company_switching') return true;
 
         const field = `can_${action}`;
         const perm = permissions.find(p => p.permission_key === permissionKey);

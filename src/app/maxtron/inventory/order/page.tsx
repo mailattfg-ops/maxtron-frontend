@@ -82,7 +82,9 @@ export default function RMOrderPage() {
       const supData = await supRes.json();
       const stockData = await stockRes.json();
       
-      if (supData.success) setSuppliers(supData.data);
+      if (supData.success) {
+          setSuppliers(supData.data);
+      }
       if (stockData.success) setMaterials(stockData.data);
 
       fetchOrders(coId);
@@ -102,6 +104,7 @@ export default function RMOrderPage() {
       });
       const data = await res.json();
       if (data.success) {
+        console.log("RM Order Page - Orders List:", data.data);
         setOrders(data.data);
       }
     } catch (err) {
@@ -266,7 +269,7 @@ export default function RMOrderPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 border-b border-slate-100 pb-8">
               <div className="space-y-2 text-sm">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Order Date</label>
-                <Input type="date" value={formData.order_date} onChange={(e) => setFormData({...formData, order_date: e.target.value})} className="h-11" />
+                <Input type="date" max={new Date().toISOString().split('T')[0]} value={formData.order_date} onChange={(e) => setFormData({...formData, order_date: e.target.value})} className="h-11" />
               </div>
  
               <div className="space-y-2 lg:col-span-2">
@@ -318,19 +321,31 @@ export default function RMOrderPage() {
                               value={item.rm_id}
                               onChange={(e) => updateItem(idx, 'rm_id', e.target.value)}
                               className="w-full h-10 px-2 rounded border border-slate-200 text-sm font-medium outline-none focus:border-primary"
+                              disabled={!formData.supplier_id}
                             >
-                              <option value="">Select Material...</option>
-                              {materials.map(m => (
-                                <option key={m.id} value={m.id}>
-                                  {m.rm_name} (Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
-                                </option>
-                              ))}
+                              <option value="" disabled>
+                                {!formData.supplier_id ? 'Select Supplier First...' : 'Select Material...'}
+                              </option>
+                              {(() => {
+                                 if (!formData.supplier_id) return null;
+                                 const selectedSupplier = suppliers.find(s => s.id === formData.supplier_id);
+                                 if (!selectedSupplier || !selectedSupplier.supplied_materials || selectedSupplier.supplied_materials.length === 0) {
+                                     return <option disabled>No materials assigned to this vendor.</option>;
+                                 }
+                                 
+                                 return materials.filter(m => selectedSupplier.supplied_materials.some((sm: any) => sm.rm_id === m.id)).map(m => (
+                                   <option key={m.id} value={m.id}>
+                                     {m.rm_name} (Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
+                                   </option>
+                                 ));
+                              })()}
                             </select>
                           </td>
                           <td className="p-4">
                             <Input 
                               type="number" 
-                              value={item.quantity} 
+                              required
+                              value={item.quantity === 0 ? '' : item.quantity} 
                               onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
                               className="h-10 text-right font-black text-primary"
                             />

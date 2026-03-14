@@ -298,7 +298,7 @@ export default function PurchaseEntryPage() {
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Intake Date</label>
-                <Input type="date" value={formData.entry_date} onChange={(e) => setFormData({...formData, entry_date: e.target.value})} className="h-11 font-bold" />
+                <Input type="date" max={new Date().toISOString().split('T')[0]} value={formData.entry_date} onChange={(e) => setFormData({...formData, entry_date: e.target.value})} className="h-11 font-bold" />
               </div>
  
               <div className="space-y-2 sm:col-span-2">
@@ -323,7 +323,7 @@ export default function PurchaseEntryPage() {
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Invoice Date</label>
-                <Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} className="h-11 font-bold" />
+                <Input type="date" max={new Date().toISOString().split('T')[0]} value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} className="h-11 font-bold" />
               </div>
  
               <div className="space-y-2">
