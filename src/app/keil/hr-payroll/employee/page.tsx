@@ -814,37 +814,6 @@ export default function EmployeeInformationPage() {
                             <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>License Holder (YES/NO)</span>
                         </label>
-                        {formData.has_license && !isViewMode && (
-                            <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_licenses', { license_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> <span className='hidden lg:block'>Add License</span>
-                            </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        {formData.has_license && formData.employee_licenses.map((lic, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">License No.</label>
-                                <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Issue Date</label>
-                                <Input type="date" value={lic.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                <Input type="date" value={lic.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="pt-5">
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_licenses', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                              </div>
-                           </div>
-                        ))}
-                        {formData.has_license && formData.employee_licenses.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No licenses recorded.</p>}
                       </div>
                     </div>
 
@@ -854,37 +823,6 @@ export default function EmployeeInformationPage() {
                             <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
-                        {formData.has_passport && !isViewMode && (
-                            <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_passports', { passport_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Passport</span>
-                            </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        {formData.has_passport && formData.employee_passports.map((ppt, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Passport No.</label>
-                                 <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Issue Date</label>
-                                 <Input type="date" value={ppt.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                 <Input type="date" value={ppt.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="pt-5">
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_passports', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                              </div>
-                           </div>
-                        ))}
-                        {formData.has_passport && formData.employee_passports.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No passports recorded.</p>}
                       </div>
                     </div>
                   </div>

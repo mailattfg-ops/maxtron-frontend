@@ -39,6 +39,7 @@ export default function DailyCollectionEntryPage() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [selectedRouteId, setSelectedRouteId] = useState('');
     const [assignedHces, setAssignedHces] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
 
     // Header Data
@@ -55,10 +56,10 @@ export default function DailyCollectionEntryPage() {
     const [entries, setEntries] = useState<Record<string, any>>({});
 
     useEffect(() => {
-        fetchRoutes();
+        fetchInitialData();
     }, []);
 
-    const fetchRoutes = async () => {
+    const fetchInitialData = async () => {
         const token = localStorage.getItem('token');
         try {
             const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
@@ -78,14 +79,21 @@ export default function DailyCollectionEntryPage() {
             }
 
             if (coId) {
-                const res = await fetch(`${ROUTE_API}?company_id=${coId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                if (data.success) setRoutes(data.data);
+                const [rRes, eRes] = await Promise.all([
+                    fetch(`${ROUTE_API}?company_id=${coId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_BASE}/api/maxtron/employees?company_id=${coId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+                const rData = await rRes.json();
+                const eData = await eRes.json();
+                if (rData.success) setRoutes(rData.data);
+                if (eData.success) setEmployees(eData.data);
             }
         } catch (err) {
-            console.error('Error fetching routes:', err);
+            console.error('Error fetching initial data:', err);
         }
     };
 
@@ -270,9 +278,18 @@ export default function DailyCollectionEntryPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
-                                <User className="w-3 h-3 text-primary" /> Pilot / Driver
+                                <User className="w-3 h-3 text-primary" /> Employee Assigning
                             </label>
-                            <Input placeholder="Enter handle" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.driver_name} onChange={e => setHeaderData({ ...headerData, driver_name: e.target.value })} />
+                            <select 
+                                className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                                value={headerData.driver_name}
+                                onChange={e => setHeaderData({ ...headerData, driver_name: e.target.value })}
+                            >
+                                <option value="">Select Employee</option>
+                                {employees.map(emp => (
+                                    <option key={emp.id} value={emp.name}>{emp.name} ({emp.employee_code})</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">

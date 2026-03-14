@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
   Building2, Plus, Search, Edit, Trash2, X, Save, 
   MapPin, Phone, Mail, FileCheck, CreditCard, 
-  Truck, Package, Wallet, Download, Trash, Globe
+  Truck, Package, Wallet, Download, Trash, Globe, Copy
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
@@ -34,6 +34,8 @@ export default function SupplierPage() {
   const canDelete = hasPermission('inv_supplier_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [gstChecking, setGstChecking] = useState(false);
+  const [gstExists, setGstExists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
@@ -87,6 +89,17 @@ export default function SupplierPage() {
     }
   };
 
+  const checkGstExistence = (gst: string) => {
+    if (!gst || gst.trim() === '') {
+      setGstExists(false);
+      return;
+    }
+    const exists = suppliers.some(s => 
+      s.gst_no?.toLowerCase() === gst.toLowerCase() && s.id !== editingId
+    );
+    setGstExists(exists);
+  };
+
   const fetchSuppliers = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -135,6 +148,26 @@ export default function SupplierPage() {
     } catch (err) {
       error('Network error.');
     }
+  };
+
+  const copyOfficialAddress = () => {
+    const off = formData.supplier_address;
+    if (!off.street && !off.city && !off.state) {
+      info('Official address is empty.');
+      return;
+    }
+    setFormData({
+      ...formData,
+      billing_address: {
+        ...formData.billing_address,
+        street: off.street,
+        city: off.city,
+        state: off.state,
+        zip_code: off.zip_code,
+        country: off.country
+      }
+    });
+    success('Address copied successfully!');
   };
 
   const resetForm = () => {
@@ -323,8 +356,21 @@ export default function SupplierPage() {
               </div>
  
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">GST No</label>
-                <Input value={formData.gst_no} onChange={(e) => setFormData({...formData, gst_no: e.target.value})} className="h-11 uppercase font-bold text-emerald-600" placeholder="29XXXXX..." />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                  <span>GST No (optional)</span>
+                  {gstExists && <span className="text-rose-500 animate-pulse">Already Exists!</span>}
+                </label>
+                <Input 
+                  value={formData.gst_no} 
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData({...formData, gst_no: val});
+                    checkGstExistence(val);
+                  }} 
+                  className={`h-11 uppercase font-bold transition-all ${gstExists ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
+                  placeholder="29XXXXX..." 
+                />
+                {gstExists && <p className="text-[9px] font-bold text-rose-500 mt-1 ml-1 uppercase">This GST number is already registered in the system.</p>}
               </div>
             </div>
 
@@ -361,9 +407,20 @@ export default function SupplierPage() {
 
               {/* Billing Address Section */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-2 text-slate-600 border-b border-slate-100 pb-2">
-                   <FileCheck className="w-4 h-4" />
-                   <h3 className="text-sm font-black uppercase tracking-widest">Billing Address (optional)</h3>
+                <div className="flex items-center justify-between text-slate-600 border-b border-slate-100 pb-2">
+                   <div className="flex items-center space-x-2">
+                     <FileCheck className="w-4 h-4" />
+                     <h3 className="text-sm font-black uppercase tracking-widest">Billing Address (optional)</h3>
+                   </div>
+                   <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={copyOfficialAddress}
+                    className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                  >
+                    <Copy className="w-3 h-3 mr-1" /> Same as Official
+                  </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2 space-y-1">

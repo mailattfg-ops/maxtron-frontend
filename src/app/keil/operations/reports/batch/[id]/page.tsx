@@ -158,7 +158,7 @@ export default function BatchDetailsPage() {
                                     <User className="w-5 h-5" />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Logistics Crew</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employee Assignment</p>
                                     <p className="text-lg font-bold text-foreground truncate">{batch.driver_name}</p>
                                     <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">Sup: {batch.supervisor_name}</p>
                                 </div>

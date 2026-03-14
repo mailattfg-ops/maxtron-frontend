@@ -189,6 +189,25 @@ export default function EmployeeInformationPage() {
     setFormData({ ...formData, addresses: newAddresses });
   };
 
+  const copyCommunicationAddress = () => {
+    const comm = formData.addresses[0];
+    if (!comm.street && !comm.city && !comm.state) {
+      info('Communication address is empty.');
+      return;
+    }
+    const newAddresses = [...formData.addresses];
+    newAddresses[1] = {
+      ...newAddresses[1],
+      street: comm.street,
+      city: comm.city,
+      state: comm.state,
+      zip_code: comm.zip_code,
+      country: comm.country
+    };
+    setFormData({ ...formData, addresses: newAddresses });
+    success('Address copied successfully!');
+  };
+
   const handleNestedRowChange = (collection: keyof typeof formData, index: number, field: string, value: any) => {
     const list = [...(formData[collection] as any[])];
     list[index][field] = value;
@@ -585,7 +604,20 @@ export default function EmployeeInformationPage() {
                       </div>
  
                       <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                          {!isViewMode && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={copyCommunicationAddress}
+                              className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                            >
+                              <Copy className="w-3 h-3 mr-1" /> Same as Communication
+                            </Button>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -817,37 +849,6 @@ export default function EmployeeInformationPage() {
                             <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>License Holder (YES/NO)</span>
                         </label>
-                        {formData.has_license && !isViewMode && (
-                            <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_licenses', { license_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add License</span>
-                            </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        {formData.has_license && formData.employee_licenses.map((lic, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">License No.</label>
-                                <Input placeholder="License No." value={lic.license_no} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'license_no', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Issue Date</label>
-                                <Input type="date" value={lic.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                <Input type="date" value={lic.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_licenses', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="pt-5">
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_licenses', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                              </div>
-                           </div>
-                        ))}
-                        {formData.has_license && formData.employee_licenses.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No licenses recorded.</p>}
                       </div>
                     </div>
 
@@ -857,37 +858,6 @@ export default function EmployeeInformationPage() {
                             <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
-                        {formData.has_passport && !isViewMode && (
-                            <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_passports', { passport_no: '', issue_date: '', expiry_date: '' })}>
-                               <Plus className="w-4 h-4 mr-1" /> <span className="hidden lg:block">Add Passport</span>
-                            </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        {formData.has_passport && formData.employee_passports.map((ppt, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Passport No.</label>
-                                <Input placeholder="Passport No." value={ppt.passport_no} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'passport_no', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Issue Date</label>
-                                <Input type="date" value={ppt.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Expiry Date</label>
-                                <Input type="date" value={ppt.expiry_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_passports', idx, 'expiry_date', e.target.value)} disabled={isViewMode} />
-                              </div>
-                              <div className="pt-5">
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_passports', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                              </div>
-                           </div>
-                        ))}
-                        {formData.has_passport && formData.employee_passports.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No passports recorded.</p>}
                       </div>
                     </div>
                   </div>
@@ -919,12 +889,12 @@ export default function EmployeeInformationPage() {
                                 <option value="POLICE_VERIFICATION">Police Verification</option>
                               </select>
                             </div>
-                            <div className="space-y-1 flex-none w-20">
+                            {/* <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
                               <div className="h-9 flex items-center">
                                 <input type="checkbox" checked={cert.issued} onChange={(e) => !isViewMode && handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} disabled={isViewMode} className="rounded w-4 h-4 text-primary focus:ring-primary" />
                               </div>
-                            </div>
+                            </div> */}
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Issue Date</label>
                               <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
@@ -952,7 +922,7 @@ export default function EmployeeInformationPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                      <div>
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-foreground/90">Advanced Loans</h3>
+                        <h3 className="font-semibold text-foreground/90">Loan Amount</h3>
                         {!isViewMode && (
                           <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
                              <Plus className="w-4 h-4 mr-1" /> Add Row

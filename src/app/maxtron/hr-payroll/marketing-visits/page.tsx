@@ -44,6 +44,7 @@ export default function MarketingVisitsPage() {
     time_out: '',
     purpose: '',
     outcome: '',
+    feedback: '',
     company_id: ''
   });
 
@@ -136,6 +137,12 @@ export default function MarketingVisitsPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${MARKETING_API}/${editingId}` : MARKETING_API;
 
+    const dataToSave = {
+      ...formData,
+      customer_id: formData.customer_id === '' ? null : formData.customer_id,
+      employee_id: formData.employee_id === '' ? null : formData.employee_id
+    };
+
     try {
       const res = await fetch(url, {
         method,
@@ -143,7 +150,7 @@ export default function MarketingVisitsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dataToSave)
       });
       const data = await res.json();
       if (data.success) {
@@ -171,6 +178,7 @@ export default function MarketingVisitsPage() {
       time_out: '',
       purpose: '',
       outcome: '',
+      feedback: '',
       company_id: currentCompanyId
     });
   };
@@ -182,11 +190,12 @@ export default function MarketingVisitsPage() {
       customer_id: rec.customer_id || '',
       customer_name: rec.customer_name,
       location: rec.location || '',
-      visit_date: rec.visit_date.split('T')[0],
+      visit_date: rec.visit_date ? rec.visit_date.split('T')[0] : new Date().toISOString().split('T')[0],
       time_in: rec.time_in || '',
       time_out: rec.time_out || '',
       purpose: rec.purpose || '',
       outcome: rec.outcome || '',
+      feedback: rec.feedback || '',
       company_id: rec.company_id
     });
     setShowForm(true);
@@ -199,7 +208,7 @@ export default function MarketingVisitsPage() {
       return;
     }
 
-    const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome'];
+    const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback'];
     const rows = activeRecords.map(rec => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -217,7 +226,8 @@ export default function MarketingVisitsPage() {
         `"${(rec.time_in || 'N/A').replace(/"/g, '""')}"`,
         `"${(rec.time_out || 'N/A').replace(/"/g, '""')}"`,
         `"${(rec.purpose || '').replace(/"/g, '""')}"`,
-        `"${(rec.outcome || '').replace(/"/g, '""')}"`
+        `"${(rec.outcome || '').replace(/"/g, '""')}"`,
+        `"${(rec.feedback || '').replace(/"/g, '""')}"`
       ];
     });
 
@@ -324,19 +334,34 @@ export default function MarketingVisitsPage() {
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Top Performer</p>
                   <h3 className="text-lg font-black text-emerald-600 mt-1 truncate max-w-[150px]">
-                    {visitRecords.length > 0 ? (
-                      Object.entries(visitRecords.reduce((acc: any, curr) => {
-                        acc[curr.users?.name] = (acc[curr.users?.name] || 0) + 1;
+                    {(() => {
+                      if (visitRecords.length === 0) return 'N/A';
+                      const weights: Record<string, number> = {
+                        'Order Received': 10,
+                        'Payment Collected': 10,
+                        'Proposal Sent': 5,
+                        'Negotiation': 3,
+                        'Product Demo': 2,
+                        'Follow-up Scheduled': 1,
+                        'Initial Contact': 1,
+                        'Not Interested': 0
+                      };
+                      const scores = visitRecords.reduce((acc: any, curr) => {
+                        const name = curr.users?.name || 'Unknown';
+                        const score = weights[curr.outcome] || 0;
+                        acc[name] = (acc[name] || 0) + score;
                         return acc;
-                      }, {})).sort((a: any, b: any) => b[1] - a[1])[0][0]
-                    ) : 'N/A'}
+                      }, {});
+                      const top = Object.entries(scores).sort((a: any, b: any) => b[1] - a[1])[0];
+                      return top ? top[0] : 'N/A';
+                    })()}
                   </h3>
                 </div>
                 <div className="bg-emerald-50 p-3 rounded-2xl">
                   <CheckCircle className="w-6 h-6 text-emerald-500" />
                 </div>
               </div>
-              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Highest visit frequency</p>
+              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Based on conversion & success rate</p>
             </CardContent>
           </Card>
         </div>
@@ -445,14 +470,33 @@ export default function MarketingVisitsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                <select 
+                  value={formData.outcome}
+                  onChange={(e) => setFormData({...formData, outcome: e.target.value})}
+                  className="w-full h-10 px-3 rounded-md border border-input text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
+                >
+                  <option value="">Select outcome...</option>
+                  <option value="Initial Contact">Initial Contact</option>
+                  <option value="Product Demo">Product Demo</option>
+                  <option value="Proposal Sent">Proposal Sent</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Order Received">Order Received</option>
+                  <option value="Follow-up Scheduled">Follow-up Scheduled</option>
+                  <option value="Payment Collected">Payment Collected</option>
+                  <option value="Not Interested">Not Interested</option>
+                </select>
+              </div>
+
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-semibold text-foreground/80">Outcome / Feedback</label>
+                <label className="text-sm font-semibold text-foreground/80">Customer Feedback</label>
                 <textarea 
                   className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
-                  placeholder="Result of the meeting..."
-                  value={formData.outcome}
-                  maxLength={50}
-                  onChange={(e) => setFormData({...formData, outcome: e.target.value})}
+                  placeholder="Notes on client requirements or feedback..."
+                  value={formData.feedback}
+                  maxLength={100}
+                  onChange={(e) => setFormData({...formData, feedback: e.target.value})}
                 />
               </div>
             </div>
@@ -471,7 +515,7 @@ export default function MarketingVisitsPage() {
         <TableView
           title="Field Visit Logs"
           description="Punching details for field staff tracking."
-          headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Status / Outcome', 'Action']}
+          headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Outcome / Feedback', 'Action']}
           data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
           loading={loading}
           searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
@@ -524,8 +568,19 @@ export default function MarketingVisitsPage() {
               </td>
               <td className="px-6 py-4">
                  <div className="flex flex-col gap-1">
-                   <div className="text-xs font-semibold">{rec.purpose}</div>
-                   <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{rec.outcome || 'No outcome recorded'}</div>
+                   <div className="flex items-center gap-2">
+                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                       rec.outcome === 'Order Received' ? 'bg-emerald-100 text-emerald-700' :
+                       rec.outcome === 'Proposal Sent' ? 'bg-blue-100 text-blue-700' :
+                       rec.outcome === 'Not Interested' ? 'bg-rose-100 text-rose-700' :
+                       'bg-slate-100 text-slate-700'
+                     }`}>
+                       {rec.outcome || 'N/A'}
+                     </span>
+                   </div>
+                   <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]" title={rec.feedback}>
+                     {rec.feedback || 'No feedback recorded'}
+                   </div>
                  </div>
               </td>
               <td className="md:px-6 py-4 text-right space-x-2">

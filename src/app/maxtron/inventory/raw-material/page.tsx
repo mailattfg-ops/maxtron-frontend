@@ -336,27 +336,9 @@ export default function RawMaterialPage() {
                   className="h-11 font-bold"
                 />
               </div>
- 
+              
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
-                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit
-                </label>
-                <div className="relative">
-                  <Input 
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.rate_per_unit}
-                    onChange={(e) => setFormData({...formData, rate_per_unit: Number(e.target.value)})}
-                    className="h-11 font-black text-emerald-600 pr-20"
-                  />
-                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
-                    PER {formData.unit_type.toUpperCase()}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/70 flex items-center">
                    Unit Type
                 </label>
                 <select 
@@ -367,6 +349,24 @@ export default function RawMaterialPage() {
                   <option value="Kg">Kilogram (Kg)</option>
                   <option value="Ton">Metric Ton (Ton)</option>
                 </select>
+              </div>
+ 
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit
+                </label>
+                <div className="relative">
+                  <Input 
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.rate_per_unit === 0 ? '' : formData.rate_per_unit}
+                    onChange={(e) => setFormData({...formData, rate_per_unit: Number(e.target.value)})}
+                    className="h-11 font-black text-emerald-600 pr-20"
+                  />
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
+                    PER {formData.unit_type.toUpperCase()}
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
