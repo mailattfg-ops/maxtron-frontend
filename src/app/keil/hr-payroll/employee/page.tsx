@@ -964,12 +964,12 @@ export default function EmployeeInformationPage() {
                                 <option value="POLICE_VERIFICATION">Police Verification</option>
                               </select>
                             </div>
-                            <div className="space-y-1 flex-none w-20">
+                            {/* <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
                               <div className="h-9 flex items-center">
                                 <input type="checkbox" checked={cert.issued} onChange={(e) => !isViewMode && handleNestedRowChange('employee_certificates', idx, 'issued', e.target.checked)} disabled={isViewMode} className="rounded w-4 h-4 text-primary focus:ring-primary" />
                               </div>
-                            </div>
+                            </div> */}
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Issue Date</label>
                                <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
