@@ -25,6 +25,7 @@ export default function EmployeeInformationPage() {
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeactivated, setShowDeactivated] = useState(false);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermission();
@@ -39,7 +40,11 @@ export default function EmployeeInformationPage() {
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
-      setIsAdmin(userData.role_name?.toLowerCase() === 'admin' || userData.email?.toLowerCase() === 'admin@maxtron.com');
+      setIsAdmin(
+        userData.role_name?.toLowerCase() === 'admin' || 
+        userData.email?.toLowerCase() === 'admin@maxtron.com' ||
+        userData.email?.toLowerCase() === 'admin@keil.com'
+      );
       setIsManagement(userData.category?.category_name?.toLowerCase() === 'management');
     }
   }, []);
@@ -173,13 +178,16 @@ export default function EmployeeInformationPage() {
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
       const user = storedUser ? JSON.parse(storedUser) : null;
-      const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
-      const isManagement = user?.category?.category_name?.toLowerCase() === 'management';
+      const isAdminUser = 
+        user?.role_name?.toLowerCase() === 'admin' || 
+        user?.email?.toLowerCase() === 'admin@maxtron.com' ||
+        user?.email?.toLowerCase() === 'admin@keil.com';
+      const isManagementUser = user?.category?.category_name?.toLowerCase() === 'management';
 
       const baseUrl = API_URL(activeEntity);
       let url = coId 
-        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
-        : `${baseUrl}?t=${Date.now()}`;
+        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}&is_deleted=${showDeactivated}`
+        : `${baseUrl}?t=${Date.now()}&is_deleted=${showDeactivated}`;
 
       console.log("sj user",user);
       
@@ -194,9 +202,9 @@ export default function EmployeeInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        if(isAdmin){
+        if(isAdminUser){
           setEmployees(data.data);
-        }else if (isManagement) {
+        }else if (isManagementUser) {
           setEmployees(data.data.filter((e: any) => e.user_types?.name?.toLowerCase() === user?.role_name?.toLowerCase()));
         }else{
           setEmployees(data.data.filter((e: any) => e.id === user?.id));
@@ -217,6 +225,25 @@ export default function EmployeeInformationPage() {
     const newAddresses = [...formData.addresses];
     newAddresses[index] = { ...newAddresses[index], [field]: value };
     setFormData({ ...formData, addresses: newAddresses });
+  };
+
+  const copyCommunicationAddress = () => {
+    const comm = formData.addresses[0];
+    if (!comm.street && !comm.city && !comm.state) {
+      info('Communication address is empty.');
+      return;
+    }
+    const newAddresses = [...formData.addresses];
+    newAddresses[1] = {
+      ...newAddresses[1],
+      street: comm.street,
+      city: comm.city,
+      state: comm.state,
+      zip_code: comm.zip_code,
+      country: comm.country
+    };
+    setFormData({ ...formData, addresses: newAddresses });
+    success('Address copied successfully!');
   };
 
   const handleNestedRowChange = (collection: keyof typeof formData, index: number, field: string, value: any) => {
@@ -372,9 +399,9 @@ export default function EmployeeInformationPage() {
 
   const deleteEmployee = async (id: string) => {
     const isConfirmed = await confirm({
-      message: 'Are you sure you want to delete this employee? This will permanently erase their credentials and bio-data.',
+      message: 'Are you sure you want to deactivate this employee? They will no longer appear in active employee lists or attendance selections.',
       type: 'danger',
-      confirmLabel: 'Erase Data'
+      confirmLabel: 'Deactivate'
     });
     if (!isConfirmed) return;
     
@@ -388,10 +415,10 @@ export default function EmployeeInformationPage() {
       
       const data = await res.json();
       if (data.success) {
-        success('Employee records purged.');
+        success('Employee deactivated successfully.');
         fetchEmployees(formData.company_id);
       } else {
-        error(data.message || 'Failed to delete');
+        error(data.message || 'Failed to deactivate');
       }
     } catch (error) {
       console.error('Error deleting employee:', error);
@@ -399,6 +426,44 @@ export default function EmployeeInformationPage() {
       setSubmitting(false);
     }
   };
+
+  const activateEmployee = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to reactivate this employee? They will appear in active lists again and regain system access.',
+      type: 'info',
+      confirmLabel: 'Reactivate'
+    });
+    if (!isConfirmed) return;
+    
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL(activeEntity)}/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_deleted: false })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        success('Employee reactivated successfully.');
+        fetchEmployees(formData.company_id);
+      } else {
+        error(data.message || 'Failed to reactivate');
+      }
+    } catch (error) {
+      console.error('Error reactivating employee:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees(formData.company_id);
+  }, [showDeactivated]);
 
   return (
     <div className="space-y-6">
@@ -585,7 +650,7 @@ export default function EmployeeInformationPage() {
                           name="employee_code" 
                           value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
                           disabled={true} 
-                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-secondary text-sm"
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-blue-600 text-sm"
                         />
                       </div>
                       <div className="space-y-2">
@@ -597,7 +662,7 @@ export default function EmployeeInformationPage() {
                         <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} disabled={isViewMode} className="h-10 md:h-11" />
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
+                        <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -615,7 +680,20 @@ export default function EmployeeInformationPage() {
                       </div>
  
                       <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Permanent Address</h3>
+                          {!isViewMode && (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={copyCommunicationAddress}
+                              className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                            >
+                              <Copy className="w-3 h-3 mr-1" /> Same as Communication
+                            </Button>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -1051,6 +1129,16 @@ export default function EmployeeInformationPage() {
             <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="flex gap-4 items-center">
+            <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+               <input 
+                  type="checkbox" 
+                  id="showDeactivated"
+                  checked={showDeactivated} 
+                  onChange={(e) => { setShowDeactivated(e.target.checked); setCurrentPage(1); }}
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+               />
+               <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
@@ -1097,29 +1185,37 @@ export default function EmployeeInformationPage() {
                       <td className="p-4 font-medium text-secondary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-semibold text-foreground">{emp.name}</td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-100 text-rose-700' :
-                          emp.user_types?.name?.includes('HR') ? 'bg-purple-100 text-purple-700' :
-                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-blue-100 text-blue-700'
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                          emp.user_types?.name?.includes('HR') ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
                         }`}>
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
                       <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {hasPermission('hr_employee_view', 'edit') && (
-                          <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                            <Edit className="w-4 h-4" />
+                        {emp.is_deleted ? (
+                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
+                            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Reactivate
                           </Button>
-                        )}
-                        {hasPermission('hr_employee_view', 'delete') && (
-                          <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        ) : (
+                          <>
+                            <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {hasPermission('hr_employee_view', 'edit') && (
+                              <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {hasPermission('hr_employee_view', 'delete') && (
+                              <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
                         )}
                       </td>
                     </tr>

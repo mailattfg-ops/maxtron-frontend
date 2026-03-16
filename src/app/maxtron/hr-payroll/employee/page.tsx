@@ -25,6 +25,7 @@ export default function EmployeeInformationPage() {
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeactivated, setShowDeactivated] = useState(false);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermission();
@@ -180,8 +181,8 @@ export default function EmployeeInformationPage() {
 
       const baseUrl = API_URL(activeEntity);
       let url = coId 
-        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
-        : `${baseUrl}?t=${Date.now()}`;
+        ? `${baseUrl}?company_id=${coId}&t=${Date.now()}&is_deleted=${showDeactivated}`
+        : `${baseUrl}?t=${Date.now()}&is_deleted=${showDeactivated}`;
 
       console.log("sj user",user);
 
@@ -395,9 +396,9 @@ export default function EmployeeInformationPage() {
 
   const deleteEmployee = async (id: string) => {
     const isConfirmed = await confirm({
-      message: 'Are you sure you want to delete this employee? This will permanently erase their credentials and bio-data.',
+      message: 'Are you sure you want to deactivate this employee? They will no longer appear in active employee lists or attendance selections.',
       type: 'danger',
-      confirmLabel: 'Erase Data'
+      confirmLabel: 'Deactivate'
     });
     if (!isConfirmed) return;
     
@@ -411,10 +412,10 @@ export default function EmployeeInformationPage() {
       
       const data = await res.json();
       if (data.success) {
-        success('Employee records purged.');
+        success('Employee deactivated successfully.');
         fetchEmployees(formData.company_id);
       } else {
-        error(data.message || 'Failed to delete');
+        error(data.message || 'Failed to deactivate');
       }
     } catch (error) {
       console.error('Error deleting employee:', error);
@@ -422,6 +423,44 @@ export default function EmployeeInformationPage() {
       setSubmitting(false);
     }
   };
+
+  const activateEmployee = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to reactivate this employee? They will appear in active lists again and regain system access.',
+      type: 'info',
+      confirmLabel: 'Reactivate'
+    });
+    if (!isConfirmed) return;
+    
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL(activeEntity)}/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_deleted: false })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        success('Employee reactivated successfully.');
+        fetchEmployees(formData.company_id);
+      } else {
+        error(data.message || 'Failed to reactivate');
+      }
+    } catch (error) {
+      console.error('Error reactivating employee:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees(formData.company_id);
+  }, [showDeactivated]);
 
   return (
     <div className="space-y-6">
@@ -1090,6 +1129,16 @@ export default function EmployeeInformationPage() {
             <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="flex gap-4 items-center">
+            <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+               <input 
+                  type="checkbox" 
+                  id="showDeactivated"
+                  checked={showDeactivated} 
+                  onChange={(e) => { setShowDeactivated(e.target.checked); setCurrentPage(1); }}
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+               />
+               <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
+            </div>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
@@ -1147,18 +1196,26 @@ export default function EmployeeInformationPage() {
                       </td>
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {hasPermission('hr_employee_view', 'edit') && (
-                          <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                            <Edit className="w-4 h-4" />
+                        {emp.is_deleted ? (
+                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
+                            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Reactivate
                           </Button>
-                        )}
-                        {hasPermission('hr_employee_view', 'delete') && (
-                          <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        ) : (
+                          <>
+                            <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {hasPermission('hr_employee_view', 'edit') && (
+                              <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {hasPermission('hr_employee_view', 'delete') && (
+                              <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
                         )}
                       </td>
                     </tr>
