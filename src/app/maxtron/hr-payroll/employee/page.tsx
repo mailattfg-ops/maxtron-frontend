@@ -30,6 +30,20 @@ export default function EmployeeInformationPage() {
   const { hasPermission } = usePermission();
   const router = useRouter();
   
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isManagement, setIsManagement] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setIsAdmin(userData.role_name?.toLowerCase() === 'admin' || userData.email?.toLowerCase() === 'admin@maxtron.com');
+      setIsManagement(userData.category?.category_name?.toLowerCase() === 'management');
+    }
+  }, []);
+  
   // Page access check
   useEffect(() => {
     // We check view permission, but if they are already on this page via sidebar, 
@@ -114,6 +128,8 @@ export default function EmployeeInformationPage() {
         cache: 'no-store'
       });
       const data = await res.json();
+      console.log("sj cate ",data.data);
+      
       if (data.success && Array.isArray(data.data)) {
          setUserTypes(data.data);
       }
@@ -157,20 +173,38 @@ export default function EmployeeInformationPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+      const isManagement = user?.category?.category_name?.toLowerCase() === 'management';
+
       const baseUrl = API_URL(activeEntity);
-      const url = coId 
+      let url = coId 
         ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
         : `${baseUrl}?t=${Date.now()}`;
+
+      console.log("sj user",user);
+
+      // If NOT admin, filter by their own category only
+      // if (!isAdmin && user?.category_id) {
+      //   url += `&category_id=${user.category_id}`;
+      // }
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
       const data = await res.json();
+      console.log("sj data",data.data); 
+      
       if (data.success) {
-        console.log("sj",data.data);
-        
-        setEmployees(data.data);
+        if(isAdmin){
+          setEmployees(data.data);
+        }else if (isManagement) {
+          setEmployees(data.data.filter((e: any) => e.user_types?.name?.toLowerCase() === user?.role_name?.toLowerCase()));
+        }else{
+          setEmployees(data.data.filter((e: any) => e.id === user?.id));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error);
@@ -560,7 +594,7 @@ export default function EmployeeInformationPage() {
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 rounded-2xl">
                     <CardTitle className="text-lg md:text-xl text-primary flex items-center">
                       <UserPlus className="w-5 h-5 mr-3 text-secondary" />
                       {isViewMode ? 'View Employee Details' : editingId ? 'Edit Personal Details' : 'Personal Details'}
@@ -574,7 +608,7 @@ export default function EmployeeInformationPage() {
                           name="employee_code" 
                           value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
                           disabled={true} 
-                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-secondary text-sm"
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-blue-600 text-sm"
                         />
                       </div>
                       <div className="space-y-2">
@@ -586,7 +620,7 @@ export default function EmployeeInformationPage() {
                         <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} disabled={isViewMode} className="h-10 md:h-11" />
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
+                        <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -605,14 +639,14 @@ export default function EmployeeInformationPage() {
  
                       <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
+                          <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Permanent Address</h3>
                           {!isViewMode && (
                             <Button 
                               type="button" 
                               variant="ghost" 
                               size="sm" 
                               onClick={copyCommunicationAddress}
-                              className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                              className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
                             >
                               <Copy className="w-3 h-3 mr-1" /> Same as Communication
                             </Button>
@@ -1111,7 +1145,7 @@ export default function EmployeeInformationPage() {
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
-                      <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>
+                      <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => viewEmployee(emp)}>
                           <Eye className="w-4 h-4" />

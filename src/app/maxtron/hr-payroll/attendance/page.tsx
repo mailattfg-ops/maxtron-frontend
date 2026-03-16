@@ -20,6 +20,20 @@ export default function AttendancePage() {
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = activeEntity.toUpperCase();
 
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isManagement, setIsManagement] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setIsAdmin(userData.role_name?.toLowerCase() === 'admin' || userData.email?.toLowerCase() === 'admin@maxtron.com');
+      setIsManagement(userData.category?.category_name?.toLowerCase() === 'management');
+    }
+  }, []);
+
   const ATTENDANCE_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/attendance`;
   const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
@@ -93,16 +107,34 @@ export default function AttendancePage() {
 
   const fetchAttendance = async (coId?: string) => {
     const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    const user = storedUser ? JSON.parse(storedUser) : null;
+    const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+    const isManagement = user?.category?.category_name?.toLowerCase() === 'management';
+
     const targetCoId = coId || currentCompanyId;
-    if (!targetCoId) return; // Don't fetch if no company ID available yet
+    if (!targetCoId) return; 
 
     try {
       const res = await fetch(`${ATTENDANCE_API}?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
+      console.log("sj data", data.data);
       if (data.success) {
-        setAttendanceRecords(data.data || []);
+        const records = data.data || [];
+        
+        if (isAdmin) {
+          setAttendanceRecords(records);
+        } else if (isManagement) {
+          // Management can see attendance of people in their same role category
+          setAttendanceRecords(records.filter((e: any) => 
+            e.users?.user_types?.name?.toLowerCase() === user.role_name?.toLowerCase()
+          ));
+        } else {
+          // Regular employees see only their own attendance
+          setAttendanceRecords(records.filter((e: any) => e.employee_id === user?.id));
+        }
       }
     } catch (err) {
       console.error('Error fetching attendance:', err);

@@ -30,6 +30,20 @@ export default function EmployeeInformationPage() {
   const { hasPermission } = usePermission();
   const router = useRouter();
   
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isManagement, setIsManagement] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setIsAdmin(userData.role_name?.toLowerCase() === 'admin' || userData.email?.toLowerCase() === 'admin@maxtron.com');
+      setIsManagement(userData.category?.category_name?.toLowerCase() === 'management');
+    }
+  }, []);
+  
   // Page access check
   useEffect(() => {
     // We check view permission, but if they are already on this page via sidebar, 
@@ -157,10 +171,22 @@ export default function EmployeeInformationPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+      const isManagement = user?.category?.category_name?.toLowerCase() === 'management';
+
       const baseUrl = API_URL(activeEntity);
-      const url = coId 
+      let url = coId 
         ? `${baseUrl}?company_id=${coId}&t=${Date.now()}`
         : `${baseUrl}?t=${Date.now()}`;
+
+      console.log("sj user",user);
+      
+      // If NOT admin, filter by their own category only
+      // if (!isAdmin && user?.category_id) {
+      //   url += `&category_id=${user.category_id}`;
+      // }
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -168,7 +194,13 @@ export default function EmployeeInformationPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setEmployees(data.data);
+        if(isAdmin){
+          setEmployees(data.data);
+        }else if (isManagement) {
+          setEmployees(data.data.filter((e: any) => e.user_types?.name?.toLowerCase() === user?.role_name?.toLowerCase()));
+        }else{
+          setEmployees(data.data.filter((e: any) => e.id === user?.id));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch employees:', error);
@@ -539,7 +571,7 @@ export default function EmployeeInformationPage() {
             <TabsContent value="personal">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6">
+                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 rounded-2xl">
                     <CardTitle className="text-lg md:text-xl text-primary flex items-center">
                       <UserPlus className="w-5 h-5 mr-3 text-secondary" />
                       {isViewMode ? 'View Employee Details' : editingId ? 'Edit Personal Details' : 'Personal Details'}

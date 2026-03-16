@@ -188,10 +188,10 @@ export default function AttendanceReportPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
                 <tr>
-                  <th className="p-4 border-r">Date</th>
-                  <th className="p-4 border-r">ID & Name</th>
-                  <th className="p-4 border-r text-center">In / Out</th>
-                  <th className="p-4 border-r text-center">Status</th>
+                  <th className="p-4">Date</th>
+                  <th className="p-4">ID & Name</th>
+                  <th className="p-4 text-center">In / Out</th>
+                  <th className="p-4 text-center">Status</th>
                   <th className="p-4">Remarks</th>
                 </tr>
               </thead>

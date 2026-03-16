@@ -33,7 +33,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       if (isAdmin) {
         router.push('/maxtron');
       } else {
-        const companyCode = userObj?.company?.company_code?.toLowerCase() || 'maxtron';
+        const companyCode = userObj?.company?.company_name?.toLowerCase() || 'maxtron';
         router.push(`/${companyCode}`);
       }
     } else if (storedUser) {
@@ -44,7 +44,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       // Non-admins should be redirected back to their company if they try to access another.
       const isAdmin = userObj?.role_name?.toLowerCase() === 'admin' || userObj?.email?.toLowerCase() === 'admin@maxtron.com';
       if (!isAdmin) {
-        const companyCode = userObj?.company?.company_code?.toLowerCase() || 'maxtron';
+        const companyCode = userObj?.company?.company_name?.toLowerCase() || 'maxtron';
         const expectedPrefix = `/${companyCode}`;
         if (!pathname.startsWith(expectedPrefix)) {
           router.push(expectedPrefix);

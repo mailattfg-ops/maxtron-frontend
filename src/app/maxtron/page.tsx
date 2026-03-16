@@ -195,7 +195,7 @@ export default function Dashboard() {
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
                             <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                                <ChartIcon className="w-5 h-5 text-indigo-500" /> Revenue vs Collections
+                                <ChartIcon className="w-6 h-6 text-indigo-500" /> Revenue vs Collections
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium italic">Financial performance monitoring</CardDescription>
                         </div>
@@ -243,7 +243,7 @@ export default function Dashboard() {
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
                             <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                                <UserCheck className="w-5 h-5 text-violet-500" /> Attendance Trends
+                                <UserCheck className="w-6 h-6 text-violet-500" /> Attendance Trends
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium italic">Staff presence analysis (Last 7 Days)</CardDescription>
                         </div>
@@ -279,7 +279,7 @@ export default function Dashboard() {
             {/* Analytics & Alerts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Center Panel: Recent Transactions */}
-                <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
+                <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-border/50 gap-0 bg-card rounded-3xl overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
                         <div>
                             <CardTitle className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
@@ -346,8 +346,8 @@ export default function Dashboard() {
                 {/* Right Panel: Alerts & Stock */}
                 <div className="space-y-6">
                     <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
-                        <CardHeader className="bg-rose-500/10 border-b border-rose-500/20">
-                            <CardTitle className="text-lg font-black text-rose-500 uppercase tracking-tight flex items-center gap-2">
+                        <CardHeader className="flex justify-center items-center pt-4 !pb-4 bg-rose-500/10 border-b border-rose-500/20 rounded-2xl">
+                            <CardTitle className="text-lg font-black text-rose-500 uppercase tracking-tight flex items-center">
                                 <AlertCircle className="w-5 h-5 text-rose-500" /> Critical Alerts
                             </CardTitle>
                         </CardHeader>
@@ -401,13 +401,13 @@ export default function Dashboard() {
             </div>
 
             {/* Production Matrix Holder */}
-            <Card className="border-none shadow-sm ring-1 ring-border/50 bg-card rounded-3xl overflow-hidden">
-                <CardHeader className="p-8 pb-0">
+            <Card className="border-none shadow-sm ring-1 gap-4 ring-border/50 bg-card rounded-3xl overflow-hidden">
+                <CardHeader className="p-2 pb-0">
                     <CardTitle className="text-xl font-black text-foreground uppercase tracking-tighter flex items-center gap-3">
                         <Activity className="w-6 h-6 text-secondary" /> Production Output Matrix
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 pt-6">
+                <CardContent className="px-8 pb-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         {(data?.recentActivity?.production?.length > 0 ? data.recentActivity.production : [
                             { batch_number: 'BTH-9281', extrusion_output_qty: 450, finished_products: { product_name: 'LDPE Liner' }, date: new Date().toISOString() },
@@ -418,7 +418,7 @@ export default function Dashboard() {
                         ]).map((batch: any, i: number) => (
                             <div key={i} className="p-6 bg-muted/20 rounded-2xl border border-border/40 hover:border-secondary/30 transition-all hover:bg-card hover:shadow-xl group">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="text-[10px] font-black text-secondary tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-secondary group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
+                                    <div className="text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
                                     <Clock className="w-4 h-4 text-muted-foreground/40" />
                                 </div>
                                 <h4 className="text-sm font-black text-foreground/90 uppercase tracking-tight mb-1">{batch.batch_number}</h4>

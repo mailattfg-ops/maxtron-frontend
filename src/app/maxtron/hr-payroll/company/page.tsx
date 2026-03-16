@@ -254,7 +254,7 @@ export default function CompanyInformationPage() {
 
                 {/* Manufacturing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Manufacturing Unit
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -359,7 +359,7 @@ export default function CompanyInformationPage() {
 
     return (
         <div className="pt-4">
-           <p className="font-medium text-slate-800 leading-snug">{addr.street}</p>
+           <p className="font-bold text-slate-800 leading-snug">{addr.street}</p>
            {details && <p className="text-sm text-slate-600 mt-1">{details}</p>}
         </div>
     );
@@ -417,19 +417,19 @@ export default function CompanyInformationPage() {
                                             
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">GST No</span>
-                                                <span className="font-medium text-slate-900 col-span-2">{company.gst_no || '-'}</span>
+                                                <span className="font-bold text-slate-900 col-span-2">{company.gst_no || '-'}</span>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">Employees</span>
-                                                <span className="font-medium text-slate-900 col-span-2">{company.no_of_employees || 0}</span>
+                                                <span className="font-bold text-slate-900 col-span-2">{company.no_of_employees || 0}</span>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm border-b pb-2">
                                                 <span className="text-slate-500 col-span-1">Email <Mail className="h-3 w-3 inline text-slate-400" /></span>
-                                                <span className="font-medium text-slate-900 col-span-2 overflow-hidden">{company.email || '-'}</span>
+                                                <span className="font-bold text-slate-900 col-span-2 overflow-hidden">{company.email || '-'}</span>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-sm">
                                                 <span className="text-slate-500 col-span-1">Phone <Phone className="h-3 w-3 inline text-slate-400" /></span>
-                                                <span className="font-medium text-slate-900 col-span-2 overflow-hidden">{company.phone || '-'}</span>
+                                                <span className="font-bold text-slate-900 col-span-2 overflow-hidden">{company.phone || '-'}</span>
                                             </div>
                                         </div>
 
@@ -442,11 +442,11 @@ export default function CompanyInformationPage() {
                                                 {renderAddressDisplay(company, 'OFFICE')}
                                             </div>
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-indigo-600 font-medium absolute -top-1 bg-indigo-50 px-1 rounded">MANUFACTURING UNIT</span>
+                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">MANUFACTURING UNIT</span>
                                                 {renderAddressDisplay(company, 'MANUFACTURING_UNIT')}
                                             </div>
                                             <div className="text-sm pb-1 relative">
-                                                <span className="text-xs text-green-600 font-medium absolute -top-1 bg-green-50 px-1 rounded">BILLING</span>
+                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">BILLING</span>
                                                 {renderAddressDisplay(company, 'BILLING')}
                                             </div>
                                         </div>

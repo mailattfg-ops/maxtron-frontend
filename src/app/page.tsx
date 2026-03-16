@@ -18,7 +18,7 @@ export default function Home() {
       if (isAdmin) {
         router.replace('/maxtron');
       } else {
-        const companyCode = user?.company?.company_code?.toLowerCase() || 'maxtron';
+        const companyCode = user?.company?.company_name?.toLowerCase() || 'maxtron';
         router.replace(`/${companyCode}`);
       }
     } else {

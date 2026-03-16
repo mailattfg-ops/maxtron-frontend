@@ -192,7 +192,7 @@ export default function FGStockListPage() {
                  s.balance < (s.stock_threshold || 50) ? 'bg-amber-50 text-amber-600 border-amber-200' : 
                  'bg-emerald-50 text-emerald-700 border-emerald-200'
                }`}>
-                 {s.balance < (s.stock_threshold || 50) ? 'REORDER' : 'AVAIL'}
+                 {s.balance < (s.stock_threshold || 50) ? 'LOW STOCK' : 'AVAILABLE'}
                </span>
             </td>
           </tr>

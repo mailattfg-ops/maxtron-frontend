@@ -293,7 +293,7 @@ export default function MarketingVisitsPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -368,8 +368,8 @@ export default function MarketingVisitsPage() {
       )}
 
       {showForm && (
-        <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+        <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500 !mt-6 ">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 pt-6 rounded-2xl">
             <CardTitle>{editingId ? 'Edit Visit Details' : 'Record Field Visit'}</CardTitle>
             <CardDescription>Log time of entry, exit, and visit outcome.</CardDescription>
           </CardHeader>
