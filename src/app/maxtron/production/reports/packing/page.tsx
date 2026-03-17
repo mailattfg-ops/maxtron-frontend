@@ -101,7 +101,7 @@ export default function PackingSummaryReport() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-emerald-950">Packing Summary</h1>
           <p className="text-muted-foreground mt-1 text-emerald-700/60">Report on finished goods bundling and inventory readiness.</p>

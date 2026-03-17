@@ -241,33 +241,30 @@ export default function VehiclesPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in zoom-in duration-300 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
+          <CardHeader className="bg-primary/5 border-b grid grid-cols-1 md:grid-cols-2 gap-1 items-center justify-between py-4">
             <div>
               <CardTitle className="text-primary">{editingId ? 'Modify Vehicle' : 'Register New Vehicle'}</CardTitle>
               <CardDescription>Enter technical, legal and ownership specifications.</CardDescription>
             </div>
-            <div className="flex gap-2 bg-white/50 p-1 rounded-full border">
+            <div className="flex gap-2 bg-white/50 p-1 rounded-full border pointer-events-none">
               <Button 
                 variant={activeTab === 'basic' ? 'default' : 'ghost'} 
                 size="sm" 
-                onClick={() => setActiveTab('basic')}
-                className="rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest"
+                className={`rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest ${activeTab === 'basic' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
               >Basic</Button>
               <Button 
                 variant={activeTab === 'tech' ? 'default' : 'ghost'} 
                 size="sm" 
-                onClick={() => setActiveTab('tech')}
-                className="rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest"
+                className={`rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest ${activeTab === 'tech' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
               >Technical</Button>
               <Button 
                 variant={activeTab === 'owner' ? 'default' : 'ghost'} 
                 size="sm" 
-                onClick={() => setActiveTab('owner')}
-                className="rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest"
-              >Owner & GPS</Button>
+                className={`rounded-full px-4 h-8 text-[10px] uppercase font-bold tracking-widest ${activeTab === 'owner' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+              >Owner <span className='hidden md:block'> & GPS</span></Button>
             </div>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="md:p-8">
             {activeTab === 'basic' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                 <div className="space-y-2">
@@ -296,7 +293,7 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seating Capacity</label>
-                  <Input type="number" name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purpose of Usage</label>
@@ -325,7 +322,7 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">KM on Day 1</label>
-                  <Input type="number" name="km_on_day_1" value={formData.km_on_day_1} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="km_on_day_1" value={formData.km_on_day_1} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center"><Calendar className="w-3 h-3 mr-1" /> Fitness Date</label>
@@ -389,11 +386,56 @@ export default function VehiclesPage() {
               </div>
             )}
 
-            <div className="mt-10 pt-6 border-t flex justify-end">
-              <Button onClick={saveVehicle} className="bg-primary hover:bg-primary/95 text-white px-12 h-12 rounded-full shadow-lg transition-all hover:scale-105">
-                <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Vehicle' : 'Register Vehicle'}
-              </Button>
+            <div className="mt-10 pt-6 border-t flex justify-between items-center">
+              <div className="flex gap-3">
+                {activeTab !== 'basic' && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (activeTab === 'tech') setActiveTab('basic');
+                      if (activeTab === 'owner') setActiveTab('tech');
+                    }}
+                    className="rounded-full mr-1 px-8 h-10 font-bold border-primary/20 hover:bg-primary/5 shadow-sm"
+                  >
+                    Back
+                  </Button>
+                )}
+                <Button 
+                   variant="ghost" 
+                   onClick={() => { setShowForm(false); resetForm(); }}
+                   className="hidden md:block rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium h-10"
+                >
+                  Cancel Entry
+                </Button>
+              </div>
+
+              <div className="flex gap-3">
+                {activeTab !== 'owner' ? (
+                  <Button 
+                    onClick={() => {
+                      if (activeTab === 'basic') {
+                        if (!formData.registration_number) {
+                          error('Vehicle registration number is required.');
+                          return;
+                        }
+                        setActiveTab('tech');
+                      }
+                      else if (activeTab === 'tech') setActiveTab('owner');
+                    }}
+                    className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                  >
+                    Next Section
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={saveVehicle} 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold transition-all hover:scale-105"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingId ? 'Update Vehicle Record' : 'Register Vehicle to Fleet'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -326,7 +326,7 @@ export default function SalesInvoiceEntry() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <FileText className="w-8 h-8 text-primary" /> Sales / Invoice Entry
@@ -341,12 +341,12 @@ export default function SalesInvoiceEntry() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl overflow-hidden bg-white animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
             <CardTitle className="text-primary flex items-center gap-2">
               <Plus className="w-5 h-5" /> {editingId ? "Edit Invoice" : "Create New Invoice"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
@@ -404,14 +404,14 @@ export default function SalesInvoiceEntry() {
                     <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary h-8"><Plus className="w-3 h-3 mr-1" /> Add Row</Button>
                 </div>
                 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden text-sm">
-                    <table className="w-full">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto text-sm">
+                    <table className="w-full min-w-[800px]">
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3 text-left">Select Product</th>
-                                <th className="px-4 py-3 text-center w-32">Quantity Sold</th>
-                                <th className="px-4 py-3 text-center w-32">Rate (₹)</th>
-                                <th className="px-4 py-3 text-right w-40">Value (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Quantity</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Rate (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-40">Value (₹)</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
                         </thead>
@@ -419,14 +419,14 @@ export default function SalesInvoiceEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50 group">
                                     <td className="p-4">
-                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none">
+                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none text-[10px] md:text-sm font-medium focus:ring-0">
                                             <option value="">Select Product...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_code} - {p.product_name}</option>)}
+                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_code} - {p.product_name} </option>)}
                                         </select>
                                     </td>
-                                    <td className="p-4"><Input type="number" min="0" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none" /></td>
-                                    <td className="p-4"><Input type="number" min="0" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none" /></td>
-                                    <td className="p-4 text-right font-black text-slate-500">₹ {(item.amount || 0).toLocaleString()}</td>
+                                    <td className="p-4"><Input type="number" min="0" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
+                                    <td className="p-4"><Input type="number" min="0" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
+                                    <td className="p-4 text-right font-black text-slate-500 text-xs md:text-sm">₹ {(item.amount || 0).toLocaleString()}</td>
                                     <td className="p-4 text-center">
                                         <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                                     </td>
@@ -478,31 +478,29 @@ export default function SalesInvoiceEntry() {
       )}
 
       {!showForm && (
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-          <TableView
-            title="Posted Invoices"
-            description="History of all sales invoices generated."
-            headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'Actions']}
-            data={invoices}
-            loading={loading}
-            searchFields={['invoice_number', 'customers.customer_name']}
-            renderRow={(inv: any) => (
-              <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
-                <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
-                <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
-                <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
-                <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-rose-600 border border-rose-100"><Trash2 className="w-4 h-4" /></Button>
-                   </div>
-                </td>
-              </tr>
-            )}
-          />
-        </Card>
+        <TableView
+          title="Posted Invoices"
+          description="History of all sales invoices generated."
+          headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'Actions']}
+          data={invoices}
+          loading={loading}
+          searchFields={['invoice_number', 'customers.customer_name']}
+          renderRow={(inv: any) => (
+            <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
+              <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
+              <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
+              <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
+              <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
+              <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
+              <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10"><Edit2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-rose-600 border border-rose-100"><Trash2 className="w-4 h-4" /></Button>
+                  </div>
+              </td>
+            </tr>
+          )}
+        />
       )}
     </div>
   );

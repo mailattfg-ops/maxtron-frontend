@@ -198,7 +198,7 @@ export default function CuttingSealingPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Cutting & Sealing</h1>
           <p className="text-muted-foreground mt-1">Record and manage secondary processing output.</p>
@@ -321,6 +321,7 @@ export default function CuttingSealingPage() {
                             <label className="text-[10px] font-bold text-slate-500 uppercase">Qty Sealed (Kg)</label>
                             <Input 
                                 type="number" 
+                                min={0}
                                 className="h-9"
                                 value={item.quantity} 
                                 onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} 
@@ -377,40 +378,38 @@ export default function CuttingSealingPage() {
       )}
 
       {!showForm && (
-        <Card className="border-border/40 shadow-sm">
-          <TableView
-            title="Conversion Log"
-            description="Detailed history of processed quantities and cutting jobs."
-            headers={['Job No', 'Date', 'Batch', 'Items Produced', 'Input', 'Output', 'Wastage', 'Operator']}
-            data={conversions}
-            loading={loading}
-            searchFields={['conversion_number', 'production_batches.batch_number']}
-            searchPlaceholder="Search job or batch no..."
-            renderRow={(c: any) => (
-              <tr key={c.id} className="hover:bg-indigo-50/50 border-b last:border-none transition-all group">
-                <td className="px-6 py-4 font-mono font-bold text-indigo-700 text-xs">
-                    {c.conversion_number}
-                    <div className="text-[9px] text-slate-400 font-normal uppercase">{c.shift}</div>
-                </td>
-                <td className="px-6 py-4 text-xs">{new Date(c.date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-mono text-xs">{c.production_batches?.batch_number}</td>
-                <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                        {c.items?.map((it: any, i: number) => (
-                            <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800">
-                                {it.finished_products?.product_name}: {it.quantity}Kg
-                            </span>
-                        )) || <span className="text-slate-300 text-xs">No items</span>}
-                    </div>
-                </td>
-                <td className="px-6 py-4 text-xs">{c.input_qty}</td>
-                <td className="px-6 py-4 font-bold text-indigo-600">{c.output_qty}</td>
-                <td className="px-6 py-4 text-rose-600 font-bold">{c.wastage_qty}</td>
-                <td className="px-6 py-4 text-xs font-medium text-slate-600">{c.operator?.name}</td>
-              </tr>
-            )}
-          />
-        </Card>
+        <TableView
+          title="Conversion Log"
+          description="Detailed history of processed quantities and cutting jobs."
+          headers={['Job No', 'Date', 'Batch', 'Items Produced', 'Input', 'Output', 'Wastage', 'Operator']}
+          data={conversions}
+          loading={loading}
+          searchFields={['conversion_number', 'production_batches.batch_number']}
+          searchPlaceholder="Search job or batch no..."
+          renderRow={(c: any) => (
+            <tr key={c.id} className="hover:bg-indigo-50/50 border-b last:border-none transition-all group">
+              <td className="px-6 py-4 font-mono font-bold text-indigo-700 text-xs">
+                  {c.conversion_number}
+                  <div className="text-[9px] text-slate-400 font-normal uppercase">{c.shift}</div>
+              </td>
+              <td className="px-6 py-4 text-xs">{new Date(c.date).toLocaleDateString()}</td>
+              <td className="px-6 py-4 font-mono text-xs">{c.production_batches?.batch_number}</td>
+              <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1">
+                      {c.items?.map((it: any, i: number) => (
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800">
+                              {it.finished_products?.product_name}: {it.quantity}Kg
+                          </span>
+                      )) || <span className="text-slate-300 text-xs">No items</span>}
+                  </div>
+              </td>
+              <td className="px-6 py-4 text-xs">{c.input_qty}</td>
+              <td className="px-6 py-4 font-bold text-indigo-600">{c.output_qty}</td>
+              <td className="px-6 py-4 text-rose-600 font-bold">{c.wastage_qty}</td>
+              <td className="px-6 py-4 text-xs font-medium text-slate-600">{c.operator?.name}</td>
+            </tr>
+          )}
+        />
       )}
     </div>
   );

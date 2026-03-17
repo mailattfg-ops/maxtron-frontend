@@ -30,6 +30,7 @@ export default function DeliveryDetails() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
   
   const [alert, setAlert] = useState<{
     show: boolean, 
@@ -164,6 +165,31 @@ export default function DeliveryDetails() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validations
+    const newErrors: Record<string, boolean> = {};
+    if (!formData.delivery_date) newErrors.delivery_date = true;
+    if (!formData.invoice_id) newErrors.invoice_id = true;
+    if (!formData.vehicle_id) newErrors.vehicle_id = true;
+    if (!formData.delivery_person_id) newErrors.delivery_person_id = true;
+    if (!formData.receiver_name) newErrors.receiver_name = true;
+    if (!formData.receiver_section) newErrors.receiver_section = true;
+    if (!formData.contact_number) newErrors.contact_number = true;
+    if (!formData.delivery_time) newErrors.delivery_time = true;
+    if (!formData.dc_no) newErrors.dc_no = true;
+    
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        setAlert({ show: true, type: 'error', title: 'Validation Error', message: 'Please fill in all required fields marked below.' });
+        return;
+    }
+
+    if (formData.items.length === 0 || formData.items.some(i => !i.product_id || i.quantity <= 0)) {
+        setAlert({ show: true, type: 'error', title: 'Validation Error', message: 'Please add at least one item with a valid quantity.' });
+        return;
+    }
+
+    setErrors({});
     try {
       const url = editingId ? `${DELIVERIES_API}/${editingId}` : DELIVERIES_API;
       const method = editingId ? 'PUT' : 'POST';
@@ -182,6 +208,7 @@ export default function DeliveryDetails() {
         setAlert({ show: true, type: 'success', title: 'Success', message: 'Delivery record saved.' });
         setShowForm(false);
         setEditingId(null);
+        setErrors({});
         setFormData({
             invoice_id: '',
             order_id: '',
@@ -282,7 +309,7 @@ export default function DeliveryDetails() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <Truck className="w-10 h-10 text-primary" /> Delivery Details
@@ -297,7 +324,7 @@ export default function DeliveryDetails() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b">
+          <CardHeader className="bg-primary/5 border-b py-6">
             <CardTitle className="text-primary flex items-center gap-2">
               <ClipboardList className="w-5 h-5" /> {editingId ? "Edit Dispatch" : "New Dispatch Entry"}
             </CardTitle>
@@ -306,32 +333,53 @@ export default function DeliveryDetails() {
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Date</label>
-                  <Input type="date" value={formData.delivery_date} onChange={e => setFormData({...formData, delivery_date: e.target.value})} />
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Date <span className="text-rose-500">*</span></label>
+                  <Input 
+                    type="date" 
+                    className={errors.delivery_date ? "border-rose-400 focus:ring-rose-200" : ""}
+                    value={formData.delivery_date} 
+                    onChange={e => setFormData({...formData, delivery_date: e.target.value})} 
+                  />
+                  {errors.delivery_date && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Delivery Date is required</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice</label>
-                  <select value={formData.invoice_id} onChange={e => handleInvoiceSelect(e.target.value)} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice <span className="text-rose-500">*</span></label>
+                  <select 
+                    value={formData.invoice_id} 
+                    onChange={e => handleInvoiceSelect(e.target.value)} 
+                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.invoice_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
+                  >
                     <option value="">Select Invoice...</option>
                     {invoices.map(i => <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>)}
                   </select>
+                  {errors.invoice_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Please link an invoice</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Select Vehicle</label>
-                  <select value={formData.vehicle_id} onChange={e => setFormData({...formData, vehicle_id: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Select Vehicle <span className="text-rose-500">*</span></label>
+                  <select 
+                    value={formData.vehicle_id} 
+                    onChange={e => setFormData({...formData, vehicle_id: e.target.value})} 
+                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.vehicle_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
+                  >
                     <option value="">Choose Vehicle...</option>
                     {vehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number} ({v.vehicle_type})</option>)}
                   </select>
+                  {errors.vehicle_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Vehicle selection is required</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Person</label>
-                  <select value={formData.delivery_person_id} onChange={e => setFormData({...formData, delivery_person_id: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Person <span className="text-rose-500">*</span></label>
+                  <select 
+                    value={formData.delivery_person_id} 
+                    onChange={e => setFormData({...formData, delivery_person_id: e.target.value})} 
+                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.delivery_person_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
+                  >
                     <option value="">Select Delivery Employee...</option>
                     {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
+                  {errors.delivery_person_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Delivery person is required</p>}
                 </div>
               </div>
 
@@ -364,24 +412,55 @@ export default function DeliveryDetails() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Receiver's Name</label>
-                        <Input placeholder="Name of recipient" value={formData.receiver_name} onChange={e => setFormData({...formData, receiver_name: e.target.value})} className="bg-white" />
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Receiver's Name <span className="text-rose-500">*</span></label>
+                        <Input 
+                            placeholder="Name of recipient" 
+                            className={`bg-white ${errors.receiver_name ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            value={formData.receiver_name} 
+                            onChange={e => setFormData({...formData, receiver_name: e.target.value})} 
+                        />
+                        {errors.receiver_name && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Receiver name is required</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Section / Department</label>
-                        <Input placeholder="E.g. Stores, Main Office" value={formData.receiver_section} onChange={e => setFormData({...formData, receiver_section: e.target.value})} className="bg-white" />
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Section / Department <span className="text-rose-500">*</span></label>
+                        <Input 
+                            placeholder="E.g. Stores, Main Office" 
+                            className={`bg-white ${errors.receiver_section ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            value={formData.receiver_section} 
+                            onChange={e => setFormData({...formData, receiver_section: e.target.value})} 
+                        />
+                        {errors.receiver_section && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Section/Dept is required</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Contact Number</label>
-                        <Input placeholder="Phone number" value={formData.contact_number} onChange={e => setFormData({...formData, contact_number: e.target.value})} className="bg-white" />
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Contact Number <span className="text-rose-500">*</span></label>
+                        <Input 
+                            type="tel" 
+                            placeholder="Phone number" 
+                            className={`bg-white ${errors.contact_number ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            value={formData.contact_number} 
+                            onChange={e => setFormData({...formData, contact_number: e.target.value})} 
+                        />
+                        {errors.contact_number && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Contact number is required</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Time of Delivery</label>
-                        <Input type="time" value={formData.delivery_time} onChange={e => setFormData({...formData, delivery_time: e.target.value})} className="bg-white" />
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Time of Delivery <span className="text-rose-500">*</span></label>
+                        <Input 
+                            type="time" 
+                            className={`bg-white ${errors.delivery_time ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            value={formData.delivery_time} 
+                            onChange={e => setFormData({...formData, delivery_time: e.target.value})} 
+                        />
+                        {errors.delivery_time && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Delivery time is required</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">DC No. (Delivery Challan)</label>
-                        <Input placeholder="Enter DC No." value={formData.dc_no} onChange={e => setFormData({...formData, dc_no: e.target.value})} className="bg-white" />
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">DC No. (Delivery Challan) <span className="text-rose-500">*</span></label>
+                        <Input 
+                            placeholder="Enter DC No." 
+                            className={`bg-white ${errors.dc_no ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            value={formData.dc_no} 
+                            onChange={e => setFormData({...formData, dc_no: e.target.value})} 
+                        />
+                        {errors.dc_no && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">DC Number is required</p>}
                     </div>
                 </div>
               </div>
@@ -448,7 +527,6 @@ export default function DeliveryDetails() {
       )}
 
       {!showForm && (
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
           <TableView
             title="Dispatch Logs"
             description="Recent delivery tracking and vehicle assignments."
@@ -483,7 +561,6 @@ export default function DeliveryDetails() {
               </tr>
             )}
           />
-        </Card>
       )}
     </div>
   );

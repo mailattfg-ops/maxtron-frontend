@@ -37,6 +37,7 @@ export default function HCERegistryPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [activeTab, setActiveTab] = useState('basic');
 
     const [formData, setFormData] = useState({
         hce_name: '',
@@ -158,6 +159,7 @@ export default function HCERegistryPage() {
             company_id: hce.company_id
         });
         setIsFormOpen(true);
+        setActiveTab('basic');
     };
 
     const handleDelete = async (id: string) => {
@@ -181,6 +183,7 @@ export default function HCERegistryPage() {
 
     const resetForm = () => {
         setEditingId(null);
+        setActiveTab('basic');
         setFormData({
             hce_name: '',
             hce_code: '',
@@ -217,84 +220,152 @@ export default function HCERegistryPage() {
             {isFormOpen ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
                     <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
-                                {editingId ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                                {editingId ? 'Edit HCE Record' : 'Register New Health Care Establishment'}
-                            </CardTitle>
-                            <Button variant="ghost" size="icon" onClick={() => { setIsFormOpen(false); resetForm(); }} className="text-primary/60 hover:text-primary">
-                                <X className="w-5 h-5" />
-                            </Button>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
+                                    {editingId ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                                    {editingId ? 'Edit HCE Record' : 'Register New Health Care Establishment'}
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground font-medium mt-1">Enter essential details for facility coordination and waste collection logistics.</CardDescription>
+                            </div>
+                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none">
+                                {[
+                                    { id: 'basic', label: '1. Facility Info', icon: Building2 },
+                                    { id: 'ops', label: '2. Contact & Hours', icon: Clock },
+                                ].map(tab => (
+                                    <div
+                                        key={tab.id}
+                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                            activeTab === tab.id 
+                                            ? 'bg-white text-primary shadow-lg scale-105' 
+                                            : 'text-primary/60'
+                                        }`}
+                                    >
+                                        <tab.icon className="w-3.5 h-3.5" />
+                                        {tab.label}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <CardDescription className="text-muted-foreground font-medium mt-1">Enter essential details for facility coordination and waste collection logistics.</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-8 px-8 pb-8">
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> HCE Code</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="HCE-001" value={formData.hce_code} onChange={e => setFormData({ ...formData, hce_code: e.target.value })} />
+                        <div className="space-y-8">
+                            {activeTab === 'basic' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> HCE Code</label>
+                                        <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="HCE-001" value={formData.hce_code} onChange={e => setFormData({ ...formData, hce_code: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2 lg:col-span-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> HCE Name</label>
+                                        <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="City General Hospital" value={formData.hce_name} onChange={e => setFormData({ ...formData, hce_name: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Branch Name</label>
+                                        <select 
+                                            className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
+                                            value={formData.branch_id}
+                                            onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
+                                        >
+                                            <option value="">Select Branch</option>
+                                            {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> HCE Place</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Downtown" value={formData.hce_place} onChange={e => setFormData({ ...formData, hce_place: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2 lg:col-span-3">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Full Address</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="123 Medical Road, Area Code" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'ops' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-right duration-500">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Contact Person</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Admin Head" value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Phone className="w-4 h-4 text-primary" /> Contact Mobile</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="+123 456 7890" value={formData.contact_mobile} onChange={e => setFormData({ ...formData, contact_mobile: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Mail className="w-4 h-4 text-primary" /> Email ID</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="email" placeholder="contact@hce.com" value={formData.email_id} onChange={e => setFormData({ ...formData, email_id: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Collection Type</label>
+                                        <select 
+                                            className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
+                                            value={formData.collection_type}
+                                            onChange={e => setFormData({ ...formData, collection_type: e.target.value })}
+                                        >
+                                            <option value="Daily">Daily</option>
+                                            <option value="Alternate days">Alternate days</option>
+                                            <option value="Thrice a Week">Thrice a Week</option>
+                                            <option value="Once a Week">Once a Week</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Open From</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="time" value={formData.open_from} onChange={e => setFormData({ ...formData, open_from: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Open To</label>
+                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="time" value={formData.open_to} onChange={e => setFormData({ ...formData, open_to: e.target.value })} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-8 flex justify-between items-center border-t border-primary/10">
+                                <div className="flex gap-3">
+                                    {activeTab !== 'basic' && (
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => setActiveTab('basic')}
+                                            className="rounded-full px-8 h-10 font-bold border-primary/20 hover:bg-primary/5"
+                                        >
+                                            Back
+                                        </Button>
+                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        onClick={() => { setIsFormOpen(false); resetForm(); }}
+                                        className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium h-10"
+                                    >
+                                        Cancel Entry
+                                    </Button>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    {activeTab !== 'ops' ? (
+                                        <Button 
+                                            onClick={() => {
+                                                if (!formData.hce_code || !formData.hce_name) {
+                                                    error("HCE Code and Name are required.");
+                                                    return;
+                                                }
+                                                setActiveTab('ops');
+                                            }}
+                                            className="bg-primary hover:bg-primary/95 text-white rounded-full px-10 h-11 shadow-lg font-bold"
+                                        >
+                                            Next Section
+                                        </Button>
+                                    ) : (
+                                        <Button 
+                                            onClick={handleSubmit} 
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-10 h-11 shadow-lg shadow-emerald-100 font-bold flex items-center transition-all hover:scale-105"
+                                        >
+                                            <Save className="w-4 h-4 mr-2" />
+                                            {editingId ? 'Update Record' : 'Register Facility'}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                            <div className="space-y-2 lg:col-span-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> HCE Name</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="City General Hospital" value={formData.hce_name} onChange={e => setFormData({ ...formData, hce_name: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Branch Name</label>
-                                <select 
-                                    className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                    value={formData.branch_id}
-                                    onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
-                                >
-                                    <option value="">Select Branch</option>
-                                    {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> HCE Place</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Downtown" value={formData.hce_place} onChange={e => setFormData({ ...formData, hce_place: e.target.value })} />
-                            </div>
-                            <div className="space-y-2 lg:col-span-3">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Full Address</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="123 Medical Road, Area Code" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Contact Person</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Admin Head" value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Phone className="w-4 h-4 text-primary" /> Contact Mobile</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="+123 456 7890" value={formData.contact_mobile} onChange={e => setFormData({ ...formData, contact_mobile: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Mail className="w-4 h-4 text-primary" /> Email ID</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="email" placeholder="contact@hce.com" value={formData.email_id} onChange={e => setFormData({ ...formData, email_id: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Collection Type</label>
-                                <select 
-                                    className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                    value={formData.collection_type}
-                                    onChange={e => setFormData({ ...formData, collection_type: e.target.value })}
-                                >
-                                    <option value="Daily">Daily</option>
-                                    <option value="Alternate days">Alternate days</option>
-                                    <option value="Thrice a Week">Thrice a Week</option>
-                                    <option value="Once a Week">Once a Week</option>
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Open From</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="time" value={formData.open_from} onChange={e => setFormData({ ...formData, open_from: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Open To</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="time" value={formData.open_to} onChange={e => setFormData({ ...formData, open_to: e.target.value })} />
-                            </div>
-                            <div className="col-span-full pt-6 flex justify-end gap-3 border-t border-primary/10">
-                                <Button type="button" variant="outline" className="rounded-full px-8" onClick={() => { setIsFormOpen(false); resetForm(); }}>Cancel Execution</Button>
-                                <Button type="submit" className="px-10 bg-primary hover:bg-primary/90 text-white rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-11 font-bold uppercase tracking-wider"><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Register Facility'}</Button>
-                            </div>
-                        </form>
+                        </div>
                     </CardContent>
                 </Card>
             ) : (

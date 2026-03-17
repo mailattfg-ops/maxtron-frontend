@@ -241,25 +241,22 @@ export default function CustomersPage() {
                 <CardTitle className="text-lg md:text-xl font-bold text-primary">{editingId ? 'Edit Customer' : 'Create New Customer'}</CardTitle>
                 <CardDescription className="text-xs">Enter company details, tax info, and credit terms.</CardDescription>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 pointer-events-none">
                 <Button 
                   variant={activeTab === 'basic' ? 'default' : 'outline'} 
                   size="sm" 
-                  onClick={() => setActiveTab('basic')}
-                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
-                >Basic</Button>
+                  className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${activeTab === 'basic' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                >1. Basic</Button>
                 <Button 
                   variant={activeTab === 'address' ? 'default' : 'outline'} 
                   size="sm" 
-                  onClick={() => setActiveTab('address')}
-                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
-                >Addresses</Button>
+                  className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${activeTab === 'address' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                >2. Addresses</Button>
                 <Button 
                   variant={activeTab === 'financial' ? 'default' : 'outline'} 
                   size="sm" 
-                  onClick={() => setActiveTab('financial')}
-                  className="rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4"
-                >Financials</Button>
+                  className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${activeTab === 'financial' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                >3. Financials</Button>
               </div>
             </div>
           </CardHeader>
@@ -325,28 +322,70 @@ export default function CustomersPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
-                  <Input type="number" name="credit_limit" value={formData.credit_limit} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_limit" value={formData.credit_limit} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Credit Period (Days)</label>
-                  <Input type="number" name="credit_period" value={formData.credit_period} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_period" value={formData.credit_period} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Opening Balance (₹)</label>
-                  <Input type="number" name="opening_balance" value={formData.opening_balance} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="opening_balance" value={formData.opening_balance} onChange={handleInputChange} />
                 </div>
               </div>
             )}
 
-            <div className="mt-8 pt-6 border-t flex justify-end">
-              <Button 
-                onClick={saveCustomer} 
-                loading={submitting}
-                className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Customer' : 'Save Customer'}
-              </Button>
+            <div className="mt-8 pt-6 border-t flex justify-between items-center">
+              <div>
+                {activeTab !== 'basic' && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (activeTab === 'address') setActiveTab('basic');
+                      if (activeTab === 'financial') setActiveTab('address');
+                    }}
+                    className="rounded-full px-6 h-10 font-bold border-primary/20 hover:bg-primary/5 mr-3"
+                  >
+                    Back
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  onClick={() => { setShowForm(false); resetForm(); }}
+                  className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium"
+                >
+                  Cancel Entry
+                </Button>
+              </div>
+
+              <div className="flex gap-3">
+                {activeTab !== 'financial' ? (
+                  <Button 
+                    onClick={() => {
+                      if (activeTab === 'basic') {
+                        if (!formData.customer_name || !formData.customer_code) {
+                          error('Customer name and code are required.');
+                          return;
+                        }
+                        setActiveTab('address');
+                      }
+                      else if (activeTab === 'address') setActiveTab('financial');
+                    }}
+                    className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                  >
+                    Next Section
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={saveCustomer} 
+                    loading={submitting}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingId ? 'Update Customer' : 'Save Customer Record'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

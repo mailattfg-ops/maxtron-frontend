@@ -304,25 +304,24 @@ export default function VehicleMasterPage() {
                                 </div>
                             </div>
                             
-                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10">
+                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none">
                                 {[
-                                    { id: 'basic', label: 'Basic Info', icon: Hash },
-                                    { id: 'tech', label: 'Technical', icon: Settings },
-                                    { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
-                                    { id: 'gps', label: 'Owner & GPS', icon: MapPin },
+                                    { id: 'basic', label: '1. Basic Info', icon: Hash },
+                                    { id: 'tech', label: '2. Technical', icon: Settings },
+                                    { id: 'compliance', label: '3. Compliance', icon: ShieldCheck },
+                                    { id: 'gps', label: '4. Owner & GPS', icon: MapPin },
                                 ].map(tab => (
-                                    <button
+                                    <div
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
                                         className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                                             activeTab === tab.id 
                                             ? 'bg-white text-primary shadow-lg scale-105' 
-                                            : 'text-primary/60 hover:text-primary hover:bg-white/40'
+                                            : 'text-primary/60'
                                         }`}
                                     >
                                         <tab.icon className="w-3.5 h-3.5" />
                                         {tab.label}
-                                    </button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -484,13 +483,58 @@ export default function VehicleMasterPage() {
                             </div>
                         )}
 
-                        <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end items-center gap-4">
-                            <span className="text-xs font-semibold text-muted-foreground mr-auto italic">All fields subject to regulatory audit</span>
-                            <Button variant="ghost" onClick={() => setShowForm(false)} className="rounded-full px-8 h-10 font-bold text-muted-foreground">Discard</Button>
-                            <Button onClick={handleSave} className="bg-primary hover:bg-primary/95 text-white rounded-full px-10 h-11 shadow-lg shadow-primary/20 font-bold flex items-center">
-                                <Save className="w-4 h-4 mr-3" />
-                                {editingId ? 'Update Record' : 'Commit Asset'}
-                            </Button>
+                        <div className="mt-8 pt-8 border-t border-primary/10 flex justify-between items-center">
+                            <div className="flex gap-3">
+                                {activeTab !== 'basic' && (
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => {
+                                            if (activeTab === 'tech') setActiveTab('basic');
+                                            if (activeTab === 'compliance') setActiveTab('tech');
+                                            if (activeTab === 'gps') setActiveTab('compliance');
+                                        }}
+                                        className="rounded-full px-8 h-10 font-bold border-primary/20 hover:bg-primary/5"
+                                    >
+                                        Back
+                                    </Button>
+                                )}
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={() => { setShowForm(false); resetForm(); }}
+                                    className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium h-10"
+                                >
+                                    Cancel Entry
+                                </Button>
+                            </div>
+
+                            <div className="flex gap-3">
+                                {activeTab !== 'gps' ? (
+                                    <Button 
+                                        onClick={() => {
+                                            if (activeTab === 'basic') {
+                                                if (!formData.registration_number) {
+                                                    error("Registration Number is required.");
+                                                    return;
+                                                }
+                                                setActiveTab('tech');
+                                            }
+                                            else if (activeTab === 'tech') setActiveTab('compliance');
+                                            else if (activeTab === 'compliance') setActiveTab('gps');
+                                        }}
+                                        className="bg-primary hover:bg-primary/95 text-white rounded-full px-10 h-11 shadow-lg font-bold"
+                                    >
+                                        Next Section
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        onClick={handleSave} 
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-10 h-11 shadow-lg shadow-emerald-100 font-bold flex items-center transition-all hover:scale-105"
+                                    >
+                                        <Save className="w-4 h-4 mr-3" />
+                                        {editingId ? 'Update Record' : 'Commit Asset'}
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

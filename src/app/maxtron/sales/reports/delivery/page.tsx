@@ -69,7 +69,7 @@ export default function DeliveryReport() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <Truck className="w-10 h-10 text-emerald-600" /> Delivery Track Record
@@ -99,53 +99,51 @@ export default function DeliveryReport() {
           </div>
       </div>
 
-      <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-        <TableView
-          headers={['Dispatch ID', 'Date', 'Vehicle Reg.', 'Driver Name', 'Status', 'Line Items']}
-          data={filteredData}
-          loading={loading}
-          searchFields={['delivery_number', 'vehicles.registration_number', 'driver_name']}
-          renderRow={(row: any) => (
-            <tr key={row.id} className="hover:bg-slate-50 border-b last:border-0 transition-all">
-              <td className="px-6 py-5 font-mono font-black text-slate-700">{row.delivery_number}</td>
-              <td className="px-6 py-5">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(row.delivery_date).toLocaleDateString()}
-                  </div>
-              </td>
-              <td className="px-6 py-5">
-                  <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
-                      <span className="font-black text-slate-800 tracking-tight">{row.vehicles?.registration_number}</span>
-                  </div>
-              </td>
-              <td className="px-6 py-5">
-                  <div className="flex items-center gap-2 font-bold text-slate-700">
-                      <User className="w-4 h-4 text-slate-400" />
-                      {row.driver_name || 'Not Assigned'}
-                  </div>
-              </td>
-              <td className="px-6 py-5">
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      row.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
-                      row.status === 'OUT_FOR_DELIVERY' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                      {row.status.replace(/_/g, ' ')}
-                  </span>
-              </td>
-              <td className="px-6 py-5 text-center">
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {row.items?.slice(0, 2).map((item: any, idx: number) => (
-                        <span key={idx} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-500">{item.finished_products?.product_code} ({item.quantity})</span>
-                    ))}
-                    {row.items?.length > 2 && <span className="text-[10px] font-bold text-slate-300">+{row.items.length - 2} more</span>}
-                  </div>
-              </td>
-            </tr>
-          )}
-        />
-      </Card>
+      <TableView
+        headers={['Dispatch ID', 'Date', 'Vehicle Reg.', 'Driver Name', 'Status', 'Line Items']}
+        data={filteredData}
+        loading={loading}
+        searchFields={['delivery_number', 'vehicles.registration_number', 'driver_name']}
+        renderRow={(row: any) => (
+          <tr key={row.id} className="hover:bg-slate-50 border-b last:border-0 transition-all">
+            <td className="px-6 py-5 font-mono font-black text-slate-700">{row.delivery_number}</td>
+            <td className="px-6 py-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(row.delivery_date).toLocaleDateString()}
+                </div>
+            </td>
+            <td className="px-6 py-5">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
+                    <span className="font-black text-slate-800 tracking-tight">{row.vehicles?.registration_number}</span>
+                </div>
+            </td>
+            <td className="px-6 py-5">
+                <div className="flex items-center gap-2 font-bold text-slate-700">
+                    <User className="w-4 h-4 text-slate-400" />
+                    {row.driver_name || 'Not Assigned'}
+                </div>
+            </td>
+            <td className="px-6 py-5">
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    row.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
+                    row.status === 'OUT_FOR_DELIVERY' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
+                }`}>
+                    {row.status.replace(/_/g, ' ')}
+                </span>
+            </td>
+            <td className="px-6 py-5 text-center">
+                <div className="flex flex-wrap gap-1 justify-center">
+                  {row.items?.slice(0, 2).map((item: any, idx: number) => (
+                      <span key={idx} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-500">{item.finished_products?.product_code} ({item.quantity})</span>
+                  ))}
+                  {row.items?.length > 2 && <span className="text-[10px] font-bold text-slate-300">+{row.items.length - 2} more</span>}
+                </div>
+            </td>
+          </tr>
+        )}
+      />
     </div>
   );
 }

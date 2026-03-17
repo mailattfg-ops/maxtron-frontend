@@ -75,7 +75,7 @@ export default function BillingSummary() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <BarChart3 className="w-8 h-8 text-indigo-600" /> Billing Summary
@@ -127,24 +127,22 @@ export default function BillingSummary() {
           </div>
       </Card>
 
-      <Card className="border-none shadow-xl overflow-hidden rounded-3xl">
-        <TableView
-          headers={['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Amt']}
-          data={filteredData}
-          loading={loading}
-          searchFields={['invoice_number', 'customers.customer_name']}
-          renderRow={(row: any) => (
-            <tr key={row.id} className="hover:bg-indigo-50/30 border-b last:border-0 transition-colors">
-              <td className="px-6 py-4 font-mono font-bold text-indigo-700">{row.invoice_number}</td>
-              <td className="px-6 py-4 text-sm font-medium">{new Date(row.invoice_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold text-slate-800">{row.customers?.customer_name}</td>
-              <td className="px-6 py-4 text-right tabular-nums">₹ {parseFloat(row.total_amount).toLocaleString()}</td>
-              <td className="px-6 py-4 text-right tabular-nums text-indigo-500 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
-              <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-slate-50">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
-            </tr>
-          )}
-        />
-      </Card>
+      <TableView
+        headers={['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Amt']}
+        data={filteredData}
+        loading={loading}
+        searchFields={['invoice_number', 'customers.customer_name']}
+        renderRow={(row: any) => (
+          <tr key={row.id} className="hover:bg-indigo-50/30 border-b last:border-0 transition-colors">
+            <td className="px-6 py-4 font-mono font-bold text-indigo-700">{row.invoice_number}</td>
+            <td className="px-6 py-4 text-sm font-medium">{new Date(row.invoice_date).toLocaleDateString()}</td>
+            <td className="px-6 py-4 font-bold text-slate-800">{row.customers?.customer_name}</td>
+            <td className="px-6 py-4 text-right tabular-nums">₹ {parseFloat(row.total_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums text-indigo-500 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-slate-50">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
+          </tr>
+        )}
+      />
     </div>
   );
 }
