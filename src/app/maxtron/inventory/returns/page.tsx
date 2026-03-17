@@ -337,32 +337,68 @@ export default function PurchaseReturnPage() {
                 </select>
               </div>
 
+              <div className="md:col-span-full space-y-4">
+                <div className="flex items-center space-x-2 text-rose-600 border-b border-rose-100 pb-2">
+                   <AlertTriangle className="w-4 h-4" />
+                   <h3 className="text-sm font-black uppercase tracking-widest">Return Item Details</h3>
+                </div>
+                
+                {formData.purchase_entry_id ? (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Raw Material</th>
+                          <th className="px-4 py-3 text-center">Received Qty</th>
+                          <th className="px-4 py-3 text-right">Return Qty</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {entries.find(e => e.id === formData.purchase_entry_id)?.purchase_entry_items?.map((item: any, idx: number) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="px-4 py-3 font-bold text-slate-700">{item.raw_materials?.rm_name || 'N/A'}</td>
+                            <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">{Number(item.received_quantity).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right w-32">
+                              <Input 
+                                type="number"
+                                min="0"
+                                max={item.received_quantity}
+                                placeholder="0"
+                                className="h-8 text-right font-black text-rose-600 border-rose-100 focus:ring-rose-200"
+                                value={formData.quantity_returned || 0}
+                                onChange={(e) => {
+                                  const val = Math.max(0, Number(e.target.value) || 0);
+                                  if (val > item.received_quantity) {
+                                      error(`Cannot return more than ${item.received_quantity} for ${item.raw_materials?.rm_name}`);
+                                      setFormData({...formData, quantity_returned: Number(item.received_quantity)});
+                                  } else {
+                                      setFormData({...formData, quantity_returned: val});
+                                  }
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <Undo2 className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Select a GRN Entry above to view items</p>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex justify-between">
-                  <span>Quantity Returned</span>
-                  {formData.purchase_entry_id && (() => {
-                    const linkedEntry = entries.find(e => e.id === formData.purchase_entry_id);
-                    const maxQty = linkedEntry ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 : 0;
-                    return <span className="text-[10px] font-black text-emerald-600">Max: {maxQty}</span>;
-                  })()}
-                </label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Total Returned</label>
                 <Input 
                   type="number"
+                  min="0"
+                  readOnly
                   placeholder="Items going back"
-                  disabled={!formData.purchase_entry_id}
-                  value={formData.quantity_returned === 0 ? '' : formData.quantity_returned}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    const linkedEntry = entries.find(entry => entry.id === formData.purchase_entry_id);
-                    const maxQty = linkedEntry ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 : 0;
-                    if (maxQty > 0 && val > maxQty) {
-                      setFormData({...formData, quantity_returned: maxQty});
-                      error(`Maximum returnable quantity is ${maxQty}`);
-                    } else {
-                      setFormData({...formData, quantity_returned: val});
-                    }
-                  }}
-                  className="h-11 text-lg font-black text-rose-600 disabled:opacity-50"
+                  value={formData.quantity_returned}
+                  className="h-11 text-lg font-black text-rose-600 bg-rose-50 border-rose-200"
                 />
               </div>
 

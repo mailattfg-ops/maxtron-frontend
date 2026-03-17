@@ -170,9 +170,10 @@ export default function SalesInvoiceEntry() {
     const item = { ...newItems[index], [field]: value };
     
     if (field === 'quantity' || field === 'rate') {
-      const qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
-      const rate = field === 'rate' ? parseFloat(value) || 0 : item.rate;
+      const qty = field === 'quantity' ? Math.max(0, parseFloat(value) || 0) : item.quantity;
+      const rate = field === 'rate' ? Math.max(0, parseFloat(value) || 0) : item.rate;
       item.amount = qty * rate;
+      item[field] = field === 'quantity' ? qty : rate;
     }
 
     newItems[index] = item;
@@ -423,8 +424,8 @@ export default function SalesInvoiceEntry() {
                                             {products.map(p => <option key={p.id} value={p.id}>{p.product_code} - {p.product_name}</option>)}
                                         </select>
                                     </td>
-                                    <td className="p-4"><Input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none" /></td>
-                                    <td className="p-4"><Input type="number" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none" /></td>
+                                    <td className="p-4"><Input type="number" min="0" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none" /></td>
+                                    <td className="p-4"><Input type="number" min="0" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none" /></td>
                                     <td className="p-4 text-right font-black text-slate-500">₹ {(item.amount || 0).toLocaleString()}</td>
                                     <td className="p-4 text-center">
                                         <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
@@ -450,11 +451,11 @@ export default function SalesInvoiceEntry() {
                         <div className="flex justify-between text-sm font-medium text-slate-500"><span>Subtotal</span><span>₹ {totals.subtotal.toLocaleString()}</span></div>
                         <div className="flex justify-between text-sm items-center gap-4">
                             <span className="text-slate-500">Tax (GST) (+)</span>
-                            <Input type="number" value={formData.tax_amount} onChange={e => setFormData({...formData, tax_amount: parseFloat(e.target.value) || 0})} className="w-32 h-8 text-right font-bold" />
+                            <Input type="number" min="0" value={formData.tax_amount} onChange={e => setFormData({...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
                         </div>
                         <div className="flex justify-between text-sm items-center gap-4">
                             <span className="text-slate-500">Discount (-)</span>
-                            <Input type="number" value={formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: parseFloat(e.target.value) || 0})} className="w-32 h-8 text-right font-bold" />
+                            <Input type="number" min="0" value={formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
                         </div>
                         <div className="h-px bg-slate-200 my-2" />
                         <div className="flex justify-between text-xl font-black text-primary"><span>Total Value</span><span>₹ {totals.net.toLocaleString()}</span></div>

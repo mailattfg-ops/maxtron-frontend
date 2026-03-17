@@ -44,6 +44,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [bulkData, setBulkData] = useState<any[]>([]);
   const [bulkDate, setBulkDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateFilter, setDateFilter] = useState('');
@@ -168,11 +169,23 @@ export default function AttendancePage() {
   const saveBulkAttendance = async () => {
 
     const token = localStorage.getItem('token');
+    setSubmitting(true);
     try {
       // Strip out non-database fields like employee_name/code before sending
       const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
         ...rest
       }));
+
+      // Time validation check
+      for (const item of bulkData) {
+        if (item.status !== 'ABSENT') {
+          if (item.clock_out <= item.clock_in) {
+            error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
 
       const res = await fetch(`${ATTENDANCE_API}/bulk`, {
         method: 'POST',
@@ -188,10 +201,12 @@ export default function AttendancePage() {
         setShowBulkForm(false);
         fetchAttendance(currentCompanyId); // Pass ID explicitly
       } else {
-        error(data.message || 'Bulk marking failed');
+        error(data.error || data.message || 'Bulk marking failed');
       }
-    } catch (err) {
-      error('Network error during bulk save.');
+    } catch (err: any) {
+      error(err.message || 'Network error during bulk save.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -201,10 +216,18 @@ export default function AttendancePage() {
       return;
     }
 
+    if (formData.status !== 'ABSENT') {
+      if (formData.clock_out <= formData.clock_in) {
+        error('Clock-out time must be later than Clock-in time.');
+        return;
+      }
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${ATTENDANCE_API}/${editingId}` : ATTENDANCE_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -226,10 +249,13 @@ export default function AttendancePage() {
         fetchAttendance(currentCompanyId); // Pass ID explicitly
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.error || data.message || 'Error occurred');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving attendance:', err);
+      error(err.message || 'Network error occurred');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -411,7 +437,15 @@ export default function AttendancePage() {
                 </label>
                 <select 
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    const updates: any = { status };
+                    if (status === 'ABSENT') {
+                      updates.clock_in = '00:00';
+                      updates.clock_out = '00:00';
+                    }
+                    setFormData({...formData, ...updates});
+                  }}
                   className="w-full h-11 px-3 rounded-md border border-slate-200 bg-white text-sm font-black focus:ring-2 focus:ring-primary/10 outline-none"
                 >
                   <option value="PRESENT">Present</option>
@@ -453,7 +487,11 @@ export default function AttendancePage() {
             </div>
 
             <div className="mt-10 flex justify-end">
-              <Button onClick={saveAttendance} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold">
+              <Button 
+                onClick={saveAttendance} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Log' : 'Authorize Log'}
               </Button>
@@ -508,8 +546,13 @@ export default function AttendancePage() {
                          <select 
                            value={row.status}
                            onChange={(e) => {
+                             const status = e.target.value;
                              const nd = [...bulkData];
-                             nd[idx].status = e.target.value;
+                             nd[idx].status = status;
+                             if (status === 'ABSENT') {
+                               nd[idx].clock_in = '00:00';
+                               nd[idx].clock_out = '00:00';
+                             }
                              setBulkData(nd);
                            }}
                            className="h-8 rounded border bg-white px-2 text-xs"
@@ -561,7 +604,11 @@ export default function AttendancePage() {
                <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
                <div className="flex gap-3">
                  <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
-                 <Button onClick={saveBulkAttendance} className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10">
+                 <Button 
+                    onClick={saveBulkAttendance} 
+                    loading={submitting}
+                    className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10"
+                  >
                    <Save className="w-4 h-4 mr-2" /> Mark Attendance
                  </Button>
                </div>

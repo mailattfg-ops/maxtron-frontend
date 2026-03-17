@@ -444,8 +444,10 @@ export default function EmployeeInformationPage() {
         });
         setActiveTab('personal');
       } else {
-        error(data.message || 'Operation failed');
+        error(data.error || data.message || 'Operation failed');
       }
+    } catch (err: any) {
+      error(err.message || 'Network error occurred');
     } finally {
       setSubmitting(false);
     }

@@ -124,10 +124,10 @@ export default function RawMaterialPage() {
         fetchMaterials();
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.error || data.message || 'Error occurred');
       }
-    } catch (err) {
-      error('Network error.');
+    } catch (err: any) {
+      error(err.message || 'Network error.');
     } finally {
       setSubmitting(false);
     }
@@ -374,9 +374,10 @@ export default function RawMaterialPage() {
                 <div className="relative">
                   <Input 
                     type="number"
+                    min="0"
                     placeholder="0.00"
                     value={formData.rate_per_unit === 0 ? '' : formData.rate_per_unit}
-                    onChange={(e) => setFormData({...formData, rate_per_unit: Number(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, rate_per_unit: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-emerald-600 pr-20"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
@@ -392,9 +393,10 @@ export default function RawMaterialPage() {
                 <div className="relative">
                   <Input 
                     type="number"
+                    min="0"
                     placeholder="100.00"
                     value={formData.stock_threshold}
-                    onChange={(e) => setFormData({...formData, stock_threshold: Number(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, stock_threshold: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-rose-500 pr-12"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">

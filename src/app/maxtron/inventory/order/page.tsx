@@ -345,16 +345,18 @@ export default function RMOrderPage() {
                             <Input 
                               type="number" 
                               required
+                              min="0"
                               value={item.quantity === 0 ? '' : item.quantity} 
-                              onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
+                              onChange={(e) => updateItem(idx, 'quantity', Math.max(0, Number(e.target.value)))}
                               className="h-10 text-right font-black text-primary"
                             />
                           </td>
                           <td className="p-4">
                             <Input 
                               type="number" 
+                              min="0"
                               value={item.rate} 
-                              onChange={(e) => updateItem(idx, 'rate', Number(e.target.value))}
+                              onChange={(e) => updateItem(idx, 'rate', Math.max(0, Number(e.target.value)))}
                               className="h-10 text-right"
                             />
                           </td>

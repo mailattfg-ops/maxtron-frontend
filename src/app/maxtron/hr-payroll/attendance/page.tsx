@@ -177,6 +177,17 @@ export default function AttendancePage() {
         ...rest
       }));
 
+      // Time validation check
+      for (const item of bulkData) {
+        if (item.status !== 'ABSENT') {
+          if (item.clock_out <= item.clock_in) {
+            error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
       const res = await fetch(`${ATTENDANCE_API}/bulk`, {
         method: 'POST',
         headers: {
@@ -192,7 +203,7 @@ export default function AttendancePage() {
         setShowBulkForm(false);
         fetchAttendance(currentCompanyId); 
       } else {
-        error(data.message || 'Bulk marking failed');
+        error(data.error || data.message || 'Bulk marking failed');
       }
     } catch (err) {
       error('Network error during bulk save.');
@@ -205,6 +216,13 @@ export default function AttendancePage() {
     if (!formData.employee_id || !formData.date || !formData.shift) {
       error('Please fill required fields.');
       return;
+    }
+
+    if (formData.status !== 'ABSENT') {
+      if (formData.clock_out <= formData.clock_in) {
+        error('Clock-out time must be later than Clock-in time.');
+        return;
+      }
     }
 
     // Client-side duplicate check
@@ -245,10 +263,11 @@ export default function AttendancePage() {
         fetchAttendance(currentCompanyId); // Pass ID explicitly
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.error || data.message || 'Error occurred');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving attendance:', err);
+      error(err.message || 'Network error occurred');
     } finally {
       setSubmitting(false);
     }
@@ -443,7 +462,15 @@ export default function AttendancePage() {
                 </label>
                 <select 
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    const updates: any = { status };
+                    if (status === 'ABSENT') {
+                      updates.clock_in = '00:00';
+                      updates.clock_out = '00:00';
+                    }
+                    setFormData({...formData, ...updates});
+                  }}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
                 >
                   <option value="PRESENT">Present</option>
@@ -541,8 +568,13 @@ export default function AttendancePage() {
                          <select 
                            value={row.status}
                            onChange={(e) => {
+                             const status = e.target.value;
                              const nd = [...bulkData];
-                             nd[idx].status = e.target.value;
+                             nd[idx].status = status;
+                             if (status === 'ABSENT') {
+                               nd[idx].clock_in = '00:00';
+                               nd[idx].clock_out = '00:00';
+                             }
                              setBulkData(nd);
                            }}
                            className="h-8 rounded border bg-white px-2 text-xs"

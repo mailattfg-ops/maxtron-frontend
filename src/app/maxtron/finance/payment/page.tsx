@@ -144,7 +144,7 @@ export default function SupplierPaymentPage() {
     }, [formData.amount, pendingBills]);
 
     const handleAllocationChange = (billId: string, amount: string, max: number) => {
-        const val = Math.min(Number(amount), max);
+        const val = Math.max(0, Math.min(Number(amount), max));
         setAllocations({ ...allocations, [billId]: val });
     };
 
@@ -337,10 +337,11 @@ export default function SupplierPaymentPage() {
                                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                             <input
                                                 type="number"
+                                                min="0"
                                                 required
                                                 placeholder="0.00"
                                                 value={formData.amount}
-                                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                                onChange={(e) => setFormData({ ...formData, amount: String(Math.max(0, Number(e.target.value))) })}
                                                 className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-primary/20 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none text-lg font-black"
                                             />
                                         </div>
@@ -394,6 +395,7 @@ export default function SupplierPaymentPage() {
                                                                     <div className="relative">
                                                                         <input 
                                                                             type="number"
+                                                                            min="0"
                                                                             placeholder="Amount"
                                                                             value={allocations[bill.id] || ''}
                                                                             onChange={(e) => handleAllocationChange(bill.id, e.target.value, bill.pending_amount)}

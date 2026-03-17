@@ -513,17 +513,17 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Period (Days)</label>
-                <Input type="number" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Limit (₹)</label>
-                <Input type="number" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Opening Balance (₹)</label>
-                <Input type="number" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
             </div>
 

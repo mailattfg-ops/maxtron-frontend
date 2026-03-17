@@ -76,7 +76,17 @@ export default function CompanyInformationPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value, type } = e.target as HTMLInputElement;
+
+    if (name === 'phone') {
+        value = value.replace(/[^\d\s+]/g, '');
+    }
+
+    if (name === 'no_of_employees' || type === 'number') {
+        value = String(Math.max(0, Number(value) || 0));
+    }
+
+    setFormData({ ...formData, [name]: value });
   };
 
   const saveCompany = async () => {
@@ -208,7 +218,7 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Employees</label>
-                    <Input type="number" name="no_of_employees" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
+                    <Input type="number" name="no_of_employees" min="0" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
                 </div>
               </div>
           </div>
