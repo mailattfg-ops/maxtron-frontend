@@ -25,6 +25,7 @@ export const keilSidebarMenu: NavItem[] = [
             { title: "Attendance Summary", path: "/keil/hr-payroll/reports/attendance", permissionKey: "hr_attendance_view" },
             { title: "Expense Heads", path: "/keil/hr-payroll/expense-heads", permissionKey: "hr_expense_view" },
             { title: "Expenditure Entry", path: "/keil/hr-payroll/expenditures", permissionKey: "hr_expense_view" },
+            { title: "Payroll Management", path: "/keil/hr-payroll/payroll", permissionKey: "hr_payroll_view" },
         ]
     },
     {

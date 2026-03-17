@@ -96,6 +96,7 @@ export default function EmployeeInformationPage() {
     is_married: false,
     family_details: '',
     category_id: '',
+    basic_salary: 0,
     employee_qualifications: [] as any[],
     employee_experiences: [] as any[],
     employee_certificates: [] as any[],
@@ -439,7 +440,7 @@ export default function EmployeeInformationPage() {
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
           ],
           company_id: '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '',
-          guarantor_name: '', is_married: false, family_details: '', category_id: '',
+          guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
         setActiveTab('personal');
@@ -475,6 +476,7 @@ export default function EmployeeInformationPage() {
       is_married: emp.is_married || false,
       family_details: emp.family_details || '',
       category_id: emp.category_id || '',
+      basic_salary: Number(emp.basic_salary) || 0,
       employee_qualifications: emp.employee_qualifications || [],
       employee_experiences: emp.employee_experiences || [],
       employee_certificates: emp.employee_certificates || [],
@@ -641,7 +643,7 @@ export default function EmployeeInformationPage() {
                       { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                       { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                     ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                   });
                   setIsViewMode(false);
                   setShowForm(true);
@@ -949,6 +951,19 @@ export default function EmployeeInformationPage() {
                     <option key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</option>
                   ))}
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground/80">Monthly Basic Salary (₹)</label>
+                <Input 
+                   type="number" 
+                   name="basic_salary" 
+                   value={formData.basic_salary} 
+                   onChange={handleInputChange} 
+                   disabled={isViewMode} 
+                   placeholder="0.00" 
+                   className="font-bold text-primary"
+                   min="0"
+                />
               </div>
             </CardContent>
               </Card>

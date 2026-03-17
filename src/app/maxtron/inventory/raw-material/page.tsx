@@ -26,6 +26,7 @@ export default function RawMaterialPage() {
   const canDelete = hasPermission('inv_rm_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [typeCodes, setTypeCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
@@ -73,6 +74,7 @@ export default function RawMaterialPage() {
         }
       }
       fetchMaterials(coId);
+      fetchTypeCodes(coId);
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {
@@ -93,6 +95,22 @@ export default function RawMaterialPage() {
       }
     } catch (err) {
       console.error('Error fetching materials:', err);
+    }
+  };
+
+  const fetchTypeCodes = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/rm-type-codes?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTypeCodes(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching type codes:', err);
     }
   };
 
@@ -352,12 +370,16 @@ export default function RawMaterialPage() {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
                   <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
                 </label>
-                <Input 
-                  placeholder="code..."
+                <select 
                   value={formData.rm_type_code}
-                  onChange={(e) => setFormData({...formData, rm_type_code: e.target.value.toUpperCase()})}
-                  className="h-11 font-black text-blue-600"
-                />
+                  onChange={(e) => setFormData({...formData, rm_type_code: e.target.value})}
+                  className="w-full h-11 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-bold focus:bg-white outline-none shadow-sm"
+                >
+                  <option value="">Select Type Code...</option>
+                  {typeCodes.map(tc => (
+                    <option key={tc.id} value={tc.code}>{tc.code} - {tc.name}</option>
+                  ))}
+                </select>
               </div>
               
               <div className="space-y-2">
