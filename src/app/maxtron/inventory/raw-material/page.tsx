@@ -183,9 +183,16 @@ export default function RawMaterialPage() {
       if (data.success) {
         success('Material removed from registry.');
         fetchMaterials();
+      } else {
+        const msg = data.error?.toLowerCase();
+        if (msg?.includes('foreign key constraint') || msg?.includes('violates')) {
+           error('Cannot delete: This material is already in use in orders, receipts, or production.');
+        } else {
+           error(data.message || 'Deletion failed.');
+        }
       }
     } catch (err) {
-      error('Deletion failed.');
+      error('Network failure.');
     } finally {
       setSubmitting(false);
     }

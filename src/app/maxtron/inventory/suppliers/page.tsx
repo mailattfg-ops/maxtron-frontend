@@ -41,6 +41,7 @@ export default function SupplierPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -136,6 +137,7 @@ export default function SupplierPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${SUPPLIER_API}/${editingId}` : SUPPLIER_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -157,6 +159,8 @@ export default function SupplierPage() {
       }
     } catch (err) {
       error('Network error.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -531,7 +535,11 @@ export default function SupplierPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-muted-foreground font-bold">
                 Discard Changes
               </Button>
-              <Button onClick={saveSupplier} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center transition-all">
+              <Button 
+                onClick={saveSupplier} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center transition-all"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Profile' : 'Complete Onboarding'}
               </Button>

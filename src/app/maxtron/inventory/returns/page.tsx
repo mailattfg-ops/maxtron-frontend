@@ -32,6 +32,7 @@ export default function PurchaseReturnPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -45,6 +46,7 @@ export default function PurchaseReturnPage() {
     return_date: new Date().toISOString().split('T')[0],
     purchase_entry_id: '',
     supplier_id: '',
+    rm_id: '',
     quantity_returned: 0,
     reason: '',
     dispatch_details: '',
@@ -129,6 +131,7 @@ export default function PurchaseReturnPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${RETURN_API}/${editingId}` : RETURN_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -150,6 +153,8 @@ export default function PurchaseReturnPage() {
       }
     } catch (err) {
       error('Network failure.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -159,6 +164,7 @@ export default function PurchaseReturnPage() {
       return_date: new Date().toISOString().split('T')[0],
       purchase_entry_id: '',
       supplier_id: '',
+      rm_id: '',
       quantity_returned: 0,
       reason: '',
       dispatch_details: '',
@@ -174,6 +180,7 @@ export default function PurchaseReturnPage() {
       return_date: rec.return_date.split('T')[0],
       purchase_entry_id: rec.purchase_entry_id,
       supplier_id: rec.supplier_id,
+      rm_id: rec.rm_id || '',
       quantity_returned: Number(rec.quantity_returned),
       reason: rec.reason || '',
       dispatch_details: rec.dispatch_details || '',
@@ -365,14 +372,14 @@ export default function PurchaseReturnPage() {
                                 max={item.received_quantity}
                                 placeholder="0"
                                 className="h-8 text-right font-black text-rose-600 border-rose-100 focus:ring-rose-200"
-                                value={formData.quantity_returned || 0}
+                                value={formData.rm_id === item.rm_id ? formData.quantity_returned : 0}
                                 onChange={(e) => {
                                   const val = Math.max(0, Number(e.target.value) || 0);
                                   if (val > item.received_quantity) {
                                       error(`Cannot return more than ${item.received_quantity} for ${item.raw_materials?.rm_name}`);
-                                      setFormData({...formData, quantity_returned: Number(item.received_quantity)});
+                                      setFormData({...formData, quantity_returned: Number(item.received_quantity), rm_id: item.rm_id});
                                   } else {
-                                      setFormData({...formData, quantity_returned: val});
+                                      setFormData({...formData, quantity_returned: val, rm_id: item.rm_id});
                                   }
                                 }}
                               />
@@ -409,9 +416,10 @@ export default function PurchaseReturnPage() {
                   onChange={(e) => setFormData({...formData, status: e.target.value})}
                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
                 >
-                  <option value="PENDING">Pending (QC Rejected)</option>
+                   <option value="PENDING">Pending (QC Rejected)</option>
                   <option value="DISPATCHED">Dispatched to Vendor</option>
-                  <option value="CREDITED">Credit Received</option>
+                  <option value="Credit Received">Credit Received</option>
+                  <option value="CREDITED">Credited to Account</option>
                 </select>
               </div>
 
@@ -441,7 +449,11 @@ export default function PurchaseReturnPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
                 Discard
               </Button>
-              <Button onClick={saveReturn} className="bg-rose-600 hover:bg-rose-700 text-white px-10 h-11 rounded-full shadow-lg shadow-rose-200 flex items-center font-bold">
+              <Button 
+                onClick={saveReturn} 
+                loading={submitting}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-10 h-11 rounded-full shadow-lg shadow-rose-200 flex items-center font-bold"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Debit Note' : 'Generate Debit Note'}
               </Button>
@@ -469,6 +481,9 @@ export default function PurchaseReturnPage() {
               </td>
               <td className="px-6 py-4">
                  <div className="font-bold text-slate-700">{r.purchase_entries?.entry_number || 'Manual'}</div>
+                 {r.raw_materials?.rm_name && (
+                   <div className="text-[10px] font-black text-rose-500 uppercase mt-0.5 tracking-tighter">{r.raw_materials.rm_name}</div>
+                 )}
               </td>
               <td className="px-6 py-4">
                  <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
