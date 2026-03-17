@@ -293,7 +293,7 @@ export default function MarketingVisitsPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6 md:my-10 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -521,8 +521,8 @@ export default function MarketingVisitsPage() {
           searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
           searchPlaceholder="Search staff name/ID, client name/ID..."
           actions={
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
+            <div className="flex gap-3">
+              <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
               <div className="flex items-center gap-2">
                 <Input 
                   type="date"

@@ -46,7 +46,8 @@ export default function AttendancePage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bulkData, setBulkData] = useState<any[]>([]);
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [bulkDate, setBulkDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFilter, setDateFilter] = useState('');
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -142,12 +143,11 @@ export default function AttendancePage() {
   };
 
   const prepareBulkData = () => {
-    const today = new Date().toISOString().split('T')[0];
     const initialBulk = employees.map(emp => ({
       employee_id: emp.id,
       employee_name: emp.name,
       employee_code: emp.employee_code,
-      date: today,
+      date: bulkDate,
       shift: 'DAY',
       status: 'PRESENT',
       clock_in: '09:00',
@@ -157,6 +157,15 @@ export default function AttendancePage() {
     }));
     setBulkData(initialBulk);
     setShowBulkForm(true);
+  };
+
+  const handleBulkDateChange = (newDate: string) => {
+    setBulkDate(newDate);
+    setBulkData(prev => prev.map(item => ({ ...item, date: newDate })));
+  };
+
+  const removeEmployeeFromBulk = (empId: string) => {
+    setBulkData(prev => prev.filter(item => item.employee_id !== empId));
   };
 
   const saveBulkAttendance = async () => {
@@ -341,7 +350,7 @@ export default function AttendancePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Details</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
@@ -488,13 +497,22 @@ export default function AttendancePage() {
       
       {showBulkForm && (
         <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-row items-center justify-between">
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
-              <CardDescription>Register attendance for all staff on {new Date().toLocaleDateString()}</CardDescription>
+              <CardDescription>Register attendance for multiple staff members in one go.</CardDescription>
             </div>
-            <div className="flex gap-2">
-               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+               <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-secondary/20 shadow-sm">
+                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Mark Date:</span>
+                  <input 
+                    type="date" 
+                    value={bulkDate} 
+                    onChange={(e) => handleBulkDateChange(e.target.value)}
+                    className="text-xs font-bold outline-none bg-transparent"
+                  />
+               </div>
+               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
                  <X className="w-4 h-4" />
                </Button>
             </div>
@@ -505,10 +523,11 @@ export default function AttendancePage() {
                 <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold">
                   <tr>
                     <th className="px-4 py-3">Employee</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Shift</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Shift</th>
                     <th className="px-4 py-3">Clock In / Out</th>
                     <th className="px-4 py-3">Remarks</th>
+                    <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic font-medium">
@@ -555,6 +574,16 @@ export default function AttendancePage() {
                       </td>
                       <td className="px-4 py-3">
                          <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                         <Button 
+                           variant="ghost" 
+                           size="icon" 
+                           onClick={() => removeEmployeeFromBulk(row.employee_id)}
+                           className="h-8 w-8 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/5"
+                         >
+                           <X className="w-4 h-4" />
+                         </Button>
                       </td>
                     </tr>
                   ))}

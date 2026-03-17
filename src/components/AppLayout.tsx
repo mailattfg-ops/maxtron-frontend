@@ -90,7 +90,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 sidebar-hide:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -114,7 +114,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
 
-        <div className="flex-1 overflow-auto bg-background p-3 md:p-6 lg:p-8">
+        <div className="flex-1 overflow-auto bg-background p-3 sidebar-hide:p-6 lg:p-8">
           {children}
         </div>
       </main>
