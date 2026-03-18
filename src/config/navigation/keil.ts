@@ -14,7 +14,7 @@ export const keilSidebarMenu: NavItem[] = [
         permissionKey: "dashboard_view"
     },
     {
-        title: "HR & Administration",
+        title: "HR & ADMINISTRATION",
         icon: Users,
         permissionKey: "hr_view",
         children: [

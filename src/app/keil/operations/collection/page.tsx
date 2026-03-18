@@ -19,7 +19,9 @@ import {
     Navigation,
     ArrowRight,
     ArrowDown,
-    Download
+    Download,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { exportToExcel } from '@/utils/export';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
@@ -36,6 +39,10 @@ const COLLECTION_API = `${API_BASE}/api/keil/operations/collections`;
 export default function DailyCollectionEntryPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('prod_product_view', 'view');
+    const canCreate = hasPermission('prod_product_view', 'create');
     
     const [loading, setLoading] = useState(false);
     const [routes, setRoutes] = useState<any[]>([]);
@@ -265,6 +272,18 @@ export default function DailyCollectionEntryPage() {
 
     const totals = calculateTotals();
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Collection Terminal.</p>
+        </div>
+    );
+
     return (
         <div className="p-6 space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -297,7 +316,7 @@ export default function DailyCollectionEntryPage() {
                                 <p className="text-sm font-bold text-primary">{totals.total_visited} / {totals.total_assigned}</p>
                             </div>
                         </div>
-                        {selectedRouteId && (
+                        {selectedRouteId && canCreate && (
                             <Button size="lg" onClick={handleSave} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider transition-all duration-300">
                                 <Save className="w-5 h-5 mr-3" /> Commit Batch
                             </Button>

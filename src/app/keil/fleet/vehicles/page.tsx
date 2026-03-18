@@ -17,7 +17,9 @@ import {
     User,
     Hash,
     MapPin,
-    BarChart3
+    BarChart3,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { TableView } from "@/components/ui/table-view";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
@@ -35,6 +38,12 @@ const purposes = ['BMW Collection', 'Delivery', 'Office Use', 'Employee Transpor
 export default function VehicleMasterPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('prod_product_view', 'view');
+    const canCreate = hasPermission('prod_product_view', 'create');
+    const canEdit = hasPermission('prod_product_view', 'edit');
+    const canDelete = hasPermission('prod_product_view', 'delete');
     
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -298,6 +307,18 @@ export default function VehicleMasterPage() {
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Vehicle Master module.</p>
+        </div>
+    );
+
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -311,13 +332,15 @@ export default function VehicleMasterPage() {
                     </h1>
                     <p className="text-muted-foreground text-sm font-medium">Standardized Fleet Information System (Maxtron-KEIL Unified)</p>
                 </div>
-                <Button 
-                    onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-                    className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
-                >
-                    {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                    {showForm ? 'Cancel' : 'Register Vehicle'}
-                </Button>
+                {canCreate && (
+                    <Button 
+                        onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                    >
+                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                        {showForm ? 'Cancel' : 'Register Vehicle'}
+                    </Button>
+                )}
             </div>
 
             {showForm && (
@@ -626,7 +649,7 @@ export default function VehicleMasterPage() {
 
                             <Button 
                                 onClick={handleComplianceAudit}
-                                disabled={isAuditing}
+                                disabled={isAuditing || !canEdit}
                                 className="w-full md:w-auto px-8 h-12 rounded-full bg-white text-primary hover:bg-white/90 font-bold uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                             >
                                 {isAuditing ? (
@@ -721,12 +744,16 @@ export default function VehicleMasterPage() {
                                         </td>
                                         <td className="px-6 py-6 text-right">
                                             <div className="flex justify-end gap-2 transition-all duration-300">
-                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(v)} className="hover:bg-primary/10 text-primary/60 hover:text-primary rounded-xl border border-primary/5 hover:border-primary/20 h-10 w-10 transition-all shadow-sm hover:shadow-md">
-                                                    <Edit className="w-5 h-5 text-primary" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(v.id)} className="hover:bg-secondary/10 text-secondary/60 hover:text-secondary rounded-xl border border-secondary/5 hover:border-secondary/20 h-10 w-10 transition-all shadow-sm hover:shadow-md">
-                                                    <Trash2 className="w-5 h-5 text-secondary" />
-                                                </Button>
+                                                {canEdit && (
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(v)} className="hover:bg-primary/10 text-primary/60 hover:text-primary rounded-xl border border-primary/5 hover:border-primary/20 h-10 w-10 transition-all shadow-sm hover:shadow-md">
+                                                        <Edit className="w-5 h-5 text-primary" />
+                                                    </Button>
+                                                )}
+                                                {canDelete && (
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(v.id)} className="hover:bg-secondary/10 text-secondary/60 hover:text-secondary rounded-xl border border-secondary/5 hover:border-secondary/20 h-10 w-10 transition-all shadow-sm hover:shadow-md">
+                                                        <Trash2 className="w-5 h-5 text-secondary" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

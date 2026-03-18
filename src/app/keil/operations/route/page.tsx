@@ -9,10 +9,12 @@ import {
     Code, 
     Activity, 
     ArrowRight,
-    Map,
+    Map as MapIcon,
     Building2,
     X,
-    Save
+    Save,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
@@ -28,6 +31,12 @@ const BRANCH_API = `${API_BASE}/api/keil/operations/branches`;
 export default function RouteRegistryPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('prod_product_view', 'view');
+    const canCreate = hasPermission('prod_product_view', 'create');
+    const canEdit = hasPermission('prod_product_view', 'edit');
+    const canDelete = hasPermission('prod_product_view', 'delete');
     
     const [routes, setRoutes] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -180,6 +189,18 @@ export default function RouteRegistryPage() {
         });
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Route Registry module.</p>
+        </div>
+    );
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -187,7 +208,7 @@ export default function RouteRegistryPage() {
                     <h1 className="text-2xl font-bold text-primary tracking-tight">Route Registry</h1>
                     <p className="text-muted-foreground text-sm font-medium">Define and Manage Logistical Collection Routes</p>
                 </div>
-                {!isFormOpen && (
+                {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
                         className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
@@ -218,7 +239,7 @@ export default function RouteRegistryPage() {
                                 <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="RT-A1" value={formData.route_code} onChange={e => setFormData({ ...formData, route_code: e.target.value })} />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Map className="w-4 h-4 text-primary" /> Route Name</label>
+                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapIcon className="w-4 h-4 text-primary" /> Route Name</label>
                                 <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Main Highway Route" value={formData.route_name} onChange={e => setFormData({ ...formData, route_name: e.target.value })} />
                             </div>
                             <div className="space-y-2">
@@ -265,15 +286,21 @@ export default function RouteRegistryPage() {
                                 <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
-                                            <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
-                                            Manage HCEs <ArrowRight className="w-3 h-3" />
-                                        </Button>
+                                        {canEdit && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {canEdit && (
+                                            <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
+                                                Manage HCEs <ArrowRight className="w-3 h-3" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
