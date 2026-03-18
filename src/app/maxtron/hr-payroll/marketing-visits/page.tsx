@@ -10,6 +10,7 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import { exportToExcel } from '@/utils/export';
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
@@ -201,7 +202,7 @@ export default function MarketingVisitsPage() {
     setShowForm(true);
   };
 
-  const downloadVisitList = () => {
+  const downloadVisitList = async () => {
     const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
     if (activeRecords.length === 0) {
       info('No visit records found to export.');
@@ -218,29 +219,27 @@ export default function MarketingVisitsPage() {
           return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
         } catch (e) { return dateStr; }
       };
+
       return [
-        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.customer_name || '').replace(/"/g, '""')}"`,
-        `"${(rec.location || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(rec.visit_date)}"`,
-        `"${(rec.time_in || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.time_out || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.purpose || '').replace(/"/g, '""')}"`,
-        `"${(rec.outcome || '').replace(/"/g, '""')}"`,
-        `"${(rec.feedback || '').replace(/"/g, '""')}"`
+        rec.users?.name || 'N/A',
+        rec.customer_name || 'N/A',
+        rec.location || 'N/A',
+        formatDate(rec.visit_date),
+        rec.time_in || 'N/A',
+        rec.time_out || 'N/A',
+        rec.purpose || '',
+        rec.outcome || '',
+        rec.feedback || ''
       ];
     });
 
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Marketing Visits'
+    });
+
     success('Detailed visit list exported successfully!');
   };
 

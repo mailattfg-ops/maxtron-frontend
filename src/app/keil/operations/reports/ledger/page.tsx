@@ -13,6 +13,7 @@ import {
     Truck,
     User
 } from 'lucide-react';
+import { exportToExcel } from '@/utils/export';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +105,7 @@ export default function HCEServiceLedgerPage() {
     const selectedHce = hces.find(h => h.id === filters.hce_id);
     const totalBags = entries.reduce((acc, curr) => acc + (curr.yellow_bags || 0) + (curr.red_bags || 0) + (curr.white_containers || 0) + (curr.bottle_containers || 0), 0);
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (entries.length === 0) return;
         
         const headers = [
@@ -125,35 +126,31 @@ export default function HCEServiceLedgerPage() {
         const rows = entries.map(ent => {
             const total = (ent.yellow_bags || 0) + (ent.red_bags || 0) + (ent.white_containers || 0) + (ent.bottle_containers || 0);
             const dateStr = ent.header?.collection_date 
-                ? new Date(ent.header.collection_date).toISOString().split('T')[0] 
+                ? new Date(ent.header.collection_date).toLocaleDateString() 
                 : 'N/A';
                 
             return [
-                `"${dateStr}"`,
+                dateStr,
                 ent.yellow_bags || 0,
                 ent.red_bags || 0,
                 ent.white_containers || 0,
                 ent.bottle_containers || 0,
                 total,
-                `"${ent.header?.registration_number || 'N/A'}"`,
-                `"${ent.header?.driver_name || 'N/A'}"`,
-                `"${ent.header?.supervisor_name || 'N/A'}"`,
-                `"${ent.start_time || '00:00'}"`,
-                `"${ent.end_time || '00:00'}"`,
-                `"${(ent.remarks || '').replace(/"/g, '""')}"`
+                ent.header?.registration_number || 'N/A',
+                ent.header?.driver_name || 'N/A',
+                ent.header?.supervisor_name || 'N/A',
+                ent.start_time || '00:00',
+                ent.end_time || '00:00',
+                ent.remarks || 'N/A'
             ];
         });
 
-        const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `HCE_Ledger_${selectedHce?.hce_code || 'export'}_${filters.from_date || 'full'}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await exportToExcel({
+            headers,
+            rows,
+            filename: `HCE_Ledger_${selectedHce?.hce_code || 'export'}_${filters.from_date || 'full'}.xlsx`,
+            sheetName: 'Service History'
+        });
     };
 
     return (

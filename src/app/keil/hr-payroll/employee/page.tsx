@@ -12,6 +12,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
+import { exportToExcel } from '@/utils/export';
 
 const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
@@ -230,6 +231,12 @@ export default function EmployeeInformationPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value, type } = e.target;
+    
+    // Restrict to digits only for phone and aadhaar
+    if (name === 'phone' || name === 'aadhaar') {
+      value = value.replace(/\D/g, '');
+    }
+
     // Restrict negative values for number inputs
     if (type === 'number' && Number(value) < 0) {
       value = '0';
@@ -265,12 +272,44 @@ export default function EmployeeInformationPage() {
   const handleNestedRowChange = (collection: keyof typeof formData, index: number, field: string, value: any) => {
     const list = [...(formData[collection] as any[])];
     
-    // Check if the target looks like a number field (usually they are strings in the state initially or typed as number)
-    // We can check if the value being passed is from a number input in the UI
-    // But since this is a generic handler, we'll check if the value is a number-like string that is negative
+    // Check if the target looks like a number field
     const numericFields = ['loan_availed', 'balance_receivable', 'suspense_issued', 'minimum_target', 'slab_from', 'slab_to', 'incentive_percent'];
     if (numericFields.includes(field) && Number(value) < 0) {
       value = '0';
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Work Experience Validations
+    if (collection === 'employee_experiences') {
+      if ((field === 'from_period' || field === 'to_period') && value > today) {
+        error("Future dates are not allowed for past work experience.");
+        return;
+      }
+      if (field === 'to_period' && list[index].from_period && value < list[index].from_period) {
+        error("'To' date cannot be before 'From' date.");
+        return;
+      }
+      if (field === 'from_period' && list[index].to_period && value > list[index].to_period) {
+        error("'From' date cannot be after 'To' date.");
+        return;
+      }
+    }
+
+    // Certification Validations
+    if (collection === 'employee_certificates') {
+      if (field === 'issue_date' && value > today) {
+        error("Issue date cannot be in the future.");
+        return;
+      }
+      if (field === 'expiry_date' && list[index].issue_date && value < list[index].issue_date) {
+        error("Expiry date cannot be before issue date.");
+        return;
+      }
+      if (field === 'issue_date' && list[index].expiry_date && value > list[index].expiry_date) {
+        error("Issue date cannot be after expiry date.");
+        return;
+      }
     }
 
     list[index][field] = value;
@@ -287,53 +326,53 @@ export default function EmployeeInformationPage() {
     setFormData({ ...formData, [collection]: list });
   };
 
-  const downloadEmployeeList = () => {
+  const downloadEmployeeList = async () => {
     if (employees.length === 0) {
       info('No employee data available to export.');
       return;
     }
     
-    const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport', 'Monthly Basic Salary'];
+    const headers = [
+      'Emp Code', 'Full Name', 'Username/Email', 'Phone', 'Aadhaar',
+      'Role', 'Category', 'Company', 'DOB', 'Guarantor', 
+      'Married', 'Has License', 'Has Passport', 'Monthly Basic Salary'
+    ];
+
     const rows = employees.map(emp => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
         try {
           const d = new Date(dateStr);
           if (isNaN(d.getTime())) return dateStr;
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          return `${day}-${month}-${year}`;
-        } catch (e) {
-          return dateStr;
-        }
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
       };
 
       return [
-        `"${(emp.employee_code || 'SYS').replace(/"/g, '""')}"`,
-        `"${(emp.name || '').replace(/"/g, '""')}"`,
-        `"${(emp.username || '').replace(/"/g, '""')}"`,
-        `"${(emp.user_types?.name || 'User').replace(/"/g, '""')}"`,
-        `"${(emp.companies?.company_name || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(emp.date_of_birth)}'"`, // Prepend single quote after the double quote to force text in Excel
-        `"${(emp.guarantor_name || 'N/A').replace(/"/g, '""')}"`,
-        `"${emp.is_married ? 'Yes' : 'No'}"`,
-        `"${emp.has_license ? 'Yes' : 'No'}"`,
-        `"${emp.has_passport ? 'Yes' : 'No'}"`,
-        `"${Number(emp.basic_salary || 0)}"`
+        emp.employee_code || 'SYS',
+        emp.name || 'N/A',
+        emp.username || 'N/A',
+        emp.phone || 'N/A',
+        emp.aadhaar || 'N/A',
+        emp.user_types?.name || 'User',
+        emp.employee_categories?.category_name || 'N/A',
+        emp.companies?.company_name || 'N/A',
+        formatDate(emp.date_of_birth),
+        emp.guarantor_name || 'N/A',
+        emp.is_married ? 'Yes' : 'No',
+        emp.has_license ? 'Yes' : 'No',
+        emp.has_passport ? 'Yes' : 'No',
+        Number(emp.basic_salary || 0)
       ];
     });
     
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Staff Directory'
+    });
+
     success('Detailed employee list exported successfully!');
   };
 
@@ -1044,11 +1083,11 @@ export default function EmployeeInformationPage() {
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">From</label>
-                                <Input type="date" value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">To</label>
-                                <Input type="date" value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-2 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">Post/Job Title</label>
@@ -1140,7 +1179,7 @@ export default function EmployeeInformationPage() {
                             </div> */}
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Issue Date</label>
-                               <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
+                               <Input type="date" max={new Date().toISOString().split('T')[0]} value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
                             </div>
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Expiry Date</label>
@@ -1268,7 +1307,7 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <Input type="number" min="0" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
                               <Input type="number" min="0" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
                               {!isViewMode && (
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
                                   <Trash2 className="w-4 h-4" />

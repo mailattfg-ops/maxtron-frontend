@@ -230,8 +230,8 @@ export default function HCERegistryPage() {
                             </div>
                             <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none">
                                 {[
-                                    { id: 'basic', label: '1. Facility Info', icon: Building2 },
-                                    { id: 'ops', label: '2. Contact & Hours', icon: Clock },
+                                    { id: 'basic', label: 'Facility Info', icon: Building2 },
+                                    { id: 'ops', label: 'Contact & Hours', icon: Clock },
                                 ].map(tab => (
                                     <div
                                         key={tab.id}
@@ -369,49 +369,47 @@ export default function HCERegistryPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView
-                        title="Enrolled Facilities"
-                        description="Comprehensive directory of health care units and diagnostic centers."
-                        headers={['HCE Code', 'Name', 'Branch', 'Place', 'Collection', 'Hours', 'Actions']}
-                        data={hces}
-                        loading={loading}
-                        searchFields={['hce_name', 'hce_code', 'hce_place', 'branch_name']}
-                        renderRow={(h: any) => (
-                            <tr key={h.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
-                                <td className="px-6 py-6">
-                                    <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider whitespace-nowrap">{h.hce_code}</span>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="font-bold text-foreground text-sm">{h.hce_name}</span>
-                                        <span className="text-[10px] text-muted-foreground/70 truncate max-w-[200px] font-medium italic">{h.address}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6 text-sm font-bold text-secondary">{h.branch_name}</td>
-                                <td className="px-6 py-6 text-sm font-bold text-secondary">{h.hce_place}</td>
-                                <td className="px-6 py-6">
-                                    <span className="text-[10px] font-black uppercase tracking-widest bg-secondary/10 text-secondary px-3 py-1.5 rounded-full border border-secondary/10">{h.collection_type}</span>
-                                </td>
-                                <td className="px-6 py-6 text-[11px] font-bold text-muted-foreground">
-                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">
-                                        <Clock className="w-3 h-3 " /> {h.open_from} - {h.open_to}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(h)} className="h-10 w-10 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-transparent hover:border-primary/10">
-                                            <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(h.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                <TableView
+                    title="Enrolled Facilities"
+                    description="Comprehensive directory of health care units and diagnostic centers."
+                    headers={['HCE Code', 'Name', 'Branch', 'Place', 'Collection', 'Hours', 'Actions']}
+                    data={hces}
+                    loading={loading}
+                    searchFields={['hce_name', 'hce_code', 'hce_place', 'branch_name']}
+                    renderRow={(h: any) => (
+                        <tr key={h.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
+                            <td className="px-6 py-6">
+                                <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider whitespace-nowrap">{h.hce_code}</span>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-foreground text-sm">{h.hce_name}</span>
+                                    <span className="text-[10px] text-muted-foreground/70 truncate max-w-[200px] font-medium italic">{h.address}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6 text-sm font-bold text-secondary">{h.branch_name}</td>
+                            <td className="px-6 py-6 text-sm font-bold text-secondary">{h.hce_place}</td>
+                            <td className="px-6 py-6">
+                                <span className="text-[10px] font-black uppercase tracking-widest bg-secondary/10 text-secondary px-3 py-1.5 rounded-full border border-secondary/10">{h.collection_type}</span>
+                            </td>
+                            <td className="px-6 py-6 text-[11px] font-bold text-muted-foreground">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">
+                                    <Clock className="w-3 h-3 " /> {h.open_from} - {h.open_to}
+                                </div>
+                            </td>
+                            <td className="px-6 py-6 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(h)} className="h-10 w-10 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-transparent hover:border-primary/10">
+                                        <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(h.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
         </div>
     );

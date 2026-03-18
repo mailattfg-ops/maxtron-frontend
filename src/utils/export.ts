@@ -8,7 +8,7 @@ export const exportToExcel = async ({
   sheetName = 'Report'
 }: {
   headers: string[];
-  rows: (string | number | boolean | null | undefined)[][];
+  rows: (any)[][];
   filename: string;
   sheetName?: string;
 }) => {
@@ -16,17 +16,39 @@ export const exportToExcel = async ({
   const worksheet = workbook.addWorksheet(sheetName);
 
   // Add Headers
-  worksheet.addRow(headers);
-  const headerRow = worksheet.getRow(1);
+  const headerRow = worksheet.addRow(headers);
 
   // Style the header row
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true };
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E40AF' } // Dark blue (Tailwind blue-800 equivalent)
+    };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+    };
   });
+
+  headerRow.height = 25;
 
   // Add data rows
   rows.forEach((row) => {
-    worksheet.addRow(row);
+    const r = worksheet.addRow(row);
+    r.eachCell((cell) => {
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle' };
+    });
   });
 
   // Auto-fit columns
@@ -38,7 +60,7 @@ export const exportToExcel = async ({
             maxLength = columnLength;
         }
     });
-    column.width = Math.min(Math.max(maxLength + 4, 15), 100); // Between 15 and 100 width
+    column.width = Math.min(Math.max(maxLength + 4, 15), 50); // Between 15 and 50 width
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

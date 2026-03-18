@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function AttendancePage() {
   const { hasPermission } = usePermission();
@@ -302,15 +304,40 @@ export default function AttendancePage() {
     setShowForm(true);
   };
 
-  const downloadAttendance = () => {
-    const activeRecords = attendanceRecords.filter(rec => rec.date.startsWith(dateFilter));
+  const downloadAttendance = async () => {
+    const activeRecords = attendanceRecords.filter(rec => !dateFilter || rec.date.startsWith(dateFilter));
     if (activeRecords.length === 0) {
       info('No records found for the selected date to download.');
       return;
     }
 
-    const headers = ['Employee', 'Date', 'Shift', 'Clock In', 'Clock Out', 'Status', 'Remarks'];
-    const rows = activeRecords.map(rec => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Attendance');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'Employee', key: 'name', width: 25 },
+        { header: 'Code', key: 'code', width: 12 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Shift', key: 'shift', width: 12 },
+        { header: 'Clock In', key: 'clock_in', width: 12 },
+        { header: 'Clock Out', key: 'clock_out', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Remarks', key: 'remarks', width: 30 }
+      ];
+
+      // Format Header Row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E40AF' } // Dark blue
+      };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Helper for date formatting
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
         try {
@@ -319,29 +346,41 @@ export default function AttendancePage() {
           return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
         } catch (e) { return dateStr; }
       };
-      
-      return [
-        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(rec.date)}"`,
-        `"${(rec.shift || '').replace(/"/g, '""')}"`,
-        `"${(rec.clock_in || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.clock_out || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.status || '').replace(/"/g, '""')}"`,
-        `"${(rec.remarks || '').replace(/"/g, '""')}"`
-      ];
-    });
 
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `attendance_report_${dateFilter}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    success('Attendance report downloaded.');
+      // Add rows
+      activeRecords.forEach(rec => {
+        const row = worksheet.addRow({
+          name: rec.users?.name || 'N/A',
+          code: rec.users?.employee_code || 'N/A',
+          date: formatDate(rec.date),
+          shift: rec.shift || '',
+          clock_in: rec.clock_in || 'N/A',
+          clock_out: rec.clock_out || 'N/A',
+          status: rec.status || '',
+          remarks: rec.remarks || ''
+        });
+        
+        // Optional: add borders to cells
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+      // Write to buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `attendance_report_${dateFilter || 'all'}.xlsx`);
+      
+      success(`Attendance report for ${dateFilter || 'all dates'} downloaded.`);
+    } catch (err) {
+      console.error('Export error:', err);
+      error('Failed to export Excel file.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -378,15 +417,17 @@ export default function AttendancePage() {
           <Button 
             onClick={downloadAttendance}
             variant="outline"
-            className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10"
+            className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 font-bold"
           >
-            <Download className="w-4 h-4 mr-2" /> Download Logs
+            <Download className="w-4 h-4 md:mr-2" /> 
+            <span className="hidden md:inline">Download Logs</span>
+            <span className="md:hidden">Export</span>
           </Button>
           {canCreate && (
             <Button 
               onClick={prepareBulkData}
               variant="outline"
-              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold"
             >
               <Plus className="w-4 h-4 mr-2" /> Bulk Entry
             </Button>
@@ -394,7 +435,7 @@ export default function AttendancePage() {
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10"
+              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel' : 'Log Entry'}
@@ -650,7 +691,7 @@ export default function AttendancePage() {
           searchPlaceholder="Search staff or notes..."
           actions={
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+              <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
               <div className="flex gap-1">
                 <Input 
                   type="date"

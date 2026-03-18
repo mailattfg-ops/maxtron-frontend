@@ -15,7 +15,8 @@ import {
     Save,
     Search,
     Download,
-    Eye
+    Eye,
+    Edit
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -541,7 +542,7 @@ export default function PayrollPage() {
                             <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                     <Button variant="ghost" size="icon" onClick={() => handleEdit(row)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 rounded-full">
-                                        <Briefcase className="w-4 h-4" />
+                                        <Edit className="w-4 h-4" />
                                     </Button>
                                     <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="h-8 w-8 text-red-500 hover:bg-red-50 rounded-full">
                                         <Trash2 className="w-4 h-4" />

@@ -7,10 +7,12 @@ import {
     User,
     ArrowDownLeft,
     TrendingUp,
-    Filter
+    Filter,
+    Download
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
+import { exportToExcel } from '@/utils/export';
 
 export default function CustomerLedgerPage() {
     const [ledgerData, setLedgerData] = useState<any[]>([]);
@@ -123,6 +125,27 @@ export default function CustomerLedgerPage() {
         }
     };
 
+    const downloadLedger = async () => {
+        if (ledgerData.length === 0) return;
+        const customer = customers.find(c => c.id === selectedCustomer);
+        const headers = ['Date', 'Transaction Type', 'Reference', 'Debit (+)', 'Credit (-)', 'Running Balance'];
+        const rows = ledgerData.map(item => [
+            new Date(item.date).toLocaleDateString(),
+            item.type,
+            item.ref,
+            Number(item.debit || 0),
+            Number(item.credit || 0),
+            Number(item.balance || 0)
+        ]);
+
+        await exportToExcel({
+            headers,
+            rows,
+            filename: `Customer_Ledger_${customer?.customer_name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`,
+            sheetName: 'Ledger Statement'
+        });
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -150,11 +173,20 @@ export default function CustomerLedgerPage() {
                     </div>
                     <Button
                         onClick={fetchLedger}
-                        className="bg-primary text-white px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                        className="bg-slate-900 text-white px-4 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2"
                     >
                         <Filter className="w-4 h-4" />
                         View
                     </Button>
+                    {selectedCustomer && ledgerData.length > 0 && (
+                        <Button 
+                            onClick={downloadLedger}
+                            variant="outline"
+                            className="bg-white border-primary/20 text-primary hover:bg-primary/5 px-4 rounded-xl shadow-sm font-bold flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" /> Export
+                        </Button>
+                    )}
                 </div>
             </div>
 

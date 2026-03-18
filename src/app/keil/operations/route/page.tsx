@@ -103,6 +103,12 @@ export default function RouteRegistryPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!formData.branch_id) {
+            error("Please select a branch for this route.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -222,6 +228,7 @@ export default function RouteRegistryPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
                                 <select 
+                                    required
                                     className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
                                     value={formData.branch_id}
                                     onChange={e => setFormData({ ...formData, branch_id: e.target.value })}

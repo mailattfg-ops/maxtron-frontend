@@ -13,7 +13,8 @@ import {
     Settings,
     X,
     Save,
-    Map
+    Map,
+    Edit
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ function RouteAssignmentsContent() {
     const [assignmentForm, setAssignmentForm] = useState({
         hce_id: '',
         collection_type: 'Daily',
-        collection_days: [] as string[],
+        collection_days: DAYS,
         remarks: ''
     });
 
@@ -199,7 +200,7 @@ function RouteAssignmentsContent() {
         setAssignmentForm({
             hce_id: '',
             collection_type: 'Daily',
-            collection_days: [],
+            collection_days: DAYS,
             remarks: ''
         });
         setIsAssigning(false);
@@ -275,7 +276,7 @@ function RouteAssignmentsContent() {
 
             {isAssigning || editingAssignment ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300 overflow-hidden rounded-xl">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
                                 <Settings className="w-5 h-5" />
@@ -313,7 +314,14 @@ function RouteAssignmentsContent() {
                                     <select 
                                         className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                                         value={assignmentForm.collection_type}
-                                        onChange={e => setAssignmentForm({ ...assignmentForm, collection_type: e.target.value })}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setAssignmentForm(prev => ({ 
+                                                ...prev, 
+                                                collection_type: val,
+                                                collection_days: val === 'Daily' ? DAYS : prev.collection_days
+                                            }));
+                                        }}
                                     >
                                         <option value="Daily">Daily</option>
                                         <option value="Alternate days">Alternate days</option>
@@ -420,7 +428,7 @@ function RouteAssignmentsContent() {
                                                 remarks: a.remarks || ''
                                             });
                                         }}>
-                                            <Settings className="w-4 h-4" />
+                                            <Edit className="w-4 h-4" />
                                         </Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleRemove(a.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
                                             <Trash2 className="w-4 h-4" />

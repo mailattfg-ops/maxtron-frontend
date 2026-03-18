@@ -124,9 +124,41 @@ export default function VehicleMasterPage() {
     };
 
     const handleSave = async () => {
+        // Validation Suite
         if (!formData.registration_number) {
             error("Registration Number is required.");
             return;
+        }
+        if (!formData.make) {
+            error("Make/Brand is required.");
+            return;
+        }
+        if (!formData.model) {
+            error("Model is required.");
+            return;
+        }
+        if (!formData.vehicle_type) {
+            error("Vehicle Type is required.");
+            return;
+        }
+        if (!formData.year || formData.year < 1900) {
+            error("Please enter a valid Year of Mfg.");
+            return;
+        }
+
+        // Non-negative checks
+        const numericChecks = [
+            { val: formData.tank_capacity, label: "Tank Capacity" },
+            { val: formData.km_on_day_1, label: "KM on Day 1" },
+            { val: formData.current_km, label: "Current Odometer Reading" },
+            { val: formData.seating_capacity, label: "Seating Capacity" }
+        ];
+
+        for (const check of numericChecks) {
+            if (check.val !== '' && parseFloat(check.val as string) < 0) {
+                error(`${check.label} cannot be negative.`);
+                return;
+            }
         }
 
         const token = localStorage.getItem('token');
@@ -290,7 +322,7 @@ export default function VehicleMasterPage() {
 
             {showForm && (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -304,7 +336,7 @@ export default function VehicleMasterPage() {
                                 </div>
                             </div>
                             
-                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none">
+                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none justify-center">
                                 {[
                                     { id: 'basic', label: '1. Basic Info', icon: Hash },
                                     { id: 'tech', label: '2. Technical', icon: Settings },
@@ -320,50 +352,50 @@ export default function VehicleMasterPage() {
                                         }`}
                                     >
                                         <tab.icon className="w-3.5 h-3.5" />
-                                        {tab.label}
+                                        <span className="hidden md:block">{tab.label}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </CardHeader>
                     
-                    <CardContent className="p-12">
+                    <CardContent className="md:p-12">
                         {activeTab === 'basic' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Registration Number *</label>
-                                    <Input name="registration_number" value={formData.registration_number} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-bold uppercase" placeholder="KL 01 AB 1234" />
+                                    <Input required name="registration_number" value={formData.registration_number} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-bold uppercase" placeholder="KL 01 AB 1234" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Make / Brand</label>
-                                    <Input name="make" value={formData.make} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" placeholder="e.g. TATA" />
+                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Make / Brand *</label>
+                                    <Input required name="make" value={formData.make} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" placeholder="e.g. TATA" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Model</label>
-                                    <Input name="model" value={formData.model} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" placeholder="e.g. Ace" />
+                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Model *</label>
+                                    <Input required name="model" value={formData.model} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" placeholder="e.g. Ace" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Vehicle Type</label>
-                                    <select name="vehicle_type" value={formData.vehicle_type} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium">
+                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Vehicle Type *</label>
+                                    <select required name="vehicle_type" value={formData.vehicle_type} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium">
                                         <option value="">Select Type</option>
                                         {vehicleTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Body Type</label>
-                                    <Input name="body_type" value={formData.body_type} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" placeholder="e.g. Container" />
+                                    <Input name="body_type" value={formData.body_type} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" placeholder="e.g. Container" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Year of Mfg.</label>
-                                    <Input type="number" name="year" value={formData.year} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" />
+                                    <label className="text-sm font-semibold text-foreground/80 pl-1">Year of Mfg. *</label>
+                                    <Input required type="number" min={1900} name="year" value={formData.year} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Seating Capacity</label>
-                                    <Input type="number" name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" />
+                                    <Input type="number" min={0} name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Usage Purpose</label>
-                                    <select name="purpose" value={formData.purpose} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium">
+                                    <select name="purpose" value={formData.purpose} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium">
                                         {purposes.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
@@ -374,7 +406,7 @@ export default function VehicleMasterPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-8 animate-in slide-in-from-right-8 duration-500">
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Fuel Type</label>
-                                    <select name="fuel_type" value={formData.fuel_type} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium">
+                                    <select name="fuel_type" value={formData.fuel_type} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium">
                                         <option value="Diesel">Diesel</option>
                                         <option value="Electric">Electric</option>
                                         <option value="CNG">CNG</option>
@@ -383,25 +415,25 @@ export default function VehicleMasterPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Tank Capacity (Ltr)</label>
-                                    <Input type="number" name="tank_capacity" value={formData.tank_capacity} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-medium" />
+                                    <Input type="number" min={0} name="tank_capacity" value={formData.tank_capacity} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-medium" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Engine Number</label>
-                                    <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-bold uppercase" />
+                                    <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-bold uppercase" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">Chassis Number</label>
-                                    <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-bold uppercase" />
+                                    <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-bold uppercase" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-foreground/80 pl-1">KM on Day 1</label>
-                                    <Input type="number" name="km_on_day_1" value={formData.km_on_day_1} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm font-bold" />
+                                    <Input type="number" min={0} name="km_on_day_1" value={formData.km_on_day_1} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-background text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none shadow-sm font-bold" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-secondary pl-1 flex items-center gap-2">
                                         <BarChart3 className="w-3 h-3" /> Current Odometer Reading
                                     </label>
-                                    <Input type="number" name="current_km" value={formData.current_km} onChange={handleInputChange} className="h-10 rounded-md border-secondary/30 bg-secondary/5 text-secondary font-bold text-sm" />
+                                    <Input type="number" min={0} name="current_km" value={formData.current_km} onChange={handleInputChange} className="h-10 rounded-md border-secondary/30 bg-secondary/5 text-secondary font-bold text-sm" />
                                 </div>
                             </div>
                         )}
@@ -409,28 +441,28 @@ export default function VehicleMasterPage() {
                         {activeTab === 'compliance' && (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 animate-in zoom-in-95 duration-500">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-destructive pl-1">Insurance Expiry</label>
-                                    <Input type="date" name="insurance_expiry" value={formData.insurance_expiry} onChange={handleInputChange} className="h-10 rounded-md border-destructive/20 bg-destructive/5 font-bold" />
+                                    <label className="text-sm font-semibold text-primary pl-1">Insurance Expiry</label>
+                                    <Input type="date" name="insurance_expiry" value={formData.insurance_expiry} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-primary/5 font-bold" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-primary pl-1">Fitness Issuance Date</label>
                                     <Input type="date" name="fitness_date" value={formData.fitness_date} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-primary/5 font-bold" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-destructive pl-1">Fitness Renewal Date</label>
-                                    <Input type="date" name="fitness_renewal_date" value={formData.fitness_renewal_date} onChange={handleInputChange} className="h-10 rounded-md border-destructive/20 bg-destructive/5 font-bold" />
+                                    <label className="text-sm font-semibold text-primary pl-1">Fitness Renewal Date</label>
+                                    <Input type="date" name="fitness_renewal_date" value={formData.fitness_renewal_date} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-primary/5 font-bold" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-destructive pl-1">Pollution Expiry</label>
-                                    <Input type="date" name="pollution_expiry" value={formData.pollution_expiry} onChange={handleInputChange} className="h-10 rounded-md border-destructive/20 bg-destructive/5 font-bold" />
+                                    <label className="text-sm font-semibold text-primary pl-1">Pollution Expiry</label>
+                                    <Input type="date" name="pollution_expiry" value={formData.pollution_expiry} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-primary/5 font-bold" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-destructive pl-1">Permit Expiry</label>
-                                    <Input type="date" name="permit_expiry" value={formData.permit_expiry} onChange={handleInputChange} className="h-10 rounded-md border-destructive/20 bg-destructive/5 font-bold" />
+                                    <label className="text-sm font-semibold text-primary pl-1">Permit Expiry</label>
+                                    <Input type="date" name="permit_expiry" value={formData.permit_expiry} onChange={handleInputChange} className="h-10 rounded-md border-primary/20 bg-primary/5 font-bold" />
                                 </div>
                                 <div className="space-y-2 lg:col-span-1">
                                     <label className="text-sm font-semibold text-muted-foreground pl-1">Operational Status</label>
-                                    <select name="status" value={formData.status} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-bold ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                    <select name="status" value={formData.status} onChange={handleInputChange} className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none">
                                         <option value="Active">Operational</option>
                                         <option value="Maintenance">Maintenance</option>
                                         <option value="Out of Service">Decommissioned</option>
@@ -514,6 +546,18 @@ export default function VehicleMasterPage() {
                                             if (activeTab === 'basic') {
                                                 if (!formData.registration_number) {
                                                     error("Registration Number is required.");
+                                                    return;
+                                                }
+                                                if (!formData.make) {
+                                                    error("Make/Brand is required.");
+                                                    return;
+                                                }
+                                                if (!formData.model) {
+                                                    error("Model is required.");
+                                                    return;
+                                                }
+                                                if (!formData.vehicle_type) {
+                                                    error("Vehicle Type is required.");
                                                     return;
                                                 }
                                                 setActiveTab('tech');

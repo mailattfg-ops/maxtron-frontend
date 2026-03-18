@@ -142,6 +142,15 @@ export default function ExpendituresPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validation: Only if payee is other and mobile is provided
+        if (formData.payee_type === 'other' && formData.other_mobile && formData.other_mobile.length > 0) {
+            if (formData.other_mobile.length !== 10) {
+                error('Mobile number must be exactly 10 digits.');
+                return;
+            }
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -401,9 +410,13 @@ export default function ExpendituresPage() {
                                             </label>
                                             <Input 
                                                 value={formData.other_mobile}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, other_mobile: e.target.value }))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                    setFormData(prev => ({ ...prev, other_mobile: val }));
+                                                }}
                                                 className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
-                                                placeholder="Mobile Number"
+                                                placeholder="Mobile Number (10 digits)"
+                                                maxLength={10}
                                             />
                                         </div>
                                     </>
@@ -416,6 +429,7 @@ export default function ExpendituresPage() {
                                     <Input 
                                         type="number"
                                         step="0.01"
+                                        min="0"
                                         value={formData.amount}
                                         onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
                                         className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-black text-rose-600 px-6 focus:ring-emerald-500 text-lg"
@@ -457,7 +471,7 @@ export default function ExpendituresPage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <TableView 
-                            searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name']}
+                            searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
                             headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', '']}
                             data={expenditures}
                             loading={loading}

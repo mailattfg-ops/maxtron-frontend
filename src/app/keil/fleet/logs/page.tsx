@@ -135,10 +135,66 @@ export default function VehicleDailyLogPage() {
     };
 
     const handleSave = async () => {
-        if (!formData.vehicle_id || !formData.start_km) {
-            error("Vehicle and Start KM are required.");
+        // Validation Suite
+        if (!formData.vehicle_id) {
+            error("Target Vehicle is required.");
             return;
         }
+        if (!formData.log_date) {
+            error("Date is required.");
+            return;
+        }
+        if (!formData.route_id) {
+            error("Logistical Route is required.");
+            return;
+        }
+        if (formData.start_km === '' || parseFloat(formData.start_km) < 0) {
+            error("Valid Start Odometer reading is required (cannot be negative).");
+            return;
+        }
+        if (formData.end_km === '' || parseFloat(formData.end_km) < 0) {
+            error("Valid End Odometer reading is required (cannot be negative).");
+            return;
+        }
+        
+        const start = parseFloat(formData.start_km);
+        const end = parseFloat(formData.end_km);
+        if (end < start) {
+            error("End Odometer cannot be less than Start Odometer.");
+            return;
+        }
+
+        if (parseFloat(formData.fuel_qty) < 0) {
+            error("Fuel quantity cannot be negative.");
+            return;
+        }
+
+        if (formData.has_complaint && parseFloat(formData.bill_amount) < 0) {
+            error("Workshop Bill Amount cannot be negative.");
+            return;
+        }
+
+        if (formData.has_complaint) {
+            if (!formData.complaint_type) {
+                error("Type of Complaint is required.");
+                return;
+            }
+            if (!formData.workshop_in_time) {
+                error("Workshop IN Time is required.");
+                return;
+            }
+            if (!formData.workshop_out_time) {
+                error("Workshop OUT Time is required.");
+                return;
+            }
+        }
+
+        const payload = {
+            ...formData,
+            workshop_in_time: formData.workshop_in_time || null,
+            workshop_out_time: formData.workshop_out_time || null,
+            complaint_type: formData.complaint_type || null
+        };
 
         const token = localStorage.getItem('token');
         try {
@@ -148,7 +204,7 @@ export default function VehicleDailyLogPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
@@ -231,7 +287,7 @@ export default function VehicleDailyLogPage() {
 
             {showForm ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-6">
                         <CardTitle className="text-lg font-bold text-primary">
                             Telemetry Entry Module
                         </CardTitle>
@@ -240,9 +296,10 @@ export default function VehicleDailyLogPage() {
                     <CardContent className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle</label>
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle *</label>
                                 <select 
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    required
+                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
                                     value={formData.vehicle_id} 
                                     onChange={e => handleVehicleChange(e.target.value)}
                                 >
@@ -251,14 +308,15 @@ export default function VehicleDailyLogPage() {
                                 </select>
                             </div>
                             <div className="space-y-1.5 flex flex-col justify-end">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Date</label>
-                                <Input type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Date *</label>
+                                <Input required type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route</label>
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route *</label>
                                 <select 
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    required
+                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
                                     value={formData.route_id} 
                                     onChange={e => setFormData({ ...formData, route_id: e.target.value })}
                                 >
@@ -269,23 +327,23 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> Start Odometer
+                                    <MapPin className="w-3 h-3" /> Start Odometer *
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm" value={formData.start_km} onChange={e => setFormData({ ...formData, start_km: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" value={formData.start_km} onChange={e => setFormData({ ...formData, start_km: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> End Odometer
+                                    <MapPin className="w-3 h-3" /> End Odometer *
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm" placeholder="Current Reading" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" placeholder="Current Reading" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                                 <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
                                     <Fuel className="w-3 h-3" /> Diesel Filled (Ltr)
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
+                                <Input type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
                             </div>
 
                             <div className="lg:col-span-3 space-y-1.5">
@@ -307,30 +365,30 @@ export default function VehicleDailyLogPage() {
                                     <div className="mt-4 p-6 bg-rose-50/50 rounded-[2rem] border border-rose-100 space-y-6 animate-in slide-in-from-top-2 duration-300">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Type of Complaint</label>
-                                                <Input placeholder="Engine, Suspension, etc." className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.complaint_type} onChange={e => setFormData({ ...formData, complaint_type: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Type of Complaint *</label>
+                                                <Input required placeholder="Engine, Suspension, etc." className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.complaint_type} onChange={e => setFormData({ ...formData, complaint_type: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Workshop Bill Amt (₹)</label>
-                                                <Input type="number" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
+                                                <Input type="number" min={0} className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop IN Time</label>
-                                                <Input type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.workshop_in_time} onChange={e => setFormData({ ...formData, workshop_in_time: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop IN Time *</label>
+                                                <Input required type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.workshop_in_time} onChange={e => setFormData({ ...formData, workshop_in_time: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop OUT Time</label>
-                                                <Input type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.workshop_out_time} onChange={e => setFormData({ ...formData, workshop_out_time: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop OUT Time *</label>
+                                                <Input required type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.workshop_out_time} onChange={e => setFormData({ ...formData, workshop_out_time: e.target.value })} />
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="lg:col-span-3 space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
-                                <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
-                            </div>
+                             <div className="lg:col-span-3 space-y-1.5">
+                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
+                                 <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
+                             </div>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end">

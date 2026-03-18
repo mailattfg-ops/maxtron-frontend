@@ -129,8 +129,41 @@ export default function VehicleRepairLogPage() {
     };
 
     const handleSave = async () => {
-        if (!formData.vehicle_id || !formData.repair_description) {
-            error("Vehicle and Repair Description are required.");
+        // Validation Suite
+        if (!formData.log_date) {
+            error("Main Log Date is required.");
+            return;
+        }
+        if (!formData.vehicle_id) {
+            error("Target Vehicle is required.");
+            return;
+        }
+        if (!formData.driver_id) {
+            error("Driver assignment is required.");
+            return;
+        }
+        if (!formData.route_id) {
+            error("Route identification is required.");
+            return;
+        }
+        if (!formData.entry_date) {
+            error("Repair Start (From) Date is required.");
+            return;
+        }
+        if (!formData.repair_description) {
+            error("Repair Description is required.");
+            return;
+        }
+
+        // Logical checks
+        if (formData.exit_date && new Date(formData.exit_date) < new Date(formData.entry_date)) {
+            error("Repair 'To' Date cannot be earlier than 'From' Date.");
+            return;
+        }
+
+        // Non-negative check
+        if (parseFloat(formData.cost) < 0) {
+            error("Maintenance Cost cannot be negative.");
             return;
         }
 
@@ -239,13 +272,14 @@ export default function VehicleRepairLogPage() {
                     <CardContent className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                              <div className="space-y-1.5 flex flex-col">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Date</label>
-                                <Input type="date" className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Date *</label>
+                                <Input required type="date" className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
                             </div>
                             <div className="space-y-1.5 flex flex-col">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Vehicle No</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Vehicle No *</label>
                                 <select 
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-slate-50/50 outline-none shadow-inner" 
+                                    required
+                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
                                     value={formData.vehicle_id} 
                                     onChange={e => setFormData({ ...formData, vehicle_id: e.target.value })}
                                 >
@@ -254,9 +288,10 @@ export default function VehicleRepairLogPage() {
                                 </select>
                             </div>
                             <div className="space-y-1.5 flex flex-col">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Driver Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Driver Name *</label>
                                 <select 
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-slate-50/50 outline-none shadow-inner" 
+                                    required
+                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
                                     value={formData.driver_id} 
                                     onChange={e => setFormData({ ...formData, driver_id: e.target.value })}
                                 >
@@ -265,9 +300,10 @@ export default function VehicleRepairLogPage() {
                                 </select>
                             </div>
                             <div className="space-y-1.5 flex flex-col">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Route Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Route Name *</label>
                                 <select 
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-slate-50/50 outline-none shadow-inner" 
+                                    required
+                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
                                     value={formData.route_id} 
                                     onChange={e => setFormData({ ...formData, route_id: e.target.value })}
                                 >
@@ -276,17 +312,17 @@ export default function VehicleRepairLogPage() {
                                 </select>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair From Date</label>
-                                <Input type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 focus:border-rose-400 transition-all bg-rose-50/20" value={formData.entry_date} onChange={e => setFormData({ ...formData, entry_date: e.target.value })} />
+                                <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair From Date *</label>
+                                <Input required type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 bg-rose-50/20 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.entry_date} onChange={e => setFormData({ ...formData, entry_date: e.target.value })} />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair To Date</label>
-                                <Input type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 focus:border-rose-400 transition-all bg-rose-50/20" value={formData.exit_date} onChange={e => setFormData({ ...formData, exit_date: e.target.value })} />
+                                <Input type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 bg-rose-50/20 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.exit_date} onChange={e => setFormData({ ...formData, exit_date: e.target.value })} />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Repair Status</label>
                                 <select 
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-slate-50/50 outline-none shadow-inner" 
+                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
                                     value={formData.status} 
                                     onChange={e => setFormData({ ...formData, status: e.target.value })}
                                 >
@@ -299,16 +335,16 @@ export default function VehicleRepairLogPage() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-2">
                                     <CreditCard className="w-3 h-3" /> Amount (₹)
                                 </label>
-                                <Input type="number" className="h-12 rounded-xl font-black text-xl border-none bg-white shadow-sm" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
+                                <Input type="number" min={0} className="h-12 rounded-xl font-black text-xl border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
                             </div>
 
                             <div className="lg:col-span-2 space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Description of repair works</label>
-                                <Input placeholder="Describe the job in detail..." className="h-12 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-white shadow-inner" value={formData.repair_description} onChange={e => setFormData({ ...formData, repair_description: e.target.value })} />
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Description of repair works *</label>
+                                <Input required placeholder="Describe the job in detail..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.repair_description} onChange={e => setFormData({ ...formData, repair_description: e.target.value })} />
                             </div>
                             <div className="lg:col-span-1 space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Remarks</label>
-                                <Input placeholder="Additional notes..." className="h-12 rounded-xl font-bold border-slate-100 focus:border-rose-400 transition-all bg-white shadow-inner" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
+                                <Input placeholder="Additional notes..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
                             </div>
                         </div>
 

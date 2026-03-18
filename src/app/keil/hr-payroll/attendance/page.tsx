@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function AttendancePage() {
   const { hasPermission } = usePermission();
@@ -288,35 +290,82 @@ export default function AttendancePage() {
     setShowForm(true);
   };
 
-  const downloadAttendance = () => {
-    const activeRecords = attendanceRecords.filter(rec => rec.date.startsWith(dateFilter));
+  const downloadAttendance = async () => {
+    const activeRecords = attendanceRecords.filter(rec => !dateFilter || rec.date.startsWith(dateFilter));
     if (activeRecords.length === 0) {
       info('No records found for the selected date to download.');
       return;
     }
 
-    const headers = ['Employee', 'Date', 'Shift', 'Clock In', 'Clock Out', 'Status', 'Remarks'];
-    const rows = activeRecords.map(rec => [
-      rec.users?.name || 'N/A',
-      rec.date.split('T')[0],
-      rec.shift,
-      rec.clock_in || 'N/A',
-      rec.clock_out || 'N/A',
-      rec.status,
-      rec.remarks || ''
-    ]);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Attendance');
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `attendance_report_${dateFilter}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    success('Attendance report downloaded.');
+      // Define columns
+      worksheet.columns = [
+        { header: 'Employee', key: 'name', width: 25 },
+        { header: 'Code', key: 'code', width: 12 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Shift', key: 'shift', width: 12 },
+        { header: 'Clock In', key: 'clock_in', width: 12 },
+        { header: 'Clock Out', key: 'clock_out', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Remarks', key: 'remarks', width: 30 }
+      ];
+
+      // Format Header Row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E40AF' } // Dark blue
+      };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Helper for date formatting
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+
+      // Add rows
+      activeRecords.forEach(rec => {
+        const row = worksheet.addRow({
+          name: rec.users?.name || 'N/A',
+          code: rec.users?.employee_code || 'N/A',
+          date: formatDate(rec.date),
+          shift: rec.shift || '',
+          clock_in: rec.clock_in || 'N/A',
+          clock_out: rec.clock_out || 'N/A',
+          status: rec.status || '',
+          remarks: rec.remarks || ''
+        });
+        
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+      // Write and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `attendance_report_${dateFilter || 'all'}.xlsx`);
+      
+      success(`Attendance report for ${dateFilter || 'all dates'} downloaded.`);
+    } catch (err) {
+      console.error('Export error:', err);
+      error('Failed to export Excel file.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -628,7 +677,7 @@ export default function AttendancePage() {
         searchPlaceholder="Search staff or notes..."
         actions={
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+            <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
             <div className="flex gap-1">
               <Input 
                 type="date"

@@ -10,6 +10,8 @@ import {
   BarChart3, PiggyBank, Receipt, ArrowUpRight
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { exportToExcel } from '@/utils/export';
+import { useToast } from '@/components/ui/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,6 +24,7 @@ export default function BillingSummary() {
     search: ''
   });
 
+  const { info } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -73,6 +76,30 @@ export default function BillingSummary() {
     return { totalAmount, totalTax, totalNet };
   }, [filteredData]);
 
+  const downloadExcel = async () => {
+    if (filteredData.length === 0) {
+      info('No billing records to export.');
+      return;
+    }
+    const headers = ['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Net'];
+    const rows = filteredData.map(row => [
+      row.invoice_number,
+      new Date(row.invoice_date).toLocaleDateString(),
+      row.customers?.customer_name || 'N/A',
+      Number(row.total_amount || 0),
+      Number(row.tax_amount || 0),
+      Number(row.net_amount || 0)
+    ]);
+
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `billing_summary_${activeTenant.toLowerCase()}_${filters.startDate}_to_${filters.endDate}.xlsx`,
+      sheetName: 'Sales Billing'
+    });
+    info('Billing summary exported successfully!');
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
@@ -82,8 +109,8 @@ export default function BillingSummary() {
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">Monthly revenue analysis and tax breakdown.</p>
         </div>
-        <Button variant="outline" className="gap-2 border-indigo-200 text-indigo-600">
-          <Download className="w-4 h-4" /> Download Excel
+        <Button onClick={downloadExcel} variant="outline" className="gap-2 border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 px-6 rounded-full shadow-sm h-11 transition-all active:scale-95">
+          <Download className="w-4 h-4" /> Export Report
         </Button>
       </div>
 
@@ -116,13 +143,13 @@ export default function BillingSummary() {
               <div className="space-y-1.5 flex-1 min-w-[200px]">
                   <label className="text-[10px] font-bold uppercase text-slate-400 px-1">Date Range</label>
                   <div className="flex gap-3">
-                      <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl" />
-                      <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl" />
+                      <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl font-bold" />
+                      <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl font-bold" />
                   </div>
               </div>
               <div className="space-y-1.5 flex-[1.5] min-w-[300px]">
                   <label className="text-[10px] font-bold uppercase text-slate-400 px-1">Filter by Customer / Invoice</label>
-                  <Input placeholder="Search..." value={filters.search} onChange={e => setFilters({...filters, search: e.target.value})} className="rounded-xl" />
+                  <Input placeholder="Search..." value={filters.search} onChange={e => setFilters({...filters, search: e.target.value})} className="rounded-xl font-bold" />
               </div>
           </div>
       </Card>
