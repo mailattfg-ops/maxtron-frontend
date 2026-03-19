@@ -41,9 +41,9 @@ export default function VehicleDailyLogPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
-    const canDelete = hasPermission('prod_product_view', 'delete');
+    const canView = hasPermission('fleet_log_view', 'view');
+    const canCreate = hasPermission('fleet_log_view', 'create');
+    const canDelete = hasPermission('fleet_log_view', 'delete');
     
     const [logs, setLogs] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);

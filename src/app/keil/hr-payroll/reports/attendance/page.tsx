@@ -104,7 +104,7 @@ export default function AttendanceReportPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Attendance Summary</h1>
           <p className="text-foreground/60 mt-2">Analytics and date-range logs for {activeTenant}.</p>

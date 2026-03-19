@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -32,7 +32,13 @@ export default function EmployeeInformationPage() {
   const [showDeactivated, setShowDeactivated] = useState(false);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
-  const { hasPermission } = usePermission();
+  const { hasPermission, loading: permissionLoading } = usePermission();
+
+  const canView = hasPermission('hr_employee_view', 'view');
+  const canCreate = hasPermission('hr_employee_view', 'create');
+  const canEdit = hasPermission('hr_employee_view', 'edit');
+  const canDelete = hasPermission('hr_employee_view', 'delete');
+
   const router = useRouter();
   
   const [user, setUser] = useState<any>(null);
@@ -53,14 +59,7 @@ export default function EmployeeInformationPage() {
     }
   }, []);
   
-  // Page access check
-  useEffect(() => {
-    // We check view permission, but if they are already on this page via sidebar, 
-    // it's likely they have it. This is a secondary layer.
-    const canView = hasPermission('hr_employee_view', 'can_view');
-    // If the hook is still loading user data (user is null initially), we might want to wait.
-    // However, sidebar already handles the main gate.
-  }, [hasPermission]);
+  // Page access check deleted - handled by the gate below
   
   // Table Pagination and Filtering States
   const [searchQuery, setSearchQuery] = useState('');
@@ -609,6 +608,18 @@ export default function EmployeeInformationPage() {
     fetchEmployees(formData.company_id);
   }, [showDeactivated]);
 
+  if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+  if (!canView) return (
+      <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+          <div className="p-6 rounded-full bg-primary/5 text-primary">
+              <Lock className="w-12 h-12" />
+          </div>
+          <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+          <p className="text-muted-foreground font-medium">You do not have permission to view Employee Management.</p>
+      </div>
+  );
+
   return (
     <div className="space-y-6">
       {newEmployeePopup && (
@@ -677,7 +688,7 @@ export default function EmployeeInformationPage() {
               <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
                  <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
               </Button>
-              {hasPermission('hr_employee_view', 'create') && (
+              {canCreate && (
                 <Button onClick={() => {
                   setEditingId(null);
                   const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));

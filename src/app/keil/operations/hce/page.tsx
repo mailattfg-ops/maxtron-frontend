@@ -35,10 +35,10 @@ export default function HCERegistryPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
-    const canEdit = hasPermission('prod_product_view', 'edit');
-    const canDelete = hasPermission('prod_product_view', 'delete');
+    const canView = hasPermission('prod_hce_view', 'view');
+    const canCreate = hasPermission('prod_hce_view', 'create');
+    const canEdit = hasPermission('prod_hce_view', 'edit');
+    const canDelete = hasPermission('prod_hce_view', 'delete');
     
     const [hces, setHces] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -222,7 +222,7 @@ export default function HCERegistryPage() {
     );
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="md:p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-bold text-primary tracking-tight">HCE Registry</h1>

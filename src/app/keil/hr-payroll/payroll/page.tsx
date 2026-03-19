@@ -15,8 +15,11 @@ import {
     Save,
     Search,
     Download,
-    Eye
+    Eye,
+    Lock,
+    Loader2
 } from 'lucide-react';
+import { usePermission } from '@/hooks/usePermission';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,12 @@ export default function KeilPayrollPage() {
     const pathname = usePathname();
     const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
     const activeTenant = activeEntity.toUpperCase();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('hr_payroll_view', 'view');
+    const canCreate = hasPermission('hr_payroll_view', 'create');
+    const canEdit = hasPermission('hr_payroll_view', 'edit');
+    const canDelete = hasPermission('hr_payroll_view', 'delete');
 
     const [payrolls, setPayrolls] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -256,6 +265,18 @@ export default function KeilPayrollPage() {
 
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view Payroll Management.</p>
+        </div>
+    );
+
     return (
         <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -265,13 +286,15 @@ export default function KeilPayrollPage() {
                     <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage employee month-wise salary distributions and net payouts for KEIL.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button 
-                        onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
-                        className="h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold flex items-center gap-2 active:scale-95 transition-all"
-                    >
-                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {showForm ? 'Cancel' : 'Generate Entry'}
-                    </Button>
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
+                            className="h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold flex items-center gap-2 active:scale-95 transition-all"
+                        >
+                            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {showForm ? 'Cancel' : 'Generate Entry'}
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -541,12 +564,16 @@ export default function KeilPayrollPage() {
                             </td>
                             <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(row)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 rounded-full">
-                                        <Briefcase className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="h-8 w-8 text-red-500 hover:bg-red-50 rounded-full">
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    {canEdit && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(row)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 rounded-full">
+                                            <Briefcase className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                    {canDelete && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="h-8 w-8 text-red-500 hover:bg-red-50 rounded-full">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </td>
                         </tr>

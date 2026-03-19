@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet, Lock, Loader2 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -14,7 +14,9 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 export default function AttendancePage() {
-  const { hasPermission } = usePermission();
+  const { hasPermission, loading: permissionLoading } = usePermission();
+
+  const canView = hasPermission('hr_attendance_view', 'view');
   const canCreate = hasPermission('hr_attendance_view', 'create');
   const canEdit = hasPermission('hr_attendance_view', 'edit');
   const canDelete = hasPermission('hr_attendance_view', 'delete');
@@ -390,6 +392,18 @@ export default function AttendancePage() {
       error('Delete failed.');
     }
   };
+
+  if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+  if (!canView) return (
+      <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+          <div className="p-6 rounded-full bg-primary/5 text-primary">
+              <Lock className="w-12 h-12" />
+          </div>
+          <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+          <p className="text-muted-foreground font-medium">You do not have permission to view Attendance Management.</p>
+      </div>
+  );
 
   return (
     <div className="md:p-6 space-y-6 animate-in fade-in duration-500">

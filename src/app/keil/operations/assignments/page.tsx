@@ -40,10 +40,10 @@ function RouteAssignmentsContent() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
-    const canEdit = hasPermission('prod_product_view', 'edit');
-    const canDelete = hasPermission('prod_product_view', 'delete');
+    const canView = hasPermission('prod_assignment_view', 'view');
+    const canCreate = hasPermission('prod_assignment_view', 'create');
+    const canEdit = hasPermission('prod_assignment_view', 'edit');
+    const canDelete = hasPermission('prod_assignment_view', 'delete');
 
     const [route, setRoute] = useState<any>(null);
     const [routes, setRoutes] = useState<any[]>([]);
@@ -246,7 +246,7 @@ function RouteAssignmentsContent() {
     );
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="md:p-6 space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-4 w-full md:w-auto">
                     <div className="space-y-1">
@@ -254,10 +254,10 @@ function RouteAssignmentsContent() {
                         <p className="text-sm font-medium text-muted-foreground">Assign facilities to active logistical loops.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <div className="relative group w-full sm:w-[300px]">
-                            <Map className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
+                        <div className="relative flex justify-center items-center group w-full sm:w-[300px]">
+                            <Map className="hidden md:block w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
                             <select 
-                                className="pl-9 h-10 w-full rounded-md border border-primary/20 bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all shadow-sm"
+                                className="pl-9 h-10 w-fit md:w-full rounded-md border border-primary/20 bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all shadow-sm"
                                 value={selectedRouteId}
                                 onChange={e => setSelectedRouteId(e.target.value)}
                             >
@@ -401,69 +401,67 @@ function RouteAssignmentsContent() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView
-                        title="Mapped Facilities"
-                        description={`Collection sequence for ${route?.route_name}`}
-                        headers={['HCE / Place', 'Type', 'Collection Days', 'Remarks', 'Actions']}
-                        data={assignments}
-                        loading={loading}
-                        searchFields={['keil_hces.hce_name', 'keil_hces.hce_code', 'keil_hces.hce_place']}
-                        renderRow={(a: any) => (
-                            <tr key={a.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
-                                <td className="px-6 py-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shadow-sm border border-primary/10">
-                                            {a.sequence_order}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-foreground text-sm">{a.keil_hces?.hce_name}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-muted-foreground/70 uppercase font-medium">{a.keil_hces?.hce_code}</span>
-                                                <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
-                                                <span className="text-[10px] font-bold text-secondary uppercase tracking-tight">{a.keil_hces?.hce_place}</span>
-                                            </div>
+                <TableView
+                    title="Mapped Facilities"
+                    description={`Collection sequence for ${route?.route_name}`}
+                    headers={['HCE / Place', 'Type', 'Collection Days', 'Remarks', 'Actions']}
+                    data={assignments}
+                    loading={loading}
+                    searchFields={['keil_hces.hce_name', 'keil_hces.hce_code', 'keil_hces.hce_place']}
+                    renderRow={(a: any) => (
+                        <tr key={a.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
+                            <td className="px-6 py-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shadow-sm border border-primary/10">
+                                        {a.sequence_order}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-foreground text-sm">{a.keil_hces?.hce_name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-muted-foreground/70 uppercase font-medium">{a.keil_hces?.hce_code}</span>
+                                            <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
+                                            <span className="text-[10px] font-bold text-secondary uppercase tracking-tight">{a.keil_hces?.hce_place}</span>
                                         </div>
                                     </div>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">{a.collection_type}</span>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                                        {(Array.isArray(a.collection_days) ? a.collection_days : []).map((day: string) => (
-                                            <span key={day} className="text-[9px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-md border border-muted-foreground/5 shadow-sm">{day.slice(0, 3)}</span>
-                                        ))}
-                                        {(!a.collection_days || a.collection_days.length === 0) && <span className="text-[10px] font-medium text-slate-400 italic">None selected</span>}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6 text-[10px] font-bold text-muted-foreground/70 max-w-[150px] truncate italic">{a.remarks}</td>
-                                <td className="px-6 py-6 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        {canEdit && (
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-transparent hover:border-primary/10" onClick={() => {
-                                                setEditingAssignment(a);
-                                                setAssignmentForm({
-                                                    hce_id: a.hce_id,
-                                                    collection_type: a.collection_type || 'Daily',
-                                                    collection_days: a.collection_days || [],
-                                                    remarks: a.remarks || ''
-                                                });
-                                            }}>
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                        {canDelete && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleRemove(a.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6">
+                                <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">{a.collection_type}</span>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                                    {(Array.isArray(a.collection_days) ? a.collection_days : []).map((day: string) => (
+                                        <span key={day} className="text-[9px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-md border border-muted-foreground/5 shadow-sm">{day.slice(0, 3)}</span>
+                                    ))}
+                                    {(!a.collection_days || a.collection_days.length === 0) && <span className="text-[10px] font-medium text-slate-400 italic">None selected</span>}
+                                </div>
+                            </td>
+                            <td className="px-6 py-6 text-[10px] font-bold text-muted-foreground/70 max-w-[150px] truncate italic">{a.remarks}</td>
+                            <td className="px-6 py-6 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    {canEdit && (
+                                        <Button variant="ghost" size="icon" className="h-10 w-10 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-transparent hover:border-primary/10" onClick={() => {
+                                            setEditingAssignment(a);
+                                            setAssignmentForm({
+                                                hce_id: a.hce_id,
+                                                collection_type: a.collection_type || 'Daily',
+                                                collection_days: a.collection_days || [],
+                                                remarks: a.remarks || ''
+                                            });
+                                        }}>
+                                            <Edit className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                    {canDelete && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemove(a.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
             </>
             )}

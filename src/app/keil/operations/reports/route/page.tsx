@@ -11,7 +11,9 @@ import {
     ArrowRight,
     Truck,
     Download,
-    X
+    X,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { TableView } from "@/components/ui/table-view";
 import { exportToExcel } from '@/utils/export';
 import { useToast } from "@/components/ui/toast";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const COLLECTION_API = `${API_BASE}/api/keil/operations/collections`;
@@ -26,6 +29,10 @@ const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
 
 export default function RouteCollectionReportPage() {
     const { error, success } = useToast();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+    
+    const canView = hasPermission('prod_route_report_view', 'view');
+
     const [routes, setRoutes] = useState<any[]>([]);
     const [batches, setBatches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -146,6 +153,18 @@ export default function RouteCollectionReportPage() {
     const totalVisited = batches.reduce((acc, curr) => acc + (curr.total_visited || 0), 0);
     const coverage = totalAssigned > 0 ? (totalVisited / totalAssigned) * 100 : 0;
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view Route Collection Reports.</p>
+        </div>
+    );
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -211,7 +230,7 @@ export default function RouteCollectionReportPage() {
                             <CardTitle className="text-lg font-bold text-primary">Route Collection Summary</CardTitle>
                             <CardDescription className="text-muted-foreground font-medium text-xs">Analysis of field performance and collection yield.</CardDescription>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="md:flex gap-3">
                             <div className="relative group">
                                 <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
                                 <Input 

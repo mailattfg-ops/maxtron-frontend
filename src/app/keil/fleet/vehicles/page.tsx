@@ -40,10 +40,10 @@ export default function VehicleMasterPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
-    const canEdit = hasPermission('prod_product_view', 'edit');
-    const canDelete = hasPermission('prod_product_view', 'delete');
+    const canView = hasPermission('fleet_vehicle_view', 'view');
+    const canCreate = hasPermission('fleet_vehicle_view', 'create');
+    const canEdit = hasPermission('fleet_vehicle_view', 'edit');
+    const canDelete = hasPermission('fleet_vehicle_view', 'delete');
     
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);

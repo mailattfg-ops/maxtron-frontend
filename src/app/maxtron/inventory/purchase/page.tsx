@@ -387,6 +387,7 @@ export default function PurchaseEntryPage() {
                             <Input 
                               type="number" 
                               min="0"
+                              max={item.ordered_quantity}
                               value={item.received_quantity} 
                               onChange={(e) => updateItem(idx, 'received_quantity', Math.max(0, Number(e.target.value)))}
                               className={`h-10 text-right font-black ${item.received_quantity < item.ordered_quantity ? 'text-amber-600' : 'text-emerald-600'}`}

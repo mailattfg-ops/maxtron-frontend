@@ -41,8 +41,8 @@ export default function DailyCollectionEntryPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
+    const canView = hasPermission('prod_collection_view', 'view');
+    const canCreate = hasPermission('prod_collection_view', 'create');
     
     const [loading, setLoading] = useState(false);
     const [routes, setRoutes] = useState<any[]>([]);

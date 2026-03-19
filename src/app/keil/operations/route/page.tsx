@@ -33,10 +33,10 @@ export default function RouteRegistryPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
-    const canView = hasPermission('prod_product_view', 'view');
-    const canCreate = hasPermission('prod_product_view', 'create');
-    const canEdit = hasPermission('prod_product_view', 'edit');
-    const canDelete = hasPermission('prod_product_view', 'delete');
+    const canView = hasPermission('prod_route_view', 'view');
+    const canCreate = hasPermission('prod_route_view', 'create');
+    const canEdit = hasPermission('prod_route_view', 'edit');
+    const canDelete = hasPermission('prod_route_view', 'delete');
     
     const [routes, setRoutes] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -202,7 +202,7 @@ export default function RouteRegistryPage() {
     );
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="md:p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-bold text-primary tracking-tight">Route Registry</h1>
@@ -266,47 +266,45 @@ export default function RouteRegistryPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView
-                        title="Defined Routes"
-                        description="List of all logistics routes mapped by branch and type."
-                        headers={['Route Code', 'Route Name', 'Type', 'Branch', 'Actions']}
-                        data={routes}
-                        loading={loading}
-                        searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
-                        renderRow={(r: any) => (
-                            <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
-                                <td className="px-6 py-4">
-                                    <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="font-bold text-slate-700">{r.route_name}</span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
-                                <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        {canEdit && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                        {canDelete && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                        {canEdit && (
-                                            <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
-                                                Manage HCEs <ArrowRight className="w-3 h-3" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                <TableView
+                    title="Defined Routes"
+                    description="List of all logistics routes mapped by branch and type."
+                    headers={['Route Code', 'Route Name', 'Type', 'Branch', 'Actions']}
+                    data={routes}
+                    loading={loading}
+                    searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
+                    renderRow={(r: any) => (
+                        <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
+                            <td className="px-6 py-4">
+                                <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="font-bold text-slate-700">{r.route_name}</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
+                            <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                    {canEdit && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
+                                            <Edit className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                    {canDelete && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                    {canEdit && (
+                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
+                                            Manage HCEs <ArrowRight className="w-3 h-3" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
         </div>
     );
