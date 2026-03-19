@@ -139,16 +139,28 @@ export default function VehicleRepairLogPage() {
 
     const handleSave = async () => {
         // Validation Suite
-        if (!formData.log_date) {
-            error("Main Log Date is required.");
+        if (!formData.vehicle_id) {
+            error("Please select a Vehicle for this maintenance record.");
             return;
         }
-        if (!formData.vehicle_id) {
-            error("Target Vehicle is required.");
+        if (!formData.repair_description) {
+            error("Please enter a description of the repair or maintenance performed.");
+            return;
+        }
+        if (!formData.workshop_name) {
+            error("Please specify the Workshop Name / Service Center.");
+            return;
+        }
+        if (parseFloat(formData.cost) < 0) {
+            error("Repair cost cannot be negative.");
+            return;
+        }
+        if (!formData.log_date) {
+            error("Maintenance Log Date is required for protocol registration.");
             return;
         }
         if (!formData.driver_id) {
-            error("Driver assignment is required.");
+            error("Please designate the Driver responsible for this service entry.");
             return;
         }
         if (!formData.route_id) {
@@ -159,20 +171,10 @@ export default function VehicleRepairLogPage() {
             error("Repair Start (From) Date is required.");
             return;
         }
-        if (!formData.repair_description) {
-            error("Repair Description is required.");
-            return;
-        }
 
         // Logical checks
         if (formData.exit_date && new Date(formData.exit_date) < new Date(formData.entry_date)) {
             error("Repair 'To' Date cannot be earlier than 'From' Date.");
-            return;
-        }
-
-        // Non-negative check
-        if (parseFloat(formData.cost) < 0) {
-            error("Maintenance Cost cannot be negative.");
             return;
         }
 

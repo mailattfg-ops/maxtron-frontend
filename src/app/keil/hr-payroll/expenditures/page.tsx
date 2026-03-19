@@ -152,10 +152,27 @@ export default function ExpendituresPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!formData.expense_head_id) {
+            error('Please select an Expense Taxonomy Head.');
+            return;
+        }
+        if (!formData.amount || parseFloat(formData.amount) <= 0) {
+            error('Please enter a valid expense amount greater than zero.');
+            return;
+        }
+        if (formData.payee_type === 'employee' && !formData.employee_id) {
+            error('Please select the Internal Employee being paid.');
+            return;
+        }
+        if (formData.payee_type === 'other' && !formData.other_name) {
+            error('Please enter the name of the Payee (Person/Company).');
+            return;
+        }
+
         // Validation: Only if payee is other and mobile is provided
         if (formData.payee_type === 'other' && formData.other_mobile && formData.other_mobile.length > 0) {
             if (formData.other_mobile.length !== 10) {
-                error('Mobile number must be exactly 10 digits.');
+                error('The Payee Mobile number must be exactly 10 digits.');
                 return;
             }
         }

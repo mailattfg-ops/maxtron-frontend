@@ -135,19 +135,19 @@ export default function VehicleMasterPage() {
     const handleSave = async () => {
         // Validation Suite
         if (!formData.registration_number) {
-            error("Registration Number is required.");
+            error("Please enter the unique Vehicle Registration Number.");
             return;
         }
         if (!formData.make) {
-            error("Make/Brand is required.");
+            error("Please specify the Vehicle Make / Manufacturer.");
             return;
         }
         if (!formData.model) {
-            error("Model is required.");
+            error("Please enter the Vehicle Model / Variant.");
             return;
         }
         if (!formData.vehicle_type) {
-            error("Vehicle Type is required.");
+            error("Please select a specific Vehicle Type classification.");
             return;
         }
         if (!formData.year || formData.year < 1900) {
@@ -568,19 +568,19 @@ export default function VehicleMasterPage() {
                                         onClick={() => {
                                             if (activeTab === 'basic') {
                                                 if (!formData.registration_number) {
-                                                    error("Registration Number is required.");
+                                                    error("Please enter the unique Vehicle Registration Number.");
                                                     return;
                                                 }
                                                 if (!formData.make) {
-                                                    error("Make/Brand is required.");
+                                                    error("Please specify the Vehicle Make / Manufacturer.");
                                                     return;
                                                 }
                                                 if (!formData.model) {
-                                                    error("Model is required.");
+                                                    error("Please enter the Vehicle Model / Variant.");
                                                     return;
                                                 }
                                                 if (!formData.vehicle_type) {
-                                                    error("Vehicle Type is required.");
+                                                    error("Please select a specific Vehicle Type classification.");
                                                     return;
                                                 }
                                                 setActiveTab('tech');

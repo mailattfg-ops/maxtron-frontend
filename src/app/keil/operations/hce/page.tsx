@@ -365,8 +365,16 @@ export default function HCERegistryPage() {
                                     {activeTab !== 'ops' ? (
                                         <Button 
                                             onClick={() => {
-                                                if (!formData.hce_code || !formData.hce_name) {
-                                                    error("HCE Code and Name are required.");
+                                                if (!formData.hce_code) {
+                                                    error("Please enter a unique Facility/HCE Code.");
+                                                    return;
+                                                }
+                                                if (!formData.hce_name) {
+                                                    error("Please enter the official Facility/HCE Name.");
+                                                    return;
+                                                }
+                                                if (!formData.branch_id) {
+                                                    error("Please select the organizational Branch for this facility.");
                                                     return;
                                                 }
                                                 setActiveTab('ops');

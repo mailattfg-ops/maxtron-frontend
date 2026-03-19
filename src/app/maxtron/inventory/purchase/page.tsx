@@ -169,8 +169,20 @@ export default function PurchaseEntryPage() {
   };
 
   const saveEntry = async () => {
-    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => i.received_quantity <= 0)) {
-      error('Please select Supplier/Order and add items with valid quantities.');
+    if (!formData.supplier_id) {
+      error('Please select a Supplier or linked Purchase Order before receiving materials.');
+      return;
+    }
+    if (formData.items.length === 0) {
+      error('At least one item must be added to the goods receipt.');
+      return;
+    }
+    if (formData.items.some(i => !i.rm_id)) {
+      error('One or more items do not have a material selected.');
+      return;
+    }
+    if (formData.items.some(i => i.received_quantity <= 0)) {
+      error('All items must have a quantity greater than zero.');
       return;
     }
 
@@ -389,7 +401,11 @@ export default function PurchaseEntryPage() {
                               min="0"
                               max={item.ordered_quantity}
                               value={item.received_quantity} 
-                              onChange={(e) => updateItem(idx, 'received_quantity', Math.max(0, Number(e.target.value)))}
+                              onChange={(e) => {
+                                const val = Math.max(0, Number(e.target.value));
+                                const maxAllowed = item.ordered_quantity > 0 ? item.ordered_quantity : Infinity;
+                                updateItem(idx, 'received_quantity', Math.min(val, maxAllowed));
+                              }}
                               className={`h-10 text-right font-black ${item.received_quantity < item.ordered_quantity ? 'text-amber-600' : 'text-emerald-600'}`}
                             />
                           </td>

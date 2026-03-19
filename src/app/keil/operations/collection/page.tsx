@@ -175,8 +175,12 @@ export default function DailyCollectionEntryPage() {
     };
 
     const handleSave = async () => {
+        if (!headerData.route_id) {
+            error("Please select a Logistical Route before committing high-volume data.");
+            return;
+        }
         if (!headerData.driver_name) {
-            error("Please select the Employee Assigning for this session.");
+            error("Please designate the Employee responsible for assigning / verifying the session.");
             return;
         }
 

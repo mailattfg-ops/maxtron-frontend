@@ -114,7 +114,7 @@ export default function RouteRegistryPage() {
         e.preventDefault();
         
         if (!formData.branch_id) {
-            error("Please select a branch for this route.");
+            error("Please select an organizational Branch for this logistical route.");
             return;
         }
 

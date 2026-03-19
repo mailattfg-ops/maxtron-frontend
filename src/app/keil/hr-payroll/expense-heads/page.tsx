@@ -104,6 +104,12 @@ export default function ExpenseHeadsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.head_name) {
+            error("Please enter the name of the Expense Taxonomy Head.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {

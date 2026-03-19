@@ -100,6 +100,16 @@ export default function BranchRegistryPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!formData.branch_code) {
+            error("Please enter a unique Branch Identification Code.");
+            return;
+        }
+        if (!formData.branch_name) {
+            error("Please enter the official Branch/Office Name.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {
