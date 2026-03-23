@@ -287,9 +287,9 @@ export default function Dashboard() {
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium">Latest invoices and order lifecycle</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" className="font-bold text-primary gap-1 hover:bg-primary/10">
+                        {/* <Button variant="ghost" size="sm" className="font-bold text-primary gap-1 hover:bg-primary/10">
                             Operational Hub <ChevronRight className="w-4 h-4" />
-                        </Button>
+                        </Button> */}
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
