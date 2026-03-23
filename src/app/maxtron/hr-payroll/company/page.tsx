@@ -429,7 +429,7 @@ export default function CompanyInformationPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-slate-50/30 min-h-screen animate-in fade-in duration-500">
+    <div className="md:p-8 space-y-6 bg-slate-50/30 min-h-screen animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Company Information</h1>
@@ -461,7 +461,7 @@ export default function CompanyInformationPage() {
                                     <div className="flex gap-2">
                                         {canEdit && (
                                             <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
-                                                <Edit className="h-4 w-4 mr-2" /> <span className="hidden md:block">Edit Details</span>
+                                                <Edit className="h-4 w-4 md:mr-2" /> <span className="hidden md:block">Edit Details</span>
                                             </Button>
                                         )}
                                     </div>

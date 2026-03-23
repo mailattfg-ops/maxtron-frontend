@@ -17,7 +17,8 @@ import {
     Download,
     Eye,
     Lock,
-    Loader2
+    Loader2,
+    Edit
 } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useToast } from '@/components/ui/toast';
@@ -502,6 +503,7 @@ export default function KeilPayrollPage() {
                                         value={formData.payment_date} 
                                         onChange={handleInputChange} 
                                         className="h-11"
+                                        required
                                     />
                                 </div>
 
@@ -565,8 +567,12 @@ export default function KeilPayrollPage() {
                             <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                     {canEdit && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(row)} className="h-8 w-8 text-blue-500 hover:bg-blue-50 rounded-full">
-                                            <Briefcase className="w-4 h-4" />
+                                        <Button 
+                                            variant="ghost" 
+                                            onClick={() => handleEdit(row)} 
+                                            className="h-8 px-3 text-blue-500 hover:bg-blue-50 rounded-lg text-xs font-bold"
+                                        >
+                                            <Edit className="w-4 h-4" />
                                         </Button>
                                     )}
                                     {canDelete && (

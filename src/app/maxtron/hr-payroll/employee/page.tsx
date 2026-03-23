@@ -1352,7 +1352,7 @@ export default function EmployeeInformationPage() {
             <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="grid grid-cols-1 md:flex gap-4 items-center">
-            <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+            <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
                <input 
                   type="checkbox" 
                   id="showDeactivated"
