@@ -10,6 +10,8 @@ import {
   BarChart3, PiggyBank, Receipt, ArrowUpRight
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { exportToExcel } from '@/utils/export';
+import { useToast } from '@/components/ui/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,6 +24,7 @@ export default function BillingSummary() {
     search: ''
   });
 
+  const { info } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -73,17 +76,41 @@ export default function BillingSummary() {
     return { totalAmount, totalTax, totalNet };
   }, [filteredData]);
 
+  const downloadExcel = async () => {
+    if (filteredData.length === 0) {
+      info('No billing records to export.');
+      return;
+    }
+    const headers = ['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Net'];
+    const rows = filteredData.map(row => [
+      row.invoice_number,
+      new Date(row.invoice_date).toLocaleDateString(),
+      row.customers?.customer_name || 'N/A',
+      Number(row.total_amount || 0),
+      Number(row.tax_amount || 0),
+      Number(row.net_amount || 0)
+    ]);
+
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `billing_summary_${activeTenant.toLowerCase()}_${filters.startDate}_to_${filters.endDate}.xlsx`,
+      sheetName: 'Sales Billing'
+    });
+    info('Billing summary exported successfully!');
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <BarChart3 className="w-8 h-8 text-indigo-600" /> Billing Summary
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">Monthly revenue analysis and tax breakdown.</p>
         </div>
-        <Button variant="outline" className="gap-2 border-indigo-200 text-indigo-600">
-          <Download className="w-4 h-4" /> Download Excel
+        <Button onClick={downloadExcel} variant="outline" className="gap-2 border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 px-6 rounded-full shadow-sm h-11 transition-all active:scale-95">
+          <Download className="w-4 h-4" /> Export Report
         </Button>
       </div>
 
@@ -116,35 +143,33 @@ export default function BillingSummary() {
               <div className="space-y-1.5 flex-1 min-w-[200px]">
                   <label className="text-[10px] font-bold uppercase text-slate-400 px-1">Date Range</label>
                   <div className="flex gap-3">
-                      <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl" />
-                      <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl" />
+                      <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl font-bold" />
+                      <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl font-bold" />
                   </div>
               </div>
               <div className="space-y-1.5 flex-[1.5] min-w-[300px]">
                   <label className="text-[10px] font-bold uppercase text-slate-400 px-1">Filter by Customer / Invoice</label>
-                  <Input placeholder="Search..." value={filters.search} onChange={e => setFilters({...filters, search: e.target.value})} className="rounded-xl" />
+                  <Input placeholder="Search..." value={filters.search} onChange={e => setFilters({...filters, search: e.target.value})} className="rounded-xl font-bold" />
               </div>
           </div>
       </Card>
 
-      <Card className="border-none shadow-xl overflow-hidden rounded-3xl">
-        <TableView
-          headers={['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Amt']}
-          data={filteredData}
-          loading={loading}
-          searchFields={['invoice_number', 'customers.customer_name']}
-          renderRow={(row: any) => (
-            <tr key={row.id} className="hover:bg-indigo-50/30 border-b last:border-0 transition-colors">
-              <td className="px-6 py-4 font-mono font-bold text-indigo-700">{row.invoice_number}</td>
-              <td className="px-6 py-4 text-sm font-medium">{new Date(row.invoice_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold text-slate-800">{row.customers?.customer_name}</td>
-              <td className="px-6 py-4 text-right tabular-nums">₹ {parseFloat(row.total_amount).toLocaleString()}</td>
-              <td className="px-6 py-4 text-right tabular-nums text-indigo-500 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
-              <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-slate-50">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
-            </tr>
-          )}
-        />
-      </Card>
+      <TableView
+        headers={['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Amt']}
+        data={filteredData}
+        loading={loading}
+        searchFields={['invoice_number', 'customers.customer_name']}
+        renderRow={(row: any) => (
+          <tr key={row.id} className="hover:bg-indigo-50/30 border-b last:border-0 transition-colors">
+            <td className="px-6 py-4 font-mono font-bold text-indigo-700">{row.invoice_number}</td>
+            <td className="px-6 py-4 text-sm font-medium">{new Date(row.invoice_date).toLocaleDateString()}</td>
+            <td className="px-6 py-4 font-bold text-slate-800">{row.customers?.customer_name}</td>
+            <td className="px-6 py-4 text-right tabular-nums">₹ {parseFloat(row.total_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums text-indigo-500 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-slate-50">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
+          </tr>
+        )}
+      />
     </div>
   );
 }

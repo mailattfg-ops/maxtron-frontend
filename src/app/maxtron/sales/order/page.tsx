@@ -18,6 +18,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const ORDERS_API = `${API_BASE}/api/maxtron/sales/orders`;
 const CUSTOMERS_API = `${API_BASE}/api/maxtron/customers`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
+const STOCK_API = `${API_BASE}/api/maxtron/inventory/fg-stock-summary`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function CustomerOrderEntry() {
@@ -85,7 +86,7 @@ export default function CustomerOrderEntry() {
 
       const [custRes, prodRes, empRes] = await Promise.all([
         fetch(`${CUSTOMERS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${PRODUCTS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${STOCK_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
@@ -143,10 +144,21 @@ export default function CustomerOrderEntry() {
     const newItems = [...formData.items];
     const item = { ...newItems[index], [field]: value };
     
-    // Auto-calculate value
+    // Auto-calculate value and enforce stock limit
     if (field === 'quantity' || field === 'rate') {
-      const qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
+      let qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
       const rate = field === 'rate' ? parseFloat(value) || 0 : item.rate;
+      
+      // Force limit if quantity is being changed
+      if (field === 'quantity') {
+        const prod = products.find(p => p.id === item.product_id);
+        if (prod && qty > Number(prod.balance)) {
+            qty = Number(prod.balance);
+            item.quantity = qty;
+            info(`Quantity capped at available stock: ${qty} Kg`);
+        }
+      }
+      
       item.value = qty * rate;
     }
 
@@ -228,6 +240,15 @@ export default function CustomerOrderEntry() {
     if (formData.items.some(i => !i.product_id || i.quantity <= 0)) {
       error('Please complete all product entries with valid quantities.');
       return;
+    }
+
+    // Double check stock before submission
+    for (const item of formData.items) {
+      const prod = products.find(p => p.id === item.product_id);
+      if (prod && item.quantity > Number(prod.balance)) {
+        error(`Stock insufficient for ${prod.product_name}. Available: ${prod.balance} Kg`);
+        return;
+      }
     }
 
 
@@ -359,7 +380,7 @@ export default function CustomerOrderEntry() {
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <ShoppingBag className="w-8 h-8 text-primary" /> Customer Order Entry
@@ -374,7 +395,7 @@ export default function CustomerOrderEntry() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl overflow-hidden bg-white animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
             <CardTitle className="text-primary flex items-center gap-2">
               {editingId ? <ShoppingBag className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
               {editingId ? "Edit Customer Order" : "New Order Form"}
@@ -462,8 +483,8 @@ export default function CustomerOrderEntry() {
                     </Button>
                 </div>
                 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto">
+                    <table className="w-full min-w-[800px]">
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Product Details</th>
@@ -480,34 +501,39 @@ export default function CustomerOrderEntry() {
                                         <select 
                                             value={item.product_id}
                                             onChange={e => handleItemChange(index, 'product_id', e.target.value)}
-                                            className="w-full text-sm font-medium border-none bg-transparent focus:ring-0"
+                                            className="w-full text-[10px] md:text-sm font-medium border-none bg-transparent focus:ring-0"
                                         >
                                             <option value="">Select Product...</option>
-                                            {products.map(p => (
-                                                <option key={p.id} value={p.id}>{p.product_name} [{p.product_code}]</option>
+                                            {products.filter(p => (Number(p.balance) > 0 || item.product_id === p.id)).map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.product_name} [{p.product_code}] - Available: {p.balance} Kg
+                                                </option>
                                             ))}
                                         </select>
                                     </td>
                                     <td className="p-4">
                                         <Input 
                                             type="number" 
+                                            min={0}
+                                            max={products.find(p => p.id === item.product_id)?.balance || 0}
                                             value={item.quantity} 
                                             onChange={e => handleItemChange(index, 'quantity', e.target.value)}
-                                            className="text-center font-bold border-none bg-transparent focus:ring-0"
+                                            className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
                                             placeholder="0.00"
                                         />
                                     </td>
                                     <td className="p-4">
                                         <Input 
                                             type="number" 
+                                            min={0}
                                             value={item.rate} 
                                             onChange={e => handleItemChange(index, 'rate', e.target.value)}
-                                            className="text-center font-bold border-none bg-transparent focus:ring-0"
+                                            className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
                                             placeholder="0.00"
                                         />
                                     </td>
                                     <td className="p-4 text-right">
-                                        <span className="text-sm font-black text-slate-700">₹ {item.value.toLocaleString()}</span>
+                                        <span className="text-xs md:text-sm font-black text-slate-700">₹ {item.value.toLocaleString()}</span>
                                     </td>
                                     <td className="p-4 text-center">
                                         <button 
@@ -557,67 +583,65 @@ export default function CustomerOrderEntry() {
       )}
 
       {!showForm && (
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-          <TableView
-            title="Recent Orders"
-            description="Log of latest customer orders and their status."
-            headers={['Order No', 'Date', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
-            data={orders}
-            loading={loading}
-            searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
-            renderRow={(o: any) => (
-              <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">
-                <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
-                <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4">
-                   <div className="flex flex-col">
-                      <span className="font-bold text-slate-800">{o.customers?.customer_name}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase">{o.customers?.customer_code}</span>
-                   </div>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-600 border">
-                          {o.executive?.name?.charAt(0) || '?'}
-                      </div>
-                      <span className="text-xs font-medium">{o.executive?.name || 'N/A'}</span>
-                   </div>
-                </td>
-                <td className="px-6 py-4 font-black text-slate-900">₹ {o.total_value?.toLocaleString()}</td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-1">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 border">
-                          {o.items?.length || 0}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Products</span>
-                   </div>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2 transition-opacity">
-                      <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => { e.stopPropagation(); handleEdit(o); }}
-                          className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/10"
-                          title="Edit Order"
-                      >
-                          <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }}
-                          className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"
-                          title="Delete Order"
-                      >
-                          <Trash2 className="w-4 h-4" />
-                      </Button>
-                   </div>
-                </td>
-              </tr>
-            )}
-          />
-        </Card>
+        <TableView
+          title="Recent Orders"
+          description="Log of latest customer orders and their status."
+          headers={['Order No', 'Date', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
+          data={orders}
+          loading={loading}
+          searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
+          renderRow={(o: any) => (
+            <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">
+              <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
+              <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
+              <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-800">{o.customers?.customer_name}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{o.customers?.customer_code}</span>
+                  </div>
+              </td>
+              <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-600 border">
+                        {o.executive?.name?.charAt(0) || '?'}
+                    </div>
+                    <span className="text-xs font-medium">{o.executive?.name || 'N/A'}</span>
+                  </div>
+              </td>
+              <td className="px-6 py-4 font-black text-slate-900">₹ {o.total_value?.toLocaleString()}</td>
+              <td className="px-6 py-4">
+                  <div className="flex items-center gap-1">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 border">
+                        {o.items?.length || 0}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Products</span>
+                  </div>
+              </td>
+              <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 transition-opacity">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={(e) => { e.stopPropagation(); handleEdit(o); }}
+                        className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/10"
+                        title="Edit Order"
+                    >
+                        <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }}
+                        className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"
+                        title="Delete Order"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+              </td>
+            </tr>
+          )}
+        />
       )}
     </div>
   );

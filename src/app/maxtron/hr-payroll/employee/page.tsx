@@ -6,11 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye } from 'lucide-react';
+import { 
+    UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, 
+    Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2,
+    DollarSign, Lock, Copy, AlertCircle, Users, TrendingUp, 
+    FileDown, Download, Eye, EyeOff 
+} from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '@/components/ui/pagination';
+import { exportToExcel } from '@/utils/export';
 
 const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
@@ -21,6 +28,8 @@ export default function EmployeeInformationPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newEmployeePopup, setNewEmployeePopup] = useState<{username: string, password: string} | null>(null);
+  const [showTempPassword, setShowTempPassword] = useState(false);
+  const [showFormPassword, setShowFormPassword] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -58,6 +67,11 @@ export default function EmployeeInformationPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Calculate 18 years ago for DOB selection
+  const eighteenYearsAgo = new Date();
+  eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+  const maxDobDate = eighteenYearsAgo.toISOString().split('T')[0];
   
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
@@ -81,11 +95,14 @@ export default function EmployeeInformationPage() {
     company_id: '',
     has_license: false,
     has_passport: false,
+    phone: '',
+    aadhaar: '',
     type: '',
     guarantor_name: '',
     is_married: false,
     family_details: '',
     category_id: '',
+    basic_salary: 0,
     employee_qualifications: [] as any[],
     employee_experiences: [] as any[],
     employee_certificates: [] as any[],
@@ -215,7 +232,18 @@ export default function EmployeeInformationPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value, type } = e.target;
+    
+    // Restrict to digits only for phone and aadhaar
+    if (name === 'phone' || name === 'aadhaar') {
+      value = value.replace(/\D/g, '');
+    }
+
+    // Restrict negative values for number inputs
+    if (type === 'number' && Number(value) < 0) {
+      value = '0';
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleAddressChange = (index: number, field: string, value: string) => {
@@ -245,6 +273,47 @@ export default function EmployeeInformationPage() {
 
   const handleNestedRowChange = (collection: keyof typeof formData, index: number, field: string, value: any) => {
     const list = [...(formData[collection] as any[])];
+    
+    // Restrict negative values for numeric fields
+    const numericFields = ['loan_availed', 'balance_receivable', 'suspense_issued', 'minimum_target', 'slab_from', 'slab_to', 'incentive_percent'];
+    if (numericFields.includes(field) && Number(value) < 0) {
+      value = '0';
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Work Experience Validations
+    if (collection === 'employee_experiences') {
+      if ((field === 'from_period' || field === 'to_period') && value > today) {
+        error("Future dates are not allowed for past work experience.");
+        return;
+      }
+      if (field === 'to_period' && list[index].from_period && value < list[index].from_period) {
+        error("'To' date cannot be before 'From' date.");
+        return;
+      }
+      if (field === 'from_period' && list[index].to_period && value > list[index].to_period) {
+        error("'From' date cannot be after 'To' date.");
+        return;
+      }
+    }
+
+    // Certification Validations
+    if (collection === 'employee_certificates') {
+      if (field === 'issue_date' && value > today) {
+        error("Issue date cannot be in the future.");
+        return;
+      }
+      if (field === 'expiry_date' && list[index].issue_date && value < list[index].issue_date) {
+        error("Expiry date cannot be before issue date.");
+        return;
+      }
+      if (field === 'issue_date' && list[index].expiry_date && value > list[index].expiry_date) {
+        error("Issue date cannot be after expiry date.");
+        return;
+      }
+    }
+
     list[index][field] = value;
     setFormData({ ...formData, [collection]: list });
   };
@@ -259,56 +328,132 @@ export default function EmployeeInformationPage() {
     setFormData({ ...formData, [collection]: list });
   };
 
-  const downloadEmployeeList = () => {
+  const downloadEmployeeList = async () => {
     if (employees.length === 0) {
       info('No employee data available to export.');
       return;
     }
     
-    const headers = ['Emp Code', 'Full Name', 'Username/Email', 'Role', 'Company', 'DOB', 'Guarantor', 'Married', 'Has License', 'Has Passport'];
+    const headers = [
+      'Emp Code', 'Full Name', 'Username/Email', 'Phone', 'Aadhaar', 
+      'Role', 'Category', 'Company', 'DOB', 'Salary', 
+      'Guarantor', 'Married', 'Has License', 'Has Passport'
+    ];
+
     const rows = employees.map(emp => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
         try {
           const d = new Date(dateStr);
           if (isNaN(d.getTime())) return dateStr;
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          return `${day}-${month}-${year}`;
-        } catch (e) {
-          return dateStr;
-        }
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
       };
 
       return [
-        `"${(emp.employee_code || 'SYS').replace(/"/g, '""')}"`,
-        `"${(emp.name || '').replace(/"/g, '""')}"`,
-        `"${(emp.username || '').replace(/"/g, '""')}"`,
-        `"${(emp.user_types?.name || 'User').replace(/"/g, '""')}"`,
-        `"${(emp.companies?.company_name || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(emp.date_of_birth)}'"`, // Prepend single quote after the double quote to force text in Excel
-        `"${(emp.guarantor_name || 'N/A').replace(/"/g, '""')}"`,
-        `"${emp.is_married ? 'Yes' : 'No'}"`,
-        `"${emp.has_license ? 'Yes' : 'No'}"`,
-        `"${emp.has_passport ? 'Yes' : 'No'}"`
+        emp.employee_code || 'SYS',
+        emp.name || 'N/A',
+        emp.username || 'N/A',
+        emp.phone || 'N/A',
+        emp.aadhaar || 'N/A',
+        emp.user_types?.name || 'User',
+        emp.employee_categories?.category_name || 'N/A',
+        emp.companies?.company_name || 'N/A',
+        formatDate(emp.date_of_birth),
+        Number(emp.basic_salary) || 0,
+        emp.guarantor_name || 'N/A',
+        emp.is_married ? 'Yes' : 'No',
+        emp.has_license ? 'Yes' : 'No',
+        emp.has_passport ? 'Yes' : 'No'
       ];
     });
     
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `employee_list_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Staff Directory'
+    });
+
     success('Detailed employee list exported successfully!');
   };
 
+  const validatePersonalTab = () => {
+    const requiredFields: {key: keyof typeof formData, label: string}[] = [
+      { key: 'name', label: 'Full Name' },
+      { key: 'date_of_birth', label: 'Date of Birth' },
+      { key: 'phone', label: 'Phone Number' },
+      { key: 'aadhaar', label: 'Aadhaar Card No' },
+      { key: 'category_id', label: 'Employee Category' },
+      { key: 'type', label: 'System Role' },
+      { key: 'username', label: 'Login Email' }
+    ];
+
+    for (const field of requiredFields) {
+      if (!formData[field.key] || String(formData[field.key]).trim() === '') {
+        error(`${field.label} is required.`);
+        return false;
+      }
+    }
+
+    // Phone validation (basic 10 digits check)
+    if (!/^\d{10}$/.test(formData.phone)) {
+      error('Please enter a valid 10-digit phone number.');
+      return false;
+    }
+
+    // For new employees, password is also required
+    if (!editingId && !formData.password) {
+      error('Password is required for new registration.');
+      return false;
+    }
+
+    // Password validation (If provided)
+    if (formData.password) {
+      if (formData.password.length < 8) {
+        error('Password must be at least 8 characters long.');
+        return false;
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        error('Password must contain at least one capital letter.');
+        return false;
+      }
+      if (!/\d/.test(formData.password)) {
+        error('Password must contain at least one number.');
+        return false;
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+        error('Password must contain at least one special character.');
+        return false;
+      }
+    }
+
+    // Aadhaar validation (Strict format: 12 digits, cannot start with 0 or 1)
+    if (!/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
+      error('Please enter a valid 12-digit Aadhaar number (cannot start with 0 or 1).');
+      return false;
+    }
+
+    // DOB Validation (At least 18 years old)
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      const isActuallyOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
+
+      if (!isActuallyOver18) {
+        error('Employee must be at least 18 years old.');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const saveEmployee = async () => {
+    if (!validatePersonalTab()) return;
+
     setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
@@ -341,14 +486,16 @@ export default function EmployeeInformationPage() {
             { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
           ],
-          company_id: '', has_license: false, has_passport: false, type: '',
-          guarantor_name: '', is_married: false, family_details: '', category_id: '',
+          company_id: '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '',
+          guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
         setActiveTab('personal');
       } else {
-        error(data.message || 'Operation failed');
+        error(data.error || data.message || 'Operation failed');
       }
+    } catch (err: any) {
+      error(err.message || 'Network error occurred');
     } finally {
       setSubmitting(false);
     }
@@ -369,11 +516,14 @@ export default function EmployeeInformationPage() {
       company_id: emp.company_id || '',
       has_license: emp.has_license || false,
       has_passport: emp.has_passport || false,
+      phone: emp.phone || '',
+      aadhaar: emp.aadhaar || '',
       type: emp.type || '',
       guarantor_name: emp.guarantor_name || '',
       is_married: emp.is_married || false,
       family_details: emp.family_details || '',
       category_id: emp.category_id || '',
+      basic_salary: Number(emp.basic_salary) || 0,
       employee_qualifications: emp.employee_qualifications || [],
       employee_experiences: emp.employee_experiences || [],
       employee_certificates: emp.employee_certificates || [],
@@ -479,9 +629,21 @@ export default function EmployeeInformationPage() {
                    <span className="font-mono text-base font-bold text-foreground">{newEmployeePopup.username}</span>
                  </div>
                  <div className="flex justify-between items-center bg-card p-3 rounded-lg border border-border shadow-sm">
-                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Password</span>
-                   <span className="font-mono text-base font-bold tracking-wider text-foreground">{newEmployeePopup.password}</span>
-                 </div>
+                    <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Password</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-base font-bold tracking-wider text-foreground">
+                        {showTempPassword ? newEmployeePopup.password : '••••••••'}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 rounded-full hover:bg-muted"
+                        onClick={() => setShowTempPassword(!showTempPassword)}
+                      >
+                        {showTempPassword ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                      </Button>
+                    </div>
+                  </div>
               </div>
 
                <Button onClick={() => {
@@ -501,7 +663,7 @@ export default function EmployeeInformationPage() {
               </div>
             </CardContent>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl">
-              <Button onClick={() => setNewEmployeePopup(null)} className="w-full bg-slate-800 hover:bg-slate-900 shadow-md">Acknowledge & Close</Button>
+              <Button onClick={() => { setNewEmployeePopup(null); setShowTempPassword(false); }} className="w-full bg-slate-800 hover:bg-slate-900 shadow-md">Acknowledge & Close</Button>
             </div>
           </Card>
         </div>
@@ -528,7 +690,7 @@ export default function EmployeeInformationPage() {
                       { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                       { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                     ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                   });
                   setIsViewMode(false);
                   setShowForm(true);
@@ -548,7 +710,9 @@ export default function EmployeeInformationPage() {
                 </Button>
               )}
               <Button onClick={() => {
-                if (activeTab === 'personal') setActiveTab('qualifications');
+                if (activeTab === 'personal') {
+                  if (validatePersonalTab()) setActiveTab('qualifications');
+                }
                 else if (activeTab === 'qualifications') setActiveTab('financials');
                 else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
                 else saveEmployee();
@@ -656,7 +820,23 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
-                        <Input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} disabled={isViewMode} className="h-10 md:h-11" />
+                        <Input 
+                           type="date" 
+                           name="date_of_birth" 
+                           max={maxDobDate}
+                           value={formData.date_of_birth} 
+                           onChange={handleInputChange} 
+                           disabled={isViewMode} 
+                           className="h-10 md:h-11" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
+                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className="h-10 md:h-11" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No</label>
+                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className="h-10 md:h-11" />
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
                         <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
@@ -687,7 +867,7 @@ export default function EmployeeInformationPage() {
                               onClick={copyCommunicationAddress}
                               className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
                             >
-                              <Copy className="w-3 h-3 mr-1" /> Same as Communication
+                              <Copy className="w-3 h-3 mr-1" /> <span className="hidden md:block">Same as Communication</span>
                             </Button>
                           )}
                         </div>
@@ -782,7 +962,27 @@ export default function EmployeeInformationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
-                <Input type="password" name="password" value={formData.password} onChange={handleInputChange} disabled={isViewMode} placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} />
+                <div className="relative">
+                  <Input 
+                    type={showFormPassword ? "text" : "password"} 
+                    name="password" 
+                    value={formData.password} 
+                    onChange={handleInputChange} 
+                    disabled={isViewMode} 
+                    placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
+                  />
+                  {!isViewMode && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowFormPassword(!showFormPassword)}
+                    >
+                      {showFormPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />}
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
@@ -800,9 +1000,9 @@ export default function EmployeeInformationPage() {
                 </select>
               </div>
             </CardContent>
-              </Card>
-             </div>
-            </TabsContent>
+          </Card>
+        </div>
+      </TabsContent>
 
             <TabsContent value="qualifications">
               <Card>
@@ -874,11 +1074,11 @@ export default function EmployeeInformationPage() {
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">From</label>
-                                <Input type="date" value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">To</label>
-                                <Input type="date" value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-2 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">Post/Job Title</label>
@@ -913,6 +1113,29 @@ export default function EmployeeInformationPage() {
                   <CardDescription>Manage passports, certificates, licenses, and advances here.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
+                  <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 mb-6">
+                    <div className="flex items-center justify-between">
+                       <div className="space-y-1">
+                          <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Monthly Remuneration
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
+                       </div>
+                       <div className="w-64">
+                          <Input 
+                            type="number" 
+                            name="basic_salary" 
+                            value={formData.basic_salary} 
+                            onChange={handleInputChange} 
+                            disabled={isViewMode} 
+                            placeholder="0.00" 
+                            className="h-12 font-black text-xl text-primary bg-white border-primary/20 rounded-xl text-right"
+                            min="0"
+                          />
+                       </div>
+                    </div>
+                  </div>
                   
                   {/* Licenses & Passports */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -970,7 +1193,7 @@ export default function EmployeeInformationPage() {
                             </div> */}
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Issue Date</label>
-                              <Input type="date" value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
+                              <Input type="date" max={new Date().toISOString().split('T')[0]} value={cert.issue_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'issue_date', e.target.value)} disabled={isViewMode} />
                             </div>
                             <div className="space-y-1 flex-1">
                               <label className="text-xs text-muted-foreground">Expiry Date</label>
@@ -1007,11 +1230,11 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
-                                <Input type="number" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
+                                <Input type="number" min="0" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                                <Input type="number" min="0" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Date Issued</label>
@@ -1043,11 +1266,11 @@ export default function EmployeeInformationPage() {
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
                                 <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Suspense Issued</label>
-                                <Input type="number" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
+                                <Input type="number" min="0" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                                <Input type="number" min="0" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
                               </div>
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
@@ -1076,7 +1299,7 @@ export default function EmployeeInformationPage() {
                       <div className="space-y-3">
                         {formData.employee_targets.map((tgt, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1099,9 +1322,9 @@ export default function EmployeeInformationPage() {
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1128,7 +1351,7 @@ export default function EmployeeInformationPage() {
             <CardTitle className="text-xl text-primary font-bold">Registered Employees</CardTitle>
             <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
-          <div className="flex gap-4 items-center">
+          <div className="grid grid-cols-1 md:flex gap-4 items-center">
             <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
                <input 
                   type="checkbox" 
@@ -1142,7 +1365,7 @@ export default function EmployeeInformationPage() {
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                 className="pl-9 w-72 rounded-full border-border bg-muted/20" 
+                 className="pl-9 w-full md:w-72 rounded-full border-border bg-muted/20" 
                  placeholder="Search by name or code..." 
                  value={searchQuery}
                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
@@ -1170,15 +1393,16 @@ export default function EmployeeInformationPage() {
                         <th className="p-4 font-bold w-24 uppercase tracking-wider text-[11px]">Emp Code</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Full Name</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Department / Role</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Basic Salary</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Contact Email</th>
                         <th className="p-4 font-bold text-right uppercase tracking-wider text-[11px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {loading ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading employees...</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center">Loading employees...</td></tr>
                       ) : currentEmployees.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors group">
@@ -1194,6 +1418,7 @@ export default function EmployeeInformationPage() {
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
+                      <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {emp.is_deleted ? (
@@ -1225,40 +1450,19 @@ export default function EmployeeInformationPage() {
             </table>
           </div>
           
-          <div className="md:flex md:justify-between items-center mt-4 mx-2">
-            <div className="text-sm text-muted-foreground">
-              Showing {employees.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="hidden md:flex items-center space-x-2 mr-4">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
-                <select 
-                  value={rowsPerPage} 
-                  onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                  className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <Button 
-                variant="outline" size="sm" 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Prev
-              </Button>
-              <Button 
-                variant="outline" size="sm" 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                disabled={currentPage >= totalPages}
-              >
-                Next <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(rows) => {
+              setRowsPerPage(rows);
+              setCurrentPage(1);
+            }}
+            totalEntries={filteredEmployees.length}
+            startEntry={employees.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1}
+            endEntry={Math.min(currentPage * rowsPerPage, filteredEmployees.length)}
+          />
         </>
       );
     })()}

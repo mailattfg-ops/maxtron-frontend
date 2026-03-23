@@ -169,8 +169,20 @@ export default function PurchaseEntryPage() {
   };
 
   const saveEntry = async () => {
-    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => i.received_quantity <= 0)) {
-      error('Please select Supplier/Order and add items with valid quantities.');
+    if (!formData.supplier_id) {
+      error('Please select a Supplier or linked Purchase Order before receiving materials.');
+      return;
+    }
+    if (formData.items.length === 0) {
+      error('At least one item must be added to the goods receipt.');
+      return;
+    }
+    if (formData.items.some(i => !i.rm_id)) {
+      error('One or more items do not have a material selected.');
+      return;
+    }
+    if (formData.items.some(i => i.received_quantity <= 0)) {
+      error('All items must have a quantity greater than zero.');
       return;
     }
 
@@ -201,10 +213,10 @@ export default function PurchaseEntryPage() {
         fetchEntries();
         resetForm();
       } else {
-        error(data.message || 'Operation failed.');
+        error(data.error || data.message || 'Operation failed.');
       }
-    } catch (err) {
-      error('Network connectivity issue.');
+    } catch (err: any) {
+      error(err.message || 'Network connectivity issue or server error.');
     } finally {
       setSubmitting(false);
     }
@@ -333,7 +345,7 @@ export default function PurchaseEntryPage() {
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Unloading Fees (₹)</label>
-                <Input type="number" value={formData.unloading_charges} onChange={(e) => setFormData({...formData, unloading_charges: Number(e.target.value)})} className="h-11 font-black text-rose-500" />
+                <Input type="number" min="0" value={formData.unloading_charges} onChange={(e) => setFormData({...formData, unloading_charges: Math.max(0, Number(e.target.value))})} className="h-11 font-black text-rose-500" />
               </div>
             </div>
 
@@ -386,8 +398,14 @@ export default function PurchaseEntryPage() {
                           <td className="p-4">
                             <Input 
                               type="number" 
+                              min="0"
+                              max={item.ordered_quantity}
                               value={item.received_quantity} 
-                              onChange={(e) => updateItem(idx, 'received_quantity', Number(e.target.value))}
+                              onChange={(e) => {
+                                const val = Math.max(0, Number(e.target.value));
+                                const maxAllowed = item.ordered_quantity > 0 ? item.ordered_quantity : Infinity;
+                                updateItem(idx, 'received_quantity', Math.min(val, maxAllowed));
+                              }}
                               className={`h-10 text-right font-black ${item.received_quantity < item.ordered_quantity ? 'text-amber-600' : 'text-emerald-600'}`}
                             />
                           </td>

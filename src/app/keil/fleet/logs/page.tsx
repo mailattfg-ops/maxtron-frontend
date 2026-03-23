@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Plus, 
     Search, 
+    Edit,
     Trash2, 
     Truck, 
     Calendar,
@@ -20,7 +21,9 @@ import {
     Clock,
     Wrench,
     CreditCard,
-    Check
+    Check,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { TableView } from "@/components/ui/table-view";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const LOGS_API = `${API_BASE}/api/keil/fleet/logs`;
@@ -36,6 +40,12 @@ const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
 export default function VehicleDailyLogPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('fleet_log_view', 'view');
+    const canCreate = hasPermission('fleet_log_view', 'create');
+    const canEdit = hasPermission('fleet_log_view', 'edit');
+    const canDelete = hasPermission('fleet_log_view', 'delete');
     
     const [logs, setLogs] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
@@ -43,6 +53,7 @@ export default function VehicleDailyLogPage() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
 
     const [filters, setFilters] = useState({
@@ -135,25 +146,85 @@ export default function VehicleDailyLogPage() {
     };
 
     const handleSave = async () => {
-        if (!formData.vehicle_id || !formData.start_km) {
-            error("Vehicle and Start KM are required.");
+        // Validation Suite
+        if (!formData.vehicle_id) {
+            error("Target Vehicle is required.");
+            return;
+        }
+        if (!formData.log_date) {
+            error("Date is required.");
+            return;
+        }
+        if (!formData.route_id) {
+            error("Logistical Route is required.");
+            return;
+        }
+        if (formData.start_km === '' || parseFloat(formData.start_km) < 0) {
+            error("Valid Start Odometer reading is required (cannot be negative).");
+            return;
+        }
+        if (formData.end_km === '' || parseFloat(formData.end_km) < 0) {
+            error("Valid End Odometer reading is required (cannot be negative).");
+            return;
+        }
+        
+        const start = parseFloat(formData.start_km);
+        const end = parseFloat(formData.end_km);
+        if (end < start) {
+            error("End Odometer cannot be less than Start Odometer.");
             return;
         }
 
+        if (parseFloat(formData.fuel_qty) < 0) {
+            error("Fuel quantity cannot be negative.");
+            return;
+        }
+
+        if (formData.has_complaint && parseFloat(formData.bill_amount) < 0) {
+            error("Workshop Bill Amount cannot be negative.");
+            return;
+        }
+
+        if (formData.has_complaint) {
+            if (!formData.complaint_type) {
+                error("Type of Complaint is required.");
+                return;
+            }
+            if (!formData.workshop_in_time) {
+                error("Workshop IN Time is required.");
+                return;
+            }
+            if (!formData.workshop_out_time) {
+                error("Workshop OUT Time is required.");
+                return;
+            }
+        }
+
+        const payload = {
+            ...formData,
+            workshop_in_time: formData.workshop_in_time || null,
+            workshop_out_time: formData.workshop_out_time || null,
+            complaint_type: formData.complaint_type || null
+        };
+
         const token = localStorage.getItem('token');
+        const method = editingId ? 'PUT' : 'POST';
+        const url = editingId ? `${LOGS_API}/${editingId}` : LOGS_API;
+
         try {
-            const res = await fetch(LOGS_API, {
-                method: 'POST',
+            const res = await fetch(url, {
+                method,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                success("Daily log recorded!");
+                success(editingId ? "Log entry updated!" : "Daily log recorded!");
                 setShowForm(false);
+                setEditingId(null);
                 fetchLogs(currentCompanyId);
                 resetForm();
             } else {
@@ -183,6 +254,26 @@ export default function VehicleDailyLogPage() {
         }
     };
 
+    const handleEdit = (l: any) => {
+        setEditingId(l.id);
+        setFormData({
+            vehicle_id: l.vehicle_id,
+            log_date: new Date(l.log_date).toISOString().split('T')[0],
+            start_km: l.start_km.toString(),
+            end_km: l.end_km ? l.end_km.toString() : '',
+            fuel_qty: l.fuel_qty.toString(),
+            route_id: l.route_id || '',
+            has_complaint: l.has_complaint,
+            complaint_type: l.complaint_type || '',
+            workshop_in_time: l.workshop_in_time ? new Date(l.workshop_in_time).toISOString().slice(0, 16) : '',
+            workshop_out_time: l.workshop_out_time ? new Date(l.workshop_out_time).toISOString().slice(0, 16) : '',
+            bill_amount: l.bill_amount ? l.bill_amount.toString() : '0',
+            remarks: l.remarks || '',
+            company_id: l.company_id
+        });
+        setShowForm(true);
+    };
+
     const resetForm = () => {
         setFormData({
             vehicle_id: '',
@@ -199,6 +290,7 @@ export default function VehicleDailyLogPage() {
             remarks: '',
             company_id: currentCompanyId
         });
+        setEditingId(null);
     };
 
     const handleVehicleChange = (vId: string) => {
@@ -210,6 +302,18 @@ export default function VehicleDailyLogPage() {
         }));
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Logistics Telemetry module.</p>
+        </div>
+    );
+
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -220,29 +324,37 @@ export default function VehicleDailyLogPage() {
                     </h1>
                     <p className="text-muted-foreground text-sm font-medium">Daily Travel, Fuel & Fleet Health Logging</p>
                 </div>
-                <Button 
-                    onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
-                    className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
-                >
-                    {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                    {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
-                </Button>
+                {canCreate && (
+                    <Button 
+                        onClick={() => { 
+                            setShowForm(!showForm); 
+                            if(!showForm) resetForm(); 
+                            else setEditingId(null);
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                    >
+                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                        {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
+                    </Button>
+                )}
             </div>
 
             {showForm ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
-                        <CardTitle className="text-lg font-bold text-primary">
-                            Telemetry Entry Module
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-6">
+                        <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
+                            <Navigation className="w-5 h-5" />
+                            {editingId ? 'Modify Field Telemetry' : 'Telemetry Entry Module'}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground font-medium">Capture real-time asset performance data</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle</label>
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle *</label>
                                 <select 
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    required
+                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
                                     value={formData.vehicle_id} 
                                     onChange={e => handleVehicleChange(e.target.value)}
                                 >
@@ -251,14 +363,15 @@ export default function VehicleDailyLogPage() {
                                 </select>
                             </div>
                             <div className="space-y-1.5 flex flex-col justify-end">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Date</label>
-                                <Input type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Date *</label>
+                                <Input required type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route</label>
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route *</label>
                                 <select 
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    required
+                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
                                     value={formData.route_id} 
                                     onChange={e => setFormData({ ...formData, route_id: e.target.value })}
                                 >
@@ -269,23 +382,23 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> Start Odometer
+                                    <MapPin className="w-3 h-3" /> Start Odometer *
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm" value={formData.start_km} onChange={e => setFormData({ ...formData, start_km: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" value={formData.start_km} onChange={e => setFormData({ ...formData, start_km: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> End Odometer
+                                    <MapPin className="w-3 h-3" /> End Odometer *
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm" placeholder="Current Reading" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" placeholder="Current Reading" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                                 <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
                                     <Fuel className="w-3 h-3" /> Diesel Filled (Ltr)
                                 </label>
-                                <Input type="number" step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
+                                <Input type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
                             </div>
 
                             <div className="lg:col-span-3 space-y-1.5">
@@ -307,30 +420,30 @@ export default function VehicleDailyLogPage() {
                                     <div className="mt-4 p-6 bg-rose-50/50 rounded-[2rem] border border-rose-100 space-y-6 animate-in slide-in-from-top-2 duration-300">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Type of Complaint</label>
-                                                <Input placeholder="Engine, Suspension, etc." className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.complaint_type} onChange={e => setFormData({ ...formData, complaint_type: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Type of Complaint *</label>
+                                                <Input required placeholder="Engine, Suspension, etc." className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.complaint_type} onChange={e => setFormData({ ...formData, complaint_type: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Workshop Bill Amt (₹)</label>
-                                                <Input type="number" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
+                                                <Input type="number" min={0} className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop IN Time</label>
-                                                <Input type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.workshop_in_time} onChange={e => setFormData({ ...formData, workshop_in_time: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop IN Time *</label>
+                                                <Input required type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.workshop_in_time} onChange={e => setFormData({ ...formData, workshop_in_time: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop OUT Time</label>
-                                                <Input type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold" value={formData.workshop_out_time} onChange={e => setFormData({ ...formData, workshop_out_time: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop OUT Time *</label>
+                                                <Input required type="datetime-local" className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.workshop_out_time} onChange={e => setFormData({ ...formData, workshop_out_time: e.target.value })} />
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="lg:col-span-3 space-y-1.5">
-                                <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
-                                <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
-                            </div>
+                             <div className="lg:col-span-3 space-y-1.5">
+                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
+                                 <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
+                             </div>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end">
@@ -444,9 +557,18 @@ export default function VehicleDailyLogPage() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-6 text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        {canEdit && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         )}

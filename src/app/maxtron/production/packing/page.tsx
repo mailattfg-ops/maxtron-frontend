@@ -146,7 +146,7 @@ export default function PackingDetailsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Packing Details</h1>
           <p className="text-muted-foreground mt-1">Record bundling of finished goods into units.</p>
@@ -191,21 +191,21 @@ export default function PackingDetailsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Boxes className="w-4 h-4 text-emerald-600" /> Bundle Count</label>
-                <Input type="number" placeholder="0" value={formData.bundle_count} onChange={e => {
+                <Input type="number" min={0} placeholder="0" value={formData.bundle_count} onChange={e => {
                     const cnt = parseInt(e.target.value) || 0;
                     setFormData({ ...formData, bundle_count: cnt, total_packed_qty: cnt * formData.qty_per_bundle });
                 }} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-emerald-600" /> Qty per Bundle (Kg/Pcs)</label>
-                <Input type="number" placeholder="0.00" value={formData.qty_per_bundle} onChange={e => {
+                <Input type="number" min={0} placeholder="0.00" value={formData.qty_per_bundle} onChange={e => {
                     const check = parseFloat(e.target.value) || 0;
                     setFormData({ ...formData, qty_per_bundle: check, total_packed_qty: check * formData.bundle_count });
                 }} />
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Archive className="w-4 h-4 text-emerald-600" /> Total Packed Quantity</label>
-                <Input type="number" value={formData.total_packed_qty} readOnly className="bg-emerald-50 text-emerald-700 font-bold text-lg h-12" />
+                <Input type="number" value={formData.total_packed_qty} readOnly className="bg-emerald-50 text-emerald-700 font-bold text-lg h-10" />
                 <p className="text-[10px] text-emerald-400 italic mt-1">Calculated: Bundles × Qty per Bundle</p>
               </div>
             </div>
@@ -220,30 +220,28 @@ export default function PackingDetailsPage() {
       )}
 
       {!showForm && (
-        <Card className="border-border/40 shadow-sm">
-          <TableView
-            title="Packed Unit Explorer"
-            description="History of bundled finished products."
-            headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed']}
-            data={packingRecords}
-            loading={loading}
-            searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
-            searchPlaceholder="Search packing records..."
-            renderRow={(p: any) => {
-              const batch = p.production_conversions?.production_batches;
-              return (
-                <tr key={p.id} className="hover:bg-emerald-50/50 border-b last:border-none transition-all">
-                  <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 font-mono font-bold text-emerald-700">{batch?.batch_number}</td>
-                  <td className="px-6 py-4 font-bold">{batch?.finished_products?.product_name}</td>
-                  <td className="px-6 py-4 font-black">{p.bundle_count}</td>
-                  <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
-                  <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
-                </tr>
-              );
-            }}
-          />
-        </Card>
+        <TableView
+          title="Packed Unit Explorer"
+          description="History of bundled finished products."
+          headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed']}
+          data={packingRecords}
+          loading={loading}
+          searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
+          searchPlaceholder="Search packing records..."
+          renderRow={(p: any) => {
+            const batch = p.production_conversions?.production_batches;
+            return (
+              <tr key={p.id} className="hover:bg-emerald-50/50 border-b last:border-none transition-all">
+                <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 font-mono font-bold text-emerald-700">{batch?.batch_number}</td>
+                <td className="px-6 py-4 font-bold">{batch?.finished_products?.product_name}</td>
+                <td className="px-6 py-4 font-black">{p.bundle_count}</td>
+                <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
+                <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
+              </tr>
+            );
+          }}
+        />
       )}
     </div>
   );

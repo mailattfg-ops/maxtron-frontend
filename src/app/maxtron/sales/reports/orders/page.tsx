@@ -10,6 +10,8 @@ import {
   User, Package, Filter, Download, ArrowRight
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { exportToExcel } from '@/utils/export';
+import { useToast } from '@/components/ui/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,6 +24,7 @@ export default function OrderReport() {
     customer: ''
   });
 
+  const { info } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -69,17 +72,41 @@ export default function OrderReport() {
 
   const totalValue = filteredData.reduce((sum, item) => sum + (parseFloat(item.total_value) || 0), 0);
 
+  const downloadExcel = async () => {
+    if (filteredData.length === 0) {
+      info('No records to export.');
+      return;
+    }
+    const headers = ['Order No', 'Date', 'Customer', 'Sales Executive', 'Items Count', 'Value (₹)'];
+    const rows = filteredData.map(row => [
+      row.order_number,
+      new Date(row.order_date).toLocaleDateString(),
+      row.customers?.customer_name || 'N/A',
+      row.executive?.name || 'N/A',
+      row.items?.length || 0,
+      Number(row.total_value || 0)
+    ]);
+
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `sales_orders_${activeTenant.toLowerCase()}_${filters.startDate}_to_${filters.endDate}.xlsx`,
+      sheetName: 'Sales Orders'
+    });
+    info('Order report exported successfully!');
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
             <ClipboardList className="w-8 h-8 text-primary" /> Sales Order Report
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">Detailed analysis of customer orders and quantities.</p>
         </div>
-        <Button variant="outline" className="gap-2 shadow-sm border-primary/20 text-primary">
-          <Download className="w-4 h-4" /> Export PDF
+        <Button onClick={downloadExcel} variant="outline" className="gap-2 shadow-sm border-primary/20 text-primary font-bold hover:bg-primary/5 px-6 rounded-full h-11 transition-all active:scale-95">
+          <Download className="w-4 h-4" /> Export Report
         </Button>
       </div>
 
@@ -90,19 +117,19 @@ export default function OrderReport() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1 flex items-center gap-1.5">
                         <Calendar className="w-3 h-3" /> From Date
                     </label>
-                    <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                    <Input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50 font-bold" />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1 flex items-center gap-1.5">
                         <Calendar className="w-3 h-3" /> To Date
                     </label>
-                    <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                    <Input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50 font-bold" />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1 flex items-center gap-1.5">
                         <Search className="w-3 h-3" /> Search Customer / Order
                     </label>
-                    <Input placeholder="Type to filter..." value={filters.customer} onChange={e => setFilters({...filters, customer: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                    <Input placeholder="Type to filter..." value={filters.customer} onChange={e => setFilters({...filters, customer: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50 font-bold" />
                 </div>
             </div>
         </CardContent>
@@ -129,24 +156,22 @@ export default function OrderReport() {
           </Card>
       </div>
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-        <TableView
-          headers={['Order No', 'Date', 'Customer', 'Sales Executive', 'Items Count', 'Value (₹)']}
-          data={filteredData}
-          loading={loading}
-          searchFields={['order_number', 'customers.customer_name']}
-          renderRow={(row: any) => (
-            <tr key={row.id} className="hover:bg-slate-50 border-b last:border-0 group">
-              <td className="px-6 py-4 font-mono font-bold text-primary">{row.order_number}</td>
-              <td className="px-6 py-4 text-sm">{new Date(row.order_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-semibold text-slate-700">{row.customers?.customer_name}</td>
-              <td className="px-6 py-4 text-slate-500">{row.executive?.name || 'N/A'}</td>
-              <td className="px-6 py-4 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md font-bold text-xs">{row.items?.length || 0}</span></td>
-              <td className="px-6 py-4 text-right font-black">₹ {parseFloat(row.total_value).toLocaleString()}</td>
-            </tr>
-          )}
-        />
-      </Card>
+      <TableView
+        headers={['Order No', 'Date', 'Customer', 'Sales Executive', 'Items Count', 'Value (₹)']}
+        data={filteredData}
+        loading={loading}
+        searchFields={['order_number', 'customers.customer_name']}
+        renderRow={(row: any) => (
+          <tr key={row.id} className="hover:bg-slate-50 border-b last:border-0 group transition-colors">
+            <td className="px-6 py-4 font-mono font-bold text-primary">{row.order_number}</td>
+            <td className="px-6 py-4 text-sm font-medium">{new Date(row.order_date).toLocaleDateString()}</td>
+            <td className="px-6 py-4 font-bold text-slate-700">{row.customers?.customer_name}</td>
+            <td className="px-6 py-4 font-medium text-slate-500">{row.executive?.name || 'N/A'}</td>
+            <td className="px-6 py-4 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md font-bold text-xs">{row.items?.length || 0}</span></td>
+            <td className="px-6 py-4 text-right font-black border-l border-slate-50">₹ {parseFloat(row.total_value).toLocaleString()}</td>
+          </tr>
+        )}
+      />
     </div>
   );
 }

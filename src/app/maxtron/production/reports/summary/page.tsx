@@ -99,7 +99,7 @@ export default function ProductionSummaryReport() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Production Summary</h1>
           <p className="text-muted-foreground mt-1">Detailed view of extrusion output and batch efficiency.</p>
@@ -111,20 +111,22 @@ export default function ProductionSummaryReport() {
 
       <Card className="border-border/40 shadow-sm overflow-hidden bg-muted/30">
         <CardHeader className="pb-6 border-b border-border/40">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-1">
-                <Calendar className="w-3 h-3 text-primary" /> From Date
-              </label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-background shadow-none border-border/60 focus:border-primary/50 transition-colors" />
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="w-full grid grid-cols-2 gap-4 items-end">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-1">
+                  <Calendar className="w-3 h-3 text-primary" /> From Date
+                </label>
+                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-background shadow-none border-border/60 focus:border-primary/50 transition-colors" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-1">
+                  <Calendar className="w-3 h-3 text-primary" /> To Date
+                </label>
+                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-background shadow-none border-border/60 focus:border-primary/50 transition-colors" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-1">
-                <Calendar className="w-3 h-3 text-primary" /> To Date
-              </label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-background shadow-none border-border/60 focus:border-primary/50 transition-colors" />
-            </div>
-            <div className="lg:col-span-2 flex justify-end">
+            <div className="w-full lg:col-span-2 flex justify-center md:justify-end">
               <div className="bg-primary/5 rounded-lg px-4 py-2 border border-primary/10 flex items-center gap-4">
                 <div className="text-right border-r border-primary/20 pr-4">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Total Batches</p>

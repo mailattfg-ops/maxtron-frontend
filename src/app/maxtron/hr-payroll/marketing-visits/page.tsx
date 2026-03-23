@@ -10,6 +10,7 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import { exportToExcel } from '@/utils/export';
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
@@ -201,7 +202,7 @@ export default function MarketingVisitsPage() {
     setShowForm(true);
   };
 
-  const downloadVisitList = () => {
+  const downloadVisitList = async () => {
     const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
     if (activeRecords.length === 0) {
       info('No visit records found to export.');
@@ -218,29 +219,27 @@ export default function MarketingVisitsPage() {
           return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
         } catch (e) { return dateStr; }
       };
+
       return [
-        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.customer_name || '').replace(/"/g, '""')}"`,
-        `"${(rec.location || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(rec.visit_date)}"`,
-        `"${(rec.time_in || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.time_out || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.purpose || '').replace(/"/g, '""')}"`,
-        `"${(rec.outcome || '').replace(/"/g, '""')}"`,
-        `"${(rec.feedback || '').replace(/"/g, '""')}"`
+        rec.users?.name || 'N/A',
+        rec.customer_name || 'N/A',
+        rec.location || 'N/A',
+        formatDate(rec.visit_date),
+        rec.time_in || 'N/A',
+        rec.time_out || 'N/A',
+        rec.purpose || '',
+        rec.outcome || '',
+        rec.feedback || ''
       ];
     });
 
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportToExcel({
+      headers,
+      rows,
+      filename: `marketing_visits_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Marketing Visits'
+    });
+
     success('Detailed visit list exported successfully!');
   };
 
@@ -293,7 +292,7 @@ export default function MarketingVisitsPage() {
       </div>
 
       {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6 md:my-10 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -521,8 +520,8 @@ export default function MarketingVisitsPage() {
           searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
           searchPlaceholder="Search staff name/ID, client name/ID..."
           actions={
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <span className="text-sm font-semibold text-muted-foreground">Filter Date:</span>
+            <div className="flex gap-3">
+              <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
               <div className="flex items-center gap-2">
                 <Input 
                   type="date"

@@ -9,10 +9,12 @@ import {
     Code, 
     Activity, 
     ArrowRight,
-    Map,
+    Map as MapIcon,
     Building2,
     X,
-    Save
+    Save,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
@@ -28,6 +31,12 @@ const BRANCH_API = `${API_BASE}/api/keil/operations/branches`;
 export default function RouteRegistryPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('prod_route_view', 'view');
+    const canCreate = hasPermission('prod_route_view', 'create');
+    const canEdit = hasPermission('prod_route_view', 'edit');
+    const canDelete = hasPermission('prod_route_view', 'delete');
     
     const [routes, setRoutes] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -103,6 +112,12 @@ export default function RouteRegistryPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!formData.branch_id) {
+            error("Please select an organizational Branch for this logistical route.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -174,14 +189,26 @@ export default function RouteRegistryPage() {
         });
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Route Registry module.</p>
+        </div>
+    );
+
     return (
-        <div className="p-6 space-y-6">
+        <div className="md:p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-bold text-primary tracking-tight">Route Registry</h1>
                     <p className="text-muted-foreground text-sm font-medium">Define and Manage Logistical Collection Routes</p>
                 </div>
-                {!isFormOpen && (
+                {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
                         className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
@@ -212,7 +239,7 @@ export default function RouteRegistryPage() {
                                 <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="RT-A1" value={formData.route_code} onChange={e => setFormData({ ...formData, route_code: e.target.value })} />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Map className="w-4 h-4 text-primary" /> Route Name</label>
+                                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapIcon className="w-4 h-4 text-primary" /> Route Name</label>
                                 <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Main Highway Route" value={formData.route_name} onChange={e => setFormData({ ...formData, route_name: e.target.value })} />
                             </div>
                             <div className="space-y-2">
@@ -222,6 +249,7 @@ export default function RouteRegistryPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
                                 <select 
+                                    required
                                     className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
                                     value={formData.branch_id}
                                     onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
@@ -238,41 +266,45 @@ export default function RouteRegistryPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView
-                        title="Defined Routes"
-                        description="List of all logistics routes mapped by branch and type."
-                        headers={['Route Code', 'Route Name', 'Type', 'Branch', 'Actions']}
-                        data={routes}
-                        loading={loading}
-                        searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
-                        renderRow={(r: any) => (
-                            <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
-                                <td className="px-6 py-4">
-                                    <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="font-bold text-slate-700">{r.route_name}</span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
-                                <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
+                <TableView
+                    title="Defined Routes"
+                    description="List of all logistics routes mapped by branch and type."
+                    headers={['Route Code', 'Route Name', 'Type', 'Branch', 'Actions']}
+                    data={routes}
+                    loading={loading}
+                    searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
+                    renderRow={(r: any) => (
+                        <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
+                            <td className="px-6 py-4">
+                                <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="font-bold text-slate-700">{r.route_name}</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
+                            <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                    {canEdit && (
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
                                             <Edit className="w-4 h-4" />
                                         </Button>
+                                    )}
+                                    {canDelete && (
                                         <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
+                                    )}
+                                    {canEdit && (
                                         <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
                                             Manage HCEs <ArrowRight className="w-3 h-3" />
                                         </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
         </div>
     );

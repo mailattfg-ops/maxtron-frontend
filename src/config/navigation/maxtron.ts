@@ -79,6 +79,7 @@ export const maxtronSidebarMenu: NavItem[] = [
         icon: DollarSign,
         permissionKey: "fin_view",
         children: [
+            { title: "Payroll Management", path: "/maxtron/finance/payroll", permissionKey: "fin_payment_view" },
             { title: "Customer Collection Entry", path: "/maxtron/finance/collection", permissionKey: "fin_collection_view" },
             { title: "Supplier Payment Entry", path: "/maxtron/finance/payment", permissionKey: "fin_payment_view" },
             { title: "Petty Cash Entry", path: "/maxtron/finance/petty-cash", permissionKey: "fin_petty_cash_view" },
@@ -95,6 +96,7 @@ export const maxtronSidebarMenu: NavItem[] = [
         children: [
             { title: "User Roles", path: "/maxtron/admin/user-types", permissionKey: "admin_permissions" },
             { title: "Employee Categories", path: "/maxtron/admin/employee-categories", permissionKey: "admin_permissions" },
+            { title: "Raw Materials Types", path: "/maxtron/admin/rm-type-codes", permissionKey: "admin_permissions" },
             { title: "Finished Products", path: "/maxtron/production/product", permissionKey: "admin_permissions" },
             { title: "Permission Console", path: "/maxtron/admin/permissions", permissionKey: "admin_permissions" },
         ]

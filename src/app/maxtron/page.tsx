@@ -280,16 +280,16 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Center Panel: Recent Transactions */}
                 <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-border/50 gap-0 bg-card rounded-3xl overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
+                    <CardHeader className="grid md:flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
                         <div>
                             <CardTitle className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
                                 <Activity className="w-5 h-5 text-primary" /> Recent Operations
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium">Latest invoices and order lifecycle</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" className="font-bold text-primary gap-1 hover:bg-primary/10">
+                        {/* <Button variant="ghost" size="sm" className="font-bold text-primary gap-1 hover:bg-primary/10">
                             Operational Hub <ChevronRight className="w-4 h-4" />
-                        </Button>
+                        </Button> */}
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">

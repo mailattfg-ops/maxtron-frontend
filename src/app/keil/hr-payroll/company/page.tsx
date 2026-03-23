@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Save, Edit, Trash2, Plus, X, Building2, MapPin, Mail, Phone, Briefcase, FileText } from 'lucide-react';
+import { Save, Edit, Trash2, Plus, X, Building2, MapPin, Mail, Phone, Briefcase, FileText, Lock, Loader2 } from 'lucide-react';
+import { usePermission } from '@/hooks/usePermission';
 import { useToast } from '@/components/ui/toast';
 
 export default function CompanyInformationPage() {
@@ -17,6 +18,10 @@ export default function CompanyInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { success, error } = useToast();
+  const { hasPermission, loading: permissionLoading } = usePermission();
+
+  const canView = hasPermission('hr_company_view', 'view');
+  const canEdit = hasPermission('hr_company_view', 'edit');
   
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -76,10 +81,67 @@ export default function CompanyInformationPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value, type } = e.target as HTMLInputElement;
+
+    // Auto-capitalize certain fields
+    if (name === 'company_code' || name === 'gst_no') {
+      value = value.toUpperCase();
+    }
+
+    // Restricted numeric validation for specific fields
+    if (name === 'phone' || name.endsWith('_zip')) {
+        // Allow only digits
+        value = value.replace(/\D/g, '');
+    }
+
+    if (name === 'no_of_employees' || type === 'number') {
+        value = String(Math.max(0, Number(value) || 0));
+    }
+
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const validateForm = () => {
+    if (!formData.company_code || formData.company_code.trim().length < 2) {
+      error('Company Code is required (min 2 characters).');
+      return false;
+    }
+    if (!formData.company_name) {
+      error('Company Name is required.');
+      return false;
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      error('Please enter a valid email address.');
+      return false;
+    }
+    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
+      error('Phone number should be at least 10 digits.');
+      return false;
+    }
+    if (formData.gst_no && formData.gst_no.length !== 15) {
+      error('GST Number must be exactly 15 characters.');
+      return false;
+    }
+
+    // Address Validations (Street is marked with * in UI)
+    if (!formData.office_street?.trim()) {
+      error('Office Street Address is required.');
+      return false;
+    }
+    if (!formData.manufacturing_street?.trim()) {
+      error('Manufacturing Unit Street Address is required.');
+      return false;
+    }
+    if (!formData.billing_street?.trim()) {
+      error('Billing Street Address is required.');
+      return false;
+    }
+
+    return true;
   };
 
   const saveCompany = async () => {
+    if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
       const url = editingId ? `${API_URL}/${editingId}` : API_URL;
@@ -208,7 +270,7 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Employees</label>
-                    <Input type="number" name="no_of_employees" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
+                    <Input type="number" name="no_of_employees" min="0" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
                 </div>
               </div>
           </div>
@@ -362,6 +424,18 @@ export default function CompanyInformationPage() {
       return new Date(dateString).toLocaleDateString();
   };
 
+  if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+  if (!canView) return (
+      <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+          <div className="p-6 rounded-full bg-primary/5 text-primary">
+              <Lock className="w-12 h-12" />
+          </div>
+          <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+          <p className="text-muted-foreground font-medium">You do not have permission to view Company Information.</p>
+      </div>
+  );
+
   return (
     <div className="p-4 md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl border border-primary/10 shadow-sm">
@@ -393,9 +467,11 @@ export default function CompanyInformationPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
-                                            <Edit className="h-4 w-4 mr-2" /> Edit Details
-                                        </Button>
+                                        {canEdit && (
+                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
+                                                <Edit className="h-4 w-4 mr-2" /> Edit Details
+                                            </Button>
+                                        )}
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-6">

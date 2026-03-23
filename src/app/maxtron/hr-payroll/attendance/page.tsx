@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function AttendancePage() {
   const { hasPermission } = usePermission();
@@ -46,7 +48,8 @@ export default function AttendancePage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bulkData, setBulkData] = useState<any[]>([]);
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [bulkDate, setBulkDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFilter, setDateFilter] = useState('');
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -142,12 +145,11 @@ export default function AttendancePage() {
   };
 
   const prepareBulkData = () => {
-    const today = new Date().toISOString().split('T')[0];
     const initialBulk = employees.map(emp => ({
       employee_id: emp.id,
       employee_name: emp.name,
       employee_code: emp.employee_code,
-      date: today,
+      date: bulkDate,
       shift: 'DAY',
       status: 'PRESENT',
       clock_in: '09:00',
@@ -159,6 +161,15 @@ export default function AttendancePage() {
     setShowBulkForm(true);
   };
 
+  const handleBulkDateChange = (newDate: string) => {
+    setBulkDate(newDate);
+    setBulkData(prev => prev.map(item => ({ ...item, date: newDate })));
+  };
+
+  const removeEmployeeFromBulk = (empId: string) => {
+    setBulkData(prev => prev.filter(item => item.employee_id !== empId));
+  };
+
   const saveBulkAttendance = async () => {
     const token = localStorage.getItem('token');
     setSubmitting(true);
@@ -167,6 +178,17 @@ export default function AttendancePage() {
       const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
         ...rest
       }));
+
+      // Time validation check
+      for (const item of bulkData) {
+        if (item.status !== 'ABSENT') {
+          if (item.clock_out <= item.clock_in) {
+            error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
 
       const res = await fetch(`${ATTENDANCE_API}/bulk`, {
         method: 'POST',
@@ -183,7 +205,7 @@ export default function AttendancePage() {
         setShowBulkForm(false);
         fetchAttendance(currentCompanyId); 
       } else {
-        error(data.message || 'Bulk marking failed');
+        error(data.error || data.message || 'Bulk marking failed');
       }
     } catch (err) {
       error('Network error during bulk save.');
@@ -196,6 +218,13 @@ export default function AttendancePage() {
     if (!formData.employee_id || !formData.date || !formData.shift) {
       error('Please fill required fields.');
       return;
+    }
+
+    if (formData.status !== 'ABSENT') {
+      if (formData.clock_out <= formData.clock_in) {
+        error('Clock-out time must be later than Clock-in time.');
+        return;
+      }
     }
 
     // Client-side duplicate check
@@ -236,10 +265,11 @@ export default function AttendancePage() {
         fetchAttendance(currentCompanyId); // Pass ID explicitly
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.error || data.message || 'Error occurred');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving attendance:', err);
+      error(err.message || 'Network error occurred');
     } finally {
       setSubmitting(false);
     }
@@ -274,15 +304,40 @@ export default function AttendancePage() {
     setShowForm(true);
   };
 
-  const downloadAttendance = () => {
-    const activeRecords = attendanceRecords.filter(rec => rec.date.startsWith(dateFilter));
+  const downloadAttendance = async () => {
+    const activeRecords = attendanceRecords.filter(rec => !dateFilter || rec.date.startsWith(dateFilter));
     if (activeRecords.length === 0) {
       info('No records found for the selected date to download.');
       return;
     }
 
-    const headers = ['Employee', 'Date', 'Shift', 'Clock In', 'Clock Out', 'Status', 'Remarks'];
-    const rows = activeRecords.map(rec => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Attendance');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'Employee', key: 'name', width: 25 },
+        { header: 'Code', key: 'code', width: 12 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Shift', key: 'shift', width: 12 },
+        { header: 'Clock In', key: 'clock_in', width: 12 },
+        { header: 'Clock Out', key: 'clock_out', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Remarks', key: 'remarks', width: 30 }
+      ];
+
+      // Format Header Row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E40AF' } // Dark blue
+      };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Helper for date formatting
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
         try {
@@ -291,29 +346,41 @@ export default function AttendancePage() {
           return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
         } catch (e) { return dateStr; }
       };
-      
-      return [
-        `"${(rec.users?.name || 'N/A').replace(/"/g, '""')}"`,
-        `"'${formatDate(rec.date)}"`,
-        `"${(rec.shift || '').replace(/"/g, '""')}"`,
-        `"${(rec.clock_in || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.clock_out || 'N/A').replace(/"/g, '""')}"`,
-        `"${(rec.status || '').replace(/"/g, '""')}"`,
-        `"${(rec.remarks || '').replace(/"/g, '""')}"`
-      ];
-    });
 
-    const csvContent = [headers.map(h => `"${h}"`), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `attendance_report_${dateFilter}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    success('Attendance report downloaded.');
+      // Add rows
+      activeRecords.forEach(rec => {
+        const row = worksheet.addRow({
+          name: rec.users?.name || 'N/A',
+          code: rec.users?.employee_code || 'N/A',
+          date: formatDate(rec.date),
+          shift: rec.shift || '',
+          clock_in: rec.clock_in || 'N/A',
+          clock_out: rec.clock_out || 'N/A',
+          status: rec.status || '',
+          remarks: rec.remarks || ''
+        });
+        
+        // Optional: add borders to cells
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+      // Write to buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `attendance_report_${dateFilter || 'all'}.xlsx`);
+      
+      success(`Attendance report for ${dateFilter || 'all dates'} downloaded.`);
+    } catch (err) {
+      console.error('Export error:', err);
+      error('Failed to export Excel file.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -341,7 +408,7 @@ export default function AttendancePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Details</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
@@ -350,15 +417,17 @@ export default function AttendancePage() {
           <Button 
             onClick={downloadAttendance}
             variant="outline"
-            className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10"
+            className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 font-bold"
           >
-            <Download className="w-4 h-4 mr-2" /> Download Logs
+            <Download className="w-4 h-4 md:mr-2" /> 
+            <span className="hidden md:inline">Download Logs</span>
+            <span className="md:hidden">Export</span>
           </Button>
           {canCreate && (
             <Button 
               onClick={prepareBulkData}
               variant="outline"
-              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold"
             >
               <Plus className="w-4 h-4 mr-2" /> Bulk Entry
             </Button>
@@ -366,7 +435,7 @@ export default function AttendancePage() {
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10"
+              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel' : 'Log Entry'}
@@ -434,7 +503,15 @@ export default function AttendancePage() {
                 </label>
                 <select 
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    const updates: any = { status };
+                    if (status === 'ABSENT') {
+                      updates.clock_in = '00:00';
+                      updates.clock_out = '00:00';
+                    }
+                    setFormData({...formData, ...updates});
+                  }}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
                 >
                   <option value="PRESENT">Present</option>
@@ -488,13 +565,22 @@ export default function AttendancePage() {
       
       {showBulkForm && (
         <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-row items-center justify-between">
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
-              <CardDescription>Register attendance for all staff on {new Date().toLocaleDateString()}</CardDescription>
+              <CardDescription>Register attendance for multiple staff members in one go.</CardDescription>
             </div>
-            <div className="flex gap-2">
-               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+               <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-secondary/20 shadow-sm">
+                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Mark Date:</span>
+                  <input 
+                    type="date" 
+                    value={bulkDate} 
+                    onChange={(e) => handleBulkDateChange(e.target.value)}
+                    className="text-xs font-bold outline-none bg-transparent"
+                  />
+               </div>
+               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
                  <X className="w-4 h-4" />
                </Button>
             </div>
@@ -505,10 +591,11 @@ export default function AttendancePage() {
                 <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold">
                   <tr>
                     <th className="px-4 py-3">Employee</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Shift</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Shift</th>
                     <th className="px-4 py-3">Clock In / Out</th>
                     <th className="px-4 py-3">Remarks</th>
+                    <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic font-medium">
@@ -522,8 +609,13 @@ export default function AttendancePage() {
                          <select 
                            value={row.status}
                            onChange={(e) => {
+                             const status = e.target.value;
                              const nd = [...bulkData];
-                             nd[idx].status = e.target.value;
+                             nd[idx].status = status;
+                             if (status === 'ABSENT') {
+                               nd[idx].clock_in = '00:00';
+                               nd[idx].clock_out = '00:00';
+                             }
                              setBulkData(nd);
                            }}
                            className="h-8 rounded border bg-white px-2 text-xs"
@@ -555,6 +647,16 @@ export default function AttendancePage() {
                       </td>
                       <td className="px-4 py-3">
                          <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                         <Button 
+                           variant="ghost" 
+                           size="icon" 
+                           onClick={() => removeEmployeeFromBulk(row.employee_id)}
+                           className="h-8 w-8 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/5"
+                         >
+                           <X className="w-4 h-4" />
+                         </Button>
                       </td>
                     </tr>
                   ))}
@@ -589,7 +691,7 @@ export default function AttendancePage() {
           searchPlaceholder="Search staff or notes..."
           actions={
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+              <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
               <div className="flex gap-1">
                 <Input 
                   type="date"

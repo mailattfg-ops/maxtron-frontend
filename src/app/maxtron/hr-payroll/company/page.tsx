@@ -79,10 +79,68 @@ export default function CompanyInformationPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let { name, value, type } = e.target as HTMLInputElement;
+    
+    // Auto-capitalize certain fields
+    if (name === 'company_code' || name === 'gst_no') {
+      value = value.toUpperCase();
+    }
+
+    // Restricted numeric validation for specific fields
+    if (name === 'phone' || name.endsWith('_zip')) {
+        // Allow only digits
+        value = value.replace(/\D/g, '');
+    }
+    
+    if (name === 'no_of_employees' || type === 'number') {
+        // Prevent negative values
+        value = String(Math.max(0, Number(value) || 0));
+    }
+
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const validateForm = () => {
+    if (!formData.company_code || formData.company_code.trim().length < 2) {
+      error('Company Code is required (min 2 characters).');
+      return false;
+    }
+    if (!formData.company_name) {
+      error('Company Name is required.');
+      return false;
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      error('Please enter a valid email address.');
+      return false;
+    }
+    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
+      error('Phone number should be at least 10 digits.');
+      return false;
+    }
+    if (formData.gst_no && formData.gst_no.length !== 15) {
+      error('GST Number must be exactly 15 characters.');
+      return false;
+    }
+
+    // Address Validations (Street is marked with * in UI)
+    if (!formData.office_street?.trim()) {
+      error('Office Street Address is required.');
+      return false;
+    }
+    if (!formData.manufacturing_street?.trim()) {
+      error('Manufacturing Unit Street Address is required.');
+      return false;
+    }
+    if (!formData.billing_street?.trim()) {
+      error('Billing Street Address is required.');
+      return false;
+    }
+
+    return true;
   };
 
   const saveCompany = async () => {
+    if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
       const url = editingId ? `${API_URL}/${editingId}` : API_URL;
@@ -216,7 +274,7 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">No. of Employees</label>
-                    <Input type="number" name="no_of_employees" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
+                    <Input type="number" name="no_of_employees" min="0" value={formData.no_of_employees} onChange={handleInputChange} className="h-11 font-bold" />
                 </div>
               </div>
           </div>

@@ -5,6 +5,7 @@ import { Button } from './button';
 import { Input } from './input';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './card';
+import { Pagination } from './pagination';
 
 interface TableViewProps<T> {
   title?: string;
@@ -59,8 +60,8 @@ export function TableView<T>({
 
   return (
     <Card className="mt-6 border-primary/10 shadow-sm overflow-hidden bg-white">
-      <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4 border-b bg-slate-50/50 p-6">
-        <div>
+      <CardHeader className="flex flex-col lg:flex-row items-center justify-between gap-4 border-b bg-slate-50/50 p-6">
+        <div className="w-full lg:w-auto">
           {title && <CardTitle className="text-xl text-primary font-bold">{title}</CardTitle>}
           {description && <CardDescription className="text-muted-foreground font-medium">{description}</CardDescription>}
         </div>
@@ -118,51 +119,20 @@ export function TableView<T>({
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-t px-6 py-4">
-          <div className="text-sm text-muted-foreground font-medium order-2 sm:order-1">
-            Showing <span className="text-foreground font-bold">{startIdx}</span> to <span className="text-foreground font-bold">{endIdx}</span> of <span className="text-foreground font-bold">{filteredData.length}</span> entries
-          </div>
-          <div className="flex items-center gap-2 md:gap-4 order-1 sm:order-2">
-            <div className="flex items-center md:gap-2">
-              <span className="text-xs text-muted-foreground font-semibold whitespace-nowrap">Rows:</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="h-8 rounded-md border border-primary/20 bg-white px-2 py-1 text-xs shadow-sm shadow-black/5 focus:outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/20"
-              >
-                {rowsPerPageOptions.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="h-8 rounded-lg px-2 border-primary/10 hover:bg-primary/5 disabled:opacity-50"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1 text-primary" /> Prev
-              </Button>
-              <div className="flex items-center justify-center min-w-[32px] text-xs font-bold text-primary bg-primary/5 h-8 rounded-lg px-2">
-                {currentPage} <span className="mx-1 text-muted-foreground font-medium">/</span> {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="h-8 rounded-lg px-2 border-primary/10 hover:bg-primary/5 disabled:opacity-50"
-              >
-                Next <ChevronRight className="w-4 h-4 ml-1 text-primary" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(rows) => {
+            setRowsPerPage(rows);
+            setCurrentPage(1);
+          }}
+          totalEntries={filteredData.length}
+          startEntry={startIdx}
+          endEntry={endIdx}
+          rowsPerPageOptions={rowsPerPageOptions}
+        />
       </CardContent>
     </Card>
   );

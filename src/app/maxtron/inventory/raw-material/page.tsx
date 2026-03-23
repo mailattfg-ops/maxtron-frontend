@@ -26,6 +26,7 @@ export default function RawMaterialPage() {
   const canDelete = hasPermission('inv_rm_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [typeCodes, setTypeCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
@@ -45,6 +46,7 @@ export default function RawMaterialPage() {
     rate_per_unit: 0,
     unit_type: 'Kg',
     grade: '',
+    rm_type_code: '',
     availability: 'Local',
     company_id: '',
     stock_threshold: 100
@@ -72,6 +74,7 @@ export default function RawMaterialPage() {
         }
       }
       fetchMaterials(coId);
+      fetchTypeCodes(coId);
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {
@@ -92,6 +95,22 @@ export default function RawMaterialPage() {
       }
     } catch (err) {
       console.error('Error fetching materials:', err);
+    }
+  };
+
+  const fetchTypeCodes = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/rm-type-codes?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTypeCodes(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching type codes:', err);
     }
   };
 
@@ -123,10 +142,10 @@ export default function RawMaterialPage() {
         fetchMaterials();
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.error || data.message || 'Error occurred');
       }
-    } catch (err) {
-      error('Network error.');
+    } catch (err: any) {
+      error(err.message || 'Network error.');
     } finally {
       setSubmitting(false);
     }
@@ -140,6 +159,7 @@ export default function RawMaterialPage() {
       rate_per_unit: 0,
       unit_type: 'Kg',
       grade: '',
+      rm_type_code: '',
       availability: 'Local',
       company_id: currentCompanyId,
       stock_threshold: 100
@@ -155,6 +175,7 @@ export default function RawMaterialPage() {
       rate_per_unit: rec.rate_per_unit || 0,
       unit_type: rec.unit_type || 'Kg',
       grade: rec.grade || '',
+      rm_type_code: rec.rm_type_code || '',
       availability: rec.availability || 'Local',
       company_id: rec.company_id,
       stock_threshold: rec.stock_threshold || 100
@@ -180,9 +201,16 @@ export default function RawMaterialPage() {
       if (data.success) {
         success('Material removed from registry.');
         fetchMaterials();
+      } else {
+        const msg = data.error?.toLowerCase();
+        if (msg?.includes('foreign key constraint') || msg?.includes('violates')) {
+           error('Cannot delete: This material is already in use in orders, receipts, or production.');
+        } else {
+           error(data.message || 'Deletion failed.');
+        }
       }
     } catch (err) {
-      error('Deletion failed.');
+      error('Network failure.');
     } finally {
       setSubmitting(false);
     }
@@ -193,10 +221,11 @@ export default function RawMaterialPage() {
       info('No data for export.');
       return;
     }
-    const headers = ['Code', 'Name', 'Grade', 'Rate', 'Unit', 'Availability', 'Threshold'];
+    const headers = ['Code', 'Name', 'Type Code', 'Grade', 'Rate', 'Unit', 'Availability', 'Threshold'];
     const rows = materials.map(m => [
       m.rm_code || '',
       m.rm_name || '',
+      m.rm_type_code || '',
       m.grade || '',
       Number(m.rate_per_unit || 0),
       m.unit_type || '',
@@ -336,6 +365,22 @@ export default function RawMaterialPage() {
                   className="h-11 font-bold"
                 />
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
+                </label>
+                <select 
+                  value={formData.rm_type_code}
+                  onChange={(e) => setFormData({...formData, rm_type_code: e.target.value})}
+                  className="w-full h-11 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-bold focus:bg-white outline-none shadow-sm"
+                >
+                  <option value="">Select Type Code...</option>
+                  {typeCodes.map(tc => (
+                    <option key={tc.id} value={tc.code}>{tc.code} - {tc.name}</option>
+                  ))}
+                </select>
+              </div>
               
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
@@ -358,9 +403,10 @@ export default function RawMaterialPage() {
                 <div className="relative">
                   <Input 
                     type="number"
+                    min="0"
                     placeholder="0.00"
                     value={formData.rate_per_unit === 0 ? '' : formData.rate_per_unit}
-                    onChange={(e) => setFormData({...formData, rate_per_unit: Number(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, rate_per_unit: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-emerald-600 pr-20"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
@@ -376,9 +422,10 @@ export default function RawMaterialPage() {
                 <div className="relative">
                   <Input 
                     type="number"
+                    min="0"
                     placeholder="100.00"
                     value={formData.stock_threshold}
-                    onChange={(e) => setFormData({...formData, stock_threshold: Number(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, stock_threshold: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-rose-500 pr-12"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
@@ -437,7 +484,7 @@ export default function RawMaterialPage() {
         <TableView
           title="Raw Material Registry"
           description="Comprehensive list of production inputs and market rates."
-          headers={['Code', 'Material Name', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
+          headers={['Code', 'Material Name', 'Type', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
           data={materials.filter(m => m.rm_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rm_code.toLowerCase().includes(searchQuery.toLowerCase()))}
           loading={loading}
           searchFields={['rm_code', 'rm_name', 'grade']}
@@ -450,6 +497,11 @@ export default function RawMaterialPage() {
               <td className="px-6 py-4">
                 <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
                 <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-slate-50 text-slate-500 border border-slate-200">
+                  {m.rm_type_code || 'N/A'}
+                </span>
               </td>
               <td className="px-6 py-4">
                 <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-blue-50 text-blue-700 border border-blue-100">

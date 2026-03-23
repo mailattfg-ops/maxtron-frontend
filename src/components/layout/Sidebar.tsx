@@ -32,7 +32,7 @@ export const Sidebar = ({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="w-72 bg-primary text-primary-foreground hidden md:flex flex-col shadow-xl overflow-y-auto no-scrollbar flex-shrink-0">
+      <aside className="w-72 bg-primary text-primary-foreground hidden sidebar-hide:flex flex-col shadow-xl overflow-y-auto no-scrollbar flex-shrink-0">
         <SidebarContent
           menuItems={menuItems}
           activeEntity={activeEntity}
@@ -49,7 +49,7 @@ export const Sidebar = ({
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground
         flex flex-col shadow-2xl overflow-y-auto no-scrollbar
-        transform transition-transform duration-300 ease-in-out md:hidden
+        transform transition-transform duration-300 ease-in-out sidebar-hide:hidden
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Close button */}
@@ -96,10 +96,10 @@ function SidebarContent({
         <div className="flex flex-col flex-shrink-0 border-b border-primary/20 bg-primary sticky top-0 z-10">
           <div className="p-6 flex items-center justify-center pb-4">
             <div className="w-10 h-10 bg-white dark:bg-slate-200 rounded-lg flex items-center justify-center mr-3 text-primary font-bold text-xl shadow-inner transition-colors">
-              {activeEntity === 'maxtron' ? 'M' : 'K'}
+              {activeEntity === 'maxtron' ? 'P' : 'K'}
             </div>
             <h1 className="text-2xl font-bold tracking-wider transition-all">
-              {activeEntity === 'maxtron' ? 'Maxtron' : 'KEIL'}
+              {activeEntity === 'maxtron' ? 'POLY BAG' : 'KEIL'}
             </h1>
           </div>
           {hasPermission('company_switching', 'can_view') && (
@@ -111,7 +111,7 @@ function SidebarContent({
                     ? 'bg-secondary text-white shadow-md'
                     : 'bg-primary/40 text-primary-foreground/50 hover:text-white hover:bg-primary/60'
                 }`}
-              >MAXTRON</button>
+              >POLY BAG</button>
               <button
                 onClick={() => router.push('/keil')}
                 className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${

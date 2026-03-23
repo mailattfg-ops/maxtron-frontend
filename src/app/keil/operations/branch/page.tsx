@@ -8,9 +8,11 @@ import {
     Trash2, 
     MapPin, 
     Hash,
-    Building2,
     X,
-    Save
+    Save,
+    Lock,
+    Loader2,
+    Building2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const BRANCH_API = `${API_BASE}/api/keil/operations/branches`;
@@ -25,6 +28,12 @@ const BRANCH_API = `${API_BASE}/api/keil/operations/branches`;
 export default function BranchRegistryPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('hr_branch_view', 'view');
+    const canCreate = hasPermission('hr_branch_view', 'create');
+    const canEdit = hasPermission('hr_branch_view', 'edit');
+    const canDelete = hasPermission('hr_branch_view', 'delete');
     
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -91,6 +100,16 @@ export default function BranchRegistryPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!formData.branch_code) {
+            error("Please enter a unique Branch Identification Code.");
+            return;
+        }
+        if (!formData.branch_name) {
+            error("Please enter the official Branch/Office Name.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -160,14 +179,26 @@ export default function BranchRegistryPage() {
         });
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Branch Registry module.</p>
+        </div>
+    );
+
     return (
-        <div className="p-6 space-y-6 animate-in fade-in duration-700">
+        <div className="md:p-6 space-y-6 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl font-bold text-primary tracking-tight">Branch Registry</h1>
                     <p className="text-sm font-medium text-muted-foreground">Define organizational branches for operational zoning.</p>
                 </div>
-                {!isFormOpen && (
+                {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
                         className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
@@ -213,47 +244,49 @@ export default function BranchRegistryPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView
-                        title="Available Branches"
-                        description="Organizational units for logistics and facility management."
-                        headers={['Code', 'Branch Name', 'District', 'Actions']}
-                        data={branches}
-                        loading={loading}
-                        searchFields={['branch_name', 'branch_code', 'district_name']}
-                        renderRow={(b: any) => (
-                            <tr key={b.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
-                                <td className="px-6 py-6">
-                                    <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider whitespace-nowrap">{b.branch_code}</span>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
-                                            <Building2 className="w-4 h-4" />
-                                        </div>
-                                        <span className="font-bold text-foreground text-sm">{b.branch_name}</span>
+                <TableView
+                    title="Available Branches"
+                    description="Organizational units for logistics and facility management."
+                    headers={['Code', 'Branch Name', 'District', 'Actions']}
+                    data={branches}
+                    loading={loading}
+                    searchFields={['branch_name', 'branch_code', 'district_name']}
+                    renderRow={(b: any) => (
+                        <tr key={b.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
+                            <td className="px-6 py-6">
+                                <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider whitespace-nowrap">{b.branch_code}</span>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                                        <Building2 className="w-4 h-4" />
                                     </div>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">
-                                        <MapPin className="w-3.5 h-3.5 text-secondary" /> 
-                                        <span className="text-[11px] font-bold text-muted-foreground uppercase">{b.district_name || 'Not Defined'}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6 text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                    <span className="font-bold text-foreground text-sm">{b.branch_name}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">
+                                    <MapPin className="w-3.5 h-3.5 text-secondary" /> 
+                                    <span className="text-[11px] font-bold text-muted-foreground uppercase">{b.district_name || 'Not Defined'}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    {canEdit && (
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(b)} className="h-10 w-10 text-primary/60 hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-transparent hover:border-primary/10">
                                             <Edit className="w-4 h-4" />
                                         </Button>
+                                    )}
+                                    {canDelete && (
                                         <Button variant="ghost" size="icon" onClick={() => handleDelete(b.id)} className="h-10 w-10 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/10">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
         </div>
     );

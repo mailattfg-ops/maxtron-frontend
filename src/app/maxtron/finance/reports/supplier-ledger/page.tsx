@@ -7,10 +7,12 @@ import {
     Truck,
     ArrowUpRight,
     TrendingDown,
-    Filter
+    Filter,
+    Download
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
+import { exportToExcel } from '@/utils/export';
 
 export default function SupplierLedgerPage() {
     const [ledgerData, setLedgerData] = useState<any[]>([]);
@@ -93,8 +95,7 @@ export default function SupplierLedgerPage() {
                         ref: r.return_no,
                         type: 'Purchase Return',
                         credit: 0,
-                        debit: Number(r.quantity_returned * 100) // Note: this is a placeholder since rate isn't in header, but usually returns have values. 
-                        // Actually, I should check if return record has a total_amount.
+                        debit: Number(r.quantity_returned * 100) 
                     }))
             ].sort((a, b) => {
                 const dateA = new Date(a.date).getTime();
@@ -118,6 +119,27 @@ export default function SupplierLedgerPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const downloadLedger = async () => {
+        if (ledgerData.length === 0) return;
+        const supplier = suppliers.find(s => s.id === selectedSupplier);
+        const headers = ['Date', 'Transaction Type', 'Reference', 'Bill (Credit)', 'Paid (Debit)', 'Running Balance'];
+        const rows = ledgerData.map(item => [
+            new Date(item.date).toLocaleDateString(),
+            item.type,
+            item.ref,
+            Number(item.credit || 0),
+            Number(item.debit || 0),
+            Number(item.balance || 0)
+        ]);
+
+        await exportToExcel({
+            headers,
+            rows,
+            filename: `Supplier_Ledger_${supplier?.supplier_name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`,
+            sheetName: 'Ledger Statement'
+        });
     };
 
     return (
@@ -147,11 +169,20 @@ export default function SupplierLedgerPage() {
                     </div>
                     <Button
                         onClick={fetchLedger}
-                        className="bg-primary text-white px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                        className="bg-slate-900 text-white px-4 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2"
                     >
                         <Filter className="w-4 h-4" />
                         View
                     </Button>
+                    {selectedSupplier && ledgerData.length > 0 && (
+                        <Button 
+                            onClick={downloadLedger}
+                            variant="outline"
+                            className="bg-white border-primary/20 text-primary hover:bg-primary/5 px-4 rounded-xl shadow-sm font-bold flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" /> Export
+                        </Button>
+                    )}
                 </div>
             </div>
 

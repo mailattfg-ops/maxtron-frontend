@@ -18,13 +18,18 @@ import {
     Activity,
     Navigation,
     ArrowRight,
-    ArrowDown
+    ArrowDown,
+    Download,
+    Lock,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { exportToExcel } from '@/utils/export';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
@@ -34,6 +39,10 @@ const COLLECTION_API = `${API_BASE}/api/keil/operations/collections`;
 export default function DailyCollectionEntryPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('prod_collection_view', 'view');
+    const canCreate = hasPermission('prod_collection_view', 'create');
     
     const [loading, setLoading] = useState(false);
     const [routes, setRoutes] = useState<any[]>([]);
@@ -166,10 +175,37 @@ export default function DailyCollectionEntryPage() {
     };
 
     const handleSave = async () => {
+        if (!headerData.route_id) {
+            error("Please select a Logistical Route before committing high-volume data.");
+            return;
+        }
+        if (!headerData.driver_name) {
+            error("Please designate the Employee responsible for assigning / verifying the session.");
+            return;
+        }
+
         const { total_assigned, total_visited } = calculateTotals();
         if (total_visited === 0) {
             error("Please mark at least one HCE as visited.");
             return;
+        }
+
+        // Detailed Validation for visited HCEs
+        const visitedEntries = Object.values(entries).filter(e => e.is_visited);
+        for (const entry of visitedEntries) {
+            const hce = assignedHces.find(a => a.hce_id === entry.hce_id);
+            const name = hce?.keil_hces?.hce_name || "Facility";
+
+            if (!entry.start_time || !entry.end_time) {
+                error(`Timestamps (In/Out) required for ${name}.`);
+                return;
+            }
+
+            const totalWaste = (entry.yellow_bags || 0) + (entry.red_bags || 0) + (entry.white_containers || 0) + (entry.bottle_containers || 0);
+            if (totalWaste === 0) {
+                error(`At least one waste category must be entered for ${name}.`);
+                return;
+            }
         }
 
         if (await confirm({ message: "Confirm saving today's collection data?" })) {
@@ -203,7 +239,54 @@ export default function DailyCollectionEntryPage() {
         }
     };
 
+    const handleExport = async () => {
+        if (assignedHces.length === 0) {
+            error("No facility data available for export.");
+            return;
+        }
+
+        const routeData = routes.find(r => r.id === selectedRouteId);
+        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Time In', 'Time Out', 'Yellow Bags', 'Red Bags', 'White Cont.', 'Bottle/Blue Cont.', 'Remarks'];
+        
+        const rows = assignedHces.map(a => {
+            const entry = entries[a.hce_id] || {};
+            return [
+                a.keil_hces?.hce_name || 'N/A',
+                a.keil_hces?.hce_code || 'N/A',
+                a.keil_hces?.hce_place || 'N/A',
+                entry.is_visited ? 'YES' : 'NO',
+                entry.start_time || '-',
+                entry.end_time || '-',
+                entry.yellow_bags || 0,
+                entry.red_bags || 0,
+                entry.white_containers || 0,
+                entry.bottle_containers || 0,
+                entry.remarks || '-'
+            ];
+        });
+
+        await exportToExcel({
+            headers,
+            rows,
+            filename: `collection_manifest_${routeData?.route_name?.toLowerCase().replace(/\s+/g, '_')}_${headerData.collection_date}.xlsx`,
+            sheetName: 'Session Manifest'
+        });
+        success("Collection manifest exported successfully.");
+    };
+
     const totals = calculateTotals();
+
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view the Collection Terminal.</p>
+        </div>
+    );
 
     return (
         <div className="p-6 space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
@@ -223,6 +306,11 @@ export default function DailyCollectionEntryPage() {
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="flex gap-4">
+                        {selectedRouteId && (
+                            <Button variant="outline" onClick={handleExport} className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 h-12 font-bold uppercase tracking-wider transition-all">
+                                <Download className="w-5 h-5 mr-3" /> Export Report
+                            </Button>
+                        )}
                         <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                                 <Activity className="w-5 h-5" />
@@ -232,7 +320,7 @@ export default function DailyCollectionEntryPage() {
                                 <p className="text-sm font-bold text-primary">{totals.total_visited} / {totals.total_assigned}</p>
                             </div>
                         </div>
-                        {selectedRouteId && (
+                        {selectedRouteId && canCreate && (
                             <Button size="lg" onClick={handleSave} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider transition-all duration-300">
                                 <Save className="w-5 h-5 mr-3" /> Commit Batch
                             </Button>
@@ -243,7 +331,7 @@ export default function DailyCollectionEntryPage() {
 
             {/* Header Form */}
             <Card className="border-primary/20 shadow-xl overflow-hidden rounded-xl">
-                <CardHeader className="bg-primary/5 border-b border-primary/10 py-4 px-8">
+                <CardHeader className="bg-primary/5 border-b border-primary/10 py-6 px-8">
                     <div className="flex items-center gap-2">
                         <ClipboardList className="w-4 h-4 text-primary" />
                         <CardTitle className="text-sm font-bold text-primary">Session Manifest Details</CardTitle>
@@ -281,6 +369,7 @@ export default function DailyCollectionEntryPage() {
                                 <User className="w-3 h-3 text-primary" /> Employee Assigning
                             </label>
                             <select 
+                                required
                                 className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                                 value={headerData.driver_name}
                                 onChange={e => setHeaderData({ ...headerData, driver_name: e.target.value })}
@@ -372,11 +461,11 @@ export default function DailyCollectionEntryPage() {
                                                         <div className="flex flex-col gap-2">
                                                             <div className="relative">
                                                                 <Clock className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-24 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.start_time} onChange={e => updateEntry(a.hce_id, 'start_time', e.target.value)} />
+                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-35 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.start_time} onChange={e => updateEntry(a.hce_id, 'start_time', e.target.value)} />
                                                             </div>
                                                             <div className="relative">
                                                                 <Clock className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-24 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.end_time} onChange={e => updateEntry(a.hce_id, 'end_time', e.target.value)} />
+                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-35 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.end_time} onChange={e => updateEntry(a.hce_id, 'end_time', e.target.value)} />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -385,19 +474,19 @@ export default function DailyCollectionEntryPage() {
                                                     <div className="flex items-center justify-center gap-2">
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-yellow-400 rounded-full" />
-                                                            <Input type="number" disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-yellow-400" value={entries[a.hce_id]?.yellow_bags} onChange={e => updateEntry(a.hce_id, 'yellow_bags', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-yellow-400" value={entries[a.hce_id]?.yellow_bags} onChange={e => updateEntry(a.hce_id, 'yellow_bags', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-rose-400 rounded-full" />
-                                                            <Input type="number" disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-rose-400" value={entries[a.hce_id]?.red_bags} onChange={e => updateEntry(a.hce_id, 'red_bags', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-rose-400" value={entries[a.hce_id]?.red_bags} onChange={e => updateEntry(a.hce_id, 'red_bags', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-slate-400 rounded-full" />
-                                                            <Input type="number" disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-slate-400" value={entries[a.hce_id]?.white_containers} onChange={e => updateEntry(a.hce_id, 'white_containers', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-slate-400" value={entries[a.hce_id]?.white_containers} onChange={e => updateEntry(a.hce_id, 'white_containers', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-primary/40 rounded-full" />
-                                                            <Input type="number" disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-primary" value={entries[a.hce_id]?.bottle_containers} onChange={e => updateEntry(a.hce_id, 'bottle_containers', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-primary" value={entries[a.hce_id]?.bottle_containers} onChange={e => updateEntry(a.hce_id, 'bottle_containers', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                     </div>
                                                 </td>

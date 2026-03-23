@@ -16,8 +16,11 @@ import {
     Users,
     Building2,
     Phone,
-    X
+    X,
+    Lock,
+    Loader2
 } from 'lucide-react';
+import { usePermission } from '@/hooks/usePermission';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +36,13 @@ const EMPLOYEES_API = `${API_BASE}/api/keil/employees`;
 export default function ExpendituresPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
-    
+    const { hasPermission, loading: permissionLoading } = usePermission();
+
+    const canView = hasPermission('hr_expenditure_view', 'view');
+    const canCreate = hasPermission('hr_expenditure_view', 'create');
+    const canEdit = hasPermission('hr_expenditure_view', 'edit');
+    const canDelete = hasPermission('hr_expenditure_view', 'delete');
+
     const [expenditures, setExpenditures] = useState<any[]>([]);
     const [expenseHeads, setExpenseHeads] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -142,6 +151,32 @@ export default function ExpendituresPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.expense_head_id) {
+            error('Please select an Expense Taxonomy Head.');
+            return;
+        }
+        if (!formData.amount || parseFloat(formData.amount) <= 0) {
+            error('Please enter a valid expense amount greater than zero.');
+            return;
+        }
+        if (formData.payee_type === 'employee' && !formData.employee_id) {
+            error('Please select the Internal Employee being paid.');
+            return;
+        }
+        if (formData.payee_type === 'other' && !formData.other_name) {
+            error('Please enter the name of the Payee (Person/Company).');
+            return;
+        }
+
+        // Validation: Only if payee is other and mobile is provided
+        if (formData.payee_type === 'other' && formData.other_mobile && formData.other_mobile.length > 0) {
+            if (formData.other_mobile.length !== 10) {
+                error('The Payee Mobile number must be exactly 10 digits.');
+                return;
+            }
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -260,6 +295,18 @@ export default function ExpendituresPage() {
         setEditingId(null);
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view Expenditures.</p>
+        </div>
+    );
+
     return (
         <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-primary/5">
@@ -272,7 +319,7 @@ export default function ExpendituresPage() {
                         Financial Operations Register
                     </p>
                 </div>
-                {!isFormOpen && (
+                {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)}
                         className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-10 md:h-12 px-6 md:px-8 shadow-lg shadow-emerald-100"
@@ -401,9 +448,13 @@ export default function ExpendituresPage() {
                                             </label>
                                             <Input 
                                                 value={formData.other_mobile}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, other_mobile: e.target.value }))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                    setFormData(prev => ({ ...prev, other_mobile: val }));
+                                                }}
                                                 className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
-                                                placeholder="Mobile Number"
+                                                placeholder="Mobile Number (10 digits)"
+                                                maxLength={10}
                                             />
                                         </div>
                                     </>
@@ -416,6 +467,7 @@ export default function ExpendituresPage() {
                                     <Input 
                                         type="number"
                                         step="0.01"
+                                        min="0"
                                         value={formData.amount}
                                         onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
                                         className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-black text-rose-600 px-6 focus:ring-emerald-500 text-lg"
@@ -457,7 +509,7 @@ export default function ExpendituresPage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <TableView 
-                            searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name']}
+                            searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
                             headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', '']}
                             data={expenditures}
                             loading={loading}
@@ -490,22 +542,26 @@ export default function ExpendituresPage() {
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
-                                                onClick={() => handleEdit(ex)}
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
-                                                onClick={() => handleDelete(ex.id)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    onClick={() => handleEdit(ex)}
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                                                    onClick={() => handleDelete(ex.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

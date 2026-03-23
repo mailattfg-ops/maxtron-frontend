@@ -10,8 +10,11 @@ import {
     Coins,
     Hash,
     AlignLeft,
-    X
+    X,
+    Lock,
+    Loader2
 } from 'lucide-react';
+import { usePermission } from '@/hooks/usePermission';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +28,12 @@ const HEADS_API = `${API_BASE}/api/keil/hr-payroll/expenses/heads`;
 export default function ExpenseHeadsPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
+    const { hasPermission, loading: permissionLoading } = usePermission();
+    
+    const canView = hasPermission('hr_expense_head_view', 'view');
+    const canCreate = hasPermission('hr_expense_head_view', 'create');
+    const canEdit = hasPermission('hr_expense_head_view', 'edit');
+    const canDelete = hasPermission('hr_expense_head_view', 'delete');
     
     const [heads, setHeads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -95,6 +104,12 @@ export default function ExpenseHeadsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.head_name) {
+            error("Please enter the name of the Expense Taxonomy Head.");
+            return;
+        }
+
         const token = localStorage.getItem('token');
         
         try {
@@ -191,6 +206,18 @@ export default function ExpenseHeadsPage() {
         setEditingId(null);
     };
 
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+    
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view Expense Heads.</p>
+        </div>
+    );
+
     return (
         <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
             {/* Header Area */}
@@ -204,7 +231,7 @@ export default function ExpenseHeadsPage() {
                         Financial Administration
                     </p>
                 </div>
-                {!isFormOpen && (
+                {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)}
                         className="w-full md:w-auto bg-rose-600 hover:bg-rose-700 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-10 md:h-12 px-6 md:px-8 shadow-lg shadow-rose-100"
@@ -304,22 +331,26 @@ export default function ExpenseHeadsPage() {
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
-                                                onClick={() => handleEdit(head)}
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
-                                                onClick={() => handleDelete(head.id)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    onClick={() => handleEdit(head)}
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                                                    onClick={() => handleDelete(head.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

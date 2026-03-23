@@ -162,7 +162,7 @@ export default function AttendanceReportPage() {
       </div>
 
       <Card className="shadow-xl border-primary/5">
-        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b">
+        <CardHeader className="gird lg:flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b">
           <CardTitle className="text-xl flex items-center text-primary font-bold">
             <CalendarDays className="w-5 h-5 mr-3 text-secondary" />
             Filtered Attendance Logs

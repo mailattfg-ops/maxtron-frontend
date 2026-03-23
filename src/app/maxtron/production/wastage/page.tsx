@@ -155,7 +155,7 @@ export default function DamagesWastagePage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Damages </h1>
           <p className="text-muted-foreground mt-1">Track scrap and damaged goods during various production phases.</p>
@@ -198,7 +198,7 @@ export default function DamagesWastagePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-rose-600" />Damages Qty (Kg)</label>
-                <Input type="number" step="0.001" placeholder="0.000" value={formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" min={0} step="0.001" placeholder="0.000" value={formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-rose-600" /> Reason Code</label>
@@ -233,26 +233,24 @@ export default function DamagesWastagePage() {
       )}
 
       {!showForm && (
-        <Card className="border-border/40 shadow-sm">
-          <TableView
-            title="Wastage Audit Log"
-            description="Detailed log of production scrap and reason codes."
-            headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks']}
-            data={wastageRecords}
-            loading={loading}
-            searchFields={['stage', 'reason_code', 'remarks']}
-            searchPlaceholder="Search reason or stage..."
-            renderRow={(w: any) => (
-              <tr key={w.id} className="hover:bg-rose-50/50 border-b last:border-none transition-all">
-                <td className="px-6 py-4 text-xs">{new Date(w.date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-bold text-rose-700">{w.stage}</td>
-                <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
-                <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
-                <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
-              </tr>
-            )}
-          />
-        </Card>
+        <TableView
+          title="Wastage Audit Log"
+          description="Detailed log of production scrap and reason codes."
+          headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks']}
+          data={wastageRecords}
+          loading={loading}
+          searchFields={['stage', 'reason_code', 'remarks']}
+          searchPlaceholder="Search reason or stage..."
+          renderRow={(w: any) => (
+            <tr key={w.id} className="hover:bg-rose-50/50 border-b last:border-none transition-all">
+              <td className="px-6 py-4 text-xs">{new Date(w.date).toLocaleDateString()}</td>
+              <td className="px-6 py-4 font-bold text-rose-700">{w.stage}</td>
+              <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
+              <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
+              <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
+            </tr>
+          )}
+        />
       )}
     </div>
   );

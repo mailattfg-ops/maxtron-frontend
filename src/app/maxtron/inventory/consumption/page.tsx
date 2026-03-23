@@ -32,6 +32,7 @@ export default function ConsumptionPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -137,6 +138,7 @@ export default function ConsumptionPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${CONSUMPTION_API}/${editingId}` : CONSUMPTION_API;
 
+    setSubmitting(true);
     const payload: any = { ...formData };
     if (!payload.issued_by) delete payload.issued_by;
     if (!payload.machine_no) delete payload.machine_no;
@@ -165,6 +167,8 @@ export default function ConsumptionPage() {
       }
     } catch (err) {
       error('Network failure.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -221,6 +225,7 @@ export default function ConsumptionPage() {
     if (!isConfirmed) return;
     
     const token = localStorage.getItem('token');
+    setSubmitting(true);
     try {
       const res = await fetch(`${CONSUMPTION_API}/${id}`, {
         method: 'DELETE',
@@ -230,9 +235,18 @@ export default function ConsumptionPage() {
       if (data.success) {
         success('Record removed.');
         fetchConsumptions();
+      } else {
+        const msg = data.error?.toLowerCase();
+        if (msg?.includes('foreign key constraint') || msg?.includes('violates')) {
+           error('Cannot delete: This consumption record is already linked to a production batch.');
+        } else {
+           error(data.message || 'Deletion failed.');
+        }
       }
     } catch (err) {
-      error('Deletion failed.');
+      error('Network failure.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -352,9 +366,11 @@ export default function ConsumptionPage() {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Quantity Issued</label>
                 <Input 
                   type="number"
+                  min="0"
+                  step="0.01"
                   placeholder="0.00"
                   value={formData.quantity_used}
-                  onChange={(e) => setFormData({...formData, quantity_used: Number(e.target.value)})}
+                  onChange={(e) => setFormData({...formData, quantity_used: Math.max(0, Number(e.target.value) || 0)})}
                   className="h-11 text-xl font-black text-primary border-primary/20 bg-primary/[0.02]"
                 />
               </div>
@@ -414,7 +430,11 @@ export default function ConsumptionPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm">
                 Cancel Issue
               </Button>
-              <Button onClick={saveConsumption} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold">
+              <Button 
+                onClick={saveConsumption} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Record' : 'Authorize Issue'}
               </Button>

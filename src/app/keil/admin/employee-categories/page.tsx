@@ -12,13 +12,23 @@ import {
     Trash2, 
     Save, 
     X,
-    ShieldCheck
+    ShieldCheck,
+    Loader2
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { usePermission } from '@/hooks/usePermission';
+import { Lock } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function EmployeeCategoriesPage() {
+    const { hasPermission, loading: permissionLoading } = usePermission();
+    const canView = hasPermission('admin_permissions', 'view');
+    const canCreate = hasPermission('admin_permissions', 'create');
+    const canEdit = hasPermission('admin_permissions', 'edit');
+    const canDelete = hasPermission('admin_permissions', 'delete');
+
     const pathname = usePathname();
     const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
     const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -35,6 +45,7 @@ export default function EmployeeCategoriesPage() {
     });
 
     const { success, error } = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchInitialData();
@@ -122,23 +133,39 @@ export default function EmployeeCategoriesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this category?')) return;
-        try {
-            const res = await fetch(`${CATEGORIES_API}/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
-            const result = await res.json();
-            if (result.success) {
-                success('Category deleted');
-                fetchCategories(currentCompanyId);
-            } else {
-                error(result.message || 'Cannot delete used category');
+        if (await confirm({ 
+            title: "Delete Classification",
+            message: "Are you sure you want to delete this category? This action cannot be undone if not assigned to employees." 
+        })) {
+            try {
+                const res = await fetch(`${CATEGORIES_API}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    success('Category deleted');
+                    fetchCategories(currentCompanyId);
+                } else {
+                    error(result.message || 'Cannot delete used category');
+                }
+            } catch (err) {
+                error('Failed to delete');
             }
-        } catch (err) {
-            error('Failed to delete');
         }
     };
+
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-indigo-600" /></div>;
+
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-rose-50 text-rose-600">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-slate-500 font-medium">You do not have permission to view this administrative module.</p>
+        </div>
+    );
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
@@ -150,10 +177,12 @@ export default function EmployeeCategoriesPage() {
                     </h1>
                     <p className="text-slate-500 text-sm mt-1">Configure employee classification groups for HR and Payroll.</p>
                 </div>
-                <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} className="gap-2 shadow-lg">
-                    {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                    {showForm ? "Cancel" : "Add Category"}
-                </Button>
+                {canCreate && (
+                    <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} className="gap-2 shadow-lg">
+                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                        {showForm ? "Cancel" : "Add Category"}
+                    </Button>
+                )}
             </div>
 
             {showForm && (
@@ -171,7 +200,7 @@ export default function EmployeeCategoriesPage() {
                                     placeholder="E.g. Management, Skilled Worker, Staff..." 
                                     value={formData.category_name} 
                                     onChange={e => setFormData(prev => ({ ...prev, category_name: e.target.value }))}
-                                    className="h-11 border-slate-200 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="h-11 border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-indigo-400 focus:outline-none"
                                     required
                                 />
                             </div>
@@ -183,40 +212,38 @@ export default function EmployeeCategoriesPage() {
                 </Card>
             )}
 
-            <Card className="border-none shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-                <TableView
-                    title="Available Classifications"
-                    description="Standard groupings used across both Maxtron and Keil operations."
-                    headers={['Classification Name', 'System Key', 'Actions']}
-                    data={categories}
-                    loading={loading}
-                    searchFields={['category_name']}
-                    renderRow={(cat: any) => (
-                        <tr key={cat.id} className="hover:bg-indigo-50/30 transition-all border-b last:border-0 group">
-                            <td className="px-6 py-4">
-                                <div className="font-bold text-slate-800">{cat.category_name}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                                <code className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">
-                                    {cat.id.split('-')[0]}
-                                </code>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                    {cat.company_id ? (
-                                        <>
-                                            <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>
-                                        </>
-                                    ) : (
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    )}
-                />
-            </Card>
+            <TableView
+                title="Available Classifications"
+                description="Standard groupings used across both Maxtron and Keil operations."
+                headers={['Classification Name', 'System Key', 'Actions']}
+                data={categories}
+                loading={loading}
+                searchFields={['category_name']}
+                renderRow={(cat: any) => (
+                    <tr key={cat.id} className="hover:bg-indigo-50/30 transition-all border-b last:border-0 group">
+                        <td className="px-6 py-4">
+                            <div className="font-bold text-slate-800">{cat.category_name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                            <code className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">
+                                {cat.id.split('-')[0]}
+                            </code>
+                        </td>
+                        <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                                {cat.company_id ? (
+                                    <>
+                                        {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>}
+                                        {canDelete && <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>}
+                                    </>
+                                ) : (
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
+                                )}
+                            </div>
+                        </td>
+                    </tr>
+                )}
+            />
 
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-4">
                 <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5" />

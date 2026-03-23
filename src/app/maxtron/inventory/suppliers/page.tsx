@@ -41,6 +41,7 @@ export default function SupplierPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -136,6 +137,7 @@ export default function SupplierPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${SUPPLIER_API}/${editingId}` : SUPPLIER_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -157,6 +159,8 @@ export default function SupplierPage() {
       }
     } catch (err) {
       error('Network error.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -513,17 +517,17 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Period (Days)</label>
-                <Input type="number" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Limit (₹)</label>
-                <Input type="number" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Opening Balance (₹)</label>
-                <Input type="number" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Number(e.target.value)})} className="h-11" />
+                <Input type="number" min="0" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
             </div>
 
@@ -531,7 +535,11 @@ export default function SupplierPage() {
               <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-muted-foreground font-bold">
                 Discard Changes
               </Button>
-              <Button onClick={saveSupplier} className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center transition-all">
+              <Button 
+                onClick={saveSupplier} 
+                loading={submitting}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold flex items-center justify-center transition-all"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Profile' : 'Complete Onboarding'}
               </Button>

@@ -28,9 +28,9 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
   }, []);
 
   return (
-    <header className="h-16 md:h-20 bg-card/80 backdrop-blur-md shadow-sm border-b border-border/40 flex items-center justify-between px-4 md:px-8 z-10 shrink-0 sticky top-0">
+    <header className="h-16 sidebar-hide:h-20 bg-card/80 backdrop-blur-md shadow-sm border-b border-border/40 flex items-center justify-between px-4 sidebar-hide:px-8 z-10 shrink-0 sticky top-0">
       <div className="flex items-center">
-        <button onClick={onMenuToggle} className="md:hidden mr-4 text-foreground/70 hover:text-primary transition-colors">
+        <button onClick={onMenuToggle} className="sidebar-hide:hidden mr-4 text-foreground/70 hover:text-primary transition-colors">
           <Menu className="w-6 h-6" />
         </button>
         {/* <div className="relative hidden sm:block">
