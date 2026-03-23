@@ -139,8 +139,8 @@ export default function KeilPayrollPage() {
         // Auto-fetch basic salary if employee is selected
         if (name === 'employee_id' && value) {
             const selectedEmp = employees.find(emp => emp.id === value);
-            if (selectedEmp && selectedEmp.basic_salary) {
-                newFormData.basic_salary = Number(selectedEmp.basic_salary);
+            if (selectedEmp) {
+                newFormData.basic_salary = Number(selectedEmp.basic_salary || 0);
             }
         }
 

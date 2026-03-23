@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2 } from 'lucide-react';
+import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, 
+    DollarSign,
+    Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2 
+} from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -1006,23 +1009,10 @@ export default function EmployeeInformationPage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Monthly Basic Salary (₹)</label>
-                <Input 
-                   type="number" 
-                   name="basic_salary" 
-                   value={formData.basic_salary} 
-                   onChange={handleInputChange} 
-                   disabled={isViewMode} 
-                   placeholder="0.00" 
-                   className="font-bold text-primary"
-                   min="0"
-                />
-              </div>
             </CardContent>
-              </Card>
-             </div>
-            </TabsContent>
+          </Card>
+        </div>
+      </TabsContent>
 
             <TabsContent value="qualifications">
               <Card>
@@ -1133,6 +1123,29 @@ export default function EmployeeInformationPage() {
                   <CardDescription>Manage passports, certificates, licenses, and advances here.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
+                  <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 mb-6">
+                    <div className="flex items-center justify-between">
+                       <div className="space-y-1">
+                          <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Monthly Remuneration
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
+                       </div>
+                       <div className="w-64">
+                          <Input 
+                            type="number" 
+                            name="basic_salary" 
+                            value={formData.basic_salary} 
+                            onChange={handleInputChange} 
+                            disabled={isViewMode} 
+                            placeholder="0.00" 
+                            className="h-12 font-black text-xl text-primary bg-white border-primary/20 rounded-xl text-right"
+                            min="0"
+                          />
+                       </div>
+                    </div>
+                  </div>
                   
                   {/* Licenses & Passports */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1395,9 +1408,9 @@ export default function EmployeeInformationPage() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {loading ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading employees...</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center">Loading employees...</td></tr>
                       ) : currentEmployees.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors">

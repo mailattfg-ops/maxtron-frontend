@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff } from 'lucide-react';
+import { 
+    UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, 
+    Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2,
+    DollarSign, Lock, Copy, AlertCircle, Users, TrendingUp, 
+    FileDown, Download, Eye, EyeOff 
+} from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -862,7 +867,7 @@ export default function EmployeeInformationPage() {
                               onClick={copyCommunicationAddress}
                               className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
                             >
-                              <Copy className="w-3 h-3 mr-1" /> Same as Communication
+                              <Copy className="w-3 h-3 mr-1" /> <span className="hidden md:block">Same as Communication</span>
                             </Button>
                           )}
                         </div>
@@ -994,23 +999,10 @@ export default function EmployeeInformationPage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Monthly Basic Salary (₹)</label>
-                <Input 
-                   type="number" 
-                   name="basic_salary" 
-                   value={formData.basic_salary} 
-                   onChange={handleInputChange} 
-                   disabled={isViewMode} 
-                   placeholder="0.00" 
-                   className="font-bold text-primary"
-                   min="0"
-                />
-              </div>
             </CardContent>
-              </Card>
-             </div>
-            </TabsContent>
+          </Card>
+        </div>
+      </TabsContent>
 
             <TabsContent value="qualifications">
               <Card>
@@ -1121,6 +1113,29 @@ export default function EmployeeInformationPage() {
                   <CardDescription>Manage passports, certificates, licenses, and advances here.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 p-6">
+                  <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 mb-6">
+                    <div className="flex items-center justify-between">
+                       <div className="space-y-1">
+                          <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Monthly Remuneration
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
+                       </div>
+                       <div className="w-64">
+                          <Input 
+                            type="number" 
+                            name="basic_salary" 
+                            value={formData.basic_salary} 
+                            onChange={handleInputChange} 
+                            disabled={isViewMode} 
+                            placeholder="0.00" 
+                            className="h-12 font-black text-xl text-primary bg-white border-primary/20 rounded-xl text-right"
+                            min="0"
+                          />
+                       </div>
+                    </div>
+                  </div>
                   
                   {/* Licenses & Passports */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1350,7 +1365,7 @@ export default function EmployeeInformationPage() {
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                 className="pl-9 w-72 rounded-full border-border bg-muted/20" 
+                 className="pl-9 w-full md:w-72 rounded-full border-border bg-muted/20" 
                  placeholder="Search by name or code..." 
                  value={searchQuery}
                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
@@ -1378,15 +1393,16 @@ export default function EmployeeInformationPage() {
                         <th className="p-4 font-bold w-24 uppercase tracking-wider text-[11px]">Emp Code</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Full Name</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Department / Role</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Basic Salary</th>
                         <th className="p-4 font-bold uppercase tracking-wider text-[11px]">Contact Email</th>
                         <th className="p-4 font-bold text-right uppercase tracking-wider text-[11px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {loading ? (
-                        <tr><td colSpan={5} className="p-4 text-center">Loading employees...</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center">Loading employees...</td></tr>
                       ) : currentEmployees.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors group">
@@ -1402,6 +1418,7 @@ export default function EmployeeInformationPage() {
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
+                      <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {emp.is_deleted ? (

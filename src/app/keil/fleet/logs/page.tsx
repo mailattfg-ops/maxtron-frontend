@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     Plus, 
     Search, 
+    Edit,
     Trash2, 
     Truck, 
     Calendar,
@@ -43,6 +44,7 @@ export default function VehicleDailyLogPage() {
 
     const canView = hasPermission('fleet_log_view', 'view');
     const canCreate = hasPermission('fleet_log_view', 'create');
+    const canEdit = hasPermission('fleet_log_view', 'edit');
     const canDelete = hasPermission('fleet_log_view', 'delete');
     
     const [logs, setLogs] = useState<any[]>([]);
@@ -51,6 +53,7 @@ export default function VehicleDailyLogPage() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
 
     const [filters, setFilters] = useState({
@@ -205,9 +208,12 @@ export default function VehicleDailyLogPage() {
         };
 
         const token = localStorage.getItem('token');
+        const method = editingId ? 'PUT' : 'POST';
+        const url = editingId ? `${LOGS_API}/${editingId}` : LOGS_API;
+
         try {
-            const res = await fetch(LOGS_API, {
-                method: 'POST',
+            const res = await fetch(url, {
+                method,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
@@ -216,8 +222,9 @@ export default function VehicleDailyLogPage() {
             });
             const data = await res.json();
             if (data.success) {
-                success("Daily log recorded!");
+                success(editingId ? "Log entry updated!" : "Daily log recorded!");
                 setShowForm(false);
+                setEditingId(null);
                 fetchLogs(currentCompanyId);
                 resetForm();
             } else {
@@ -247,6 +254,26 @@ export default function VehicleDailyLogPage() {
         }
     };
 
+    const handleEdit = (l: any) => {
+        setEditingId(l.id);
+        setFormData({
+            vehicle_id: l.vehicle_id,
+            log_date: new Date(l.log_date).toISOString().split('T')[0],
+            start_km: l.start_km.toString(),
+            end_km: l.end_km ? l.end_km.toString() : '',
+            fuel_qty: l.fuel_qty.toString(),
+            route_id: l.route_id || '',
+            has_complaint: l.has_complaint,
+            complaint_type: l.complaint_type || '',
+            workshop_in_time: l.workshop_in_time ? new Date(l.workshop_in_time).toISOString().slice(0, 16) : '',
+            workshop_out_time: l.workshop_out_time ? new Date(l.workshop_out_time).toISOString().slice(0, 16) : '',
+            bill_amount: l.bill_amount ? l.bill_amount.toString() : '0',
+            remarks: l.remarks || '',
+            company_id: l.company_id
+        });
+        setShowForm(true);
+    };
+
     const resetForm = () => {
         setFormData({
             vehicle_id: '',
@@ -263,6 +290,7 @@ export default function VehicleDailyLogPage() {
             remarks: '',
             company_id: currentCompanyId
         });
+        setEditingId(null);
     };
 
     const handleVehicleChange = (vId: string) => {
@@ -298,7 +326,11 @@ export default function VehicleDailyLogPage() {
                 </div>
                 {canCreate && (
                     <Button 
-                        onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
+                        onClick={() => { 
+                            setShowForm(!showForm); 
+                            if(!showForm) resetForm(); 
+                            else setEditingId(null);
+                        }}
                         className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
                     >
                         {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -310,8 +342,9 @@ export default function VehicleDailyLogPage() {
             {showForm ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
                     <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-6">
-                        <CardTitle className="text-lg font-bold text-primary">
-                            Telemetry Entry Module
+                        <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
+                            <Navigation className="w-5 h-5" />
+                            {editingId ? 'Modify Field Telemetry' : 'Telemetry Entry Module'}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground font-medium">Capture real-time asset performance data</CardDescription>
                     </CardHeader>
@@ -524,11 +557,18 @@ export default function VehicleDailyLogPage() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-6 text-right">
-                                    {canDelete && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    )}
+                                    <div className="flex items-center justify-end gap-2">
+                                        {canEdit && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         )}

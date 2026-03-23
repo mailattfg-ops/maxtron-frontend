@@ -280,7 +280,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Center Panel: Recent Transactions */}
                 <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-border/50 gap-0 bg-card rounded-3xl overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
+                    <CardHeader className="grid md:flex flex-row items-center justify-between bg-muted/20 border-b border-border p-6">
                         <div>
                             <CardTitle className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
                                 <Activity className="w-5 h-5 text-primary" /> Recent Operations
