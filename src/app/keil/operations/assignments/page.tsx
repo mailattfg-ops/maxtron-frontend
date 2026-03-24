@@ -254,7 +254,7 @@ function RouteAssignmentsContent() {
 
     return (
         <div className="md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="grid md:flex flex-col md:flex-row justify-center md:justify-between items-start md:items-center gap-6 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-4 w-full md:w-auto">
                     <div className="space-y-1">
                         <h1 className="text-2xl font-bold text-primary tracking-tight">Route Mapping Control</h1>

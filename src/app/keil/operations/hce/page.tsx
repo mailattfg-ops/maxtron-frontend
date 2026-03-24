@@ -247,7 +247,7 @@ export default function HCERegistryPage() {
 
             {isFormOpen ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-4">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
@@ -276,7 +276,7 @@ export default function HCERegistryPage() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="pt-8 px-8 pb-8">
+                    <CardContent className="pt-8 px-0 md:px-8 pb-8">
                         <div className="space-y-8">
                             {activeTab === 'basic' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
@@ -371,7 +371,7 @@ export default function HCERegistryPage() {
                                     </Button>
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex gap-1 md:gap-3">
                                     {activeTab !== 'ops' ? (
                                         <Button 
                                             onClick={() => {
@@ -399,7 +399,7 @@ export default function HCERegistryPage() {
                                             className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-10 h-11 shadow-lg shadow-emerald-100 font-bold flex items-center transition-all hover:scale-105"
                                         >
                                             <Save className="w-4 h-4 mr-2" />
-                                            {editingId ? 'Update Record' : 'Register Facility'}
+                                            {editingId ? 'Update' : 'Register'}
                                         </Button>
                                     )}
                                 </div>

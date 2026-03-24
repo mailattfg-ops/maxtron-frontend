@@ -96,7 +96,7 @@ export default function RouteCollectionReportPage() {
         try {
             let url = `${COLLECTION_API}?company_id=${coId}`;
             if (date) url += `&date=${date}`;
-            if (routeId) url += `&route_id=${routeId}`;
+            if (routeId && routeId !== 'all') url += `&route_id=${routeId}`;
             
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -262,7 +262,7 @@ export default function RouteCollectionReportPage() {
                                         <SelectValue placeholder="All Collection Routes" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white border-primary/20">
-                                        <SelectItem value="">All Collection Routes</SelectItem>
+                                        <SelectItem value="all">All Collection Routes</SelectItem>
                                         {routes.map(r => (
                                             <SelectItem key={r.id} value={r.id}>{r.route_name}</SelectItem>
                                         ))}

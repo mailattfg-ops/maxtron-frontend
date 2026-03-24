@@ -65,7 +65,7 @@ export default function ConsumptionReportPage() {
   const filtered = useMemo(() => consumptions.filter(c => {
     if (dateFrom && new Date(c.consumption_date) < new Date(dateFrom)) return false;
     if (dateTo && new Date(c.consumption_date) > new Date(dateTo)) return false;
-    if (filterProcess && c.process_type !== filterProcess) return false;
+    if (filterProcess && filterProcess !== 'all' && c.process_type !== filterProcess) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
