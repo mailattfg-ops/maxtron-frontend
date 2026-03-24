@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ShieldCheck, Lock, Globe, ChevronRight, LayoutPanelTop } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { maxtronSidebarMenu } from '@/config/navigation/maxtron';
 import { keilSidebarMenu } from '@/config/navigation/keil';
 import { usePermission } from '@/hooks/usePermission';
@@ -188,18 +195,18 @@ export default function KeilPermissionConsolePage() {
         </div>
         <div className="w-64">
            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Active Role</label>
-           <select 
-             value={selectedRoleId}
-             onChange={(e) => setSelectedRoleId(e.target.value)}
-             className="w-full h-11 px-4 rounded-xl border border-primary/20 bg-background text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
-           >
-             <option value="">-- Choose Role --</option>
-             {roles
-               .filter(r => r.name.toLowerCase() !== 'admin')
-               .map(r => (
-                 <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
-               ))}
-           </select>
+           <Select value={selectedRoleId} onValueChange={(val) => setSelectedRoleId(val)}>
+             <SelectTrigger className="w-full h-11 border-primary/20 bg-background font-bold text-primary shadow-sm">
+               <SelectValue placeholder="-- Choose Role --" />
+             </SelectTrigger>
+             <SelectContent className="bg-white border-primary/20">
+               {roles
+                 .filter(r => r.name.toLowerCase() !== 'admin')
+                 .map(r => (
+                   <SelectItem key={r.id} value={r.id}>{r.name.toUpperCase()}</SelectItem>
+                 ))}
+             </SelectContent>
+           </Select>
         </div>
       </div>
 

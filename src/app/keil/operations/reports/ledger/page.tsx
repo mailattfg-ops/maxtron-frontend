@@ -20,6 +20,13 @@ import { exportToExcel } from '@/utils/export';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from "@/components/ui/table-view";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -211,14 +218,16 @@ export default function HCEServiceLedgerPage() {
                             <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider pl-1">HCE Facility</label>
                             <div className="relative group">
                                 <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                <select 
-                                    className="pl-9 h-10 w-full rounded-md border border-primary/20 bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all shadow-sm"
-                                    value={filters.hce_id}
-                                    onChange={e => handleFilterChange('hce_id', e.target.value)}
-                                >
-                                    <option value="">Choose Hospital / Clinic</option>
-                                    {hces.map(h => <option key={h.id} value={h.id}>{h.hce_name} ({h.hce_code})</option>)}
-                                </select>
+                                <Select value={filters.hce_id} onValueChange={(val) => handleFilterChange('hce_id', val)}>
+                                    <SelectTrigger className="pl-9 h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                        <SelectValue placeholder="Choose Hospital / Clinic" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {hces.map(h => (
+                                            <SelectItem key={h.id} value={h.id}>{h.hce_name} ({h.hce_code})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="space-y-2">

@@ -20,6 +20,14 @@ import {
   User, 
   Navigation 
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -220,7 +228,7 @@ export default function VehiclesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
         <div>
           <h1 className="text-2xl font-bold text-primary tracking-tight flex items-center">
@@ -264,7 +272,7 @@ export default function VehiclesPage() {
               >Owner <span className='hidden md:block'> & GPS</span></Button>
             </div>
           </CardHeader>
-          <CardContent className="md:p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             {activeTab === 'basic' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                 <div className="space-y-2">
@@ -277,15 +285,16 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicle Type</label>
-                  <select 
-                    name="vehicle_type" 
-                    value={formData.vehicle_type} 
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select Type</option>
-                    {vehicleTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <Select value={formData.vehicle_type} onValueChange={(val) => setFormData({...formData, vehicle_type: val})}>
+                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {vehicleTypes.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Body Type</label>
@@ -297,15 +306,16 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purpose of Usage</label>
-                  <select 
-                    name="purpose" 
-                    value={formData.purpose} 
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select Purpose</option>
-                    {purposes.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  <Select value={formData.purpose} onValueChange={(val) => setFormData({...formData, purpose: val})}>
+                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                      <SelectValue placeholder="Select Purpose" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {purposes.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
@@ -359,12 +369,9 @@ export default function VehiclesPage() {
                       </h3>
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-bold">INSTALLED?</span>
-                        <input 
-                          type="checkbox" 
-                          name="gps_installed" 
+                        <Checkbox 
                           checked={formData.gps_installed} 
-                          onChange={(e) => setFormData({...formData, gps_installed: e.target.checked})}
-                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                          onCheckedChange={(checked: boolean) => setFormData({...formData, gps_installed: !!checked})}
                         />
                       </div>
                     </div>

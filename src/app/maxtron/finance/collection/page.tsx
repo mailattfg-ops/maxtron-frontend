@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TableView } from '@/components/ui/table-view';
 import { 
     Plus, 
@@ -12,11 +12,13 @@ import {
     Trash2,
     FileText,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function CustomerCollectionPage() {
     const [collections, setCollections] = useState<any[]>([]);
@@ -25,6 +27,8 @@ export default function CustomerCollectionPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [customerBalance, setCustomerBalance] = useState<number | null>(null);
+    const [showScrollArrow, setShowScrollArrow] = useState(true);
+    const scrollRef = useRef<HTMLDivElement>(null);
     
     const [formData, setFormData] = useState({
         collection_date: new Date().toISOString().split('T')[0],
@@ -116,6 +120,23 @@ export default function CustomerCollectionPage() {
         fetchPendingInvoices(id);
         fetchCustomerBalance(id);
     };
+
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+            if (scrollTop + clientHeight >= scrollHeight - 30) {
+                setShowScrollArrow(false);
+            } else {
+                setShowScrollArrow(true);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (isModalOpen) {
+            setTimeout(handleScroll, 200);
+        }
+    }, [isModalOpen, pendingInvoices]);
 
     const autoAllocate = (totalAmount: number, invoices: any[]) => {
         let remaining = totalAmount;
@@ -281,19 +302,28 @@ export default function CustomerCollectionPage() {
                             <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white font-black p-2">✕</button>
                         </div>
                         
-                        <div className="overflow-y-auto p-8 custom-scrollbar">
+                        <div 
+                            ref={scrollRef}
+                            onScroll={handleScroll}
+                            className="overflow-y-auto p-8 custom-scrollbar relative"
+                        >
+                            {showScrollArrow && (
+                                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-emerald-600 text-white p-2 rounded-full shadow-lg">
+                                    <ChevronDown className="w-6 h-6" />
+                                </div>
+                            )}
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-700">Collection Date</label>
                                         <div className="relative">
                                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <Input
                                                 type="date"
                                                 required
                                                 value={formData.collection_date}
                                                 onChange={(e) => setFormData({ ...formData, collection_date: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm"
+                                                className="pl-10 h-11 bg-slate-50 border border-slate-200 rounded-xl"
                                             />
                                         </div>
                                     </div>
@@ -327,13 +357,13 @@ export default function CustomerCollectionPage() {
                                         <label className="text-sm font-bold text-slate-700">Amount Received (₹)</label>
                                         <div className="relative">
                                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <Input
                                                 type="number"
                                                 required
                                                 placeholder="0.00"
                                                 value={formData.amount}
                                                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-emerald-500/20 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none text-lg font-black text-emerald-600"
+                                                className="pl-10 h-14 bg-white border-2 border-emerald-500/20 rounded-xl text-lg font-black text-emerald-600"
                                             />
                                         </div>
                                     </div>
@@ -351,8 +381,8 @@ export default function CustomerCollectionPage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
-                                            <table className="w-full text-left text-sm">
+                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-x-auto">
+                                            <table className="w-full min-w-[700px] text-left text-sm">
                                                 <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                                     <tr>
                                                         <th className="px-6 py-3">Invoice No</th>
@@ -379,12 +409,12 @@ export default function CustomerCollectionPage() {
                                                                     <span className="text-blue-600 font-black">₹{Number(inv.pending_amount).toLocaleString()}</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 w-48 text-center">
-                                                                    <input 
+                                                                    <Input 
                                                                         type="number"
                                                                         placeholder="Amount"
                                                                         value={allocations[inv.id] || ''}
                                                                         onChange={(e) => handleAllocationChange(inv.id, e.target.value, inv.pending_amount)}
-                                                                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold outline-none focus:border-emerald-500"
+                                                                        className="w-full h-8 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold"
                                                                     />
                                                                 </td>
                                                             </tr>
@@ -434,12 +464,12 @@ export default function CustomerCollectionPage() {
                                                     <option value="CHECK">Check</option>
                                                 </select>
                                             </div>
-                                            <input
+                                            <Input
                                                 type="text"
                                                 placeholder="Ref / Chq No"
                                                 value={formData.reference_no}
                                                 onChange={(e) => setFormData({ ...formData, reference_no: e.target.value })}
-                                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
+                                                className="h-10 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
                                             />
                                         </div>
                                     </div>

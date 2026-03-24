@@ -10,6 +10,13 @@ import {
   ShoppingCart, Calendar, Truck, User, IndianRupee, 
   Clock, CheckCircle, Package, Download, Trash, AlertCircle
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -274,16 +281,16 @@ export default function RMOrderPage() {
  
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Details</label>
-                <select 
-                  value={formData.supplier_id}
-                  onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="">Select Vendor...</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.supplier_name} ({s.supplier_code})</option>
-                  ))}
-                </select>
+                <Select value={formData.supplier_id} onValueChange={(val) => setFormData({...formData, supplier_id: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm font-bold shadow-sm">
+                    <SelectValue placeholder="Select Vendor..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.supplier_name} ({s.supplier_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
  
               <div className="space-y-2">
@@ -317,29 +324,30 @@ export default function RMOrderPage() {
                       {formData.items.map((item, idx) => (
                         <tr key={idx} className="bg-white hover:bg-slate-50/50 transition-colors">
                           <td className="p-4">
-                            <select 
-                              value={item.rm_id}
-                              onChange={(e) => updateItem(idx, 'rm_id', e.target.value)}
-                              className="w-full h-10 px-2 rounded border border-slate-200 text-sm font-medium outline-none focus:border-primary"
+                            <Select 
+                              value={item.rm_id} 
+                              onValueChange={(val) => updateItem(idx, 'rm_id', val)}
                               disabled={!formData.supplier_id}
                             >
-                              <option value="" disabled>
-                                {!formData.supplier_id ? 'Select Supplier First...' : 'Select Material...'}
-                              </option>
-                              {(() => {
-                                 if (!formData.supplier_id) return null;
-                                 const selectedSupplier = suppliers.find(s => s.id === formData.supplier_id);
-                                 if (!selectedSupplier || !selectedSupplier.supplied_materials || selectedSupplier.supplied_materials.length === 0) {
-                                     return <option disabled>No materials assigned to this vendor.</option>;
-                                 }
-                                 
-                                 return materials.filter(m => selectedSupplier.supplied_materials.some((sm: any) => sm.rm_id === m.id)).map(m => (
-                                   <option key={m.id} value={m.id}>
-                                     {m.rm_name} (Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
-                                   </option>
-                                 ));
-                              })()}
-                            </select>
+                              <SelectTrigger className="w-full h-10 border border-slate-200 text-sm font-medium">
+                                <SelectValue placeholder={!formData.supplier_id ? 'Select Supplier First...' : 'Select Material...'} />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-slate-200">
+                                {(() => {
+                                   if (!formData.supplier_id) return null;
+                                   const selectedSupplier = suppliers.find(s => s.id === formData.supplier_id);
+                                   if (!selectedSupplier || !selectedSupplier.supplied_materials || selectedSupplier.supplied_materials.length === 0) {
+                                       return <SelectItem value="none" disabled>No materials assigned</SelectItem>;
+                                   }
+                                   
+                                   return materials.filter(m => selectedSupplier.supplied_materials.some((sm: any) => sm.rm_id === m.id)).map(m => (
+                                     <SelectItem key={m.id} value={m.id}>
+                                       {m.rm_name} ({Number(m.balance).toLocaleString()} {m.unit_type})
+                                     </SelectItem>
+                                   ));
+                                })()}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-4">
                             <Input 

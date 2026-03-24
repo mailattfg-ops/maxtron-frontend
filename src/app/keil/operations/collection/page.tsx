@@ -27,6 +27,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { exportToExcel } from '@/utils/export';
 import { usePermission } from '@/hooks/usePermission';
@@ -349,14 +356,16 @@ export default function DailyCollectionEntryPage() {
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
                                 <Search className="w-3 h-3 text-primary" /> Logistical Route
                             </label>
-                            <select 
-                                className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                                value={selectedRouteId}
-                                onChange={e => handleRouteChange(e.target.value)}
-                            >
-                                <option value="">Switch to specific route</option>
-                                {routes.map(r => <option key={r.id} value={r.id}>{r.route_name}</option>)}
-                            </select>
+                            <Select value={selectedRouteId} onValueChange={(val) => handleRouteChange(val)}>
+                                <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                    <SelectValue placeholder="Switch to specific route" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-primary/20">
+                                    {routes.map(r => (
+                                        <SelectItem key={r.id} value={r.id}>{r.route_name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
@@ -368,17 +377,16 @@ export default function DailyCollectionEntryPage() {
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
                                 <User className="w-3 h-3 text-primary" /> Employee Assigning
                             </label>
-                            <select 
-                                required
-                                className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                                value={headerData.driver_name}
-                                onChange={e => setHeaderData({ ...headerData, driver_name: e.target.value })}
-                            >
-                                <option value="">Select Employee</option>
-                                {employees.map(emp => (
-                                    <option key={emp.id} value={emp.name}>{emp.name} ({emp.employee_code})</option>
-                                ))}
-                            </select>
+                            <Select value={headerData.driver_name} onValueChange={(val) => setHeaderData({ ...headerData, driver_name: val })}>
+                                <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                    <SelectValue placeholder="Select Employee" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-primary/20">
+                                    {employees.map(emp => (
+                                        <SelectItem key={emp.id} value={emp.name}>{emp.name} ({emp.employee_code})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">

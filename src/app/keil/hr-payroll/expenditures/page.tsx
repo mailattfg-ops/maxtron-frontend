@@ -27,6 +27,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const EXPENDITURES_API = `${API_BASE}/api/keil/hr-payroll/expenses/records`;
@@ -371,23 +378,26 @@ export default function ExpendituresPage() {
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Coins className="w-4 h-4 text-rose-500" /> Expense Taxonomy
                                     </label>
-                                    <select 
+                                    <Select 
                                         value={formData.expense_head_id}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, expense_head_id: e.target.value }))}
-                                        className="w-full h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                        onValueChange={(val) => setFormData(prev => ({ ...prev, expense_head_id: val }))}
                                         required
                                     >
-                                        <option value="">Select Configuration Head</option>
-                                        {expenseHeads.map((h: any) => (
-                                            <option key={h.id} value={h.id}>{h.head_name}</option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                            <SelectValue placeholder="Select Configuration Head" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            {expenseHeads.map((h: any) => (
+                                                <SelectItem key={h.id} value={h.id}>{h.head_name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3 md:col-span-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Users className="w-4 h-4 text-orange-500" /> Payee Type
                                     </label>
-                                    <div className="flex items-center gap-6 h-14 px-6 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <div className="grid md:flex items-center gap-6 h-auto md:h-14 py-6 md:py-0 px-6 rounded-2xl bg-slate-50 border border-slate-200">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input 
                                                 type="radio" 
@@ -418,16 +428,19 @@ export default function ExpendituresPage() {
                                         <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                             <Users className="w-4 h-4 text-emerald-500" /> Employee
                                         </label>
-                                        <select 
+                                        <Select 
                                             value={formData.employee_id}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, employee_id: e.target.value }))}
-                                            className="w-full h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                            onValueChange={(val) => setFormData(prev => ({ ...prev, employee_id: val }))}
                                         >
-                                            <option value="">Select Employee...</option>
-                                            {employees.map((emp: any) => (
-                                                <option key={emp.id} value={emp.id}>{emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}</option>
-                                            ))}
-                                        </select>
+                                            <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                                <SelectValue placeholder="Select Employee..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {employees.map((emp: any) => (
+                                                    <SelectItem key={emp.id} value={emp.id}>{emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 ) : (
                                     <>

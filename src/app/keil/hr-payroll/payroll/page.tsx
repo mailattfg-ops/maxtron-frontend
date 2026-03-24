@@ -26,6 +26,13 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function KeilPayrollPage() {
     const pathname = usePathname();
@@ -135,6 +142,10 @@ export default function KeilPayrollPage() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
+        updateFormData(name, value);
+    };
+
+    const updateFormData = (name: string, value: any) => {
         let newFormData = { ...formData, [name]: value };
 
         // Auto-fetch basic salary if employee is selected
@@ -304,26 +315,28 @@ export default function KeilPayrollPage() {
                 <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                     <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-slate-400" />
-                        <select 
-                            value={filterMonth} 
-                            onChange={(e) => setFilterMonth(Number(e.target.value))}
-                            className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold"
-                        >
-                            {months.map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
-                            ))}
-                        </select>
+                        <Select value={filterMonth.toString()} onValueChange={(val) => setFilterMonth(Number(val))}>
+                            <SelectTrigger className="h-10 w-[140px] px-3 rounded-lg border border-slate-200 text-sm font-bold bg-white">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200">
+                                {months.map((m, i) => (
+                                    <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                        <select 
-                            value={filterYear} 
-                            onChange={(e) => setFilterYear(Number(e.target.value))}
-                            className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
+                        <Select value={filterYear.toString()} onValueChange={(val) => setFilterYear(Number(val))}>
+                            <SelectTrigger className="h-10 w-[100px] px-3 rounded-lg border border-slate-200 text-sm font-bold bg-white">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200">
+                                {years.map(y => (
+                                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="ml-auto text-xs font-bold text-slate-500 uppercase tracking-widest">
                         Total Payout for {months[filterMonth-1]} {filterYear}: 
@@ -356,43 +369,41 @@ export default function KeilPayrollPage() {
                                     
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Employee</label>
-                                        <select
-                                            name="employee_id"
-                                            value={formData.employee_id}
-                                            onChange={handleInputChange}
-                                            required
-                                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
-                                        >
-                                            <option value="">Select Employee...</option>
-                                            {employees.map(emp => (
-                                                <option key={emp.id} value={emp.id}>
-                                                    {emp.name} ({emp.employee_code})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select value={formData.employee_id} onValueChange={(val) => updateFormData('employee_id', val)}>
+                                            <SelectTrigger className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none">
+                                                <SelectValue placeholder="Select Employee..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {employees.map(emp => (
+                                                    <SelectItem key={emp.id} value={emp.id}>
+                                                        {emp.name} ({emp.employee_code})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Period</label>
-                                            <select
-                                                name="month"
-                                                value={formData.month}
-                                                onChange={handleInputChange}
-                                                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                                            >
-                                                {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                                            </select>
+                                            <Select value={formData.month.toString()} onValueChange={(val) => updateFormData('month', Number(val))}>
+                                                <SelectTrigger className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                                    <SelectValue placeholder="Month" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {months.map((m, i) => <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="space-y-2 pt-6">
-                                            <select
-                                                name="year"
-                                                value={formData.year}
-                                                onChange={handleInputChange}
-                                                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                                            >
-                                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                            </select>
+                                            <Select value={formData.year.toString()} onValueChange={(val) => updateFormData('year', Number(val))}>
+                                                <SelectTrigger className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                                    <SelectValue placeholder="Year" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                 </div>
@@ -469,30 +480,30 @@ export default function KeilPayrollPage() {
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 items-end border-t border-slate-100">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Status</label>
-                                    <select
-                                        name="payment_status"
-                                        value={formData.payment_status}
-                                        onChange={handleInputChange}
-                                        className={`w-full h-11 px-4 rounded-xl border text-sm font-black outline-none transition-all ${formData.payment_status === 'PAID' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}
-                                    >
-                                        <option value="PENDING">PENDING</option>
-                                        <option value="PAID">PAID</option>
-                                    </select>
+                                    <Select value={formData.payment_status} onValueChange={(val) => updateFormData('payment_status', val)}>
+                                        <SelectTrigger className={`w-full h-11 px-4 rounded-xl border text-sm font-black outline-none transition-all ${formData.payment_status === 'PAID' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}>
+                                            <SelectValue placeholder="Status" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            <SelectItem value="PENDING">PENDING</SelectItem>
+                                            <SelectItem value="PAID">PAID</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Payment Mode</label>
-                                    <select
-                                        name="payment_mode"
-                                        value={formData.payment_mode}
-                                        onChange={handleInputChange}
-                                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                                    >
-                                        <option value="BANK">Bank Transfer (NEFT/RTGS)</option>
-                                        <option value="CASH">Cash Payment</option>
-                                        <option value="UPI">UPI Payment</option>
-                                        <option value="CHEQUE">Cheque</option>
-                                    </select>
+                                    <Select value={formData.payment_mode} onValueChange={(val) => updateFormData('payment_mode', val)}>
+                                        <SelectTrigger className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                            <SelectValue placeholder="Mode" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            <SelectItem value="BANK">Bank Transfer (NEFT/RTGS)</SelectItem>
+                                            <SelectItem value="CASH">Cash Payment</SelectItem>
+                                            <SelectItem value="UPI">UPI Payment</SelectItem>
+                                            <SelectItem value="CHEQUE">Cheque</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">

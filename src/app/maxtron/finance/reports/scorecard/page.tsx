@@ -12,6 +12,7 @@ import {
     Filter
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { Input } from '@/components/ui/input';
 
 export default function ScorecardPage() {
     const [data, setData] = useState<any>(null);
@@ -66,27 +67,27 @@ export default function ScorecardPage() {
                 </div>
                 
                 <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-                    <div className="flex items-center gap-2 px-3">
+                    <div className="flex items-center gap-2 md:px-3">
                         <Calendar className="w-4 h-4 text-slate-400" />
-                        <input 
+                        <Input 
                             type="date" 
-                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0"
+                            className="w-fit bg-transparent border-none text-sm font-semibold outline-none focus:ring-0 h-auto p-0"
                             value={dateRange.start}
                             onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
                         />
                     </div>
                     <div className="text-slate-300">|</div>
-                    <div className="flex items-center gap-2 px-3">
-                        <input 
+                    <div className="flex items-center gap-2 md:px-3">
+                        <Input 
                             type="date" 
-                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0"
+                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0 h-auto p-0"
                             value={dateRange.end}
                             onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
                         />
                     </div>
                     <button 
                         onClick={fetchScorecard}
-                        className="bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                        className="hidden md:block bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                     >
                         <Filter className="w-5 h-5" />
                     </button>

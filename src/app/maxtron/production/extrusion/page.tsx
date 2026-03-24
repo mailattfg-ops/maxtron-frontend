@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -98,8 +105,10 @@ export default function ExtrusionPage() {
       
       if (empData.success && Array.isArray(empData.data)) {
         setEmployees(empData.data.filter((e: any) => 
-          e.companies?.company_name?.toUpperCase() === activeTenant ||
-          e.companies?.company_name?.toUpperCase().includes(activeTenant)
+          (e.companies?.company_name?.toUpperCase() === activeTenant ||
+          e.companies?.company_name?.toUpperCase().includes(activeTenant)) &&
+          (e.employee_categories?.category_name?.toLowerCase().includes('production') ||
+           e.user_types?.name?.toLowerCase().includes('production'))
         ));
       }
 
@@ -234,68 +243,70 @@ export default function ExtrusionPage() {
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Box className="w-4 h-4 text-primary" /> Select Product</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.product_id}
-                  onChange={e => setFormData({ ...formData, product_id: e.target.value })}
-                >
-                  <option value="">Select Finished Product</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.product_name} ({p.product_code})</option>)}
-                </select>
+                <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Finished Product" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {products.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.product_name} ({p.product_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Shift</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.shift}
-                  onChange={e => setFormData({ ...formData, shift: e.target.value })}
-                >
-                  <option value="Morning">Morning (6AM - 2PM)</option>
-                  <option value="Afternoon">Afternoon (2PM - 10PM)</option>
-                  <option value="Night">Night (10PM - 6AM)</option>
-                </select>
+                <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Shift" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="Morning">Morning (6AM - 2PM)</SelectItem>
+                    <SelectItem value="Afternoon">Afternoon (2PM - 10PM)</SelectItem>
+                    <SelectItem value="Night">Night (10PM - 6AM)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Settings className="w-4 h-4 text-primary" /> Machine No</label>
                 <Input placeholder="e.g. EX-01" value={formData.machine_no} onChange={e => setFormData({ ...formData, machine_no: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Operator</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.operator_id}
-                  onChange={e => setFormData({ ...formData, operator_id: e.target.value })}
-                >
-                  <option value="">Select Operator</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_code})</option>)}
-                </select>
+                <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Operator" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Supervisor</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.supervisor_id}
-                  onChange={e => setFormData({ ...formData, supervisor_id: e.target.value })}
-                >
-                  <option value="">Select Supervisor</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_code})</option>)}
-                </select>
+                <Select value={formData.supervisor_id} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Supervisor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Select Material Consumption</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.consumption_id}
-                  onChange={e => handleConsumptionSelect(e.target.value)}
-                >
-                  <option value="">Select Consumption Record</option>
-                  {consumptions.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
-                    </option>
-                  ))}
-                </select>
+                <Select value={formData.consumption_id} onValueChange={(val) => handleConsumptionSelect(val)}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Consumption Record" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {consumptions.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>

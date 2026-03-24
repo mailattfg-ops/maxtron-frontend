@@ -11,6 +11,13 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, XCircle,
   FileText, ClipboardList
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -329,7 +336,7 @@ export default function DeliveryDetails() {
               <ClipboardList className="w-5 h-5" /> {editingId ? "Edit Dispatch" : "New Dispatch Entry"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="px-0 md:px-6md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
@@ -345,40 +352,46 @@ export default function DeliveryDetails() {
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice <span className="text-rose-500">*</span></label>
-                  <select 
-                    value={formData.invoice_id} 
-                    onChange={e => handleInvoiceSelect(e.target.value)} 
-                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.invoice_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
-                  >
-                    <option value="">Select Invoice...</option>
-                    {invoices.map(i => <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>)}
-                  </select>
+                  <Select value={formData.invoice_id} onValueChange={handleInvoiceSelect}>
+                    <SelectTrigger className={`w-full border bg-white shadow-sm font-bold ${errors.invoice_id ? "border-rose-400 ring-2 ring-rose-50" : "border-slate-200"}`}>
+                      <SelectValue placeholder="Select Invoice..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {invoices.map(i => (
+                        <SelectItem key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.invoice_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Please link an invoice</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Select Vehicle <span className="text-rose-500">*</span></label>
-                  <select 
-                    value={formData.vehicle_id} 
-                    onChange={e => setFormData({...formData, vehicle_id: e.target.value})} 
-                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.vehicle_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
-                  >
-                    <option value="">Choose Vehicle...</option>
-                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number} ({v.vehicle_type})</option>)}
-                  </select>
+                  <Select value={formData.vehicle_id} onValueChange={(val) => setFormData({...formData, vehicle_id: val})}>
+                    <SelectTrigger className={`w-full border bg-white shadow-sm font-bold ${errors.vehicle_id ? "border-rose-400 ring-2 ring-rose-50" : "border-slate-200"}`}>
+                      <SelectValue placeholder="Choose Vehicle..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {vehicles.map(v => (
+                        <SelectItem key={v.id} value={v.id}>{v.registration_number} ({v.vehicle_type})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.vehicle_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Vehicle selection is required</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Person <span className="text-rose-500">*</span></label>
-                  <select 
-                    value={formData.delivery_person_id} 
-                    onChange={e => setFormData({...formData, delivery_person_id: e.target.value})} 
-                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.delivery_person_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
-                  >
-                    <option value="">Select Delivery Employee...</option>
-                    {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
+                  <Select value={formData.delivery_person_id} onValueChange={(val) => setFormData({...formData, delivery_person_id: val})}>
+                    <SelectTrigger className={`w-full border bg-white shadow-sm font-bold ${errors.delivery_person_id ? "border-rose-400 ring-2 ring-rose-50" : "border-slate-200"}`}>
+                      <SelectValue placeholder="Select Delivery Employee..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {employees.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.delivery_person_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Delivery person is required</p>}
                 </div>
               </div>
@@ -482,10 +495,16 @@ export default function DeliveryDetails() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50">
                                     <td className="p-4">
-                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none focus:ring-0">
-                                            <option value="">Select Product...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_name} [{p.product_code}]</option>)}
-                                        </select>
+                                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(index, 'product_id', val)}>
+                                            <SelectTrigger className="w-full border-none bg-transparent shadow-none focus:ring-0 font-bold">
+                                                <SelectValue placeholder="Select Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {products.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.product_name} [{p.product_code}]</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4">
                                         <Input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none" />
@@ -508,11 +527,16 @@ export default function DeliveryDetails() {
                  </div>
                  <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Status</label>
-                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-                        <option value="DELIVERED">Delivered</option>
-                        <option value="CANCELLED">Cancelled</option>
-                    </select>
+                    <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
+                        <SelectTrigger className="w-full border border-slate-200 bg-white font-bold h-10 shadow-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200">
+                            <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+                            <SelectItem value="DELIVERED">Delivered</SelectItem>
+                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
                  </div>
               </div>
 

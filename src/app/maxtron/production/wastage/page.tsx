@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -185,16 +192,17 @@ export default function DamagesWastagePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-rose-600" /> Production Stage</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.stage}
-                  onChange={e => setFormData({ ...formData, stage: e.target.value })}
-                >
-                  <option value="Extrusion">Extrusion (RM to Roll)</option>
-                  <option value="Cutting">Cutting & Sealing (Secondary)</option>
-                  <option value="Packing">Final Packing</option>
-                  <option value="Storage">Warehouse / Storage</option>
-                </select>
+                <Select value={formData.stage} onValueChange={(val) => setFormData({ ...formData, stage: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Stage" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="Extrusion">Extrusion (RM to Roll)</SelectItem>
+                    <SelectItem value="Cutting">Cutting & Sealing (Secondary)</SelectItem>
+                    <SelectItem value="Packing">Final Packing</SelectItem>
+                    <SelectItem value="Storage">Warehouse / Storage</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-rose-600" />Damages Qty (Kg)</label>
@@ -202,20 +210,20 @@ export default function DamagesWastagePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-rose-600" /> Reason Code</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.reason_code}
-                  onChange={e => setFormData({ ...formData, reason_code: e.target.value })}
-                >
-                  <option value="">Select Reason</option>
-                  <option value="Machine Fault">Machine Fault</option>
-                  <option value="Technical Error">Technical Error</option>
-                  <option value="Power Failure">Power Failure</option>
-                  <option value="Material Quality">Material Quality</option>
-                  <option value="Setup Waste">Initial Setup Waste</option>
-                  <option value="Operator Error">Operator Error</option>
-                  <option value="Other">Other (See Remarks)</option>
-                </select>
+                <Select value={formData.reason_code} onValueChange={(val) => setFormData({ ...formData, reason_code: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Reason" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="Machine Fault">Machine Fault</SelectItem>
+                    <SelectItem value="Technical Error">Technical Error</SelectItem>
+                    <SelectItem value="Power Failure">Power Failure</SelectItem>
+                    <SelectItem value="Material Quality">Material Quality</SelectItem>
+                    <SelectItem value="Setup Waste">Initial Setup Waste</SelectItem>
+                    <SelectItem value="Operator Error">Operator Error</SelectItem>
+                    <SelectItem value="Other">Other (See Remarks)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-rose-600" /> Remarks / Details</label>

@@ -10,6 +10,13 @@ import {
   Truck, Calendar, Hash, User, AlertTriangle, 
   Download, FileText, Undo2, Ban
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -310,38 +317,44 @@ export default function PurchaseReturnPage() {
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Link to GRN Entry</label>
-                <select 
-                  value={formData.purchase_entry_id}
-                  onChange={(e) => {
-                    const sel = entries.find(p => p.id === e.target.value);
+                <Select 
+                  value={formData.purchase_entry_id} 
+                  onValueChange={(val) => {
+                    const sel = entries.find(p => p.id === val);
                     if (sel) {
-                      setFormData({...formData, purchase_entry_id: e.target.value, supplier_id: sel.supplier_id});
+                      setFormData({...formData, purchase_entry_id: val, supplier_id: sel.supplier_id});
                     } else {
-                      setFormData({...formData, purchase_entry_id: e.target.value});
+                      setFormData({...formData, purchase_entry_id: val});
                     }
                   }}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-semibold"
                 >
-                  <option value="">-- Choose Arrival Entry --</option>
-                  {entries.map(e => (
-                    <option key={e.id} value={e.id}>{e.entry_number} - {e.supplier_master?.supplier_name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm font-semibold shadow-sm">
+                    <SelectValue placeholder="-- Choose Arrival Entry --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {entries.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.entry_number} - {e.supplier_master?.supplier_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Supplier</label>
-                <select 
-                  value={formData.supplier_id}
-                  onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
+                <Select 
+                  value={formData.supplier_id} 
+                  onValueChange={(val) => setFormData({...formData, supplier_id: val})}
                   disabled={!!formData.purchase_entry_id}
                 >
-                  <option value="">Select vendor...</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select vendor..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.supplier_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-full space-y-4">
@@ -411,16 +424,17 @@ export default function PurchaseReturnPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Return Status</label>
-                <select 
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                   <option value="PENDING">Pending (QC Rejected)</option>
-                  <option value="DISPATCHED">Dispatched to Vendor</option>
-                  <option value="Credit Received">Credit Received</option>
-                  <option value="CREDITED">Credited to Account</option>
-                </select>
+                <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Return Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="PENDING">Pending (QC Rejected)</SelectItem>
+                    <SelectItem value="DISPATCHED">Dispatched to Vendor</SelectItem>
+                    <SelectItem value="Credit Received">Credit Received</SelectItem>
+                    <SelectItem value="CREDITED">Credited to Account</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-2 space-y-2">

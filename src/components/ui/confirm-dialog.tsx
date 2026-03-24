@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { AlertCircle, X, Check } from 'lucide-react';
+import { AlertCircle, X, Check, ChevronDown } from 'lucide-react';
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './card';
 
@@ -23,6 +23,25 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const [resolveRef, setResolveRef] = useState<((val: boolean) => void) | null>(null);
+  const [showScrollArrow, setShowScrollArrow] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      if (scrollTop + clientHeight >= scrollHeight - 20) {
+        setShowScrollArrow(false);
+      } else {
+        setShowScrollArrow(true);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setTimeout(handleScroll, 200);
+    }
+  }, [isOpen, options]);
 
   const confirm = useCallback((opts: ConfirmOptions) => {
     setOptions(opts);
@@ -50,7 +69,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={handleCancel} />
           
-          <Card className="relative w-full max-w-[400px] shadow-2xl animate-in zoom-in duration-300 border-primary/20 bg-white">
+          <Card className="relative w-full max-w-[400px] max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in duration-300 border-primary/20 bg-white flex flex-col">
             <CardHeader className="bg-slate-50/50 border-b p-6">
               <div className="flex items-center gap-4">
                 <div className={`p-2 rounded-full ${options?.type === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-primary/10 text-primary'}`}>
@@ -61,7 +80,16 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent 
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="p-6 overflow-y-auto relative"
+            >
+              {showScrollArrow && (
+                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-primary text-white p-2 rounded-full shadow-lg">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              )}
               <CardDescription className="text-sm font-medium text-slate-700 leading-relaxed mb-8">
                 {options?.message}
               </CardDescription>

@@ -104,12 +104,12 @@ export default function AttendanceReportPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Attendance Summary</h1>
           <p className="text-foreground/60 mt-2">Analytics and date-range logs for {activeTenant}.</p>
         </div>
-        <Button onClick={downloadExcel} className="bg-secondary text-white hover:bg-secondary/90 rounded-full px-6">
+        <Button onClick={downloadExcel} className="bg-secondary text-white hover:bg-secondary/90 rounded-full px-6 w-full sm:w-auto h-11 sm:h-auto">
           <Download className="w-4 h-4 mr-2" /> Download Excel
         </Button>
       </div>
@@ -159,13 +159,19 @@ export default function AttendanceReportPage() {
             <CalendarDays className="w-5 h-5 mr-3 text-secondary" />
             Filtered Attendance Logs
           </CardTitle>
-          <div className="flex items-center space-x-3 bg-slate-50 p-2 rounded-lg border">
-             <span className="text-xs font-bold text-slate-500 uppercase px-1">From:</span>
-             <Input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="rounded-md w-36 h-9 text-xs border-primary/20" />
-             <span className="text-xs font-bold text-slate-500 uppercase px-1">To:</span>
-             <Input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="rounded-md w-36 h-9 text-xs border-primary/20" />
-             <Button onClick={() => fetchSummary()} size="sm" className="bg-primary text-white hover:bg-primary/90 h-9 px-4 rounded-md">
-               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-lg border w-full lg:w-auto">
+             <div className="grid grid-cols-1 md:flex gap-2 flex-grow">
+               <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase">From:</span>
+                 <Input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="rounded-md w-full sm:w-36 h-9 text-[11px] border-primary/20" />
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase">To:</span>
+                 <Input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="rounded-md w-full sm:w-36 h-9 text-[11px] border-primary/20" />
+               </div>
+             </div>
+             <Button onClick={() => fetchSummary()} size="sm" className="bg-primary text-white hover:bg-primary/90 h-10 sm:h-9 px-6 rounded-md w-full sm:w-auto">
+               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply Filter'}
              </Button>
           </div>
         </CardHeader>
@@ -174,10 +180,10 @@ export default function AttendanceReportPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
                 <tr>
-                  <th className="p-4 border-r">Date</th>
-                  <th className="p-4 border-r">ID & Name</th>
-                  <th className="p-4 border-r text-center">In / Out</th>
-                  <th className="p-4 border-r text-center">Status</th>
+                  <th className="p-4">Date</th>
+                  <th className="p-4">ID & Name</th>
+                  <th className="p-4 text-center">In / Out</th>
+                  <th className="p-4 text-center">Status</th>
                   <th className="p-4">Remarks</th>
                 </tr>
               </thead>

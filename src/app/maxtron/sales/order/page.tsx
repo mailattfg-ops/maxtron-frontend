@@ -11,6 +11,13 @@ import {
   ChevronRight, Info, AlertCircle, Edit2, CheckCircle2,
   AlertTriangle, XCircle
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
@@ -401,7 +408,7 @@ export default function CustomerOrderEntry() {
               {editingId ? "Edit Customer Order" : "New Order Form"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
@@ -420,32 +427,32 @@ export default function CustomerOrderEntry() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <User className="w-3 h-3" /> Select Customer
                   </label>
-                  <select 
-                    value={formData.customer_id} 
-                    onChange={e => setFormData({...formData, customer_id: e.target.value})}
-                    className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                  >
-                    <option value="">Choose Customer...</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</option>
-                    ))}
-                  </select>
+                  <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm">
+                      <SelectValue placeholder="Choose Customer..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {customers.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Briefcase className="w-3 h-3" /> Sales Executive
                   </label>
-                  <select 
-                    value={formData.executive_id} 
-                    onChange={e => setFormData({...formData, executive_id: e.target.value})}
-                    className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                  >
-                    <option value="">Choose Executive...</option>
-                    {executives.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </select>
+                  <Select value={formData.executive_id} onValueChange={(val) => setFormData({...formData, executive_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm">
+                      <SelectValue placeholder="Choose Executive..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {executives.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -498,18 +505,18 @@ export default function CustomerOrderEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50/50 transition-colors group">
                                     <td className="p-4">
-                                        <select 
-                                            value={item.product_id}
-                                            onChange={e => handleItemChange(index, 'product_id', e.target.value)}
-                                            className="w-full text-[10px] md:text-sm font-medium border-none bg-transparent focus:ring-0"
-                                        >
-                                            <option value="">Select Product...</option>
-                                            {products.filter(p => (Number(p.balance) > 0 || item.product_id === p.id)).map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.product_name} [{p.product_code}] - Available: {p.balance} Kg
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(index, 'product_id', val)}>
+                                            <SelectTrigger className="w-full border-none bg-transparent shadow-none focus:ring-0 text-[10px] md:text-sm font-medium">
+                                                <SelectValue placeholder="Select Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {products.filter(p => (Number(p.balance) > 0 || item.product_id === p.id)).map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>
+                                                        {p.product_name} [{p.product_code}] - Available: {p.balance} Kg
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4">
                                         <Input 

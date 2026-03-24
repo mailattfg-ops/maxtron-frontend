@@ -21,6 +21,13 @@ import { Input } from "@/components/ui/input";
 import { TableView } from "@/components/ui/table-view";
 import { exportToExcel } from '@/utils/export';
 import { useToast } from "@/components/ui/toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -250,14 +257,17 @@ export default function RouteCollectionReportPage() {
                             </div>
                             <div className="relative">
                                 <Map className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
-                                <select 
-                                    className="pl-9 h-10 w-full min-w-[200px] rounded-md border border-primary/20 bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                                    value={filters.route_id}
-                                    onChange={e => handleFilterChange('route_id', e.target.value)}
-                                >
-                                    <option value="">All Collection Routes</option>
-                                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_name}</option>)}
-                                </select>
+                                <Select value={filters.route_id} onValueChange={(val) => handleFilterChange('route_id', val)}>
+                                    <SelectTrigger className="pl-9 h-10 w-full min-w-[200px] border-primary/20 bg-background shadow-sm font-bold">
+                                        <SelectValue placeholder="All Collection Routes" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        <SelectItem value="">All Collection Routes</SelectItem>
+                                        {routes.map(r => (
+                                            <SelectItem key={r.id} value={r.id}>{r.route_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>

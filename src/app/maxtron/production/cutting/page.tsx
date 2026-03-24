@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -131,7 +138,19 @@ export default function CuttingSealingPage() {
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    let newValue = value;
+
+    if (field === 'quantity') {
+        const otherItemsTotal = formData.items.reduce((sum, it, i) => i === index ? sum : sum + it.quantity, 0);
+        const maxAllowed = Math.max(0, formData.input_qty - otherItemsTotal);
+        
+        if (value > maxAllowed) {
+            newValue = maxAllowed;
+            info(`Quantity capped at ${maxAllowed.toFixed(2)} Kg to match total input.`);
+        }
+    }
+
+    newItems[index] = { ...newItems[index], [field]: newValue };
     setFormData({ ...formData, items: newItems });
   };
 
@@ -146,6 +165,12 @@ export default function CuttingSealingPage() {
     }
 
     const totalOutput = formData.items.reduce((sum, it) => sum + it.quantity, 0);
+    
+    if (totalOutput > formData.input_qty) {
+        error(`Total output (${totalOutput.toFixed(2)} Kg) exceeds input quantity (${formData.input_qty.toFixed(2)} Kg).`);
+        return;
+    }
+
     const wastage = formData.input_qty - totalOutput;
 
     const token = localStorage.getItem('token');
@@ -214,7 +239,7 @@ export default function CuttingSealingPage() {
 
       {showForm && (
         <Card className="border-indigo-200 shadow-xl animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-indigo-50 border-b border-indigo-100">
+          <CardHeader className="bg-indigo-50 border-b border-indigo-100 py-4">
             <CardTitle className="text-xl flex items-center gap-2 text-indigo-900">
               <Scissors className="w-5 h-5" /> Processing Job Entry
             </CardTitle>
@@ -232,52 +257,55 @@ export default function CuttingSealingPage() {
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-indigo-600" /> Shift No</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.shift}
-                  onChange={e => setFormData({ ...formData, shift: e.target.value })}
-                >
-                  <option value="General">General</option>
-                  <option value="Day">Day</option>
-                  <option value="Night">Night</option>
-                </select>
+                <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Shift" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="General">General</SelectItem>
+                    <SelectItem value="Day">Day</SelectItem>
+                    <SelectItem value="Night">Night</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-indigo-600" /> Operator</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.operator_id}
-                  onChange={e => setFormData({ ...formData, operator_id: e.target.value })}
-                >
-                  <option value="">Select Operator</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_code})</option>)}
-                </select>
+                <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Operator" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-indigo-600" /> Select Batch (Input)</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.batch_id}
-                  onChange={e => {
-                    const batch = batches.find(b => b.id === e.target.value);
+                <Select 
+                  value={formData.batch_id} 
+                  onValueChange={(val) => {
+                    const batch = batches.find(b => b.id === val);
                     setFormData({ 
                         ...formData, 
-                        batch_id: e.target.value,
+                        batch_id: val,
                         input_qty: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0 
                     });
                   }}
                 >
-                  <option value="">Select Base Batch</option>
-                  {batches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.batch_number} - {b.finished_products?.product_name || 'N/A'} ({b.extrusion_output_qty} Kg)
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Base Batch" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {batches.map(b => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.batch_number} - {b.finished_products?.product_name || 'N/A'} ({b.extrusion_output_qty} Kg)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-indigo-600" /> Input Qty (Kg)</label>
@@ -292,7 +320,7 @@ export default function CuttingSealingPage() {
                     <Box className="w-5 h-5" /> Finished Product Details
                 </h3>
                 <Button variant="outline" size="sm" onClick={addItem} className="text-indigo-600 border-indigo-200">
-                    <Plus className="w-4 h-4 mr-1" /> Add Product
+                    <Plus className="w-4 h-4 mr-1" />  <span className="hidden md:block">Add Product</span>
                 </Button>
               </div>
 
@@ -306,16 +334,16 @@ export default function CuttingSealingPage() {
                     <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 bg-white border rounded-lg shadow-sm animate-in fade-in slide-in-from-left duration-300">
                         <div className="flex-1 space-y-1">
                             <label className="text-[10px] font-bold text-slate-500 uppercase">Product</label>
-                            <select 
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                                value={item.product_id}
-                                onChange={e => handleItemChange(idx, 'product_id', e.target.value)}
-                            >
-                                <option value="">Select Product Produced</option>
-                                {finishedProducts.map(fp => (
-                                    <option key={fp.id} value={fp.id}>{fp.product_name} ({fp.size}, {fp.color})</option>
-                                ))}
-                            </select>
+                            <Select value={item.product_id} onValueChange={(val) => handleItemChange(idx, 'product_id', val)}>
+                                <SelectTrigger className="h-9 w-full border-input bg-background shadow-sm">
+                                    <SelectValue placeholder="Select Product Produced" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-input">
+                                    {finishedProducts.map(fp => (
+                                        <SelectItem key={fp.id} value={fp.id}>{fp.product_name} ({fp.size}, {fp.color})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="w-full md:w-48 space-y-1">
                             <label className="text-[10px] font-bold text-slate-500 uppercase">Qty Sealed (Kg)</label>

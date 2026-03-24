@@ -13,14 +13,15 @@ import {
     AlertCircle,
     Navigation,
     X,
-    Save,
-    User,
-    Hash,
     MapPin,
     BarChart3,
     Lock,
-    Loader2
+    Loader2,
+    Save,
+    User,
+    Hash
 } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -518,7 +519,11 @@ export default function VehicleMasterPage() {
                                             </h3>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Hardware Active?</span>
-                                                <input type="checkbox" name="gps_installed" checked={formData.gps_installed} onChange={handleInputChange} className="w-5 h-5 accent-secondary" />
+                                                <Checkbox 
+                                                   name="gps_installed" 
+                                                   checked={formData.gps_installed} 
+                                                   onCheckedChange={(checked: boolean) => handleInputChange({ target: { name: 'gps_installed', type: 'checkbox', checked: !!checked } } as any)} 
+                                                />
                                             </div>
                                         </div>
                                         {formData.gps_installed && (

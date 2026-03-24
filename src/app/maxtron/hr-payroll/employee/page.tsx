@@ -12,6 +12,14 @@ import {
     DollarSign, Lock, Copy, AlertCircle, Users, TrendingUp, 
     FileDown, Download, Eye, EyeOff 
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -233,17 +241,21 @@ export default function EmployeeInformationPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value, type } = e.target;
-    
+    updateFormData(name, value, type);
+  };
+
+  const updateFormData = (name: string, value: any, type?: string) => {
+    let val = value;
     // Restrict to digits only for phone and aadhaar
     if (name === 'phone' || name === 'aadhaar') {
-      value = value.replace(/\D/g, '');
+      val = val.replace(/\D/g, '');
     }
 
     // Restrict negative values for number inputs
-    if (type === 'number' && Number(value) < 0) {
-      value = '0';
+    if (type === 'number' && Number(val) < 0) {
+      val = '0';
     }
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: val }));
   };
 
   const handleAddressChange = (index: number, field: string, value: string) => {
@@ -892,13 +904,11 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2 flex items-center h-full pt-4">
                         <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
-                          <input 
-                             type="checkbox" 
+                          <Checkbox 
                              name="is_married" 
                              checked={formData.is_married} 
-                             onChange={(e) => !isViewMode && setFormData({...formData, is_married: e.target.checked})} 
+                             onCheckedChange={(checked) => !isViewMode && setFormData({...formData, is_married: !!checked})} 
                              disabled={isViewMode}
-                             className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
                           />
                           <span>Is Married?</span>
                         </label>
@@ -928,18 +938,16 @@ export default function EmployeeInformationPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Employee Category</label>
-                <select 
-                  name="category_id" 
-                  value={formData.category_id} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.category_name}</option>
-                  ))}
-                </select>
+                <Select value={formData.category_id} onValueChange={(val) => updateFormData('category_id', val)} disabled={isViewMode}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.category_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
@@ -948,17 +956,16 @@ export default function EmployeeInformationPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Company / Department Appointed</label>
-                <select 
-                  name="company_id" 
-                  value={formData.company_id} 
-                  onChange={handleInputChange} 
-                  disabled={true}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.company_name}</option>
-                  ))}
-                </select>
+                <Select value={formData.company_id} onValueChange={(val) => updateFormData('company_id', val)} disabled={true}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select Company" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
@@ -986,18 +993,16 @@ export default function EmployeeInformationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
-                <select 
-                  name="type" 
-                  value={formData.type} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select System Role</option>
-                  {userTypes.map((role) => (
-                    <option key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</option>
-                  ))}
-                </select>
+                <Select value={formData.type} onValueChange={(val) => updateFormData('type', val)} disabled={isViewMode}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select System Role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {userTypes.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -1026,16 +1031,16 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                         {formData.employee_qualifications.map((q, idx) => (
-                           <div key={idx} className="flex gap-4 items-center animate-in fade-in">
-                              <select 
-                                value={q.qualification_type} 
-                                onChange={(e) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', e.target.value)}
-                                disabled={isViewMode}
-                                className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                              >
-                                <option value="BASIC">Basic</option>
-                                <option value="ADDITIONAL">Additional</option>
-                              </select>
+                            <div key={idx} className="flex gap-4 items-center animate-in fade-in">
+                              <Select value={q.qualification_type} onValueChange={(val) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', val)} disabled={isViewMode}>
+                                <SelectTrigger className="h-9 w-40 border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="BASIC">Basic</SelectItem>
+                                  <SelectItem value="ADDITIONAL">Additional</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Input 
                                 placeholder="Qualification Details (e.g. Master's in IT)" 
                                 value={q.qualification_name}
@@ -1142,7 +1147,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_license} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_license: !!checked})} disabled={isViewMode} />
                             <span>License Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1151,7 +1156,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1175,15 +1180,15 @@ export default function EmployeeInformationPage() {
                          <div key={idx} className="grid lg:flex gap-3 items-center animate-in fade-in bg-muted/20 p-3 rounded-lg">
                             <div className="space-y-1 flex-none w-full lg:w-48">
                               <label className="text-xs text-muted-foreground">Type</label>
-                              <select 
-                                value={cert.certificate_type} 
-                                onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', e.target.value)}
-                                disabled={isViewMode}
-                                className="flex h-9 w-full rounded-md border border-input bg-card/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                              >
-                                <option value="MEDICAL">Medical Certificate</option>
-                                <option value="POLICE_VERIFICATION">Police Verification</option>
-                              </select>
+                              <Select value={cert.certificate_type} onValueChange={(val) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', val)} disabled={isViewMode}>
+                                <SelectTrigger className="h-9 w-full border-input bg-card/50 px-3 py-1 text-sm shadow-sm">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="MEDICAL">Medical Certificate</SelectItem>
+                                  <SelectItem value="POLICE_VERIFICATION">Police Verification</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             {/* <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
@@ -1353,12 +1358,10 @@ export default function EmployeeInformationPage() {
           </div>
           <div className="grid grid-cols-1 md:flex gap-4 items-center">
             <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
-               <input 
-                  type="checkbox" 
+               <Checkbox 
                   id="showDeactivated"
                   checked={showDeactivated} 
-                  onChange={(e) => { setShowDeactivated(e.target.checked); setCurrentPage(1); }}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  onCheckedChange={(checked) => { setShowDeactivated(!!checked); setCurrentPage(1); }}
                />
                <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
             </div>

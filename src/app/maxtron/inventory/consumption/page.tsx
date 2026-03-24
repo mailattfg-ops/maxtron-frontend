@@ -10,6 +10,13 @@ import {
   Settings, Calendar, Hash, User, 
   Download, FileText, Activity, Layers, Zap, CheckCircle
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -348,18 +355,18 @@ export default function ConsumptionPage() {
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Raw Material Link</label>
-                <select 
-                  value={formData.rm_id}
-                  onChange={(e) => setFormData({...formData, rm_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-black focus:ring-2 focus:ring-primary/20 outline-none"
-                >
-                  <option value="">Select feedstock...</option>
-                  {materials.filter(m => Number(m.balance || 0) > 0 || m.id === formData.rm_id).map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
-                    </option>
-                  ))}
-                </select>
+                <Select value={formData.rm_id} onValueChange={(val) => setFormData({...formData, rm_id: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm font-black shadow-sm">
+                    <SelectValue placeholder="Select feedstock..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {materials.filter(m => Number(m.balance || 0) > 0 || m.id === formData.rm_id).map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
  
               <div className="space-y-2">
@@ -377,17 +384,18 @@ export default function ConsumptionPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Production Process</label>
-                <select 
-                  value={formData.process_type}
-                  onChange={(e) => setFormData({...formData, process_type: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="Extrusion">Extrusion</option>
-                  <option value="Printing">Printing</option>
-                  <option value="Cutting">Cutting</option>
-                  <option value="Slitting">Slitting</option>
-                  <option value="Sealing">Sealing</option>
-                </select>
+                <Select value={formData.process_type} onValueChange={(val) => setFormData({...formData, process_type: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Process..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Extrusion">Extrusion</SelectItem>
+                    <SelectItem value="Printing">Printing</SelectItem>
+                    <SelectItem value="Cutting">Cutting</SelectItem>
+                    <SelectItem value="Slitting">Slitting</SelectItem>
+                    <SelectItem value="Sealing">Sealing</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -402,16 +410,16 @@ export default function ConsumptionPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Issued To / Supervisor</label>
-                <select 
-                  value={formData.issued_by}
-                  onChange={(e) => setFormData({...formData, issued_by: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="">Select staff...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                <Select value={formData.issued_by} onValueChange={(val) => setFormData({...formData, issued_by: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select staff..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-full space-y-2">

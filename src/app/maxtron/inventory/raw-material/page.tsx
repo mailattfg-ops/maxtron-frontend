@@ -10,6 +10,13 @@ import {
   Tag, FileText, IndianRupee, MapPin, Layers, Briefcase, Download, 
   TrendingUp, Activity, CheckCircle, Globe2
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -370,30 +377,31 @@ export default function RawMaterialPage() {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
                   <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
                 </label>
-                <select 
-                  value={formData.rm_type_code}
-                  onChange={(e) => setFormData({...formData, rm_type_code: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-bold focus:bg-white outline-none shadow-sm"
-                >
-                  <option value="">Select Type Code...</option>
-                  {typeCodes.map(tc => (
-                    <option key={tc.id} value={tc.code}>{tc.code} - {tc.name}</option>
-                  ))}
-                </select>
+                <Select value={formData.rm_type_code} onValueChange={(val) => setFormData({...formData, rm_type_code: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm font-bold shadow-sm">
+                    <SelectValue placeholder="Select Type Code..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {typeCodes.map(tc => (
+                      <SelectItem key={tc.id} value={tc.code}>{tc.code} - {tc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
                    Unit Type
                 </label>
-                <select 
-                  value={formData.unit_type}
-                  onChange={(e) => setFormData({...formData, unit_type: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm"
-                >
-                  <option value="Kg">Kilogram (Kg)</option>
-                  <option value="Ton">Metric Ton (Ton)</option>
-                </select>
+                <Select value={formData.unit_type} onValueChange={(val) => setFormData({...formData, unit_type: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Unit..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Kg">Kilogram (Kg)</SelectItem>
+                    <SelectItem value="Ton">Metric Ton (Ton)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
  
               <div className="space-y-2">
@@ -438,15 +446,16 @@ export default function RawMaterialPage() {
                 <label className="text-sm font-bold text-foreground/70 flex items-center">
                   <Globe2 className="w-4 h-4 mr-2 text-primary" /> Availability 
                 </label>
-                <select 
-                  value={formData.availability}
-                  onChange={(e) => setFormData({...formData, availability: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm"
-                >
-                  <option value="Local">Local (Domestic)</option>
-                  <option value="Outstation">Outstation (Inter-state)</option>
-                  <option value="Abroad">Abroad (Imported)</option>
-                </select>
+                <Select value={formData.availability} onValueChange={(val) => setFormData({...formData, availability: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Availability..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Local">Local (Domestic)</SelectItem>
+                    <SelectItem value="Outstation">Outstation (Inter-state)</SelectItem>
+                    <SelectItem value="Abroad">Abroad (Imported)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-2 lg:col-span-3 space-y-2">

@@ -11,6 +11,13 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
@@ -346,7 +353,7 @@ export default function SalesInvoiceEntry() {
               <Plus className="w-5 h-5" /> {editingId ? "Edit Invoice" : "Create New Invoice"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="md:p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
@@ -360,22 +367,33 @@ export default function SalesInvoiceEntry() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Search className="w-3 h-3" /> Link Order (Optional)
                   </label>
-                  <select value={formData.order_id} onChange={e => handleOrderSelect(e.target.value)} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm">
-                    <option value="">Manual Entry (No Order)</option>
-                    {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
-                      <option key={o.id} value={o.id}>{o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items</option>
-                    ))}
-                  </select>
+                  <Select value={formData.order_id} onValueChange={handleOrderSelect}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-bold">
+                      <SelectValue placeholder="Manual Entry (No Order)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="manual">Manual Entry (No Order)</SelectItem>
+                      {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <User className="w-3 h-3" /> Customer
                   </label>
-                  <select value={formData.customer_id} onChange={e => setFormData({...formData, customer_id: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm">
-                    <option value="">Select Customer...</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</option>)}
-                  </select>
+                  <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-bold">
+                      <SelectValue placeholder="Select Customer..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {customers.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
@@ -419,10 +437,16 @@ export default function SalesInvoiceEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50 group">
                                     <td className="p-4">
-                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none text-[10px] md:text-sm font-medium focus:ring-0">
-                                            <option value="">Select Product...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_code} - {p.product_name} </option>)}
-                                        </select>
+                                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(index, 'product_id', val)}>
+                                            <SelectTrigger className="w-full border-none bg-transparent shadow-none focus:ring-0 font-bold">
+                                                <SelectValue placeholder="Select Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {products.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4"><Input type="number" min="0" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
                                     <td className="p-4"><Input type="number" min="0" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>

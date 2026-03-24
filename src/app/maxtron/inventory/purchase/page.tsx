@@ -10,6 +10,14 @@ import {
   Truck, Calendar, Hash, User, IndianRupee, 
   Warehouse, ClipboardList, Trash, Package, AlertCircle, Info
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -296,16 +304,17 @@ export default function PurchaseEntryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 border-b border-slate-100 pb-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pending Order Selection</label>
-                <select 
-                  value={formData.order_id}
-                  onChange={(e) => handleOrderSelection(e.target.value)}
-                  className="w-full h-11 px-3 rounded-md border border-amber-300 bg-amber-50/30 text-xs font-black shadow-sm outline-none focus:ring-2 focus:ring-amber-200"
-                >
-                  <option value="">-- Select Pending PO --</option>
-                  {pendingOrders.map(o => (
-                    <option key={o.id} value={o.id}>{o.order_number} | {o.supplier_master?.supplier_name}</option>
-                  ))}
-                </select>
+                <Select value={formData.order_id} onValueChange={handleOrderSelection}>
+                  <SelectTrigger className="w-full h-11 border-amber-300 bg-amber-50/30 text-xs font-black shadow-sm">
+                    <SelectValue placeholder="-- Select Pending PO --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-amber-200">
+                    <SelectItem value="manual">-- Select Pending PO --</SelectItem>
+                    {pendingOrders.map(o => (
+                      <SelectItem key={o.id} value={o.id}>{o.order_number} | {o.supplier_master?.supplier_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
  
               <div className="space-y-2">
@@ -315,17 +324,20 @@ export default function PurchaseEntryPage() {
  
               <div className="space-y-2 sm:col-span-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 text-primary italic font-black">Vendor Identity</label>
-                <select 
-                   value={formData.supplier_id} 
-                   onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-xs font-black bg-slate-50"
-                   disabled={!!formData.order_id}
+                <Select 
+                  value={formData.supplier_id} 
+                  onValueChange={(val) => setFormData({...formData, supplier_id: val})}
+                  disabled={!!formData.order_id}
                 >
-                  <option value="">Choose Supplier...</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.supplier_name.toUpperCase()} ({s.supplier_code})</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-xs font-black bg-slate-50">
+                    <SelectValue placeholder="Choose Supplier..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.supplier_name.toUpperCase()} ({s.supplier_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
  
               <div className="space-y-2">
@@ -376,19 +388,22 @@ export default function PurchaseEntryPage() {
                       {formData.items.map((item, idx) => (
                         <tr key={idx} className="bg-white">
                           <td className="p-4">
-                            <select 
+                            <Select 
                               value={item.rm_id}
-                              onChange={(e) => updateItem(idx, 'rm_id', e.target.value)}
-                              className="w-full h-10 px-2 rounded border border-slate-200 text-sm font-medium"
+                              onValueChange={(val) => updateItem(idx, 'rm_id', val)}
                               disabled={!!formData.order_id}
                             >
-                              <option value="">Select Material...</option>
-                              {materials.map(m => (
-                                <option key={m.id} value={m.id}>
-                                  {m.rm_name} (Global Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="w-full h-10 border border-slate-200 text-sm font-medium">
+                                <SelectValue placeholder="Select Material..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-slate-200">
+                                {materials.map(m => (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    {m.rm_name} (Global Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-4">
                             <div className="h-10 flex items-center justify-center font-bold text-slate-400 bg-slate-50 rounded">
@@ -444,11 +459,9 @@ export default function PurchaseEntryPage() {
                      <div className="absolute -top-12 right-0 flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-2 rounded-xl animate-bounce shadow-sm">
                        <AlertCircle className="w-4 h-4 text-amber-600 font-black" />
                        <label className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 cursor-pointer tracking-widest">
-                         <input 
-                           type="checkbox" 
+                         <Checkbox 
                            checked={formData.reorder_missing}
-                           onChange={(e) => setFormData({...formData, reorder_missing: e.target.checked})}
-                           className="w-4 h-4 accent-amber-600 rounded"
+                           onCheckedChange={(checked: boolean) => setFormData({...formData, reorder_missing: !!checked})}
                          />
                          <span className="hidden sm:inline">Re-order Missing Qty?</span>
                          <span className="sm:hidden">Re-order?</span>

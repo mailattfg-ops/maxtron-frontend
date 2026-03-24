@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -162,7 +169,7 @@ export default function PackingDetailsPage() {
 
       {showForm && (
         <Card className="border-emerald-200 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-emerald-50 border-b border-emerald-100">
+          <CardHeader className="bg-emerald-50 border-b border-emerald-100 py-4">
             <CardTitle className="text-xl flex items-center gap-2 text-emerald-900">
               <Archive className="w-5 h-5" /> Final Packing Entry
             </CardTitle>
@@ -176,18 +183,18 @@ export default function PackingDetailsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><ArrowRightLeft className="w-4 h-4 text-emerald-600" /> Select Conversion Record</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.conversion_id}
-                  onChange={e => setFormData({ ...formData, conversion_id: e.target.value })}
-                >
-                  <option value="">Select Cutting/Sealing Output</option>
-                  {conversions.map(c => (
-                    <option key={c.id} value={c.id}>
-                      Batch: {c.production_batches?.batch_number} - {c.production_batches?.finished_products?.product_name} ({c.output_qty} Kg)
-                    </option>
-                  ))}
-                </select>
+                <Select value={formData.conversion_id} onValueChange={(val) => setFormData({ ...formData, conversion_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Cutting/Sealing Output" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {conversions.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        Batch: {c.production_batches?.batch_number} - {c.production_batches?.finished_products?.product_name} ({c.output_qty} Kg)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Boxes className="w-4 h-4 text-emerald-600" /> Bundle Count</label>

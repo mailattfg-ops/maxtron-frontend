@@ -22,6 +22,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
@@ -283,14 +290,16 @@ export default function HCERegistryPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Branch Name</label>
-                                        <select 
-                                            className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                            value={formData.branch_id}
-                                            onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
-                                        >
-                                            <option value="">Select Branch</option>
-                                            {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                                        </select>
+                                        <Select value={formData.branch_id} onValueChange={(val) => setFormData({ ...formData, branch_id: val })}>
+                                            <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                                <SelectValue placeholder="Select Branch" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-primary/20">
+                                                {branches.map(b => (
+                                                    <SelectItem key={b.id} value={b.id}>{b.branch_name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> HCE Place</label>
@@ -319,16 +328,17 @@ export default function HCERegistryPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Collection Type</label>
-                                        <select 
-                                            className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                            value={formData.collection_type}
-                                            onChange={e => setFormData({ ...formData, collection_type: e.target.value })}
-                                        >
-                                            <option value="Daily">Daily</option>
-                                            <option value="Alternate days">Alternate days</option>
-                                            <option value="Thrice a Week">Thrice a Week</option>
-                                            <option value="Once a Week">Once a Week</option>
-                                        </select>
+                                        <Select value={formData.collection_type} onValueChange={(val) => setFormData({ ...formData, collection_type: val })}>
+                                            <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                                <SelectValue placeholder="Select Collection Type" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-primary/20">
+                                                <SelectItem value="Daily">Daily</SelectItem>
+                                                <SelectItem value="Alternate days">Alternate days</SelectItem>
+                                                <SelectItem value="Thrice a Week">Thrice a Week</SelectItem>
+                                                <SelectItem value="Once a Week">Once a Week</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Open From</label>
@@ -407,19 +417,19 @@ export default function HCERegistryPage() {
                     searchFields={['hce_name', 'hce_code', 'hce_place', 'branch_name']}
                     renderRow={(h: any) => (
                         <tr key={h.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
-                            <td className="px-6 py-6">
+                            <td className="px-6 py-6 min-w-[120px]">
                                 <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider whitespace-nowrap">{h.hce_code}</span>
                             </td>
-                            <td className="px-6 py-6">
+                            <td className="px-6 py-6 min-w-[250px]">
                                 <div className="flex flex-col gap-1">
-                                    <span className="font-bold text-foreground text-sm">{h.hce_name}</span>
-                                    <span className="text-[10px] text-muted-foreground/70 truncate max-w-[200px] font-medium italic">{h.address}</span>
+                                    <span className="font-bold text-foreground text-sm truncate max-w-[240px]" title={h.hce_name}>{h.hce_name}</span>
+                                    <span className="text-[10px] text-muted-foreground/70 truncate max-w-[240px] font-medium italic" title={h.address}>{h.address}</span>
                                 </div>
                             </td>
-                            <td className="px-6 py-6 text-sm font-bold text-secondary">{h.branch_name}</td>
-                            <td className="px-6 py-6 text-sm font-bold text-secondary">{h.hce_place}</td>
-                            <td className="px-6 py-6">
-                                <span className="text-[10px] font-black uppercase tracking-widest bg-secondary/10 text-secondary px-3 py-1.5 rounded-full border border-secondary/10">{h.collection_type}</span>
+                            <td className="px-6 py-6 text-sm font-bold text-secondary min-w-[150px]">{h.branch_name}</td>
+                            <td className="px-6 py-6 text-sm font-bold text-secondary min-w-[150px]">{h.hce_place}</td>
+                            <td className="px-6 py-6 min-w-[200px]">
+                                <span className="text-[10px] font-black uppercase tracking-widest bg-secondary/10 text-secondary px-3 py-1.5 rounded-full border border-secondary/10 whitespace-nowrap">{h.collection_type}</span>
                             </td>
                             <td className="px-6 py-6 text-[11px] font-bold text-muted-foreground">
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">

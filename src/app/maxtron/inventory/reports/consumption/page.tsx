@@ -9,6 +9,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -258,14 +265,17 @@ export default function ConsumptionReportPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Process Type</label>
-              <select
-                value={filterProcess}
-                onChange={e => setFilterProcess(e.target.value)}
-                className="h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 focus:bg-white w-full uppercase font-bold"
-              >
-                <option value="">All Processes</option>
-                {processTypes.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
-              </select>
+              <Select value={filterProcess} onValueChange={setFilterProcess}>
+                <SelectTrigger className="h-10 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 focus:bg-white w-full uppercase font-bold">
+                  <SelectValue placeholder="All Processes" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  <SelectItem value="all">All Processes</SelectItem>
+                  {processTypes.map(p => (
+                    <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
               <Button onClick={() => fetchReport()} className="flex-1 bg-slate-900 text-white h-10 rounded-xl text-xs font-bold">Apply Filters</Button>

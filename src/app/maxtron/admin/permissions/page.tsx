@@ -10,6 +10,13 @@ import { useToast } from '@/components/ui/toast';
 import { maxtronSidebarMenu } from '@/config/navigation/maxtron';
 import { keilSidebarMenu } from '@/config/navigation/keil';
 import { usePermission } from '@/hooks/usePermission';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 export default function PermissionConsolePage() {
   const { hasPermission: globalHasPermission } = usePermission();
@@ -189,18 +196,18 @@ export default function PermissionConsolePage() {
         </div>
         <div className="w-64 mt-4 md:mt-0">
            <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Active Role</label>
-           <select 
-             value={selectedRoleId}
-             onChange={(e) => setSelectedRoleId(e.target.value)}
-             className="w-full h-11 px-4 rounded-xl border border-border bg-muted/20 text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
-           >
-             <option value="">-- Choose Role --</option>
-             {roles
-               .filter(r => r.name.toLowerCase() !== 'admin')
-               .map(r => (
-                 <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
-               ))}
-           </select>
+           <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+             <SelectTrigger className="w-full h-11 border-border bg-muted/20 text-sm font-bold text-primary rounded-xl">
+               <SelectValue placeholder="-- Choose Role --" />
+             </SelectTrigger>
+             <SelectContent className="bg-white border-slate-200">
+               {roles
+                 .filter(r => r.name.toLowerCase() !== 'admin')
+                 .map(r => (
+                   <SelectItem key={r.id} value={r.id}>{r.name.toUpperCase()}</SelectItem>
+                 ))}
+             </SelectContent>
+           </Select>
         </div>
       </div>
 

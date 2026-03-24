@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TableView } from '@/components/ui/table-view';
 import { 
     Plus, 
@@ -12,7 +12,8 @@ import {
     Trash2,
     FileText,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -26,6 +27,8 @@ export default function SupplierPaymentPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showScrollArrow, setShowScrollArrow] = useState(true);
+    const scrollRef = useRef<HTMLDivElement>(null);
     
     const [formData, setFormData] = useState({
         payment_date: new Date().toISOString().split('T')[0],
@@ -95,6 +98,23 @@ export default function SupplierPaymentPage() {
         fetchPendingBills(id);
         fetchSupplierBalance(id);
     };
+
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+            if (scrollTop + clientHeight >= scrollHeight - 30) {
+                setShowScrollArrow(false);
+            } else {
+                setShowScrollArrow(true);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (isModalOpen) {
+            setTimeout(handleScroll, 200);
+        }
+    }, [isModalOpen, pendingBills]);
 
     const [supplierBalance, setSupplierBalance] = useState<number | null>(null);
 
@@ -288,7 +308,16 @@ export default function SupplierPaymentPage() {
                             <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white font-black p-2">✕</button>
                         </div>
                         
-                        <div className="overflow-y-auto p-8 custom-scrollbar">
+                        <div 
+                            ref={scrollRef}
+                            onScroll={handleScroll}
+                            className="overflow-y-auto p-8 custom-scrollbar relative"
+                        >
+                            {showScrollArrow && (
+                                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-primary text-white p-2 rounded-full shadow-lg">
+                                    <ChevronDown className="w-6 h-6" />
+                                </div>
+                            )}
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 {/* Basic Info Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -296,12 +325,12 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Date</label>
                                         <div className="relative">
                                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <Input
                                                 type="date"
                                                 required
                                                 value={formData.payment_date}
                                                 onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                                                className="pl-10 h-11 bg-slate-50 border border-slate-200 rounded-xl"
                                             />
                                         </div>
                                     </div>
@@ -335,14 +364,14 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Amount (₹)</label>
                                         <div className="relative">
                                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <Input
                                                 type="number"
                                                 min="0"
                                                 required
                                                 placeholder="0.00"
                                                 value={formData.amount}
                                                 onChange={(e) => setFormData({ ...formData, amount: String(Math.max(0, Number(e.target.value))) })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-primary/20 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none text-lg font-black"
+                                                className="pl-10 h-14 bg-white border-2 border-primary/20 rounded-xl text-lg font-black"
                                             />
                                         </div>
                                     </div>
@@ -361,8 +390,8 @@ export default function SupplierPaymentPage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
-                                            <table className="w-full text-left text-sm">
+                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-x-auto">
+                                            <table className="w-full min-w-[700px] text-left text-sm">
                                                 <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                                     <tr>
                                                         <th className="px-6 py-3">Bill Details</th>
@@ -393,13 +422,13 @@ export default function SupplierPaymentPage() {
                                                                 </td>
                                                                 <td className="px-6 py-4 w-48">
                                                                     <div className="relative">
-                                                                        <input 
+                                                                        <Input 
                                                                             type="number"
                                                                             min="0"
                                                                             placeholder="Amount"
                                                                             value={allocations[bill.id] || ''}
                                                                             onChange={(e) => handleAllocationChange(bill.id, e.target.value, bill.pending_amount)}
-                                                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold outline-none focus:border-primary"
+                                                                            className="w-full h-8 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold"
                                                                         />
                                                                     </div>
                                                                 </td>

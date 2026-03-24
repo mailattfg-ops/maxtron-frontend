@@ -10,6 +10,14 @@ import {
   MapPin, Phone, Mail, FileCheck, CreditCard, 
   Truck, Package, Wallet, Download, Trash, Globe, Copy
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -477,17 +485,15 @@ export default function SupplierPage() {
                 <div className="border border-slate-200 rounded-md p-3 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 bg-slate-50">
                   {materials.map(m => (
                     <label key={m.id} className="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
-                      <input 
-                        type="checkbox" 
+                      <Checkbox 
                         checked={formData.supplied_materials.includes(m.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
+                        onCheckedChange={(checked: boolean) => {
+                          if (checked) {
                             setFormData({...formData, supplied_materials: [...formData.supplied_materials, m.id]});
                           } else {
                             setFormData({...formData, supplied_materials: formData.supplied_materials.filter(id => id !== m.id)});
                           }
                         }}
-                        className="rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary w-4 h-4"
                       />
                       <span className="truncate">{m.rm_name}</span>
                     </label>
@@ -498,16 +504,16 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Delivery Mode</label>
-                <select 
-                   value={formData.delivery_mode} 
-                   onChange={(e) => setFormData({...formData, delivery_mode: e.target.value})}
-                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="">Select Mode...</option>
-                  <option value="Direct Truck">Direct Truck</option>
-                  <option value="Courier">Courier</option>
-                  <option value="Self Pickup">Self Pickup</option>
-                </select>
+                <Select value={formData.delivery_mode} onValueChange={(val) => setFormData({...formData, delivery_mode: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Mode..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Direct Truck">Direct Truck</SelectItem>
+                    <SelectItem value="Courier">Courier</SelectItem>
+                    <SelectItem value="Self Pickup">Self Pickup</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

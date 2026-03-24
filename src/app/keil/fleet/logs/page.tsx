@@ -20,11 +20,11 @@ import {
     Map,
     Clock,
     Wrench,
-    CreditCard,
     Check,
     Lock,
     Loader2
 } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -408,11 +408,9 @@ export default function VehicleDailyLogPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-bold">{formData.has_complaint ? 'YES' : 'NO'}</span>
-                                        <input 
-                                            type="checkbox" 
-                                            className="w-5 h-5 rounded-md accent-destructive cursor-pointer"
+                                        <Checkbox 
                                             checked={formData.has_complaint}
-                                            onChange={e => setFormData({ ...formData, has_complaint: e.target.checked })}
+                                            onCheckedChange={(checked: boolean) => setFormData({ ...formData, has_complaint: !!checked })}
                                         />
                                     </div>
                                 </label>

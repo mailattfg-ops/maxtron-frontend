@@ -10,6 +10,13 @@ import {
   User, Calendar, Package, Info, Edit2, 
   CheckCircle2, XCircle, AlertCircle, FileText
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -285,7 +292,7 @@ export default function SalesReturns() {
               <RotateCcw className="w-5 h-5" /> New Return Entry
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
@@ -295,27 +302,50 @@ export default function SalesReturns() {
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice</label>
-                  <select value={formData.invoice_id} onChange={e => handleInvoiceSelect(e.target.value)} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                    <option value="">Manual Entry...</option>
-                    {invoices.map(i => <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>)}
-                  </select>
+                  <Select value={formData.invoice_id} onValueChange={(val) => handleInvoiceSelect(val)}>
+                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                      <SelectValue placeholder="Manual Entry..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {invoices.map(i => (
+                        <SelectItem key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Through</label>
-                  <select value={formData.return_through} onChange={e => setFormData({...formData, return_through: e.target.value, return_employee_id: '', courier_name: ''})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                    <option value="DIRECT">Direct (via Marketing/Delivery Employee)</option>
-                    <option value="COURIER">Courier / Transport</option>
-                  </select>
+                  <Select 
+                    value={formData.return_through} 
+                    onValueChange={(val) => setFormData({...formData, return_through: val, return_employee_id: '', courier_name: ''})}
+                  >
+                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                      <SelectValue placeholder="Select Return Mode" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="DIRECT">Direct (via Marketing/Delivery Employee)</SelectItem>
+                      <SelectItem value="COURIER">Courier / Transport</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {formData.return_through === 'DIRECT' ? (
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Employee Name</label>
-                    <select value={formData.return_employee_id} onChange={e => setFormData({...formData, return_employee_id: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                      <option value="">Select Employee...</option>
-                      {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                    </select>
+                      <Select 
+                        value={formData.return_employee_id} 
+                        onValueChange={(val) => setFormData({...formData, return_employee_id: val})}
+                      >
+                        <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                          <SelectValue placeholder="Select Employee..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200">
+                          {employees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                 ) : (
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
@@ -371,10 +401,19 @@ export default function SalesReturns() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-rose-50">
                                     <td className="p-4">
-                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none">
-                                            <option value="">Choose Product...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-                                        </select>
+                                        <Select 
+                                          value={item.product_id} 
+                                          onValueChange={(val) => handleItemChange(index, 'product_id', val)}
+                                        >
+                                          <SelectTrigger className="w-full h-9 border-none bg-transparent hover:bg-slate-50 text-sm">
+                                            <SelectValue placeholder="Choose Product..." />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white border-slate-200">
+                                            {products.map(p => (
+                                              <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4"><Input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="border-none text-center" /></td>
                                     <td className="p-4"><Input type="number" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="border-none text-center" /></td>

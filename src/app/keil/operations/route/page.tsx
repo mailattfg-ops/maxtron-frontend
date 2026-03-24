@@ -20,6 +20,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
@@ -248,15 +255,16 @@ export default function RouteRegistryPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
-                                <select 
-                                    required
-                                    className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                    value={formData.branch_id}
-                                    onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
-                                >
-                                    <option value="">Select Branch</option>
-                                    {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                                </select>
+                                <Select value={formData.branch_id} onValueChange={(val) => setFormData({ ...formData, branch_id: val })}>
+                                    <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                        <SelectValue placeholder="Select Branch" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {branches.map(b => (
+                                            <SelectItem key={b.id} value={b.id}>{b.branch_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="col-span-full pt-4 flex justify-end gap-3 border-t border-primary/10">
                                 <Button type="button" variant="outline" className="rounded-full px-6" onClick={() => { setIsFormOpen(false); resetForm(); }}>Cancel</Button>

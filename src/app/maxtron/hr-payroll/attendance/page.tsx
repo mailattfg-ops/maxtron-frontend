@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -453,22 +460,16 @@ export default function AttendancePage() {
           </CardHeader>
           <CardContent className="p-4 md:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <UserCheck className="w-4 h-4 mr-2 text-primary" /> Select Employee
-                </label>
-                <select 
-                  name="employee_id"
-                  value={formData.employee_id}
-                  onChange={(e) => setFormData({...formData, employee_id: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
-                >
-                  <option value="">Choose employee...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</option>
-                  ))}
-                </select>
-              </div>
+                <Select value={formData.employee_id} onValueChange={(val) => setFormData({...formData, employee_id: val})}>
+                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
+                    <SelectValue placeholder="Choose employee..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
@@ -482,29 +483,20 @@ export default function AttendancePage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-primary" /> Shift
-                </label>
-                <select 
-                  value={formData.shift}
-                  onChange={(e) => setFormData({...formData, shift: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
-                >
-                  {/* <option value="GENERAL">General Shift</option> */}
-                  <option value="DAY">Day Shift</option>
-                  <option value="NIGHT">Night Shift</option>
-                </select>
-              </div>
+                <Select value={formData.shift} onValueChange={(val) => setFormData({...formData, shift: val})}>
+                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Shift" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="DAY">Day Shift</SelectItem>
+                    <SelectItem value="NIGHT">Night Shift</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                   Status
-                </label>
-                <select 
-                  value={formData.status}
-                  onChange={(e) => {
-                    const status = e.target.value;
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(val) => {
+                    const status = val;
                     const updates: any = { status };
                     if (status === 'ABSENT') {
                       updates.clock_in = '00:00';
@@ -512,14 +504,17 @@ export default function AttendancePage() {
                     }
                     setFormData({...formData, ...updates});
                   }}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
                 >
-                  <option value="PRESENT">Present</option>
-                  <option value="ABSENT">Absent</option>
-                  <option value="LATE">Late</option>
-                  <option value="HALF_DAY">Half Day</option>
-                </select>
-              </div>
+                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="PRESENT">Present</SelectItem>
+                    <SelectItem value="ABSENT">Absent</SelectItem>
+                    <SelectItem value="LATE">Late</SelectItem>
+                    <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                  </SelectContent>
+                </Select>
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80">Clock In Time</label>
@@ -573,11 +568,11 @@ export default function AttendancePage() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-secondary/20 shadow-sm">
                   <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Mark Date:</span>
-                  <input 
+                  <Input 
                     type="date" 
                     value={bulkDate} 
                     onChange={(e) => handleBulkDateChange(e.target.value)}
-                    className="text-xs font-bold outline-none bg-transparent"
+                    className="text-xs font-bold outline-none bg-transparent h-7 border-none shadow-none p-0 w-24"
                   />
                </div>
                <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
@@ -605,11 +600,10 @@ export default function AttendancePage() {
                          <div className="font-bold text-slate-800">{row.employee_name}</div>
                          <div className="text-[10px] text-slate-400">{row.employee_code}</div>
                       </td>
-                      <td className="px-4 py-3">
-                         <select 
+                         <Select 
                            value={row.status}
-                           onChange={(e) => {
-                             const status = e.target.value;
+                           onValueChange={(val) => {
+                             const status = val;
                              const nd = [...bulkData];
                              nd[idx].status = status;
                              if (status === 'ABSENT') {
@@ -618,29 +612,33 @@ export default function AttendancePage() {
                              }
                              setBulkData(nd);
                            }}
-                           className="h-8 rounded border bg-white px-2 text-xs"
                          >
-                           <option value="PRESENT">Present</option>
-                           <option value="ABSENT">Absent</option>
-                           <option value="LATE">Late</option>
-                           <option value="HALF_DAY">Half Day</option>
-                         </select>
-                      </td>
-                      <td className="px-4 py-3">
-                         <select 
+                           <SelectTrigger className="h-8 w-32 border-slate-200 bg-white px-2 text-xs">
+                             <SelectValue placeholder="Status" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-white border-slate-200">
+                             <SelectItem value="PRESENT">Present</SelectItem>
+                             <SelectItem value="ABSENT">Absent</SelectItem>
+                             <SelectItem value="LATE">Late</SelectItem>
+                             <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                           </SelectContent>
+                         </Select>
+                         <Select 
                            value={row.shift}
-                           onChange={(e) => {
+                           onValueChange={(val) => {
                              const nd = [...bulkData];
-                             nd[idx].shift = e.target.value;
+                             nd[idx].shift = val;
                              setBulkData(nd);
                            }}
-                           className="h-8 rounded border bg-white px-2 text-xs"
                          >
-                           {/* <option value="GENERAL">General</option> */}
-                           <option value="DAY">Day</option>
-                           <option value="NIGHT">Night</option>
-                         </select>
-                      </td>
+                           <SelectTrigger className="h-8 w-24 border-slate-200 bg-white px-2 text-xs">
+                             <SelectValue placeholder="Shift" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-white border-slate-200">
+                             <SelectItem value="DAY">Day</SelectItem>
+                             <SelectItem value="NIGHT">Night</SelectItem>
+                           </SelectContent>
+                         </Select>
                       <td className="px-4 py-3 flex items-center gap-1">
                          <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
                          <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
