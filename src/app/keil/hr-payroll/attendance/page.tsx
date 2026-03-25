@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet, Lock, Loader2 } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet, Lock, Loader2, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { 
   Select, 
@@ -137,12 +137,10 @@ export default function AttendancePage() {
         if (isAdmin) {
           setAttendanceRecords(records);
         } else if (isManagement) {
-          // Management can see attendance of people in their same role category
           setAttendanceRecords(records.filter((e: any) => 
             e.users?.user_types?.name?.toLowerCase() === user.role_name?.toLowerCase()
           ));
         } else {
-          // Regular employees see only their own attendance
           setAttendanceRecords(records.filter((e: any) => e.employee_id === user?.id));
         }
       }
@@ -178,16 +176,13 @@ export default function AttendancePage() {
   };
 
   const saveBulkAttendance = async () => {
-
     const token = localStorage.getItem('token');
     setSubmitting(true);
     try {
-      // Strip out non-database fields like employee_name/code before sending
       const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
         ...rest
       }));
 
-      // Time validation check
       for (const item of bulkData) {
         if (item.status !== 'ABSENT') {
           if (item.clock_out <= item.clock_in) {
@@ -210,7 +205,7 @@ export default function AttendancePage() {
       if (data.success) {
         success('Bulk attendance marked successfully!');
         setShowBulkForm(false);
-        fetchAttendance(currentCompanyId); // Pass ID explicitly
+        fetchAttendance(currentCompanyId);
       } else {
         error(data.error || data.message || 'Bulk marking failed');
       }
@@ -253,11 +248,8 @@ export default function AttendancePage() {
         success(editingId ? 'Record updated!' : 'Record saved!');
         setShowForm(false);
         setEditingId(null);
-        
-        // Update the date filter to match what we just saved so it shows up!
         setDateFilter(formData.date);
-        
-        fetchAttendance(currentCompanyId); // Pass ID explicitly
+        fetchAttendance(currentCompanyId); 
         resetForm();
       } else {
         error(data.error || data.message || 'Error occurred');
@@ -282,7 +274,6 @@ export default function AttendancePage() {
       company_id: currentCompanyId
     });
   };
-
 
   const handleEdit = (rec: any) => {
     setEditingId(rec.id);
@@ -310,7 +301,6 @@ export default function AttendancePage() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Attendance');
 
-      // Define columns
       worksheet.columns = [
         { header: 'Employee', key: 'name', width: 25 },
         { header: 'Code', key: 'code', width: 12 },
@@ -322,17 +312,15 @@ export default function AttendancePage() {
         { header: 'Remarks', key: 'remarks', width: 30 }
       ];
 
-      // Format Header Row
       const headerRow = worksheet.getRow(1);
       headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       headerRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF1E40AF' } // Dark blue
+        fgColor: { argb: 'FF1E40AF' }
       };
       headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Helper for date formatting
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
         try {
@@ -342,7 +330,6 @@ export default function AttendancePage() {
         } catch (e) { return dateStr; }
       };
 
-      // Add rows
       activeRecords.forEach(rec => {
         const row = worksheet.addRow({
           name: rec.users?.name || 'N/A',
@@ -365,7 +352,6 @@ export default function AttendancePage() {
         });
       });
 
-      // Write and save
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `attendance_report_${dateFilter || 'all'}.xlsx`);
@@ -414,39 +400,40 @@ export default function AttendancePage() {
 
   return (
     <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2 font-heading">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Management</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for staff.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">Attendance Management</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 italic">Track and manage daily staff presence and work hours across HR & Payroll.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
           <Button 
             onClick={downloadAttendance}
             variant="outline"
-            className="h-10 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 font-bold order-3 sm:order-1"
+            className="flex-1 md:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 font-bold active:scale-95 transition-all text-sm"
           >
-            <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Logs</span>
+            <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Download Logs</span><span className="sm:hidden">Export</span>
           </Button>
           {canCreate && (
             <Button 
               onClick={prepareBulkData}
               variant="outline"
-              className="h-10 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 font-bold order-2 sm:order-2"
+              className="flex-1 md:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 font-bold active:scale-95 transition-all text-sm"
             >
-              <Plus className="w-4 h-4 mr-2" /> Bulk Entry
+              <Plus className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Bulk Entry</span><span className="sm:hidden">Bulk</span>
             </Button>
           )}
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full transition-all shadow-lg font-bold order-1 sm:order-3 whitespace-nowrap"
+              className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/95 text-white px-8 rounded-full transition-all shadow-lg font-bold active:scale-95 text-sm"
             >
-              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {showForm ? 'Cancel' : 'New Log Entry'}
+              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+              {showForm ? 'Cancel Log' : 'New Log Entry'}
             </Button>
           )}
         </div>
       </div>
+
 
 
       {showForm && (
@@ -545,28 +532,35 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            <div className="mt-10 flex justify-end">
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
               <Button 
                 onClick={saveAttendance} 
                 loading={submitting}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold"
+                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold active:scale-95"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Log' : 'Authorize Log'}
+                {editingId ? 'UPDATE ATTENDANCE' : 'AUTHORIZE LOG'}
               </Button>
             </div>
+
           </CardContent>
         </Card>
       )}
       
       {showBulkForm && (
         <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
-              <CardDescription>Register attendance for multiple staff members in one go.</CardDescription>
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 p-4 md:p-6">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                    <Calendar className="w-5 h-5 text-secondary" />
+                </div>
+                <div>
+                   <CardTitle className="text-lg md:text-xl font-bold text-slate-800">Bulk Attendance Mark</CardTitle>
+                   <CardDescription className="text-[10px] md:text-xs">Register attendance for multiple staff members in one go.</CardDescription>
+                </div>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            
+            <div className="flex items-center gap-2">
                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-secondary/20 shadow-sm">
                   <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Mark Date:</span>
                   <Input 
@@ -601,6 +595,7 @@ export default function AttendancePage() {
                          <div className="font-bold text-slate-800">{row.employee_name}</div>
                          <div className="text-[10px] text-slate-400">{row.employee_code}</div>
                       </td>
+                      <td className="px-4 py-3 text-center">
                          <Select 
                            value={row.status}
                            onValueChange={(val) => {
@@ -614,7 +609,7 @@ export default function AttendancePage() {
                              setBulkData(nd);
                            }}
                          >
-                           <SelectTrigger className="h-8 w-32 border-slate-200 bg-white px-2 text-xs">
+                           <SelectTrigger className="h-8 w-32 border-slate-200 bg-white px-2 text-xs mx-auto">
                              <SelectValue placeholder="Status" />
                            </SelectTrigger>
                            <SelectContent className="bg-white border-slate-200">
@@ -624,6 +619,8 @@ export default function AttendancePage() {
                              <SelectItem value="HALF_DAY">Half Day</SelectItem>
                            </SelectContent>
                          </Select>
+                      </td>
+                      <td className="px-4 py-3 text-center">
                          <Select 
                            value={row.shift}
                            onValueChange={(val) => {
@@ -632,7 +629,7 @@ export default function AttendancePage() {
                              setBulkData(nd);
                            }}
                          >
-                           <SelectTrigger className="h-8 w-24 border-slate-200 bg-white px-2 text-xs">
+                           <SelectTrigger className="h-8 w-24 border-slate-200 bg-white px-2 text-xs mx-auto">
                              <SelectValue placeholder="Shift" />
                            </SelectTrigger>
                            <SelectContent className="bg-white border-slate-200">
@@ -641,9 +638,12 @@ export default function AttendancePage() {
                              <SelectItem value="NIGHT">Night</SelectItem>
                            </SelectContent>
                          </Select>
-                      <td className="px-4 py-3 flex items-center gap-1">
-                         <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
-                         <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                          <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                          <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
@@ -665,23 +665,23 @@ export default function AttendancePage() {
             </div>
             <div className="p-4 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
                <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
-               <div className="flex gap-3">
-                 <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
+               <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+                 <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-11 px-8 font-bold active:scale-95">Discard Changes</Button>
                  <Button 
                     onClick={saveBulkAttendance} 
                     loading={submitting}
-                    className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10"
+                    className="flex-1 md:flex-none bg-secondary hover:bg-secondary/90 text-white rounded-full h-11 px-10 shadow-lg shadow-secondary/10 font-bold active:scale-95"
                   >
                    <Save className="w-4 h-4 mr-2" /> Mark Attendance
                  </Button>
                </div>
+
             </div>
           </CardContent>
         </Card>
       )}
 
       <TableView
-
         title="Attendance Logs"
         description={`Daily shift-wise logging for ${activeTenant} staff.`}
         headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
@@ -691,11 +691,11 @@ export default function AttendancePage() {
         searchPlaceholder="Search staff or notes..."
         actions={
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+            <span className="text-xs md:text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
             <div className="flex gap-1">
               <Input 
                 type="date"
-                className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                className="w-32 md:w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
               />

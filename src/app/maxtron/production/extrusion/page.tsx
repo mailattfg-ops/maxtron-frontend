@@ -211,14 +211,19 @@ export default function ExtrusionPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Production (Extrusion)</h1>
-          <p className="text-muted-foreground mt-1">Record extrusion output by shift and operator.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Zap className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate">Production (Extrusion)</span>
+          </h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Record extrusion output by shift and operator.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2">
-              <Plus className="w-4 h-4" /> Record New Batch
+            <Button 
+              onClick={() => setShowForm(true)} 
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Record New Batch
             </Button>
           )}
         </div>
@@ -317,26 +322,36 @@ export default function ExtrusionPage() {
                 <Input type="number" min={0} placeholder="0.00" value={formData.extrusion_output_qty} onChange={e => setFormData({ ...formData, extrusion_output_qty: parseFloat(e.target.value) || 0 })} />
               </div>
             </div>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 justify-end gap-3 border-t pt-6">
-              <div className="mr-auto flex items-center gap-4">
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total RM Input</span>
-                    <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
-                 </div>
-                 <div className="w-[1px] h-8 bg-slate-200"></div>
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recovery %</span>
-                    <span className="text-xl font-black text-emerald-600">
-                        {formData.raw_material_consumed_qty > 0 
-                            ? ((formData.extrusion_output_qty / formData.raw_material_consumed_qty) * 100).toFixed(1) 
-                            : '0.0'}%
-                    </span>
-                 </div>
-              </div>
-              <Button variant="outline" onClick={() => setShowForm(false)} className="w-full px-6">Cancel</Button>
-              <Button onClick={saveBatch} className="px-8 shadow-sm hover:shadow-md gap-2 bg-primary">
-                <Save className="w-4 h-4" /> Save Batch Entry
-              </Button>
+            <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">
+               <div className="mr-auto hidden md:flex items-center gap-4">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Total RM Input</span>
+                     <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-slate-200"></div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Recovery %</span>
+                     <span className="text-xl font-black text-emerald-600">
+                         {formData.raw_material_consumed_qty > 0 
+                             ? ((formData.extrusion_output_qty / formData.raw_material_consumed_qty) * 100).toFixed(1) 
+                             : '0.0'}%
+                     </span>
+                  </div>
+               </div>
+               
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowForm(false)} 
+                 className="flex-1 md:flex-none px-8 rounded-full h-12 order-2 md:order-1"
+               >
+                 Cancel Entry
+               </Button>
+               <Button 
+                 onClick={saveBatch} 
+                 className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+               >
+                 <Save className="w-4 h-4 mr-2" /> Save Batch Entry
+               </Button>
             </div>
           </CardContent>
         </Card>

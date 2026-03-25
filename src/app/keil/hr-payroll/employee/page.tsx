@@ -694,56 +694,74 @@ export default function EmployeeInformationPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6 font-heading">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Employee Management</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2 italic">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
           {!showForm ? (
             <>
-              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
-                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
+              <Button 
+                onClick={downloadEmployeeList} 
+                variant="outline" 
+                className="flex-1 md:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold active:scale-95 transition-all rounded-full px-6"
+              >
+                 <Download className="w-4 h-4 mr-2" /> 
+                 <span className="hidden sm:inline">Download Export</span>
+                 <span className="sm:hidden">Download</span>
               </Button>
               {canCreate && (
-                <Button onClick={() => {
-                  setEditingId(null);
-                  const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
-                  setFormData({ 
-                    employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
-                    addresses: [
-                      { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
-                      { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
-                    ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
-                  });
-                  setIsViewMode(false);
-                  setShowForm(true);
-                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
-                  <Plus className="w-5 h-5 mr-2" /> Add Employee
+                <Button 
+                  onClick={() => {
+                    setEditingId(null);
+                    const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
+                    setFormData({ 
+                      employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                      addresses: [
+                        { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                        { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+                      ],
+                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    });
+                    setIsViewMode(false);
+                    setShowForm(true);
+                  }} 
+                  className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold active:scale-95 rounded-full px-8"
+                >
+                  <Plus className="w-5 h-5 mr-2" /> <span className="hidden sm:inline">Add Employee</span><span className="sm:hidden">Add New</span>
                 </Button>
               )}
             </>
           ) : (
-            <div className="flex space-x-2 md:space-x-3 w-full">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} 
+                className="flex-1 md:flex-none border-primary/10 rounded-full h-11 px-6 active:scale-95"
+              >
+                <X className="w-4 h-4 mr-2" /> Cancel
               </Button>
               {activeTab !== 'personal' && (
-                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} 
+                  className="flex-1 md:flex-none border-primary/10 rounded-full h-11 px-6 active:scale-95"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
               )}
-              <Button onClick={() => {
-                if (activeTab === 'personal') {
-                  if (validatePersonalTab()) setActiveTab('qualifications');
-                }
-                else if (activeTab === 'qualifications') setActiveTab('financials');
-                else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
-                else saveEmployee();
-              }} 
-              loading={submitting}
-              className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
+              <Button 
+                onClick={() => {
+                  if (activeTab === 'personal') {
+                    if (validatePersonalTab()) setActiveTab('qualifications');
+                  }
+                  else if (activeTab === 'qualifications') setActiveTab('financials');
+                  else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
+                  else saveEmployee();
+                }} 
+                loading={submitting}
+                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-11 font-bold px-8 active:scale-95"
               >
                 {isViewMode && activeTab === 'financials' ? (
                   <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
@@ -757,6 +775,7 @@ export default function EmployeeInformationPage() {
           )}
         </div>
       </div>
+
 
       {!showForm && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

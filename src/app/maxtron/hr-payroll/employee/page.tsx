@@ -686,11 +686,11 @@ export default function EmployeeInformationPage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
           {!showForm ? (
             <>
-              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
-                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
+              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 md:order-1 flex-1 md:flex-none transition-all hover:scale-105 active:scale-95">
+                 <Download className="w-4 h-4 mr-2" /> <span className="md:hidden">Export Details</span><span className="hidden md:inline">Download Employee List</span>
               </Button>
               {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
@@ -706,19 +706,19 @@ export default function EmployeeInformationPage() {
                   });
                   setIsViewMode(false);
                   setShowForm(true);
-                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
+                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 md:order-2 px-6 rounded-full flex-1 md:flex-none">
                   <Plus className="w-5 h-5 mr-2" /> Add Employee
                 </Button>
               )}
             </>
           ) : (
-            <div className="flex space-x-2 md:space-x-3 w-full">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
+            <div className="flex space-x-2 md:space-x-3 w-full md:w-auto">
+              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 md:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                <X className="w-4 h-4 mr-2" /> <span className="hidden md:inline">Cancel</span>
               </Button>
               {activeTab !== 'personal' && (
-                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
+                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 md:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden md:inline">Back</span>
                 </Button>
               )}
               <Button onClick={() => {
@@ -730,7 +730,7 @@ export default function EmployeeInformationPage() {
                 else saveEmployee();
               }} 
               loading={submitting}
-              className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
+              className="flex-[2] md:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
               >
                 {isViewMode && activeTab === 'financials' ? (
                   <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>

@@ -230,17 +230,19 @@ export default function HCERegistryPage() {
 
     return (
         <div className="md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">HCE Registry</h1>
-                    <p className="text-muted-foreground text-sm font-medium">Manage Health Care Establishments and Waste Collection Logistics</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">HCE Registry</h1>
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium">Manage Health Care Establishments and Waste Collection Logistics</p>
                 </div>
                 {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
-                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                        className="flex-1 md:flex-none bg-primary hover:bg-primary/90 text-white px-6 md:px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 md:h-11 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <Plus className="w-4 h-4 mr-2" /> Register New HCE
+                        <Plus className="w-4 h-4" /> 
+                        <span className="hidden md:inline">Register New HCE</span>
+                        <span className="md:hidden">Register</span>
                     </Button>
                 )}
             </div>
@@ -256,21 +258,23 @@ export default function HCERegistryPage() {
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground font-medium mt-1">Enter essential details for facility coordination and waste collection logistics.</CardDescription>
                             </div>
-                            <div className="flex bg-primary/5 p-1.5 rounded-2xl border border-primary/10 pointer-events-none">
+                            <div className="flex flex-wrap bg-primary/5 p-1 rounded-2xl border border-primary/10 justify-center gap-1">
                                 {[
                                     { id: 'basic', label: 'Facility Info', icon: Building2 },
                                     { id: 'ops', label: 'Contact & Hours', icon: Clock },
                                 ].map(tab => (
                                     <div
                                         key={tab.id}
-                                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
                                             activeTab === tab.id 
-                                            ? 'bg-white text-primary shadow-lg scale-105' 
-                                            : 'text-primary/60'
+                                            ? 'bg-white text-primary shadow-md' 
+                                            : 'text-primary/60 hover:bg-primary/5'
                                         }`}
                                     >
                                         <tab.icon className="w-3.5 h-3.5" />
-                                        {tab.label}
+                                        <span className="hidden md:block">{tab.label}</span>
+                                        <span className="md:hidden">{tab.id === 'basic' ? 'Basic' : 'Contact'}</span>
                                     </div>
                                 ))}
                             </div>

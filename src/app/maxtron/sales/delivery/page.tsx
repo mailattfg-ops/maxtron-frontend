@@ -318,12 +318,16 @@ export default function DeliveryDetails() {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <Truck className="w-10 h-10 text-primary" /> Delivery Details
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+            <Truck className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate">Delivery Details</span>
           </h1>
-          <p className="text-muted-foreground mt-1 font-medium">Manage dispatches, vehicle assignments, and delivery tracking.</p>
+          <p className="text-muted-foreground mt-1 text-xs md:text-sm font-medium">Manage dispatches, vehicle assignments, and delivery tracking.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg">
+        <Button 
+          onClick={() => setShowForm(!showForm)} 
+          variant={showForm ? "outline" : "default"} 
+          className="gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+        >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? "Cancel Dispatch" : "New Delivery Dispatch"}
         </Button>
@@ -540,8 +544,11 @@ export default function DeliveryDetails() {
                  </div>
               </div>
 
-              <div className="flex justify-end pt-4">
-                <Button type="submit" className="gap-2 px-10 h-12 text-base font-bold shadow-xl bg-primary hover:bg-primary-hover">
+              <div className="flex justify-end pt-4 px-4 md:px-0">
+                <Button 
+                  type="submit" 
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl bg-primary hover:bg-primary-hover hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none transition-all"
+                >
                   <Truck className="w-5 h-5" /> {editingId ? "Update Dispatch" : "Record Dispatch"}
                 </Button>
               </div>

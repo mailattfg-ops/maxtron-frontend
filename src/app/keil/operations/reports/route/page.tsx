@@ -47,7 +47,7 @@ export default function RouteCollectionReportPage() {
     
     const [filters, setFilters] = useState({
         date: new Date().toISOString().split('T')[0],
-        route_id: ''
+        route_id: 'all'
     });
 
     useEffect(() => {
@@ -142,7 +142,7 @@ export default function RouteCollectionReportPage() {
             batch.supervisor_name || 'N/A',
             batch.total_hce_assigned || 0,
             batch.total_visited || 0,
-            `${((batch.total_visited / batch.total_hce_assigned) * 100).toFixed(1)}%`,
+            `${((batch.total_visited / (batch.total_hce_assigned || 1)) * 100).toFixed(1)}%`,
             batch.remarks || '-'
         ]);
 
@@ -155,7 +155,6 @@ export default function RouteCollectionReportPage() {
         success("Report exported to Excel.");
     };
 
-    // Aggregate stats
     const totalAssigned = batches.reduce((acc, curr) => acc + (curr.total_hce_assigned || 0), 0);
     const totalVisited = batches.reduce((acc, curr) => acc + (curr.total_visited || 0), 0);
     const coverage = totalAssigned > 0 ? (totalVisited / totalAssigned) * 100 : 0;
@@ -173,45 +172,51 @@ export default function RouteCollectionReportPage() {
     );
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+        <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">Route Collection Map</h1>
-                    <p className="text-sm font-medium text-muted-foreground">Consolidated view of daily route operations.</p>
+                    <h1 className="text-2xl md:text-3xl font-black text-primary tracking-tight font-heading">Route Collection Map</h1>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Consolidated view of daily route operations for Keil.</p>
                 </div>
-                <Button 
-                    variant="outline" 
-                    className="rounded-full px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10 shadow-sm" 
-                    onClick={handleExport}
-                >
-                    <Download className="w-4 h-4 mr-2" /> Export Report
-                </Button>
+                
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
+                    <Button 
+                        variant="outline" 
+                        className="flex-1 md:flex-none rounded-full px-4 md:px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-[10px] md:text-xs h-10 shadow-sm" 
+                        onClick={handleExport}
+                        disabled={batches.length === 0}
+                    >
+                        <Download className="w-4 h-4 mr-1 md:mr-2" /> 
+                        <span className="hidden md:inline">Export Report</span>
+                        <span className="md:hidden">Export</span>
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="bg-primary shadow-xl shadow-primary/20 border-none rounded-xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-500" />
-                    <CardContent className="pt-8 relative">
+                    <CardContent className="pt-8 relative text-white">
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
-                                <p className="text-xs font-bold uppercase tracking-widest text-primary-foreground/70">Active Sessions</p>
-                                <p className="text-4xl font-bold text-white tracking-tight">{batches.length}</p>
-                                <p className="text-xs text-primary-foreground/60 font-medium">Logged Route Batches</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">Active Sessions</p>
+                                <p className="text-3xl md:text-4xl font-bold tracking-tight">{batches.length}</p>
+                                <p className="text-[10px] text-white/60 font-medium">Logged Route Batches</p>
                             </div>
-                            <Truck className="w-12 h-12 text-white/20" />
+                            <Truck className="w-10 h-10 md:w-12 md:h-12 text-white/20" />
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-secondary shadow-xl shadow-secondary/20 border-none rounded-xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-500" />
-                    <CardContent className="pt-8 relative">
+                    <CardContent className="pt-8 relative text-white">
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
-                                <p className="text-xs font-bold uppercase tracking-widest text-white/70">Service Coverage</p>
-                                <p className="text-4xl font-bold text-white tracking-tight">{totalVisited} / {totalAssigned}</p>
-                                <p className="text-xs text-white/60 font-medium">Facilities Visited Today</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">Service Coverage</p>
+                                <p className="text-3xl md:text-4xl font-bold tracking-tight">{totalVisited} / {totalAssigned}</p>
+                                <p className="text-[10px] text-white/60 font-medium">Facilities Visited Today</p>
                             </div>
-                            <Map className="w-12 h-12 text-white/20" />
+                            <Map className="w-10 h-10 md:w-12 md:h-12 text-white/20" />
                         </div>
                     </CardContent>
                 </Card>
@@ -220,29 +225,29 @@ export default function RouteCollectionReportPage() {
                     <CardContent className="pt-8 relative">
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
-                                <p className="text-xs font-bold uppercase tracking-widest text-primary/60">Completion rate</p>
-                                <p className="text-4xl font-bold text-primary tracking-tight">{coverage.toFixed(1)}%</p>
-                                <p className="text-xs text-muted-foreground font-medium">Yield of planned vs actual</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Completion rate</p>
+                                <p className="text-3xl md:text-4xl font-bold text-primary tracking-tight">{coverage.toFixed(1)}%</p>
+                                <p className="text-[10px] text-muted-foreground font-medium">Yield of planned vs actual</p>
                             </div>
-                            <TrendingUp className="w-12 h-12 text-primary/10" />
+                            <TrendingUp className="w-10 h-10 md:w-12 md:h-12 text-primary/10" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white">
-                <CardHeader className="bg-primary/5 border-b border-primary/10 py-4 px-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <CardHeader className="bg-primary/5 border-b border-primary/10 py-4 px-6 md:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <CardTitle className="text-lg font-bold text-primary">Route Collection Summary</CardTitle>
                             <CardDescription className="text-muted-foreground font-medium text-xs">Analysis of field performance and collection yield.</CardDescription>
                         </div>
-                        <div className="md:flex gap-3">
+                        <div className="flex flex-col md:flex-row gap-3">
                             <div className="relative group">
                                 <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
                                 <Input 
                                     type="date" 
-                                    className="pl-9 pr-8 h-10 rounded-md border-primary/20 bg-background font-bold text-sm w-44"
+                                    className="pl-9 pr-8 h-10 rounded-md border-primary/20 bg-background font-bold text-xs md:text-sm w-full md:w-44"
                                     value={filters.date}
                                     onChange={e => handleFilterChange('date', e.target.value)}
                                 />
@@ -258,7 +263,7 @@ export default function RouteCollectionReportPage() {
                             <div className="relative">
                                 <Map className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
                                 <Select value={filters.route_id} onValueChange={(val) => handleFilterChange('route_id', val)}>
-                                    <SelectTrigger className="pl-9 h-10 w-full min-w-[200px] border-primary/20 bg-background shadow-sm font-bold">
+                                    <SelectTrigger className="pl-9 h-10 w-full lg:min-w-[200px] border-primary/20 bg-background shadow-sm font-bold text-xs md:text-sm">
                                         <SelectValue placeholder="All Collection Routes" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white border-primary/20">
@@ -283,7 +288,7 @@ export default function RouteCollectionReportPage() {
                             <tr key={batch.id} className="hover:bg-slate-50/50 transition-colors border-b last:border-0">
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-black text-slate-700">{batch.route?.route_name}</span>
+                                        <span className="font-bold text-slate-700 text-sm">{batch.route?.route_name}</span>
                                         <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{batch.route?.route_code}</span>
                                     </div>
                                 </td>
@@ -291,7 +296,7 @@ export default function RouteCollectionReportPage() {
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
                                             <Truck className="w-3 h-3 text-slate-400" />
-                                            <span className="text-xs font-bold text-slate-600">{batch.registration_number}</span>
+                                            <span className="text-[10px] md:text-xs font-bold text-slate-600">{batch.registration_number}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <User className="w-3 h-3 text-slate-400" />
@@ -303,14 +308,14 @@ export default function RouteCollectionReportPage() {
                                     <div className="flex flex-col gap-1.5 min-w-[120px]">
                                         <div className="flex justify-between text-[10px] font-black uppercase text-slate-500">
                                             <span>{batch.total_visited} / {batch.total_hce_assigned}</span>
-                                            <span>{Math.round((batch.total_visited / batch.total_hce_assigned) * 100)}%</span>
+                                            <span>{Math.round((batch.total_visited / (batch.total_hce_assigned || 1)) * 100)}%</span>
                                         </div>
                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
                                             <div 
                                                 className={`h-full transition-all duration-1000 ${
-                                                    (batch.total_visited / batch.total_hce_assigned) >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'
+                                                    (batch.total_visited / (batch.total_hce_assigned || 1)) >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'
                                                 }`}
-                                                style={{ width: `${(batch.total_visited / batch.total_hce_assigned) * 100}%` }}
+                                                style={{ width: `${(batch.total_visited / (batch.total_hce_assigned || 1)) * 100}%` }}
                                             />
                                         </div>
                                     </div>
@@ -319,8 +324,8 @@ export default function RouteCollectionReportPage() {
                                     {batch.remarks || 'No remarks logged.'}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/reports/batch/${batch.id}`}>
-                                        View Details <ArrowRight className="w-3 h-3" />
+                                    <Button variant="outline" size="sm" className="h-8 gap-2 text-[10px] font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/reports/batch/${batch.id}`}>
+                                        View <ArrowRight className="w-3 h-3" />
                                     </Button>
                                 </td>
                             </tr>

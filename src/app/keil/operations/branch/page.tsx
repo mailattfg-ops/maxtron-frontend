@@ -193,17 +193,19 @@ export default function BranchRegistryPage() {
 
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-700">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">Branch Registry</h1>
-                    <p className="text-sm font-medium text-muted-foreground">Define organizational branches for operational zoning.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Branch Registry</h1>
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium">Define organizational branches for operational zoning.</p>
                 </div>
                 {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
-                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                        className="flex-1 md:flex-none h-10 md:h-11 bg-primary hover:bg-primary/90 text-white px-4 md:px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <Plus className="w-4 h-4 mr-2" /> Register New Branch
+                        <Plus className="w-4 h-4" /> 
+                        <span className="hidden md:inline">Register New Branch</span>
+                        <span className="md:hidden">Register</span>
                     </Button>
                 )}
             </div>

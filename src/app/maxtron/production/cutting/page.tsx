@@ -224,14 +224,19 @@ export default function CuttingSealingPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Cutting & Sealing</h1>
-          <p className="text-muted-foreground mt-1">Record and manage secondary processing output.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Scissors className="w-8 h-8 md:w-10 md:h-10 text-indigo-600 shrink-0" /> <span className="truncate">Cutting & Sealing</span>
+          </h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Record and manage secondary processing output.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-              <Plus className="w-4 h-4" /> New Cutting Entry
+            <Button 
+                onClick={() => setShowForm(true)} 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-full shadow-lg shadow-indigo-200 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+            >
+              <Plus className="w-4 h-4 mr-2" /> New Cutting Entry
             </Button>
           )}
         </div>
@@ -395,10 +400,19 @@ export default function CuttingSealingPage() {
                 </div>
             </div>
 
-            <div className="mt-8 flex justify-end gap-3 pt-6">
-              <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }} className="px-6">Cancel</Button>
-              <Button onClick={saveConversion} className="px-8 shadow-sm hover:shadow-md gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-                <Save className="w-4 h-4" /> Save Cutting Entry
+            <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 pt-6 border-t px-4 md:px-0">
+              <Button 
+                variant="outline" 
+                onClick={() => { setShowForm(false); resetForm(); }} 
+                className="flex-1 md:flex-none px-8 rounded-full h-12 order-2 md:order-1"
+              >
+                Cancel Entry
+              </Button>
+              <Button 
+                onClick={saveConversion} 
+                className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-10 rounded-full shadow-lg shadow-indigo-200 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+              >
+                <Save className="w-4 h-4 mr-2" /> Save Cutting Entry
               </Button>
             </div>
           </CardContent>

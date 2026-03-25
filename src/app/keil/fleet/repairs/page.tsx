@@ -29,6 +29,14 @@ import { TableView } from "@/components/ui/table-view";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { usePermission } from '@/hooks/usePermission';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const REPAIRS_API = `${API_BASE}/api/keil/fleet/repairs`;
@@ -268,24 +276,27 @@ export default function VehicleRepairLogPage() {
 
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-rose-100 font-heading">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase flex items-center gap-2">
                         <Wrench className="w-8 h-8 text-rose-600" />
                         Maintenance Protocol
                     </h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Workshop Registry & Repair Lifecycle Management</p>
+                    <p className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest italic">Workshop Registry & Repair Lifecycle Management</p>
                 </div>
-                {canCreate && (
-                    <Button 
-                        onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-                        className="bg-rose-600 hover:bg-rose-700 text-white rounded-2xl px-6 h-12 shadow-lg shadow-rose-100 font-black uppercase tracking-widest"
-                    >
-                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        {showForm ? 'Cancel Operation' : 'Log Workshop Visit'}
-                    </Button>
-                )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+                            className="flex-1 md:flex-none bg-rose-600 hover:bg-rose-700 text-white rounded-full px-8 h-11 shadow-lg shadow-rose-100 font-black uppercase tracking-widest active:scale-95 transition-all text-sm"
+                        >
+                            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                            {showForm ? 'Cancel Operation' : <><span className="hidden sm:inline">Log Workshop Visit</span><span className="sm:hidden">Log Visit</span></>}
+                        </Button>
+                    )}
+                </div>
             </div>
+
 
             {showForm ? (
                 <Card className="border-none shadow-2xl bg-white/70 backdrop-blur-xl rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
@@ -302,39 +313,60 @@ export default function VehicleRepairLogPage() {
                             </div>
                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Vehicle No *</label>
-                                <select 
-                                    required
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
+                                <Select 
                                     value={formData.vehicle_id} 
-                                    onChange={e => setFormData({ ...formData, vehicle_id: e.target.value })}
+                                    onValueChange={val => setFormData({ ...formData, vehicle_id: val })}
                                 >
-                                    <option value="">Select Asset</option>
-                                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number}</option>)}
-                                </select>
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                        <SelectValue placeholder="Select Asset" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-rose-100">
+                                        {vehicles.map(v => (
+                                            <SelectItem key={v.id} value={v.id}>
+                                                {v.registration_number}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                             </div>
                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Driver Name *</label>
-                                <select 
-                                    required
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
+                                <Select 
                                     value={formData.driver_id} 
-                                    onChange={e => setFormData({ ...formData, driver_id: e.target.value })}
+                                    onValueChange={val => setFormData({ ...formData, driver_id: val })}
                                 >
-                                    <option value="">Select Driver</option>
-                                    {employees.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                        <SelectValue placeholder="Select Driver" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-rose-100">
+                                        {employees.map(m => (
+                                            <SelectItem key={m.id} value={m.id}>
+                                                {m.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                             </div>
                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Route Name *</label>
-                                <select 
-                                    required
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
+                                <Select 
                                     value={formData.route_id} 
-                                    onChange={e => setFormData({ ...formData, route_id: e.target.value })}
+                                    onValueChange={val => setFormData({ ...formData, route_id: val })}
                                 >
-                                    <option value="">Select Route</option>
-                                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_name} ({r.company?.company_name})</option>)}
-                                </select>
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                        <SelectValue placeholder="Select Route" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-rose-100">
+                                        {routes.map(r => (
+                                            <SelectItem key={r.id} value={r.id}>
+                                                {r.route_name} ({r.company?.company_name})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair From Date *</label>
@@ -346,15 +378,20 @@ export default function VehicleRepairLogPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Repair Status</label>
-                                <select 
-                                    className="w-full h-12 px-4 rounded-xl font-bold border-slate-100 bg-slate-50/50 outline-none shadow-inner focus:border-rose-400" 
+                                <Select 
                                     value={formData.status} 
-                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    onValueChange={val => setFormData({ ...formData, status: val })}
                                 >
-                                    <option value="Pending">Pending</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="Completed">Completed</option>
-                                </select>
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                        <SelectValue placeholder="Select Status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-rose-100">
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="In Progress">In Progress</SelectItem>
+                                        <SelectItem value="Completed">Completed</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
                             </div>
                             <div className="space-y-1.5 bg-rose-50/30 p-4 rounded-2xl border border-rose-100">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-2">
@@ -373,12 +410,16 @@ export default function VehicleRepairLogPage() {
                             </div>
                         </div>
 
-                        <div className="mt-10 flex justify-end">
-                            <Button onClick={handleSave} className="bg-rose-600 hover:bg-rose-700 text-white rounded-2xl px-10 h-14 shadow-xl shadow-rose-100 font-black uppercase tracking-widest">
+                        <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+                            <Button 
+                                onClick={handleSave} 
+                                className="flex-1 md:flex-none bg-rose-600 hover:bg-rose-700 text-white rounded-full px-10 h-12 shadow-xl shadow-rose-100 font-black uppercase tracking-widest active:scale-95 transition-all"
+                            >
                                 <Save className="w-5 h-5 mr-3" />
                                 {editingId ? 'Update Record' : 'Log Maintenance Session'}
                             </Button>
                         </div>
+
                     </CardContent>
                 </Card>
             ) : (

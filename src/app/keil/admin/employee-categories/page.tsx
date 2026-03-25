@@ -169,21 +169,27 @@ export default function EmployeeCategoriesPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-heading">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
                         <Tags className="w-8 h-8 text-indigo-600 p-1.5 bg-indigo-50 rounded-lg" />
                         Employee Categories
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Configure employee classification groups for HR and Payroll.</p>
+                    <p className="text-slate-500 text-sm mt-1 italic">Configure employee classification groups for HR and Payroll.</p>
                 </div>
-                {canCreate && (
-                    <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} className="gap-2 shadow-lg">
-                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {showForm ? "Cancel" : "Add Category"}
-                    </Button>
-                )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} 
+                            className="flex-1 md:flex-none h-11 gap-2 shadow-lg rounded-full px-8 active:scale-95 transition-all font-bold uppercase"
+                        >
+                            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {showForm ? "Cancel Entry" : "Add Category"}
+                        </Button>
+                    )}
+                </div>
             </div>
+
 
             {showForm && (
                 <Card className="border-indigo-100 shadow-xl overflow-hidden">
@@ -230,7 +236,7 @@ export default function EmployeeCategoriesPage() {
                             </code>
                         </td>
                         <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-end gap-2">
                                 {cat.company_id ? (
                                     <>
                                         {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>}

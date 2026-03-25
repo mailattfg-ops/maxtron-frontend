@@ -32,6 +32,14 @@ import { TableView } from "@/components/ui/table-view";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { usePermission } from '@/hooks/usePermission';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const LOGS_API = `${API_BASE}/api/keil/fleet/logs`;
@@ -316,28 +324,31 @@ export default function VehicleDailyLogPage() {
 
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10 font-heading">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight flex items-center gap-2">
                         <Navigation className="w-8 h-8 text-primary" />
                         Logistics Telemetry
                     </h1>
-                    <p className="text-muted-foreground text-sm font-medium">Daily Travel, Fuel & Fleet Health Logging</p>
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium italic">Daily Travel, Fuel & Fleet Health Logging</p>
                 </div>
-                {canCreate && (
-                    <Button 
-                        onClick={() => { 
-                            setShowForm(!showForm); 
-                            if(!showForm) resetForm(); 
-                            else setEditingId(null);
-                        }}
-                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
-                    >
-                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
-                    </Button>
-                )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { 
+                                setShowForm(!showForm); 
+                                if(!showForm) resetForm(); 
+                                else setEditingId(null);
+                            }}
+                            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-11 font-bold uppercase tracking-wider active:scale-95"
+                        >
+                            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                            {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
+                        </Button>
+                    )}
+                </div>
             </div>
+
 
             {showForm ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
@@ -352,15 +363,22 @@ export default function VehicleDailyLogPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle *</label>
-                                <select 
-                                    required
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
+                                <Select 
                                     value={formData.vehicle_id} 
-                                    onChange={e => handleVehicleChange(e.target.value)}
+                                    onValueChange={val => handleVehicleChange(val)}
                                 >
-                                    <option value="">Select Fleet Asset</option>
-                                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number} ({v.current_km} KM)</option>)}
-                                </select>
+                                    <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                        <SelectValue placeholder="Select Fleet Asset" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {vehicles.map(v => (
+                                            <SelectItem key={v.id} value={v.id}>
+                                                {v.registration_number} ({v.current_km} KM)
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                             </div>
                             <div className="space-y-1.5 flex flex-col justify-end">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Date *</label>
@@ -369,15 +387,22 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route *</label>
-                                <select 
-                                    required
-                                    className="w-full h-10 px-3 rounded-md border border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
+                                <Select 
                                     value={formData.route_id} 
-                                    onChange={e => setFormData({ ...formData, route_id: e.target.value })}
+                                    onValueChange={val => setFormData({ ...formData, route_id: val })}
                                 >
-                                    <option value="">Select Managed Route</option>
-                                    {routes.map(r => <option key={r.id} value={r.id}>{r.route_name} {r.company?.company_name ? `(${r.company.company_name})` : ''}</option>)}
-                                </select>
+                                    <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                        <SelectValue placeholder="Select Managed Route" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {routes.map(r => (
+                                            <SelectItem key={r.id} value={r.id}>
+                                                {r.route_name} {r.company?.company_name ? `(${r.company.company_name})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                             </div>
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
@@ -445,7 +470,7 @@ export default function VehicleDailyLogPage() {
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end">
-                            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-white rounded-full px-10 h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider">
+                            <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-white rounded-full px-10 h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider">
                                 <Save className="w-4 h-4 mr-3" />
                                 Synchronize Field Log
                               </Button>
@@ -453,125 +478,123 @@ export default function VehicleDailyLogPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-primary/10 shadow-sm rounded-xl overflow-hidden bg-white animate-in fade-in duration-500">
-                    <TableView 
-                        title="Logitudinal Protocol"
-                        description="Daily performance and resource consumption logs for the transport fleet."
-                        searchFields={['vehicle.registration_number', 'remarks']}
-                        headers={['Vehicle / Route / Date', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
-                        data={logs}
-                        loading={loading}
-                        renderRow={(l: any) => (
-                            <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
-                                <td className="px-6 py-6 font-bold">
-                                    <div className="flex flex-col gap-1.5">
-                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
-                                                <Truck className="w-4 h-4" />
-                                            </div>
-                                            <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number}</span>
+                <TableView 
+                    title="Logitudinal Protocol"
+                    description="Daily performance and resource consumption logs for the transport fleet."
+                    searchFields={['vehicle.registration_number', 'remarks']}
+                    headers={['Vehicle / Route / Date', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
+                    data={logs}
+                    loading={loading}
+                    renderRow={(l: any) => (
+                        <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
+                            <td className="px-6 py-6 font-bold">
+                                <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
+                                            <Truck className="w-4 h-4" />
                                         </div>
-                                        {l.route?.route_name && (
-                                            <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">
-                                                <MapPin className="w-3 h-3 text-secondary/60" />
-                                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                                                    {l.route.route_name}
-                                                    {l.route.company?.company_name && (
-                                                        <span className="text-secondary/40 border-l border-secondary/10 ml-2 pl-2 font-medium">{l.route.company.company_name}</span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-2 pl-1 opacity-70">
-                                            <Calendar className="w-3 h-3 text-muted-foreground" />
-                                            <span className="text-[11px] font-bold text-muted-foreground uppercase">{new Date(l.log_date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                        </div>
+                                        <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number}</span>
                                     </div>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">Start KM</span>
-                                                <div className="px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg">
-                                                    <span className="text-sm font-bold text-primary">{parseFloat(l.start_km).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">End KM</span>
-                                                <div className="px-3 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg">
-                                                    <span className="text-sm font-bold text-secondary">{l.end_km ? parseFloat(l.end_km).toLocaleString() : '--'}</span>
-                                                </div>
+                                    {l.route?.route_name && (
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">
+                                            <MapPin className="w-3 h-3 text-secondary/60" />
+                                            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                                                {l.route.route_name}
+                                                {l.route.company?.company_name && (
+                                                    <span className="text-secondary/40 border-l border-secondary/10 ml-2 pl-2 font-medium">{l.route.company.company_name}</span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 pl-1 opacity-70">
+                                        <Calendar className="w-3 h-3 text-muted-foreground" />
+                                        <span className="text-[11px] font-bold text-muted-foreground uppercase">{new Date(l.log_date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-1 md:px-6 py-6">
+                                <div className="flex flex-col gap-2">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">Start KM</span>
+                                            <div className="px-1 md:px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg">
+                                                <span className="text-sm font-bold text-primary">{parseFloat(l.start_km).toLocaleString()}</span>
                                             </div>
                                         </div>
-                                        {l.end_km && (
-                                            <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit">
-                                                <Navigation className="w-3 h-3 text-muted-foreground" />
-                                                <span className="text-[10px] font-bold text-muted-foreground">Travel: <span className="text-foreground">{(l.end_km - l.start_km).toFixed(1)} KM</span></span>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">End KM</span>
+                                            <div className="px-1 md:px-3 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg">
+                                                <span className="text-sm font-bold text-secondary">{l.end_km ? parseFloat(l.end_km).toLocaleString() : '--'}</span>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex flex-col items-center justify-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/10 w-[80px]">
-                                        <Fuel className="w-4 h-4 text-amber-600 mb-1" />
-                                        <span className="text-lg font-bold text-amber-700 leading-none">{l.fuel_qty}</span>
-                                        <span className="text-[8px] font-black text-amber-600/60 uppercase tracking-tighter mt-1">LITERS</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6">
-                                    <div className="flex flex-col gap-2">
-                                        {l.has_complaint ? (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-1.5 rounded-xl w-fit border border-secondary/10">
-                                                    <AlertCircle className="w-3 h-3" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest">{l.complaint_type || 'Fault Logged'}</span>
+                                    {l.end_km && (
+                                        <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit">
+                                            <Navigation className="w-3 h-3 text-muted-foreground" />
+                                            <span className="text-[10px] font-bold text-muted-foreground">Travel: <span className="text-foreground">{(l.end_km - l.start_km).toFixed(1)} KM</span></span>
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex flex-col items-center justify-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/10 w-[80px]">
+                                    <Fuel className="w-4 h-4 text-amber-600 mb-1" />
+                                    <span className="text-lg font-bold text-amber-700 leading-none">{l.fuel_qty}</span>
+                                    <span className="text-[8px] font-black text-amber-600/60 uppercase tracking-tighter mt-1">LITERS</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex flex-col gap-2">
+                                    {l.has_complaint ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-1.5 rounded-xl w-fit border border-secondary/10">
+                                                <AlertCircle className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">{l.complaint_type || 'Fault Logged'}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <div className="flex flex-col p-2 bg-muted/30 rounded-lg border border-primary/5">
+                                                    <span className="text-[8px] font-black text-muted-foreground uppercase opacity-40">Timing</span>
+                                                    <span className="text-[10px] font-bold opacity-70">
+                                                        {l.workshop_in_time ? new Date(l.workshop_in_time).getHours() + ':' + String(new Date(l.workshop_in_time).getMinutes()).padStart(2, '0') : '??'} → {l.workshop_out_time ? new Date(l.workshop_out_time).getHours() + ':' + String(new Date(l.workshop_out_time).getMinutes()).padStart(2, '0') : '??'}
+                                                    </span>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                                    <div className="flex flex-col p-2 bg-muted/30 rounded-lg border border-primary/5">
-                                                        <span className="text-[8px] font-black text-muted-foreground uppercase opacity-40">Timing</span>
-                                                        <span className="text-[10px] font-bold opacity-70">
-                                                            {l.workshop_in_time ? new Date(l.workshop_in_time).getHours() + ':' + String(new Date(l.workshop_in_time).getMinutes()).padStart(2, '0') : '??'} → {l.workshop_out_time ? new Date(l.workshop_out_time).getHours() + ':' + String(new Date(l.workshop_out_time).getMinutes()).padStart(2, '0') : '??'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-col p-2 bg-secondary/10 rounded-lg border border-secondary/5">
-                                                        <span className="text-[8px] font-black text-secondary uppercase opacity-70">Bill Amount</span>
-                                                        <span className="text-[10px] font-black text-secondary leading-none mt-0.5">₹{l.bill_amount}</span>
-                                                    </div>
+                                                <div className="flex flex-col p-2 bg-secondary/10 rounded-lg border border-secondary/5">
+                                                    <span className="text-[8px] font-black text-secondary uppercase opacity-70">Bill Amount</span>
+                                                    <span className="text-[10px] font-black text-secondary leading-none mt-0.5">₹{l.bill_amount}</span>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2 text-primary/60 px-4 py-1.5 bg-primary/5 border border-primary/5 rounded-xl w-fit">
-                                                <Check className="w-3 h-3" />
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">Optimal Condition</span>
-                                            </div>
-                                        )}
-                                        {l.remarks && (
-                                            <div className="flex gap-2 items-start opacity-70 mt-1 pl-1">
-                                                <Save className="w-3 h-3 text-muted-foreground mt-0.5 rotate-180" />
-                                                <p className="text-[10px] font-bold text-muted-foreground italic leading-tight max-w-[200px]">{l.remarks}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-6 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        {canEdit && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
-                                                <Edit className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                        {canDelete && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    />
-                </Card>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-primary/60 px-4 py-1.5 bg-primary/5 border border-primary/5 rounded-xl w-fit">
+                                            <Check className="w-3 h-3" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Optimal Condition</span>
+                                        </div>
+                                    )}
+                                    {l.remarks && (
+                                        <div className="flex gap-2 items-start opacity-70 mt-1 pl-1">
+                                            <Save className="w-3 h-3 text-muted-foreground mt-0.5 rotate-180" />
+                                            <p className="text-[10px] font-bold text-muted-foreground italic leading-tight max-w-[200px]">{l.remarks}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-6 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    {canEdit && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
+                                            <Edit className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                    {canDelete && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             )}
         </div>
     );

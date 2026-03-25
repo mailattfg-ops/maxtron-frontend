@@ -185,18 +185,18 @@ export default function KeilPermissionConsolePage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-primary/10 sticky top-0 z-10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-primary/10 sticky top-0 z-10">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center font-heading">
             <ShieldCheck className="w-8 h-8 mr-3 text-secondary" /> 
-            KEIL Permission Console
+            KEIL Permissions
           </h1>
-          <p className="text-foreground/60 mt-1">Configure access based on Sidebar Menu structure.</p>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Configure access based on Sidebar Menu structure.</p>
         </div>
-        <div className="w-64">
-           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Active Role</label>
+        <div className="w-full md:w-64">
+           <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block pl-1 tracking-widest">Active Role Control</label>
            <Select value={selectedRoleId} onValueChange={(val) => setSelectedRoleId(val)}>
-             <SelectTrigger className="w-full h-11 border-primary/20 bg-background font-bold text-primary shadow-sm">
+             <SelectTrigger className="w-full h-10 md:h-11 border-primary/20 bg-background font-bold text-primary shadow-sm text-xs md:text-sm">
                <SelectValue placeholder="-- Choose Role --" />
              </SelectTrigger>
              <SelectContent className="bg-white border-primary/20">

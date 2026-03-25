@@ -334,14 +334,18 @@ export default function SalesInvoiceEntry() {
       )}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <FileText className="w-8 h-8 text-primary" /> Sales / Invoice Entry
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <FileText className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+            <span className="truncate">Sales / Invoice Entry</span>
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-medium">Generate tax invoices and link to customer orders.</p>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Generate tax invoices and link to customer orders.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg transition-all hover:scale-105">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <Button 
+          onClick={() => setShowForm(!showForm)} 
+          className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"}`}
+        >
+          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? "Cancel Entry" : "New Sales Invoice"}
         </Button>
       </div>
@@ -487,11 +491,11 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 px-4 md:px-0">
                 <Button 
                   type="submit" 
                   loading={submitting}
-                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl"
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
                   <Save className="w-5 h-5" /> {editingId ? "Update Invoice" : "Generate Invoice"}
                 </Button>

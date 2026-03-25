@@ -292,23 +292,24 @@ export default function KeilPayrollPage() {
     return (
         <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 font-heading">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">KEIL Payroll Management</h1>
-                    <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage employee month-wise salary distributions and net payouts for KEIL.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">KEIL Payroll Management</h1>
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 italic">Manage employee month-wise salary distributions and net payouts for KEIL.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
                     {canCreate && (
                         <Button 
                             onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
-                            className="h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold flex items-center gap-2 active:scale-95 transition-all"
+                            className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/95 text-white px-8 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-all text-sm"
                         >
                             {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                            {showForm ? 'Cancel' : 'Generate Entry'}
+                            {showForm ? 'Cancel Operation' : <><span className="hidden sm:inline">Generate Payroll Entry</span><span className="sm:hidden">Generate</span></>}
                         </Button>
                     )}
                 </div>
             </div>
+
 
             {/* Filters */}
             {!showForm && (
@@ -518,23 +519,24 @@ export default function KeilPayrollPage() {
                                     />
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                                     <Button
                                         type="button"
                                         onClick={() => { setShowForm(false); resetForm(); }}
                                         variant="outline"
-                                        className="flex-1 h-12 rounded-xl font-bold border-slate-200 hover:bg-slate-50"
+                                        className="flex-1 md:flex-none h-12 rounded-xl font-bold border-slate-200 hover:bg-slate-50 active:scale-95 px-8"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
                                         disabled={submitting}
-                                        className="flex-1 h-12 bg-primary hover:bg-primary/95 text-white rounded-xl font-black shadow-xl shadow-primary/20"
+                                        className="flex-1 md:flex-none h-12 bg-primary hover:bg-primary/95 text-white rounded-xl font-black shadow-xl shadow-primary/20 active:scale-95 px-10"
                                     >
                                         {submitting ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'POST ENTRY')}
                                     </Button>
                                 </div>
+
                             </div>
                         </form>
                     </CardContent>

@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, TrendingUp, Users, CheckCircle } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -269,20 +276,20 @@ export default function MarketingVisitsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading" id="page-title">Marketing Operations</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && (
-            <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm">
+            <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95">
                <Download className="w-4 h-4 mr-2" /> Download Visit List
             </Button>
           )}
           {canCreate && (
             <Button 
               onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full sm:w-auto"
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full md:w-auto flex-1 md:flex-none"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel Entry' : 'New Field Visit'}
@@ -378,40 +385,45 @@ export default function MarketingVisitsPage() {
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
                    Field Staff
                 </label>
-                <select 
+                <Select 
                   value={formData.employee_id}
-                  onChange={(e) => setFormData({...formData, employee_id: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
+                  onValueChange={(val) => setFormData({...formData, employee_id: val})}
                 >
-                  <option value="">Select staff...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                    <SelectValue placeholder="Select staff..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80 flex items-center">
                   <Building2 className="w-4 h-4 mr-2 text-primary" /> Customer / Company
                 </label>
-                <select 
+                <Select 
                   value={formData.customer_name}
-                  onChange={(e) => {
-                    const selectedName = e.target.value;
-                    const selectedCust = customers.find(c => c.customer_name === selectedName);
+                  onValueChange={(val) => {
+                    const selectedCust = customers.find(c => c.customer_name === val);
                     setFormData({
                       ...formData, 
-                      customer_name: selectedName,
+                      customer_name: val,
                       customer_id: selectedCust?.id || ''
                     });
                   }}
-                  className="w-full h-10 px-3 rounded-md border border-input text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
                 >
-                  <option value="">Select customer...</option>
-                  {customers.map(cust => (
-                    <option key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                    <SelectValue placeholder="Select customer..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {customers.map(cust => (
+                      <SelectItem key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -471,21 +483,24 @@ export default function MarketingVisitsPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
-                <select 
+                <Select 
                   value={formData.outcome}
-                  onChange={(e) => setFormData({...formData, outcome: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
+                  onValueChange={(val) => setFormData({...formData, outcome: val})}
                 >
-                  <option value="">Select outcome...</option>
-                  <option value="Initial Contact">Initial Contact</option>
-                  <option value="Product Demo">Product Demo</option>
-                  <option value="Proposal Sent">Proposal Sent</option>
-                  <option value="Negotiation">Negotiation</option>
-                  <option value="Order Received">Order Received</option>
-                  <option value="Follow-up Scheduled">Follow-up Scheduled</option>
-                  <option value="Payment Collected">Payment Collected</option>
-                  <option value="Not Interested">Not Interested</option>
-                </select>
+                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                    <SelectValue placeholder="Select outcome..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="Initial Contact">Initial Contact</SelectItem>
+                    <SelectItem value="Product Demo">Product Demo</SelectItem>
+                    <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
+                    <SelectItem value="Negotiation">Negotiation</SelectItem>
+                    <SelectItem value="Order Received">Order Received</SelectItem>
+                    <SelectItem value="Follow-up Scheduled">Follow-up Scheduled</SelectItem>
+                    <SelectItem value="Payment Collected">Payment Collected</SelectItem>
+                    <SelectItem value="Not Interested">Not Interested</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2 lg:col-span-2">
@@ -501,7 +516,7 @@ export default function MarketingVisitsPage() {
             </div>
 
             <div className="mt-6 flex justify-end">
-              <Button onClick={saveVisit} className="bg-primary hover:bg-primary/95 text-white px-8 h-10 rounded-full shadow-lg flex items-center">
+              <Button onClick={saveVisit} className="bg-primary hover:bg-primary/95 text-white px-8 h-12 rounded-full shadow-lg shadow-primary/20 flex items-center transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update Report' : 'Save Visit Report'}
               </Button>

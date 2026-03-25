@@ -16,6 +16,13 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function PettyCashPage() {
     const [records, setRecords] = useState<any[]>([]);
@@ -127,19 +134,19 @@ export default function PettyCashPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Wallet className="text-amber-500 w-8 h-8 p-1.5 bg-amber-500/10 rounded-lg" />
-                        Petty Cash Management
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <Wallet className="text-amber-500 w-8 h-8 md:w-10 md:h-10 p-1.5 bg-amber-500/10 rounded-lg shrink-0" />
+                        <span className="truncate">Petty Cash Management</span>
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Daily tracking of small operational expenditures</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">Daily tracking of small operational expenditures</p>
                 </div>
                 <Button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-5 h-5 mr-2" />
                     New Expense
                 </Button>
             </div>
@@ -228,18 +235,22 @@ export default function PettyCashPage() {
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-700">Category</label>
                                         <div className="relative">
-                                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <select
+                                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                            <Select
                                                 value={formData.category}
-                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+                                                onValueChange={(val) => setFormData({ ...formData, category: val })}
                                             >
-                                                <option value="Tea/Snacks">Tea/Snacks</option>
-                                                <option value="Stationery">Stationery</option>
-                                                <option value="Travel">Travel</option>
-                                                <option value="Maintenance">Maintenance</option>
-                                                <option value="Others">Others</option>
-                                            </select>
+                                                <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm h-11">
+                                                    <SelectValue placeholder="Category" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    <SelectItem value="Tea/Snacks">Tea/Snacks</SelectItem>
+                                                    <SelectItem value="Stationery">Stationery</SelectItem>
+                                                    <SelectItem value="Travel">Travel</SelectItem>
+                                                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                    <SelectItem value="Others">Others</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -270,18 +281,18 @@ export default function PettyCashPage() {
                                     />
                                 </div>
 
-                                <div className="flex gap-4 pt-4">
+                                <div className="flex flex-col md:flex-row items-center gap-3 pt-4 sticky bottom-0 bg-white">
                                     <Button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
                                         variant="outline"
-                                        className="flex-1 py-6 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                        className="w-full md:flex-1 h-12 md:h-14 border border-slate-200 rounded-full font-bold text-slate-600 hover:bg-slate-50 transition-colors order-2 md:order-1"
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="flex-1 py-6 bg-secondary hover:bg-secondary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-secondary/20"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-secondary hover:bg-secondary/95 text-white rounded-full font-black transition-all shadow-lg shadow-secondary/20 hover:scale-105 active:scale-95 order-1 md:order-2"
                                     >
                                         Record Expense
                                     </Button>

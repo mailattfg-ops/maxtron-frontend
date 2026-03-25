@@ -297,44 +297,50 @@ export default function DailyCollectionEntryPage() {
 
     return (
         <div className="p-6 space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 font-heading">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <div className="p-2 bg-primary rounded-lg text-white">
                             <Truck className="w-6 h-6" />
                         </div>
-                        <h1 className="text-3xl font-bold text-primary tracking-tight">
+                        <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight">
                             Collection Terminal
                         </h1>
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2 italic">
                         <Navigation className="w-3 h-3" /> Real-time Logistics Management & Waste Serialization.
                     </p>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="flex gap-4">
-                        {selectedRouteId && (
-                            <Button variant="outline" onClick={handleExport} className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 h-12 font-bold uppercase tracking-wider transition-all">
-                                <Download className="w-5 h-5 mr-3" /> Export Report
-                            </Button>
-                        )}
-                        <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                <Activity className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold uppercase text-primary/60">Coverage</p>
-                                <p className="text-sm font-bold text-primary">{totals.total_visited} / {totals.total_assigned}</p>
-                            </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    {selectedRouteId && (
+                        <Button 
+                            variant="outline" 
+                            onClick={handleExport} 
+                            className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 h-11 font-bold uppercase tracking-wider active:scale-95 transition-all text-sm"
+                        >
+                            <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Export Report</span><span className="sm:hidden">Export</span>
+                        </Button>
+                    )}
+                    <div className="flex-1 md:flex-none bg-primary/5 px-4 py-2 rounded-full border border-primary/10 flex items-center justify-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                            <Activity className="w-3.5 h-3.5" />
                         </div>
-                        {selectedRouteId && canCreate && (
-                            <Button size="lg" onClick={handleSave} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider transition-all duration-300">
-                                <Save className="w-5 h-5 mr-3" /> Commit Batch
-                            </Button>
-                        )}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase text-primary/60 leading-none">Coverage</p>
+                            <p className="text-xs font-black text-primary">{totals.total_visited} / {totals.total_assigned}</p>
+                        </div>
                     </div>
+                    {selectedRouteId && canCreate && (
+                        <Button 
+                            onClick={handleSave} 
+                            className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white rounded-full px-8 h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider active:scale-95 transition-all text-sm"
+                        >
+                            <Save className="w-4 h-4 mr-2" /> Commit Batch
+                        </Button>
+                    )}
                 </div>
             </div>
+
 
             {/* Header Form */}
             <Card className="border-primary/20 shadow-xl overflow-hidden rounded-xl">

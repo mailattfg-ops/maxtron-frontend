@@ -254,17 +254,17 @@ function RouteAssignmentsContent() {
 
     return (
         <div className="md:p-6 space-y-6">
-            <div className="grid md:flex flex-col md:flex-row justify-center md:justify-between items-start md:items-center gap-6 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-4 w-full md:w-auto">
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-bold text-primary tracking-tight">Route Mapping Control</h1>
-                        <p className="text-sm font-medium text-muted-foreground">Assign facilities to active logistical loops.</p>
+                    <div className="space-y-1 text-center md:text-left">
+                        <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Route Mapping</h1>
+                        <p className="text-xs md:text-sm font-medium text-muted-foreground">Assign facilities to active logistical loops.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                         <div className="relative flex justify-center items-center group w-full sm:w-[300px]">
                             <Map className="hidden md:block w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
                             <Select value={selectedRouteId} onValueChange={(val) => setSelectedRouteId(val)}>
-                                <SelectTrigger className="pl-9 h-10 w-fit md:w-full border-primary/20 bg-background shadow-sm font-bold">
+                                <SelectTrigger className="md:pl-9 h-10 w-full border-primary/20 bg-background shadow-sm font-bold text-xs md:text-sm">
                                     <SelectValue placeholder="Switch / Select Route" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white border-primary/20">
@@ -275,10 +275,10 @@ function RouteAssignmentsContent() {
                             </Select>
                         </div>
                         {route && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-md border border-primary/10">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-md border border-primary/10 w-full sm:w-auto justify-center">
                                 <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{route.route_code}</span>
                                 <span className="w-px h-3 bg-primary/20" />
-                                <span className="text-xs font-bold text-muted-foreground">{route.branch_name}</span>
+                                <span className="text-[10px] md:text-xs font-bold text-muted-foreground">{route.branch_name}</span>
                             </div>
                         )}
                     </div>
@@ -286,9 +286,11 @@ function RouteAssignmentsContent() {
                 {selectedRouteId && !isAssigning && !editingAssignment && canCreate && (
                     <Button 
                         onClick={() => setIsAssigning(true)} 
-                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                        className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 md:h-11 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <LinkIcon className="w-4 h-4 mr-2" /> Add HCE to Route
+                        <LinkIcon className="w-4 h-4" /> 
+                        <span className="hidden md:inline">Add HCE to Route</span>
+                        <span className="md:hidden">Add HCE</span>
                     </Button>
                 )}
             </div>

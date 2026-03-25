@@ -273,14 +273,18 @@ export default function SalesReturns() {
       )}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <RotateCcw className="w-10 h-10 text-rose-500" /> Sales Returns
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <RotateCcw className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-rose-50 text-rose-500 rounded-lg shrink-0" />
+            <span className="truncate">Sales Returns</span>
           </h1>
-          <p className="text-muted-foreground mt-1 font-medium">Handle product returns, quality issues, and credit notes.</p>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Handle product returns, quality issues, and credit notes.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg bg-rose-600 hover:bg-rose-700">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <Button 
+          onClick={() => setShowForm(!showForm)} 
+          className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"}`}
+        >
+          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? "Cancel Return" : "Process New Return"}
         </Button>
       </div>

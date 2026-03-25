@@ -154,14 +154,19 @@ export default function PackingDetailsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Packing Details</h1>
-          <p className="text-muted-foreground mt-1">Record bundling of finished goods into units.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+            <Package className="w-8 h-8 md:w-10 md:h-10 text-emerald-600 shrink-0" /> <span className="truncate">Packing Details</span>
+          </h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Record bundling of finished goods into units.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Plus className="w-4 h-4" /> Record New Packing
+            <Button 
+                onClick={() => setShowForm(true)} 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-full shadow-lg shadow-emerald-200 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Record New Packing
             </Button>
           )}
         </div>
@@ -216,11 +221,20 @@ export default function PackingDetailsPage() {
                 <p className="text-[10px] text-emerald-400 italic mt-1">Calculated: Bundles × Qty per Bundle</p>
               </div>
             </div>
-            <div className="mt-8 flex justify-end gap-3 border-t pt-6">
-              <Button variant="outline" onClick={() => setShowForm(false)} className="px-6">Cancel</Button>
-              <Button onClick={savePacking} className="px-8 shadow-sm hover:shadow-md gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-                <Save className="w-4 h-4" /> Save Final Packing
-              </Button>
+            <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowForm(false)} 
+                 className="flex-1 md:flex-none px-8 rounded-full h-12 order-2 md:order-1"
+               >
+                 Cancel Entry
+               </Button>
+               <Button 
+                 onClick={savePacking} 
+                 className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-10 rounded-full shadow-lg shadow-emerald-200 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+               >
+                 <Save className="w-4 h-4 mr-2" /> Save Final Packing
+               </Button>
             </div>
           </CardContent>
         </Card>

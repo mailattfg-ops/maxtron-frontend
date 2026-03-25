@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import { exportToExcel } from '@/utils/export';
 
 export default function SupplierLedgerPage() {
@@ -144,43 +151,46 @@ export default function SupplierLedgerPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <BookOpen className="text-destructive w-8 h-8 p-1.5 bg-destructive/10 rounded-lg" />
-                        Supplier Ledger
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <BookOpen className="text-destructive w-8 h-8 md:w-10 md:h-10 p-1.5 bg-destructive/10 rounded-lg shrink-0" />
+                        <span className="truncate">Supplier Ledger</span>
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Detailed history of purchases and payments</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Detailed history of purchases and payments</p>
                 </div>
                 
-                <div className="flex gap-3">
-                    <div className="relative">
-                        <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <select
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-auto flex-1 sm:flex-none">
+                        <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                        <Select
                             value={selectedSupplier}
-                            onChange={(e) => setSelectedSupplier(e.target.value)}
-                            className="pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm min-w-[200px]"
+                            onValueChange={(val) => setSelectedSupplier(val)}
                         >
-                            <option value="">Select Supplier</option>
-                            {suppliers.map((s: any) => (
-                                <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="w-full sm:w-[200px] pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-11">
+                                <SelectValue placeholder="Select Supplier" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200">
+                                {suppliers.map((s: any) => (
+                                    <SelectItem key={s.id} value={s.id}>{s.supplier_name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <Button
                         onClick={fetchLedger}
-                        className="bg-slate-900 text-white px-4 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2"
+                        className="bg-slate-900 hover:bg-slate-800 text-white px-6 rounded-full shadow-lg h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto flex-1 sm:flex-none"
                     >
-                        <Filter className="w-4 h-4" />
+                        <Filter className="w-4 h-4 mr-2" />
                         View
                     </Button>
                     {selectedSupplier && ledgerData.length > 0 && (
                         <Button 
                             onClick={downloadLedger}
                             variant="outline"
-                            className="bg-white border-primary/20 text-primary hover:bg-primary/5 px-4 rounded-xl shadow-sm font-bold flex items-center gap-2"
+                            className="bg-white border-primary/20 text-primary hover:bg-primary/5 px-6 rounded-full shadow-sm h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto flex-1 sm:flex-none font-bold"
                         >
-                            <Download className="w-4 h-4" /> Export
+                            <Download className="w-4 h-4 mr-2" /> Export
                         </Button>
                     )}
                 </div>

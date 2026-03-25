@@ -19,6 +19,13 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function CustomerCollectionPage() {
     const [collections, setCollections] = useState<any[]>([]);
@@ -246,19 +253,19 @@ export default function CustomerCollectionPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <ArrowDownLeft className="text-emerald-500 w-8 h-8 p-1.5 bg-emerald-50 rounded-lg" />
-                        Customer Collections
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <ArrowDownLeft className="text-emerald-500 w-8 h-8 md:w-10 md:h-10 p-1.5 bg-emerald-50 rounded-lg shrink-0" />
+                        <span className="truncate">Customer Collections</span>
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Record payments received and allocate against invoices</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Record payments received and allocate against invoices</p>
                 </div>
                 <Button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20"
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-5 h-5 mr-2" />
                     New Collection
                 </Button>
             </div>
@@ -338,18 +345,25 @@ export default function CustomerCollectionPage() {
                                             )}
                                         </div>
                                         <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <select
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                            <Select
                                                 required
                                                 value={formData.customer_id}
-                                                onChange={handleCustomerChange}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm"
+                                                onValueChange={(val) => {
+                                                    setFormData({ ...formData, customer_id: val });
+                                                    fetchPendingInvoices(val);
+                                                    fetchCustomerBalance(val);
+                                                }}
                                             >
-                                                <option value="">Choose Customer</option>
-                                                {customers.map((c: any) => (
-                                                    <option key={c.id} value={c.id}>{c.customer_name}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm h-11">
+                                                    <SelectValue placeholder="Choose Customer" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {customers.map((c: any) => (
+                                                        <SelectItem key={c.id} value={c.id}>{c.customer_name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
 
@@ -452,17 +466,21 @@ export default function CustomerCollectionPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Config</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="relative">
-                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                <select
+                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                                <Select
                                                     value={formData.payment_mode}
-                                                    onChange={(e) => setFormData({ ...formData, payment_mode: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl appearance-none outline-none text-sm"
+                                                    onValueChange={(val) => setFormData({ ...formData, payment_mode: val })}
                                                 >
-                                                    <option value="CASH">Cash</option>
-                                                    <option value="BANK">Bank / IMPS</option>
-                                                    <option value="UPI">UPI / Scan</option>
-                                                    <option value="CHECK">Check</option>
-                                                </select>
+                                                    <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-11">
+                                                        <SelectValue placeholder="Mode" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white border-slate-200">
+                                                        <SelectItem value="CASH">Cash</SelectItem>
+                                                        <SelectItem value="BANK">Bank / IMPS</SelectItem>
+                                                        <SelectItem value="UPI">UPI / Scan</SelectItem>
+                                                        <SelectItem value="CHECK">Check</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                             <Input
                                                 type="text"
@@ -486,18 +504,18 @@ export default function CustomerCollectionPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
+                                <div className="flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
                                     <Button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
                                         variant="outline"
-                                        className="flex-1 py-7 rounded-2xl font-black text-slate-500 hover:bg-slate-50"
+                                        className="w-full md:flex-1 h-12 md:h-14 rounded-full font-black text-slate-500 hover:bg-slate-50 order-2 md:order-1"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="flex-1 py-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-2xl shadow-emerald-200 transition-all uppercase tracking-widest"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-black shadow-lg shadow-emerald-100 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
                                     >
                                         Post Collection
                                     </Button>

@@ -180,26 +180,22 @@ export default function HCEServiceLedgerPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">HCE Service Ledger</h1>
-                    <p className="text-sm font-medium text-muted-foreground">Full collection history and waste volume analysis.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <Activity className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+                        <span className="truncate">HCE Service Ledger</span>
+                    </h1>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Full collection history and waste volume analysis.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Button 
-                        variant="outline" 
                         onClick={handleExport}
                         disabled={entries.length === 0}
-                        className="rounded-full px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10"
+                        className="h-11 px-8 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 uppercase tracking-wider text-xs"
                     >
-                        <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel Export
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        className="rounded-full px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10" 
-                        onClick={() => window.print()}
-                    >
-                        <FileText className="w-4 h-4 mr-2" /> Print Ledger
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Excel Download
                     </Button>
                 </div>
             </div>

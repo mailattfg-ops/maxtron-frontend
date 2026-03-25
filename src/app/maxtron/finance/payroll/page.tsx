@@ -23,6 +23,13 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function PayrollPage() {
     const pathname = usePathname();
@@ -123,8 +130,7 @@ export default function PayrollPage() {
         return (Number(basic) + Number(allow) + Number(incent)) - Number(deduct);
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
+    const handleSelectChange = (name: string, value: string) => {
         let newFormData = { ...formData, [name]: value };
 
         // Auto-fetch basic salary if employee is selected
@@ -136,6 +142,22 @@ export default function PayrollPage() {
         }
 
         if (['basic_salary', 'allowances', 'deductions', 'incentives'].includes(name) || name === 'employee_id') {
+            newFormData.net_salary = calculateNetSalary(
+                Number(newFormData.basic_salary),
+                Number(newFormData.allowances),
+                Number(newFormData.deductions),
+                Number(newFormData.incentives)
+            );
+        }
+
+        setFormData(newFormData);
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        let newFormData = { ...formData, [name]: value };
+
+        if (['basic_salary', 'allowances', 'deductions', 'incentives'].includes(name)) {
             newFormData.net_salary = calculateNetSalary(
                 Number(newFormData.basic_salary),
                 Number(newFormData.allowances),
@@ -260,17 +282,20 @@ export default function PayrollPage() {
         <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Payroll Management</h1>
-                    <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Manage employee month-wise salary distributions and net payouts.</p>
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <DollarSign className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 rounded-lg text-primary shrink-0" />
+                        <span className="truncate">Payroll Management</span>
+                    </h1>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Manage employee month-wise salary distributions and net payouts.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                     <Button 
                         onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
-                        className="h-11 bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg font-bold flex items-center gap-2 active:scale-95 transition-all"
+                        className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                     >
-                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {showForm ? 'Cancel' : 'Generate Entry'}
+                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                        {showForm ? 'Cancel Entry' : 'Generate Entry'}
                     </Button>
                 </div>
             </div>
@@ -280,26 +305,28 @@ export default function PayrollPage() {
                 <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                     <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-slate-400" />
-                        <select 
-                            value={filterMonth} 
-                            onChange={(e) => setFilterMonth(Number(e.target.value))}
-                            className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold"
-                        >
-                            {months.map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
-                            ))}
-                        </select>
+                        <Select value={String(filterMonth)} onValueChange={(val) => setFilterMonth(Number(val))}>
+                            <SelectTrigger className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold bg-white">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200">
+                                {months.map((m, i) => (
+                                    <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                        <select 
-                            value={filterYear} 
-                            onChange={(e) => setFilterYear(Number(e.target.value))}
-                            className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
+                        <Select value={String(filterYear)} onValueChange={(val) => setFilterYear(Number(val))}>
+                            <SelectTrigger className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold bg-white">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-slate-200">
+                                {years.map(y => (
+                                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="ml-auto text-xs font-bold text-slate-500 uppercase tracking-widest">
                         Total Payout for {months[filterMonth-1]} {filterYear}: 
@@ -332,43 +359,53 @@ export default function PayrollPage() {
                                     
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Employee</label>
-                                        <select
+                                        <Select
                                             name="employee_id"
                                             value={formData.employee_id}
-                                            onChange={handleInputChange}
-                                            required
-                                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                                            onValueChange={(val) => handleSelectChange('employee_id', val)}
                                         >
-                                            <option value="">Select Employee...</option>
-                                            {employees.map(emp => (
-                                                <option key={emp.id} value={emp.id}>
-                                                    {emp.name} ({emp.employee_code})
-                                                </option>
-                                            ))}
-                                        </select>
+                                            <SelectTrigger className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none">
+                                                <SelectValue placeholder="Select Employee..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {employees.map(emp => (
+                                                    <SelectItem key={emp.id} value={emp.id}>
+                                                        {emp.name} ({emp.employee_code})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Period</label>
-                                            <select
+                                            <Select
                                                 name="month"
-                                                value={formData.month}
-                                                onChange={handleInputChange}
-                                                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+                                                value={String(formData.month)}
+                                                onValueChange={(val) => handleSelectChange('month', val)}
                                             >
-                                                {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                                            </select>
+                                                <SelectTrigger className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                                    <SelectValue placeholder="Month" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {months.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="space-y-2 pt-6">
-                                            <select
+                                            <Select
                                                 name="year"
-                                                value={formData.year}
-                                                onChange={handleInputChange}
-                                                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+                                                value={String(formData.year)}
+                                                onValueChange={(val) => handleSelectChange('year', val)}
                                             >
-                                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                            </select>
+                                                <SelectTrigger className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                                    <SelectValue placeholder="Year" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                 </div>
@@ -445,30 +482,38 @@ export default function PayrollPage() {
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 items-end border-t border-slate-100">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Status</label>
-                                    <select
+                                    <Select
                                         name="payment_status"
                                         value={formData.payment_status}
-                                        onChange={handleInputChange}
-                                        className={`w-full h-11 px-4 rounded-xl border text-sm font-black outline-none transition-all ${formData.payment_status === 'PAID' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}
+                                        onValueChange={(val) => handleSelectChange('payment_status', val)}
                                     >
-                                        <option value="PENDING">PENDING</option>
-                                        <option value="PAID">PAID</option>
-                                    </select>
+                                        <SelectTrigger className={`w-full h-11 px-4 rounded-xl border text-sm font-black outline-none transition-all ${formData.payment_status === 'PAID' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}>
+                                            <SelectValue placeholder="Status" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            <SelectItem value="PENDING">PENDING</SelectItem>
+                                            <SelectItem value="PAID">PAID</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Payment Mode</label>
-                                    <select
+                                    <Select
                                         name="payment_mode"
                                         value={formData.payment_mode}
-                                        onChange={handleInputChange}
-                                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
+                                        onValueChange={(val) => handleSelectChange('payment_mode', val)}
                                     >
-                                        <option value="BANK">Bank Transfer (NEFT/RTGS)</option>
-                                        <option value="CASH">Cash Payment</option>
-                                        <option value="UPI">UPI Payment</option>
-                                        <option value="CHEQUE">Cheque</option>
-                                    </select>
+                                        <SelectTrigger className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                                            <SelectValue placeholder="Payment Mode" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            <SelectItem value="BANK">Bank Transfer (NEFT/RTGS)</SelectItem>
+                                            <SelectItem value="CASH">Cash Payment</SelectItem>
+                                            <SelectItem value="UPI">UPI Payment</SelectItem>
+                                            <SelectItem value="CHEQUE">Cheque</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
@@ -482,19 +527,19 @@ export default function PayrollPage() {
                                     />
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex flex-col md:flex-row items-center gap-3">
                                     <Button
                                         type="button"
                                         onClick={() => { setShowForm(false); resetForm(); }}
                                         variant="outline"
-                                        className="flex-1 h-12 rounded-xl font-bold border-slate-200 hover:bg-slate-50"
+                                        className="w-full md:flex-1 h-12 md:h-14 rounded-full font-bold border-slate-200 hover:bg-slate-50 order-2 md:order-1"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
                                         disabled={submitting}
-                                        className="flex-1 h-12 bg-primary hover:bg-primary/95 text-white rounded-xl font-black shadow-xl shadow-primary/20"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
                                     >
                                         {submitting ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'POST ENTRY')}
                                     </Button>

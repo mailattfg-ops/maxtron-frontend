@@ -89,25 +89,26 @@ export default function FleetReportsPage() {
 
     return (
         <div className="p-6 space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 md:p-8 rounded-xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 font-heading">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
                         <BarChart3 className="w-10 h-10 text-indigo-600" />
                         Fleet Intelligence
                     </h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2 italic">
                         <TrendingUp className="w-3 h-3 text-emerald-500" /> Predictive Analytics & Resource Utilization
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="rounded-2xl border-slate-200 font-bold uppercase tracking-widest text-xs h-12 px-6">
-                        <Download className="w-4 h-4 mr-2" /> PDF Protocol
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    <Button variant="outline" className="flex-1 md:flex-none rounded-full border-slate-200 font-bold uppercase tracking-widest text-xs h-11 px-6 active:scale-95 transition-all">
+                        <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">PDF Protocol</span><span className="sm:hidden">PDF</span>
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs h-12 px-8 shadow-lg shadow-indigo-100">
-                        Export Dataset
+                    <Button className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-black uppercase tracking-widest text-xs h-11 px-8 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                        <span className="hidden sm:inline">Export Dataset</span><span className="sm:hidden">Export</span>
                     </Button>
                 </div>
             </div>
+
 
             {/* Matrix Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -19,6 +19,13 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function SupplierPaymentPage() {
     const [payments, setPayments] = useState<any[]>([]);
@@ -250,19 +257,19 @@ export default function SupplierPaymentPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <ArrowUpRight className="text-destructive w-8 h-8 p-1.5 bg-destructive/10 rounded-lg" />
-                        Supplier Payments
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <ArrowUpRight className="text-destructive w-8 h-8 md:w-10 md:h-10 p-1.5 bg-destructive/10 rounded-lg shrink-0" />
+                        <span className="truncate">Supplier Payments</span>
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage disbursements and bill allocations</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">Manage disbursements and bill allocations</p>
                 </div>
                 <Button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20"
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-5 h-5 mr-2" />
                     New Bill Payment
                 </Button>
             </div>
@@ -345,18 +352,25 @@ export default function SupplierPaymentPage() {
                                             )}
                                         </div>
                                         <div className="relative">
-                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <select
+                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                            <Select
                                                 required
                                                 value={formData.supplier_id}
-                                                onChange={handleSupplierChange}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                                                onValueChange={(val) => {
+                                                    setFormData({ ...formData, supplier_id: val });
+                                                    fetchPendingBills(val);
+                                                    fetchSupplierBalance(val);
+                                                }}
                                             >
-                                                <option value="">Choose Supplier</option>
-                                                {suppliers.map((s: any) => (
-                                                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm h-11">
+                                                    <SelectValue placeholder="Choose Supplier" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {suppliers.map((s: any) => (
+                                                        <SelectItem key={s.id} value={s.id}>{s.supplier_name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
 
@@ -469,17 +483,21 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Configuration</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="relative">
-                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                <select
+                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                                <Select
                                                     value={formData.payment_mode}
-                                                    onChange={(e) => setFormData({ ...formData, payment_mode: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl appearance-none outline-none text-sm"
+                                                    onValueChange={(val) => setFormData({ ...formData, payment_mode: val })}
                                                 >
-                                                    <option value="CASH">Cash</option>
-                                                    <option value="BANK">Bank Transfer</option>
-                                                    <option value="UPI">UPI / Digital</option>
-                                                    <option value="CHECK">Check / DD</option>
-                                                </select>
+                                                    <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-11">
+                                                        <SelectValue placeholder="Mode" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white border-slate-200">
+                                                        <SelectItem value="CASH">Cash</SelectItem>
+                                                        <SelectItem value="BANK">Bank Transfer</SelectItem>
+                                                        <SelectItem value="UPI">UPI / Digital</SelectItem>
+                                                        <SelectItem value="CHECK">Check / DD</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                             <Input
                                                 placeholder="Ref / UTR No"
@@ -502,19 +520,19 @@ export default function SupplierPaymentPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
+                                <div className="flex flex-col md:flex-row items-center gap-3 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
                                     <Button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
                                         variant="outline"
-                                        className="flex-1 py-7 rounded-2xl font-black text-slate-500 hover:bg-slate-50"
+                                        className="w-full md:flex-1 h-12 md:h-14 rounded-full font-black text-slate-500 hover:bg-slate-50 order-2 md:order-1"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
                                         loading={submitting}
-                                        className="flex-1 py-7 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-2xl shadow-primary/20 transition-all uppercase tracking-widest"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
                                     >
                                         Confirm & Post Entry
                                     </Button>
