@@ -164,6 +164,7 @@ export default function AttendancePage() {
     }));
     setBulkData(initialBulk);
     setShowBulkForm(true);
+    setShowForm(false);
   };
 
   const handleBulkDateChange = (newDate: string) => {
@@ -424,7 +425,7 @@ export default function AttendancePage() {
           )}
           {canCreate && (
             <Button 
-              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); setShowBulkForm(false); }}
               className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/95 text-white px-8 rounded-full transition-all shadow-lg font-bold active:scale-95 text-sm"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
@@ -456,9 +457,9 @@ export default function AttendancePage() {
                 </Select>
  
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                {/* <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
                   <Calendar className="w-3 h-3 mr-2 text-primary" /> Date
-                </label>
+                </label> */}
                 <Input 
                   type="date"
                   value={formData.date}
@@ -680,82 +681,83 @@ export default function AttendancePage() {
           </CardContent>
         </Card>
       )}
-
-      <TableView
-        title="Attendance Logs"
-        description={`Daily shift-wise logging for ${activeTenant} staff.`}
-        headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
-        data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
-        loading={loading}
-        searchFields={['users.name', 'users.employee_code', 'remarks']}
-        searchPlaceholder="Search staff or notes..."
-        actions={
-          <div className="flex items-center gap-2">
-            <span className="text-xs md:text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
-            <div className="flex gap-1">
-              <Input 
-                type="date"
-                className="w-32 md:w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              />
-              {dateFilter && (
-                <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
-                   Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        }
-
-        renderRow={(rec: any) => (
-          <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
-            <td className="px-6 py-4">
-              <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                {rec.users?.name}
+      {!showForm && !showBulkForm && (
+        <TableView
+          title="Attendance Logs"
+          description={`Daily shift-wise logging for ${activeTenant} staff.`}
+          headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
+          data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
+          loading={loading}
+          searchFields={['users.name', 'users.employee_code', 'remarks']}
+          searchPlaceholder="Search staff or notes..."
+          actions={
+            <div className="flex items-center gap-2">
+              <span className="text-xs md:text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+              <div className="flex gap-1">
+                <Input 
+                  type="date"
+                  className="w-32 md:w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+                {dateFilter && (
+                  <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
+                    Clear
+                  </Button>
+                )}
               </div>
-              <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
-            </td>
-            <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
-            <td className="px-6 py-4">
-              <span className={`px-2 py-1 rounded text-[11px] font-bold ${
-                rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
-                rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
-                'bg-blue-100 text-blue-700'
-              }`}>
-                {rec.shift}
-              </span>
-            </td>
-            <td className="px-6 py-4 font-mono text-xs">
-              {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
-            </td>
-            <td className="px-6 py-4">
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
-                rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
-                'bg-amber-100 text-amber-700'
-              }`}>
-                {rec.status}
-              </span>
-            </td>
-            <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
-              {rec.remarks || '-'}
-            </td>
-            <td className="md:px-6 py-4 text-right space-x-2">
-              {canEdit && (
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {canDelete && (
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </td>
-          </tr>
-        )}
-      />
+            </div>
+          }
+
+          renderRow={(rec: any) => (
+            <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
+              <td className="px-6 py-4">
+                <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {rec.users?.name}
+                </div>
+                <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
+              </td>
+              <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
+              <td className="px-6 py-4">
+                <span className={`px-2 py-1 rounded text-[11px] font-bold ${
+                  rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
+                  rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {rec.shift}
+                </span>
+              </td>
+              <td className="px-6 py-4 font-mono text-xs">
+                {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
+              </td>
+              <td className="px-6 py-4">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
+                  rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {rec.status}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
+                {rec.remarks || '-'}
+              </td>
+              <td className="md:px-6 py-4 text-right space-x-2">
+                {canEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          )}
+        />
+      )}
     </div>
   );
 }

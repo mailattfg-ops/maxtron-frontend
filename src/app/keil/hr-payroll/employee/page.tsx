@@ -972,7 +972,7 @@ export default function EmployeeInformationPage() {
                   onValueChange={(val) => updateFormData('category_id', val)}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger className="h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
+                  <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">
@@ -983,7 +983,7 @@ export default function EmployeeInformationPage() {
                 </Select>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
+                <Input name="username" className='w-full ' value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
               </div>
 
                 <Select 
@@ -991,7 +991,7 @@ export default function EmployeeInformationPage() {
                   onValueChange={(val) => updateFormData('company_id', val)}
                   disabled={true}
                 >
-                  <SelectTrigger className="h-10 md:h-11 border-slate-200 bg-slate-50 shadow-sm font-bold text-slate-700">
+                  <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-slate-50 shadow-sm font-bold text-slate-700">
                     <SelectValue placeholder="Select Company" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">
@@ -1005,6 +1005,7 @@ export default function EmployeeInformationPage() {
                 <div className="relative">
                   <Input 
                     type={showFormPassword ? "text" : "password"} 
+                    className='w-full '
                     name="password" 
                     value={formData.password} 
                     onChange={handleInputChange} 
@@ -1029,7 +1030,7 @@ export default function EmployeeInformationPage() {
                   onValueChange={(val) => updateFormData('type', val)}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger className="h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
+                  <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
                     <SelectValue placeholder="Select System Role" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">

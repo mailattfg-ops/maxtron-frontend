@@ -166,6 +166,7 @@ export default function AttendancePage() {
     }));
     setBulkData(initialBulk);
     setShowBulkForm(true);
+    setShowForm(false);
   };
 
   const handleBulkDateChange = (newDate: string) => {
@@ -416,33 +417,34 @@ export default function AttendancePage() {
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Details</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <UserCheck className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+            <span className="truncate">Attendance Details</span>
+          </h1>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           <Button 
             onClick={downloadAttendance}
             variant="outline"
-            className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 font-bold"
+            className="border-secondary/20 text-secondary hover:bg-secondary/5 rounded-full px-5 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
           >
-            <Download className="w-4 h-4 md:mr-2" /> 
-            <span className="hidden md:inline">Download Logs</span>
-            <span className="md:hidden">Export</span>
+            <Download className="w-4 h-4 mr-2" /> Download Logs
           </Button>
           {canCreate && (
             <Button 
               onClick={prepareBulkData}
               variant="outline"
-              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> Bulk Entry
             </Button>
           )}
           {canCreate && (
             <Button 
-              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold"
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null);setShowBulkForm(false); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel' : 'Log Entry'}
@@ -454,12 +456,15 @@ export default function AttendancePage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
-            <CardTitle className="text-lg font-semibold text-primary">{editingId ? 'Edit Attendance' : 'Mark Daily Attendance'}</CardTitle>
-            <CardDescription>Input shift details and timing for employees.</CardDescription>
+          <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-4">
+            <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                {editingId ? 'Edit Attendance' : 'Mark Daily Attendance'}
+            </CardTitle>
+            <CardDescription className="text-xs font-medium">Input shift details and timing for employees.</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 md:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <CardContent className="p-4 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <Select value={formData.employee_id} onValueChange={(val) => setFormData({...formData, employee_id: val})}>
                   <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
                     <SelectValue placeholder="Choose employee..." />
@@ -472,9 +477,9 @@ export default function AttendancePage() {
                 </Select>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                {/* <label className="text-sm font-semibold text-foreground/80 flex items-center">
                   <Calendar className="w-4 h-4 mr-2 text-primary" /> Date
-                </label>
+                </label> */}
                 <Input 
                   type="date"
                   value={formData.date}
@@ -581,25 +586,26 @@ export default function AttendancePage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+              <table className="w-full text-sm text-left min-w-[1000px]">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Employee</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-center">Shift</th>
-                    <th className="px-4 py-3">Clock In / Out</th>
-                    <th className="px-4 py-3">Remarks</th>
-                    <th className="px-4 py-3 text-right">Action</th>
+                    <th className="px-4 py-4 font-black">Staff Member</th>
+                    <th className="px-4 py-4 text-center">Attendance Status</th>
+                    <th className="px-4 py-4 text-center">Assigned Shift</th>
+                    <th className="px-4 py-4">Timing (In - Out)</th>
+                    <th className="px-4 py-4">Notes / Remarks</th>
+                    <th className="px-4 py-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic font-medium">
                   {bulkData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                         <div className="font-bold text-slate-800">{row.employee_name}</div>
-                         <div className="text-[10px] text-slate-400">{row.employee_code}</div>
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-4 py-4">
+                         <div className="font-bold text-slate-900 group-hover:text-primary transition-colors">{row.employee_name}</div>
+                         <div className="text-[10px] text-slate-500 font-bold">{row.employee_code}</div>
                       </td>
+                      <td className="px-4 py-4 text-center border-x border-slate-100/50">
                          <Select 
                            value={row.status}
                            onValueChange={(val) => {
@@ -613,16 +619,18 @@ export default function AttendancePage() {
                              setBulkData(nd);
                            }}
                          >
-                           <SelectTrigger className="h-8 w-32 border-slate-200 bg-white px-2 text-xs">
+                           <SelectTrigger className="h-9 w-32 border-slate-200 bg-white px-3 text-xs mx-auto rounded-xl shadow-sm focus:ring-primary/20">
                              <SelectValue placeholder="Status" />
                            </SelectTrigger>
-                           <SelectContent className="bg-white border-slate-200">
+                           <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
                              <SelectItem value="PRESENT">Present</SelectItem>
                              <SelectItem value="ABSENT">Absent</SelectItem>
                              <SelectItem value="LATE">Late</SelectItem>
                              <SelectItem value="HALF_DAY">Half Day</SelectItem>
                            </SelectContent>
                          </Select>
+                      </td>
+                      <td className="px-4 py-4 text-center border-r border-slate-100/50">
                          <Select 
                            value={row.shift}
                            onValueChange={(val) => {
@@ -631,27 +639,52 @@ export default function AttendancePage() {
                              setBulkData(nd);
                            }}
                          >
-                           <SelectTrigger className="h-8 w-24 border-slate-200 bg-white px-2 text-xs">
+                           <SelectTrigger className="h-9 w-24 border-slate-200 bg-white px-3 text-xs mx-auto rounded-xl shadow-sm focus:ring-primary/20">
                              <SelectValue placeholder="Shift" />
                            </SelectTrigger>
-                           <SelectContent className="bg-white border-slate-200">
+                           <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
                              <SelectItem value="DAY">Day</SelectItem>
                              <SelectItem value="NIGHT">Night</SelectItem>
                            </SelectContent>
                          </Select>
-                      <td className="px-4 py-3 flex items-center gap-1">
-                         <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
-                         <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
                       </td>
-                      <td className="px-4 py-3">
-                         <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
+                      <td className="px-4 py-4 border-r border-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <div className="relative group/time">
+                            <Input 
+                              type="time" 
+                              value={row.clock_in} 
+                              onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} 
+                              className="h-9 w-28 text-xs border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 pr-7 font-bold italic" 
+                            />
+                            <Clock className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover/time:text-primary transition-colors" />
+                          </div>
+                          <span className="text-slate-300 font-bold">-</span>
+                          <div className="relative group/time">
+                            <Input 
+                              type="time" 
+                              value={row.clock_out} 
+                              onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} 
+                              className="h-9 w-28 text-xs border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 pr-7 font-bold italic" 
+                            />
+                            <Clock className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover/time:text-primary transition-colors" />
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-4 border-r border-slate-100/50">
+                         <Input 
+                           value={row.remarks} 
+                           onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} 
+                           placeholder="Notes about staff attendance..." 
+                           className="h-9 text-xs min-w-[200px] border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 font-medium italic" 
+                         />
+                      </td>
+                      <td className="px-4 py-4 text-right">
                          <Button 
                            variant="ghost" 
                            size="icon" 
                            onClick={() => removeEmployeeFromBulk(row.employee_id)}
-                           className="h-8 w-8 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/5"
+                           className="h-9 w-9 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/10 transition-all active:scale-95"
                          >
                            <X className="w-4 h-4" />
                          </Button>
@@ -679,8 +712,10 @@ export default function AttendancePage() {
       )}
 
       {!showForm && !showBulkForm && (
-        <TableView
-          title="Attendance Logs"
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+          <div className="min-w-[1000px] md:min-w-full">
+            <TableView
+              title="Attendance Logs"
           description={`Daily shift-wise logging for ${activeTenant} staff.`}
           headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
           data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
@@ -753,6 +788,8 @@ export default function AttendancePage() {
             </tr>
           )}
         />
+          </div>
+        </div>
       )}
     </div>
   );
