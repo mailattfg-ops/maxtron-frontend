@@ -69,7 +69,7 @@ export function TableView<T>({
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="pl-9 rounded-full border-primary/20 bg-white"
+              className="w-fit pl-9 rounded-full border-primary/20 bg-white"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => {

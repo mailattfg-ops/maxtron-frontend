@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { 
   Select, 
@@ -464,89 +464,114 @@ export default function AttendancePage() {
             <CardDescription className="text-xs font-medium">Input shift details and timing for employees.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <Select value={formData.employee_id} onValueChange={(val) => setFormData({...formData, employee_id: val})}>
-                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
-                    <SelectValue placeholder="Choose employee..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200">
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <UserCheck className="w-3 h-3 mr-2 text-primary" /> Staff Member
+                  </label>
+                  <Select value={formData.employee_id} onValueChange={(val) => setFormData({...formData, employee_id: val})}>
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-bold text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Choose employee..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                {/* <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-primary" /> Date
-                </label> */}
-                <Input 
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="shadow-sm focus:ring-primary/20"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Calendar className="w-3 h-3 mr-2 text-primary" /> Mark Date
+                  </label>
+                  <Input 
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-                <Select value={formData.shift} onValueChange={(val) => setFormData({...formData, shift: val})}>
-                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
-                    <SelectValue placeholder="Select Shift" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="DAY">Day Shift</SelectItem>
-                    <SelectItem value="NIGHT">Night Shift</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <ChevronRight className="w-3 h-3 mr-2 text-primary" /> Assigned Shift
+                  </label>
+                  <Select value={formData.shift} onValueChange={(val) => setFormData({...formData, shift: val})}>
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-bold text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Select Shift" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      <SelectItem value="GENERAL">General Shift</SelectItem>
+                      <SelectItem value="DAY">Day Shift</SelectItem>
+                      <SelectItem value="NIGHT">Night Shift</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <Select 
-                  value={formData.status} 
-                  onValueChange={(val) => {
-                    const status = val;
-                    const updates: any = { status };
-                    if (status === 'ABSENT') {
-                      updates.clock_in = '00:00';
-                      updates.clock_out = '00:00';
-                    }
-                    setFormData({...formData, ...updates});
-                  }}
-                >
-                  <SelectTrigger className="w-full h-10 border-input bg-background px-3 py-1 text-sm shadow-sm">
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="PRESENT">Present</SelectItem>
-                    <SelectItem value="ABSENT">Absent</SelectItem>
-                    <SelectItem value="LATE">Late</SelectItem>
-                    <SelectItem value="HALF_DAY">Half Day</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <CheckCircle2 className="w-3 h-3 mr-2 text-primary" /> Status
+                  </label>
+                  <Select 
+                    value={formData.status} 
+                    onValueChange={(val) => {
+                      const status = val;
+                      const updates: any = { status };
+                      if (status === 'ABSENT') {
+                        updates.clock_in = '00:00';
+                        updates.clock_out = '00:00';
+                      }
+                      setFormData({...formData, ...updates});
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-black text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      <SelectItem value="PRESENT">Present</SelectItem>
+                      <SelectItem value="ABSENT">Absent</SelectItem>
+                      <SelectItem value="LATE">Late</SelectItem>
+                      <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Clock In Time</label>
-                <Input 
-                  type="time"
-                  value={formData.clock_in}
-                  onChange={(e) => setFormData({...formData, clock_in: e.target.value})}
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Clock className="w-3 h-3 mr-2 text-primary" /> Clock In Time
+                  </label>
+                  <Input 
+                    type="time"
+                    value={formData.clock_in}
+                    onChange={(e) => setFormData({...formData, clock_in: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Clock Out Time</label>
-                <Input 
-                  type="time"
-                  value={formData.clock_out}
-                  onChange={(e) => setFormData({...formData, clock_out: e.target.value})}
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Clock className="w-3 h-3 mr-2 text-primary" /> Clock Out Time
+                  </label>
+                  <Input 
+                    type="time"
+                    value={formData.clock_out}
+                    onChange={(e) => setFormData({...formData, clock_out: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Remarks (Optional)</label>
-                <Input 
-                  placeholder="Notes about attendance..."
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({...formData, remarks: e.target.value})}
-                />
-              </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    Edit Remarks (Optional)
+                  </label>
+                  <Input 
+                    placeholder="Provide additional details..."
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                    className="h-11 border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 italic"
+                  />
+                </div>
             </div>
 
             <div className="mt-8 flex justify-end">
@@ -565,7 +590,7 @@ export default function AttendancePage() {
       
       {showBulkForm && (
         <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-6">
             <div>
               <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
               <CardDescription>Register attendance for multiple staff members in one go.</CardDescription>
@@ -577,12 +602,12 @@ export default function AttendancePage() {
                     type="date" 
                     value={bulkDate} 
                     onChange={(e) => handleBulkDateChange(e.target.value)}
-                    className="text-xs font-bold outline-none bg-transparent h-7 border-none shadow-none p-0 w-24"
+                    className="text-xs font-bold outline-none bg-transparent h-7 border-none shadow-none p-0 w-fit"
                   />
                </div>
-               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
+               {/* <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
                  <X className="w-4 h-4" />
-               </Button>
+               </Button> */}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -694,17 +719,25 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
-            <div className="p-4 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
-               <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
-               <div className="flex gap-3">
-                 <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
-                  <Button 
-                    onClick={saveBulkAttendance} 
-                    loading={submitting}
-                    className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10"
-                  >
-                    <Save className="w-4 h-4 mr-2" /> Mark Attendance
-                  </Button>
+            <div className="p-4 md:p-6 border-t bg-slate-50/50 rounded-b-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+               <div className="text-xs text-slate-500 font-bold uppercase tracking-wider bg-slate-100/50 px-4 py-2 rounded-full border border-slate-200">
+                 Summary: <span className="text-secondary">{bulkData.length}</span> staff records to process
+               </div>
+               <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
+                 <Button 
+                   variant="ghost" 
+                   onClick={() => setShowBulkForm(false)} 
+                   className="h-11 px-8 rounded-full font-bold hover:bg-destructive/5 hover:text-destructive transition-all active:scale-95"
+                 >
+                   Cancel / Discard
+                 </Button>
+                 <Button 
+                   onClick={saveBulkAttendance} 
+                   loading={submitting}
+                   className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-11 px-10 shadow-lg shadow-secondary/20 flex items-center justify-center font-bold active:scale-95 tracking-wide"
+                 >
+                   <Save className="w-4 h-4 mr-2" /> Mark Attendance
+                 </Button>
                </div>
             </div>
           </CardContent>
@@ -716,78 +749,78 @@ export default function AttendancePage() {
           <div className="min-w-[1000px] md:min-w-full">
             <TableView
               title="Attendance Logs"
-          description={`Daily shift-wise logging for ${activeTenant} staff.`}
-          headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
-          data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
-          loading={loading}
-          searchFields={['users.name', 'users.employee_code', 'remarks']}
-          searchPlaceholder="Search staff or notes..."
-          actions={
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
-              <div className="flex gap-1">
-                <Input 
-                  type="date"
-                  className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                />
-                {dateFilter && (
-                  <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          }
-          renderRow={(rec: any) => (
-            <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
-              <td className="px-6 py-4">
-                <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {rec.users?.name}
+              description={`Daily shift-wise logging for ${activeTenant} staff.`}
+              headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
+              data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
+              loading={loading}
+              searchFields={['users.name', 'users.employee_code', 'remarks']}
+              searchPlaceholder="Search staff or notes..."
+              actions={
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+                  <div className="flex gap-1">
+                    <Input 
+                      type="date"
+                      className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                    />
+                    {dateFilter && (
+                      <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
-              </td>
-              <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded text-[11px] font-bold ${
-                  rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
-                  rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {rec.shift}
-                </span>
-              </td>
-              <td className="px-6 py-4 font-mono text-xs">
-                {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
-              </td>
-              <td className="px-6 py-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                  rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
-                  rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
-                  'bg-amber-100 text-amber-700'
-                }`}>
-                  {rec.status}
-                </span>
-              </td>
-              <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
-                {rec.remarks || '-'}
-              </td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </td>
-            </tr>
-          )}
-        />
+              }
+              renderRow={(rec: any) => (
+                <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {rec.users?.name}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
+                  </td>
+                  <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded text-[11px] font-bold ${
+                      rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
+                      rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {rec.shift}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs">
+                    {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
+                      rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {rec.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
+                    {rec.remarks || '-'}
+                  </td>
+                  <td className="md:px-6 py-4 text-right space-x-2">
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              )}
+            />
           </div>
         </div>
       )}
