@@ -120,6 +120,25 @@ export default function RouteRegistryPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        const routeName = (formData.route_name || '').trim();
+        const routeCode = (formData.route_code || '').trim().toUpperCase();
+
+        if (!routeName || !routeCode) {
+            error("Route Name and Code are required.");
+            return;
+        }
+
+        if (routeCode.length < 2 || routeCode.length > 10) {
+            error("Route Code must be 2-10 characters.");
+            return;
+        }
+
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(routeName) || !nameRegex.test(routeCode)) {
+            error("Only letters, numbers, spaces, and hyphens are allowed in names/codes.");
+            return;
+        }
+
         if (!formData.branch_id) {
             error("Please select an organizational Branch for this logistical route.");
             return;

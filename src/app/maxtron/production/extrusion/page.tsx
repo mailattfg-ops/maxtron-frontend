@@ -319,7 +319,7 @@ export default function ExtrusionPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg)</label>
-                <Input type="number" min={0} placeholder="0.00" value={formData.extrusion_output_qty} onChange={e => setFormData({ ...formData, extrusion_output_qty: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" min={0} placeholder="0.00" value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} onChange={e => setFormData({ ...formData, extrusion_output_qty: parseFloat(e.target.value) || 0 })} />
               </div>
             </div>
             <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">

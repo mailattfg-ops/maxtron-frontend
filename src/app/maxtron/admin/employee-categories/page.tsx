@@ -88,6 +88,22 @@ export default function EmployeeCategoriesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const catName = (formData.category_name || '').trim();
+        if (catName.length < 3) {
+            error('Category name must be at least 3 characters long');
+            return;
+        }
+        if (catName.length > 30) {
+            error('Category name cannot exceed 30 characters');
+            return;
+        }
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(catName)) {
+            error('Category name can only contain letters, numbers, spaces, and hyphens');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const url = editingId ? `${CATEGORIES_API}/${editingId}` : CATEGORIES_API;
@@ -216,7 +232,7 @@ export default function EmployeeCategoriesPage() {
                                 </code>
                             </td>
                             <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-end gap-2">
                                     {cat.company_id ? (
                                         <>
                                             <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>

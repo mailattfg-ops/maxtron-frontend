@@ -98,6 +98,22 @@ export default function EmployeeCategoriesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const catName = (formData.category_name || '').trim();
+        if (catName.length < 3) {
+            error('Category name must be at least 3 characters long');
+            return;
+        }
+        if (catName.length > 30) {
+            error('Category name cannot exceed 30 characters');
+            return;
+        }
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(catName)) {
+            error('Category name can only contain letters, numbers, spaces, and hyphens');
+            return;
+        }
+        
         try {
             const url = editingId ? `${CATEGORIES_API}/${editingId}` : CATEGORIES_API;
             const method = editingId ? 'PUT' : 'POST';

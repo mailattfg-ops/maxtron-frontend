@@ -322,15 +322,15 @@ export default function CustomersPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
-                  <Input type="number" min={0} name="credit_limit" value={formData.credit_limit} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_limit" value={formData.credit_limit || ''} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Credit Period (Days)</label>
-                  <Input type="number" min={0} name="credit_period" value={formData.credit_period} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_period" value={formData.credit_period || ''} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Opening Balance (₹)</label>
-                  <Input type="number" min={0} name="opening_balance" value={formData.opening_balance} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="opening_balance" value={formData.opening_balance || ''} onChange={handleInputChange} />
                 </div>
               </div>
             )}
@@ -414,9 +414,13 @@ export default function CustomersPage() {
                 </td>
                 <td className="table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
                 <td className="px-4 py-4">
-                  <span className="md:hidden text-[9px] text-slate-400 block mb-1">CREDIT</span>
-                  <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
-                  <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1 font-bold italic text-rose-500">CREDIT</span>
+                  {c.credit_period > 0 ? (
+                    <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
+                  ) : !c.credit_limit ? (
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Cash Only</div>
+                  ) : null}
+                  {c.credit_limit > 0 && <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>}
                 </td>
                 <td className="table-cell px-4 py-4">
                   <div className="text-xs font-semibold">{c.delivery_mode || 'N/A'}</div>

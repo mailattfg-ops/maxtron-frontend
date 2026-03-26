@@ -120,13 +120,13 @@ export default function ScorecardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px]">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[350px] flex flex-col">
                     <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                         <PieChart className="w-5 h-5 text-secondary" />
                         Income vs Expenditure
                     </h3>
-                    <div className="h-full flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-10">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic">Visualization Matrix Interface Coming Soon</p>
+                    <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 px-10">
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic text-center">Visualization Matrix Interface Coming Soon</p>
                     </div>
                 </div>
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-indigo-900 overflow-hidden relative">

@@ -419,8 +419,8 @@ export default function SalesReturns() {
                                           </SelectContent>
                                         </Select>
                                     </td>
-                                    <td className="p-4"><Input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="border-none text-center" /></td>
-                                    <td className="p-4"><Input type="number" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="border-none text-center" /></td>
+                                    <td className="p-4"><Input type="number" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="border-none text-center" /></td>
+                                    <td className="p-4"><Input type="number" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="border-none text-center" /></td>
                                     <td className="p-4 text-right font-black">₹ {(item.value || 0).toLocaleString()}</td>
                                 </tr>
                             ))}

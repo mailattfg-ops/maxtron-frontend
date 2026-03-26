@@ -150,8 +150,8 @@ export default function RMOrderPage() {
   };
 
   const saveOrder = async () => {
-    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || i.quantity <= 0)) {
-      error('Please select Supplier and add items with valid quantities.');
+    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || i.quantity <= 0 || i.rate <= 0)) {
+      error('Please select Supplier and add items with valid quantities and rates.');
       return;
     }
 
@@ -363,7 +363,7 @@ export default function RMOrderPage() {
                             <Input 
                               type="number" 
                               min="0"
-                              value={item.rate} 
+                              value={item.rate === 0 ? '' : item.rate} 
                               onChange={(e) => updateItem(idx, 'rate', Math.max(0, Number(e.target.value)))}
                               className="h-10 text-right"
                             />
@@ -454,7 +454,7 @@ export default function RMOrderPage() {
                    <span className="md:hidden">{o.status.charAt(0)}</span>
                  </span>
               </td>
-              <td className="md:px-6 py-4 text-right space-x-1">
+              <td className="md:px-2 py-4 text-right space-x-1">
                 {canEdit && (
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(o)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
                     <Edit className="w-3.5 h-3.5" />

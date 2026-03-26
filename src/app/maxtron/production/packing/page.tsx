@@ -203,14 +203,14 @@ export default function PackingDetailsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Boxes className="w-4 h-4 text-emerald-600" /> Bundle Count</label>
-                <Input type="number" min={0} placeholder="0" value={formData.bundle_count} onChange={e => {
+                <Input type="number" min={0} placeholder="0" value={formData.bundle_count === 0 ? '' : formData.bundle_count} onChange={e => {
                     const cnt = parseInt(e.target.value) || 0;
                     setFormData({ ...formData, bundle_count: cnt, total_packed_qty: cnt * formData.qty_per_bundle });
                 }} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-emerald-600" /> Qty per Bundle (Kg/Pcs)</label>
-                <Input type="number" min={0} placeholder="0.00" value={formData.qty_per_bundle} onChange={e => {
+                <Input type="number" min={0} placeholder="0.00" value={formData.qty_per_bundle === 0 ? '' : formData.qty_per_bundle} onChange={e => {
                     const check = parseFloat(e.target.value) || 0;
                     setFormData({ ...formData, qty_per_bundle: check, total_packed_qty: check * formData.bundle_count });
                 }} />

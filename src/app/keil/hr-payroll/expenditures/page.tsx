@@ -501,7 +501,18 @@ export default function ExpendituresPage() {
                                 </div>
                             </div>
                             
-                             <div className="flex justify-end pt-6 border-t border-slate-100">
+                             <div className="flex justify-end items-center gap-3 pt-6 border-t border-slate-100">
+                                <Button 
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setIsFormOpen(false);
+                                        resetForm();
+                                    }}
+                                    className="h-12 md:h-14 px-8 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs"
+                                >
+                                    Discard
+                                </Button>
                                 <Button type="submit" className="w-full md:w-auto bg-slate-900 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-12 md:h-14 px-10 shadow-xl transition-colors duration-300">
                                     <Save className="w-4 h-4 mr-3" />
                                     {editingId ? 'Update Ledger' : 'Commit Ledger'}
@@ -558,21 +569,21 @@ export default function ExpendituresPage() {
                                             {canEdit && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    size="sm"
+                                                    className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold"
                                                     onClick={() => handleEdit(ex)}
                                                 >
-                                                    <Edit className="w-4 h-4" />
+                                                    Edit
                                                 </Button>
                                             )}
                                             {canDelete && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                                                    size="sm"
+                                                    className="text-rose-600 hover:bg-rose-50 rounded-lg font-bold"
                                                     onClick={() => handleDelete(ex.id)}
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete
                                                 </Button>
                                             )}
                                         </div>

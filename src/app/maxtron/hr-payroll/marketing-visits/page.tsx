@@ -34,6 +34,8 @@ export default function MarketingVisitsPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
 
   const [dateFilter, setDateFilter] = useState(''); // Default to empty to show all records initially
   const { success, error, info } = useToast();
@@ -152,6 +154,7 @@ export default function MarketingVisitsPage() {
     };
 
     try {
+      setSubmitting(true);
       const res = await fetch(url, {
         method,
         headers: {
@@ -172,8 +175,12 @@ export default function MarketingVisitsPage() {
       }
     } catch (err) {
       console.error('Error saving visit:', err);
+      error('An error occurred while saving the visit.');
+    } finally {
+      setSubmitting(false);
     }
   };
+
 
   const resetForm = () => {
     setFormData({
@@ -516,11 +523,17 @@ export default function MarketingVisitsPage() {
             </div>
 
             <div className="mt-6 flex justify-end">
-              <Button onClick={saveVisit} className="bg-primary hover:bg-primary/95 text-white px-8 h-12 rounded-full shadow-lg shadow-primary/20 flex items-center transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
-                <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Report' : 'Save Visit Report'}
+              <Button 
+                onClick={saveVisit} 
+                loading={submitting}
+                disabled={submitting}
+                className="bg-primary hover:bg-primary/95 text-white px-8 h-12 rounded-full shadow-lg shadow-primary/20 flex items-center transition-all hover:scale-105 active:scale-95 w-full md:w-auto"
+              >
+                {!submitting && <Save className="w-4 h-4 mr-2" />}
+                {editingId ? (submitting ? 'Updating...' : 'Update Report') : (submitting ? 'Saving...' : 'Save Visit Report')}
               </Button>
             </div>
+
           </CardContent>
         </Card>
       )}

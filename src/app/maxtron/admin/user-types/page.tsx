@@ -78,8 +78,32 @@ export default function KeilUserTypesPage() {
   };
 
   const handleCreateOrUpdate = async () => {
-    if (!formData.name) {
-      error('Role name is required');
+    if (!formData.name || formData.name.trim().length < 3) {
+      error('Role name must be at least 3 characters long');
+      return;
+    }
+
+    // Validation for special characters (allow alphanumeric and spaces only)
+    const roleNameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (!roleNameRegex.test(formData.name)) {
+      error('Role name can only contain letters, numbers, spaces, and hyphens');
+      return;
+    }
+
+    if (formData.name.length > 30) {
+      error('Role name cannot exceed 30 characters');
+      return;
+    }
+
+    if ((formData.description || '').trim().length > 100) {
+      error('Description cannot exceed 100 characters');
+      return;
+    }
+
+    // Validation for description (allow alphanumeric, spaces, and basic punctuation)
+    const descriptionRegex = /^[a-zA-Z0-9\s.,!-]*$/;
+    if (formData.description && !descriptionRegex.test(formData.description)) {
+      error('Description can only contain letters, numbers, spaces, and basic punctuation (.,!-)');
       return;
     }
 
@@ -167,7 +191,7 @@ export default function KeilUserTypesPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <CardTitle className="text-lg font-semibold text-primary">
               {editingId ? 'Edit Role' : 'Create New Role'}
             </CardTitle>

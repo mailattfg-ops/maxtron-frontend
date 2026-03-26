@@ -43,6 +43,7 @@ export default function EmployeeInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermission();
@@ -256,6 +257,15 @@ export default function EmployeeInformationPage() {
       val = '0';
     }
     setFormData(prev => ({ ...prev, [name]: val }));
+    
+    // Auto-clear error when user types
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleAddressChange = (index: number, field: string, value: string) => {
@@ -300,12 +310,12 @@ export default function EmployeeInformationPage() {
         error("Future dates are not allowed for past work experience.");
         return;
       }
-      if (field === 'to_period' && list[index].from_period && value < list[index].from_period) {
-        error("'To' date cannot be before 'From' date.");
+      if (field === 'to_period' && list[index].from_period && value <= list[index].from_period) {
+        error("'To' date must be strictly greater than 'From' date.");
         return;
       }
-      if (field === 'from_period' && list[index].to_period && value > list[index].to_period) {
-        error("'From' date cannot be after 'To' date.");
+      if (field === 'from_period' && list[index].to_period && value >= list[index].to_period) {
+        error("'From' date must be strictly before 'To' date.");
         return;
       }
     }
@@ -401,65 +411,71 @@ export default function EmployeeInformationPage() {
       { key: 'username', label: 'Login Email' }
     ];
 
+    const newErrors: Record<string, string> = {};
+
     for (const field of requiredFields) {
       if (!formData[field.key] || String(formData[field.key]).trim() === '') {
-        error(`${field.label} is required.`);
-        return false;
+        newErrors[field.key] = `${field.label} required`;
       }
     }
 
-    // Phone validation (basic 10 digits check)
-    if (!/^\d{10}$/.test(formData.phone)) {
-      error('Please enter a valid 10-digit phone number.');
-      return false;
+    const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (formData.name && !nameRegex.test(formData.name.trim())) {
+        newErrors.name = 'Invalid characters (A-Z, 0-9, -)';
     }
 
-    // For new employees, password is also required
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (formData.username && !emailRegex.test(formData.username)) {
+      newErrors.username = 'Invalid email format';
+    }
+
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      newErrors.phone = 'Must be 10 digits';
+    }
+
     if (!editingId && !formData.password) {
-      error('Password is required for new registration.');
-      return false;
+      newErrors.password = 'Password required';
     }
 
-    // Password validation (If provided)
     if (formData.password) {
-      if (formData.password.length < 8) {
-        error('Password must be at least 8 characters long.');
-        return false;
-      }
-      if (!/[A-Z]/.test(formData.password)) {
-        error('Password must contain at least one capital letter.');
-        return false;
-      }
-      if (!/\d/.test(formData.password)) {
-        error('Password must contain at least one number.');
-        return false;
-      }
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        error('Password must contain at least one special character.');
-        return false;
-      }
+      if (formData.password.length < 8) newErrors.password = 'Min 8 characters';
+      else if (!/[A-Z]/.test(formData.password)) newErrors.password = 'Need uppercase';
+      else if (!/\d/.test(formData.password)) newErrors.password = 'Need number';
+      else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) newErrors.password = 'Need special char';
     }
 
-    // Aadhaar validation (Strict format: 12 digits, cannot start with 0 or 1)
-    if (!/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
-      error('Please enter a valid 12-digit Aadhaar number (cannot start with 0 or 1).');
-      return false;
+    if (formData.aadhaar && !/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
+      newErrors.aadhaar = 'Invalid Aadhaar (12 digits, no 0/1 start)';
     }
 
-    // DOB Validation (At least 18 years old)
     if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
-      const isActuallyOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
+      if (age < 18) newErrors.date_of_birth = 'Must be 18+ years old';
+    }
 
-      if (!isActuallyOver18) {
-        error('Employee must be at least 18 years old.');
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      error('Please correct the highlighted errors.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateQualificationsTab = () => {
+    // Validate each experience entry
+    for (const exp of formData.employee_experiences) {
+      if (!exp.company_name || !exp.from_period || !exp.to_period || !exp.post) {
+        error("Please complete all required fields for each Work Experience entry.");
+        return false;
+      }
+      if (exp.to_period <= exp.from_period) {
+        error(`Work Experience at ${exp.company_name}: 'To' date must be greater than 'From' date.`);
         return false;
       }
     }
-
     return true;
   };
 
@@ -472,13 +488,38 @@ export default function EmployeeInformationPage() {
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
+      const sanitizedData = {
+        ...formData,
+        basic_salary: Number(formData.basic_salary) || 0,
+        employee_loans: formData.employee_loans.map(l => ({
+          ...l,
+          loan_availed: Number(l.loan_availed) || 0,
+          balance_receivable: Number(l.balance_receivable) || 0
+        })),
+        employee_suspenses: formData.employee_suspenses.map(s => ({
+          ...s,
+          suspense_issued: Number(s.suspense_issued) || 0,
+          balance_receivable: Number(s.balance_receivable) || 0
+        })),
+        employee_targets: formData.employee_targets.map(t => ({
+          ...t,
+          minimum_target: Number(t.minimum_target) || 0
+        })),
+        employee_incentive_slabs: formData.employee_incentive_slabs.map(slab => ({
+          ...slab,
+          slab_from: Number(slab.slab_from) || 0,
+          slab_to: Number(slab.slab_to) || 0,
+          incentive_percent: Number(slab.incentive_percent) || 0
+        }))
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(sanitizedData)
       });
       const submittedCreds = { username: formData.username, password: formData.password };
       const data = await res.json();
@@ -502,6 +543,7 @@ export default function EmployeeInformationPage() {
           guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
+        setErrors({});
         setActiveTab('personal');
       } else {
         error(data.error || data.message || 'Operation failed');
@@ -725,7 +767,9 @@ export default function EmployeeInformationPage() {
                 if (activeTab === 'personal') {
                   if (validatePersonalTab()) setActiveTab('qualifications');
                 }
-                else if (activeTab === 'qualifications') setActiveTab('financials');
+                else if (activeTab === 'qualifications') {
+                  if (validateQualificationsTab()) setActiveTab('financials');
+                }
                 else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
                 else saveEmployee();
               }} 
@@ -828,7 +872,8 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-amber-400 bg-amber-50' : ''}`} />
+                        {errors.name && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.name}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
@@ -839,16 +884,19 @@ export default function EmployeeInformationPage() {
                            value={formData.date_of_birth} 
                            onChange={handleInputChange} 
                            disabled={isViewMode} 
-                           className="h-10 md:h-11" 
+                           className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-amber-400 bg-amber-50' : ''}`} 
                         />
+                        {errors.date_of_birth && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.date_of_birth}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
-                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className="h-10 md:h-11" />
+                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className={`h-10 md:h-11 ${errors.phone ? 'border-amber-400 bg-amber-50' : ''}`} />
+                        {errors.phone && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.phone}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No</label>
-                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className="h-10 md:h-11" />
+                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className={`h-10 md:h-11 ${errors.aadhaar ? 'border-amber-400 bg-amber-50' : ''}`} />
+                        {errors.aadhaar && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.aadhaar}</p>}
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
                         <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
@@ -950,8 +998,9 @@ export default function EmployeeInformationPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
+                <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
+                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-amber-400 bg-amber-50' : ''}`} />
+                {errors.username && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
               </div>
 
               <div className="space-y-2">
@@ -968,7 +1017,7 @@ export default function EmployeeInformationPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
+                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password' : 'Appoint Temporary Password'} {!editingId && !formData.password && <span className="text-muted-foreground/50 text-[10px]">(Necessary)</span>}</label>
                 <div className="relative">
                   <Input 
                     type={showFormPassword ? "text" : "password"} 
@@ -977,6 +1026,7 @@ export default function EmployeeInformationPage() {
                     onChange={handleInputChange} 
                     disabled={isViewMode} 
                     placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
+                    className={`${errors.password ? 'border-amber-400 bg-amber-50' : ''}`}
                   />
                   {!isViewMode && (
                     <Button
@@ -990,6 +1040,7 @@ export default function EmployeeInformationPage() {
                     </Button>
                   )}
                 </div>
+                {errors.password && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
@@ -1127,11 +1178,12 @@ export default function EmployeeInformationPage() {
                           </h3>
                           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
                        </div>
-                       <div className="w-64">
+                       <div className="w-64 space-y-1 text-right">
+                          <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Basic Salary {!formData.basic_salary && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                           <Input 
                             type="number" 
                             name="basic_salary" 
-                            value={formData.basic_salary} 
+                            value={Number(formData.basic_salary) || ''} 
                             onChange={handleInputChange} 
                             disabled={isViewMode} 
                             placeholder="0.00" 
@@ -1225,22 +1277,54 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Loan Amount</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_loans.length >= 3) {
+                                info('Maximum limit of 3 loan entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
-                                <Input type="number" min="0" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
+                               <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Loan Availed {!loan.loan_availed && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="0.00" 
+                                  value={Number(loan.loan_availed) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'loan_availed', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" min="0" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                               <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Received {!loan.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="0.00" 
+                                  value={Number(loan.balance_receivable) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'balance_receivable', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
+
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Date Issued</label>
                                 <Input type="date" value={loan.loan_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_date', e.target.value)} disabled={isViewMode} />
@@ -1261,22 +1345,54 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Suspense Amounts</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_suspenses.length >= 3) {
+                                info('Maximum limit of 3 suspense entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                          {formData.employee_suspenses.map((susp, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
                                 <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Suspense Issued</label>
-                                <Input type="number" min="0" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
+                                <label className="text-xs text-muted-foreground">Suspense Issued {!susp.suspense_issued ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Suspense Issued" 
+                                  value={Number(susp.suspense_issued) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
                               <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" min="0" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                                <label className="text-xs text-muted-foreground">Balance Received {!susp.balance_receivable ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Balance Received" 
+                                  value={Number(susp.balance_receivable) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
+
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1302,10 +1418,13 @@ export default function EmployeeInformationPage() {
                         )}
                       </div>
                       <div className="space-y-3">
-                        {formData.employee_targets.map((tgt, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
-                               {!isViewMode && (
+                         {formData.employee_targets.map((tgt, idx) => (
+                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-xs text-muted-foreground font-bold tracking-tight">Minimum Target {!tgt.minimum_target && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input type="number" min="0" placeholder="Target Minimum" value={Number(tgt.minimum_target) || ''} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
+                               </div>
+                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
                                    <Trash2 className="w-4 h-4" />
                                  </Button>
@@ -1326,10 +1445,10 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
+                               <Input type="number" min="0" placeholder="From Amount" value={Number(slab.slab_from) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
+                               <Input type="number" min="0" placeholder="To Amount" value={Number(slab.slab_to) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
+                               <Input type="number" min="0" max="100" placeholder="Percent (%)" value={Number(slab.incentive_percent) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1421,7 +1540,7 @@ export default function EmployeeInformationPage() {
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
-                      <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
+                      <td className="p-4 font-bold text-primary">{Number(emp.basic_salary) > 0 ? `₹${Number(emp.basic_salary).toLocaleString()}` : '-'}</td>
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {emp.is_deleted ? (

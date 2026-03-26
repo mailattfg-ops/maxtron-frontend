@@ -102,7 +102,7 @@ export default function SupplierLedgerPage() {
                         ref: r.return_no,
                         type: 'Purchase Return',
                         credit: 0,
-                        debit: Number(r.quantity_returned * 100) 
+                        debit: Number(r.total_return_value || 0) 
                     }))
             ].sort((a, b) => {
                 const dateA = new Date(a.date).getTime();
@@ -198,7 +198,7 @@ export default function SupplierLedgerPage() {
 
             {selectedSupplier && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
@@ -206,11 +206,11 @@ export default function SupplierLedgerPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Ending Payable</p>
-                                    <h2 className="text-2xl font-black text-slate-900">₹{balance.toLocaleString()}</h2>
+                                    <h2 className="text-2xl font-black text-slate-900">₹{Math.abs(balance).toLocaleString()}</h2>
                                 </div>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${balance > 0 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                {balance > 0 ? 'CREDIT (PAYABLE)' : 'DEBIT (ADVANCE)'}
+                                {balance > 0 ? 'CREDIT (PAYABLE)' : balance < 0 ? 'DEBIT (ADVANCE)' : 'SETTLED'}
                             </span>
                         </div>
                     </div>
@@ -229,7 +229,7 @@ export default function SupplierLedgerPage() {
                                 <td className="px-6 py-4 text-xs font-mono">{item.ref}</td>
                                 <td className="px-6 py-4 text-blue-600 font-bold">{item.credit > 0 ? `₹${item.credit.toLocaleString()}` : '-'}</td>
                                 <td className="px-6 py-4 text-orange-600 font-bold">{item.debit > 0 ? `₹${item.debit.toLocaleString()}` : '-'}</td>
-                                <td className="px-6 py-4 font-black">₹{item.balance.toLocaleString()}</td>
+                                <td className="px-6 py-4 font-black">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Cr' : 'Dr'}</td>
                             </tr>
                         )}
                     />

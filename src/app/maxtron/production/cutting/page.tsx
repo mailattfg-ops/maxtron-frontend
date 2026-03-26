@@ -356,7 +356,7 @@ export default function CuttingSealingPage() {
                                 type="number" 
                                 min={0}
                                 className="h-9"
-                                value={item.quantity} 
+                                value={item.quantity === 0 ? '' : item.quantity} 
                                 onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} 
                             />
                         </div>

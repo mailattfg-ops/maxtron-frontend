@@ -244,7 +244,7 @@ export default function FinishedProductPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Layers className="w-4 h-4 text-primary" /> Thickness (Microns)</label>
-                <Input type="number" min="0" placeholder="0.00" value={formData.thickness_microns} onChange={e => setFormData({ ...formData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="0.00" value={formData.thickness_microns || ''} onChange={e => setFormData({ ...formData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Ruler className="w-4 h-4 text-primary" /> Size</label>
@@ -252,11 +252,11 @@ export default function FinishedProductPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
-                <Input type="number" min="0" placeholder="0" value={formData.avg_count_per_kg} onChange={e => setFormData({ ...formData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="0" value={formData.avg_count_per_kg || ''} onChange={e => setFormData({ ...formData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)</label>
-                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold || ''} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
@@ -293,10 +293,12 @@ export default function FinishedProductPage() {
               <td className="px-6 py-4 font-mono text-xs font-bold">{p.product_code}</td>
               <td className="px-6 py-4 font-bold">{p.product_name}</td>
               <td className="px-6 py-4">{p.color}</td>
-              <td className="px-6 py-4">{p.thickness_microns}</td>
+              <td className="px-6 py-4">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>
               <td className="px-6 py-4">{p.size}</td>
-              <td className="px-6 py-4">{p.avg_count_per_kg}</td>
-              <td className="px-6 py-4 font-bold text-amber-600 underline decoration-amber-200 underline-offset-4">{p.stock_threshold || 50} Kg</td>
+              <td className="px-6 py-4">{Number(p.avg_count_per_kg) > 0 ? p.avg_count_per_kg : ''}</td>
+              <td className="px-6 py-4 font-bold text-amber-600 underline decoration-amber-200 underline-offset-4">
+                {Number(p.stock_threshold) > 0 ? `${p.stock_threshold} Kg` : ''}
+              </td>
               <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
               <td className="md:px-6 py-4 text-right space-x-2">
                 {canEdit && (

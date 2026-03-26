@@ -298,7 +298,6 @@ export default function ConsumptionReportPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Issuance Detail Log</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{filtered.length} Records</span>

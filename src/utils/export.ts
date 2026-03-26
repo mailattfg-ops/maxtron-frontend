@@ -67,3 +67,24 @@ export const exportToExcel = async ({
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`);
 };
+
+export const exportToCSV = async ({
+  headers,
+  rows,
+  filename
+}: {
+  headers: string[];
+  rows: (any)[][];
+  filename: string;
+}) => {
+  const content = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => {
+      const str = String(cell || '');
+      return str.includes(',') ? `"${str.replace(/"/g, '""')}"` : str;
+    }).join(','))
+  ].join('\n');
+
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  saveAs(blob, filename.endsWith('.csv') ? filename : `${filename}.csv`);
+};

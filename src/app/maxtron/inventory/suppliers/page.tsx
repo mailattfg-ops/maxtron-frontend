@@ -50,6 +50,13 @@ export default function SupplierPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [gstError, setGstError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [codeError, setCodeError] = useState('');
+  
+  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  const nameRegex = /^[a-zA-Z0-9\s.\-&',]+$/;
+  const codeRegex = /^[A-Z0-9\-]+$/;
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -117,6 +124,11 @@ export default function SupplierPage() {
       s.gst_no?.toLowerCase() === gst.toLowerCase() && s.id !== editingId
     );
     setGstExists(exists);
+    if (gst && !gstRegex.test(gst)) {
+      // setGstError('Invalid GST format (Example: 29ABCDE1234F1Z5)');
+    } else {
+      setGstError('');
+    }
   };
 
   const fetchSuppliers = async (coId?: string) => {
@@ -138,6 +150,26 @@ export default function SupplierPage() {
   const saveSupplier = async () => {
     if (!formData.supplier_name || !formData.supplier_code) {
       error('Name and Code are required.');
+      return;
+    }
+
+    if (nameError) {
+      error('Please provide a valid supplier name without special characters.');
+      return;
+    }
+
+    if (formData.gst_no && !gstRegex.test(formData.gst_no)) {
+      error('Please provide a valid 15-digit GST number or keep it empty.');
+      return;
+    }
+
+    if (codeError) {
+      error('Please provide a valid supplier code without spaces or special characters.');
+      return;
+    }
+
+    if (gstExists) {
+      error('GST number already exists for another supplier.');
       return;
     }
 
@@ -208,6 +240,10 @@ export default function SupplierPage() {
       supplied_materials: [],
       company_id: currentCompanyId
     });
+    setGstError('');
+    setGstExists(false);
+    setNameError('');
+    setCodeError('');
   };
 
   const handleEdit = (s: any) => {
@@ -370,31 +406,65 @@ export default function SupplierPage() {
           <CardContent className="p-4 md:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Code</label>
-                <Input value={formData.supplier_code} onChange={(e) => setFormData({...formData, supplier_code: e.target.value})} className="h-11 font-mono uppercase font-bold" placeholder="e.g. VEN-001" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                  <span>Supplier Code</span>
+                </label>
+                <Input 
+                  value={formData.supplier_code} 
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData({...formData, supplier_code: val});
+                    if (val && !codeRegex.test(val)) {
+                      setCodeError('Invalid Format (A-Z, 0-9, -)');
+                    } else {
+                      setCodeError('');
+                    }
+                  }} 
+                  className={`h-11 font-mono uppercase font-bold ${codeError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  placeholder="e.g. VEN-001" 
+                />
+                {codeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
               </div>
  
               <div className="space-y-2 sm:col-span-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Name</label>
-                <Input value={formData.supplier_name} onChange={(e) => setFormData({...formData, supplier_name: e.target.value})} className="h-11 font-bold" placeholder="Company Name" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                  <span>Supplier Name</span>
+                </label>
+                <Input 
+                  value={formData.supplier_name} 
+                  maxLength={255}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, supplier_name: val});
+                    if (val && !nameRegex.test(val)) {
+                      setNameError('Special characters not allowed');
+                    } else {
+                      setNameError('');
+                    }
+                  }} 
+                  className={`h-11 font-bold ${nameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`}
+                  placeholder="Supplier Name" 
+                />
+                {nameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{nameError}</p>}
               </div>
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
-                  <span>GST No (optional)</span>
-                  {gstExists && <span className="text-rose-500 animate-pulse">Already Exists!</span>}
+                  <span>GST No {!formData.gst_no && <span className="text-muted-foreground/60">(optional)</span>}</span>
                 </label>
                 <Input 
                   value={formData.gst_no} 
+                  maxLength={15}
                   onChange={(e) => {
                     const val = e.target.value.toUpperCase();
                     setFormData({...formData, gst_no: val});
                     checkGstExistence(val);
                   }} 
-                  className={`h-11 uppercase font-bold transition-all ${gstExists ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
+                  className={`h-11 uppercase font-bold transition-all ${gstExists || gstError ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
                   placeholder="29XXXXX..." 
                 />
-                {gstExists && <p className="text-[9px] font-bold text-rose-500 mt-1 ml-1 uppercase">This GST number is already registered in the system.</p>}
+                {gstExists && <p className="text-[10px] font-bold text-rose-500 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Already registered in the system.</p>}
+                {!gstExists && gstError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{gstError}</p>}
               </div>
             </div>
 
@@ -434,7 +504,9 @@ export default function SupplierPage() {
                 <div className="flex items-center justify-between text-slate-600 border-b border-slate-100 pb-2">
                    <div className="flex items-center space-x-2">
                      <FileCheck className="w-4 h-4" />
-                     <h3 className="text-sm font-black uppercase tracking-widest">Billing Address (optional)</h3>
+                     <h3 className="text-sm font-black uppercase tracking-widest">
+                       Billing Address {(!formData.billing_address.street && !formData.billing_address.city && !formData.billing_address.state) && <span className="text-[10px] text-muted-foreground ml-1 lowercase">(optional)</span>}
+                     </h3>
                    </div>
                    <Button 
                     type="button" 
@@ -523,17 +595,17 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Period (Days)</label>
-                <Input type="number" min="0" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_period || ''} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Limit (₹)</label>
-                <Input type="number" min="0" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_limit || ''} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Opening Balance (₹)</label>
-                <Input type="number" min="0" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.opening_balance || ''} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
             </div>
 
@@ -581,8 +653,8 @@ export default function SupplierPage() {
                  </div>
               </td>
               <td className="px-6 py-4">
-                 <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>
-                 <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period || 0} DAYS CREDIT</div>
+                 {s.credit_limit > 0 && <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>}
+                 {s.credit_period > 0 && <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period} DAYS CREDIT</div>}
               </td>
               <td className="px-6 py-4">
                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[9px] font-black tracking-widest rounded border border-slate-200">

@@ -5,11 +5,12 @@ import { TableView } from '@/components/ui/table-view';
 import { 
     Plus, 
     Calendar, 
-    DollarSign, 
+    IndianRupee, 
     Truck, 
     CreditCard,
     ArrowUpRight,
     Trash2,
+    Edit,
     FileText,
     CheckCircle2,
     AlertCircle,
@@ -34,6 +35,7 @@ export default function SupplierPaymentPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [showScrollArrow, setShowScrollArrow] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -57,21 +59,23 @@ export default function SupplierPaymentPage() {
     }, []);
 
     const fetchData = async () => {
+        setLoading(true);
+        const token = localStorage.getItem('token');
         try {
-            const [payRes, supRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?companyId=${companyId}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            const [paymentRes, supplierRes] = await Promise.all([
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?company_id=${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/suppliers?companyId=${companyId}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/suppliers?company_id=${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
-            const payData = await payRes.json();
-            const supData = await supRes.json();
+            const paymentData = await paymentRes.json();
+            const supplierData = await supplierRes.json();
 
-            if (payData.success) setPayments(payData.data);
-            if (supData.success) setSuppliers(supData.data);
+            if (paymentData.success) setPayments(paymentData.data);
+            if (supplierData.success) setSuppliers(supplierData.data);
         } catch (error) {
             toastError('Failed to fetch data');
         } finally {
@@ -85,7 +89,7 @@ export default function SupplierPaymentPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/pending-bills?supplierId=${supplierId}&companyId=${companyId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/pending-bills?supplier_id=${supplierId}&company_id=${companyId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
@@ -129,20 +133,25 @@ export default function SupplierPaymentPage() {
         if (!supplierId) return;
         try {
             const [purRes, payRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/purchase-entries?companyId=${companyId}`, {
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/purchase-entries?company_id=${companyId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 }),
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?companyId=${companyId}`, {
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?company_id=${companyId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 })
             ]);
             const purData = await purRes.json();
             const payData = await payRes.json();
             
-            const totalPurchases = (purData.data || []).filter((p: any) => p.supplier_id === supplierId).reduce((sum: number, p: any) => sum + Number(p.total_amount), 0);
-            const totalPayments = (payData.data || []).filter((pm: any) => pm.supplier_id === supplierId).reduce((sum: number, pm: any) => sum + Number(pm.amount), 0);
+            // Strictly filter by company and supplier, ensuring numbers are valid
+            const activePurchases = (purData.data || []).filter((p: any) => p.supplier_id === supplierId && p.company_id === companyId);
+            const activePayments = (payData.data || []).filter((pm: any) => pm.supplier_id === supplierId && pm.company_id === companyId);
+
+            const totalPurchases = activePurchases.reduce((sum: number, p: any) => sum + Number(p.total_amount || 0), 0);
+            const totalPayments = activePayments.reduce((sum: number, pm: any) => sum + Number(pm.amount || 0), 0);
             
-            setSupplierBalance(totalPurchases - totalPayments);
+            const bal = (totalPurchases - totalPayments);
+            setSupplierBalance(Number(bal.toFixed(2)));
         } catch (error) {
             console.error('Balance fetch failed');
         }
@@ -158,8 +167,12 @@ export default function SupplierPaymentPage() {
         for (const bill of sortedBills) {
             if (remaining <= 0) break;
             const canPay = Math.min(Number(bill.pending_amount), remaining);
-            newAllocations[bill.id] = canPay;
-            remaining -= canPay;
+            if (canPay > 0) {
+                newAllocations[bill.id] = String(canPay); // Store as string for input consistency
+                remaining -= canPay;
+            } else {
+                newAllocations[bill.id] = '';
+            }
         }
         setAllocations(newAllocations);
     };
@@ -171,8 +184,12 @@ export default function SupplierPaymentPage() {
     }, [formData.amount, pendingBills]);
 
     const handleAllocationChange = (billId: string, amount: string, max: number) => {
-        const val = Math.max(0, Math.min(Number(amount), max));
-        setAllocations({ ...allocations, [billId]: val });
+        const numVal = Number(amount);
+        if (numVal > max) {
+            setAllocations({ ...allocations, [billId]: String(max) });
+        } else {
+            setAllocations({ ...allocations, [billId]: amount });
+        }
     };
 
     const totalAllocated = Object.values(allocations).reduce((sum: number, val: any) => sum + Number(val || 0), 0);
@@ -197,8 +214,12 @@ export default function SupplierPaymentPage() {
                     allocated_amount: amt
                 }));
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments`, {
-                method: 'POST',
+            const url = editingId 
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments/${editingId}`
+                : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments`;
+
+            const res = await fetch(url, {
+                method: editingId ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -212,8 +233,9 @@ export default function SupplierPaymentPage() {
 
             const data = await res.json();
             if (data.success) {
-                toastSuccess('Payment recorded successfully');
+                toastSuccess(editingId ? 'Payment updated successfully' : 'Payment recorded successfully');
                 setIsModalOpen(false);
+                setEditingId(null);
                 setFormData({
                     payment_date: new Date().toISOString().split('T')[0],
                     supplier_id: '',
@@ -228,9 +250,27 @@ export default function SupplierPaymentPage() {
             } else {
                 toastError(data.message);
             }
+        } catch (error) {
+            toastError(editingId ? 'Failed to update payment' : 'Failed to record payment');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleEdit = (row: any) => {
+        setFormData({
+            payment_date: row.payment_date.split('T')[0],
+            supplier_id: row.supplier_id,
+            amount: String(row.amount),
+            payment_mode: row.payment_mode,
+            reference_no: row.reference_no || '',
+            remarks: row.remarks || ''
+        });
+        setEditingId(row.id);
+        setAllocations({}); // Reset allocations on edit for re-entry
+        setIsModalOpen(true);
+        fetchSupplierBalance(row.supplier_id);
+        fetchPendingBills(row.supplier_id);
     };
 
     const handleDelete = async (id: string) => {
@@ -291,7 +331,10 @@ export default function SupplierPaymentPage() {
                                 <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase">{row.payment_mode}</span>
                             </td>
                             <td className="px-6 py-4 font-black text-red-600">₹{Number(row.amount).toLocaleString()}</td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold">
+                                    <Edit className="w-4 h-4" />
+                                </Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -308,7 +351,7 @@ export default function SupplierPaymentPage() {
                             <div>
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <ArrowUpRight className="w-6 h-6" />
-                                    Post Supplier Payment
+                                    {editingId ? 'Edit Supplier Payment' : 'Post Supplier Payment'}
                                 </h2>
                                 <p className="text-white/60 text-xs">Record payment and allocate against pending invoices</p>
                             </div>
@@ -346,8 +389,8 @@ export default function SupplierPaymentPage() {
                                         <div className="flex items-center justify-between">
                                             <label className="text-sm font-bold text-slate-700">Select Supplier</label>
                                             {supplierBalance !== null && (
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                    {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Advance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                    {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Prepaid Balance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
                                                 </span>
                                             )}
                                         </div>
@@ -377,14 +420,19 @@ export default function SupplierPaymentPage() {
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-700">Payment Amount (₹)</label>
                                         <div className="relative">
-                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                             <Input
                                                 type="number"
                                                 min="0"
                                                 required
                                                 placeholder="0.00"
                                                 value={formData.amount}
-                                                onChange={(e) => setFormData({ ...formData, amount: String(Math.max(0, Number(e.target.value))) })}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                                                        setFormData({ ...formData, amount: val });
+                                                    }
+                                                }}
                                                 className="pl-10 h-14 bg-white border-2 border-primary/20 rounded-xl text-lg font-black"
                                             />
                                         </div>
@@ -441,7 +489,12 @@ export default function SupplierPaymentPage() {
                                                                             min="0"
                                                                             placeholder="Amount"
                                                                             value={allocations[bill.id] || ''}
-                                                                            onChange={(e) => handleAllocationChange(bill.id, e.target.value, bill.pending_amount)}
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                                                                                    handleAllocationChange(bill.id, val, bill.pending_amount)
+                                                                                }
+                                                                            }}
                                                                             className="w-full h-8 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold"
                                                                         />
                                                                     </div>
@@ -488,7 +541,7 @@ export default function SupplierPaymentPage() {
                                                     value={formData.payment_mode}
                                                     onValueChange={(val) => setFormData({ ...formData, payment_mode: val })}
                                                 >
-                                                    <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-11">
+                                                    <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-full">
                                                         <SelectValue placeholder="Mode" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-white border-slate-200">
@@ -534,7 +587,7 @@ export default function SupplierPaymentPage() {
                                         loading={submitting}
                                         className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
                                     >
-                                        Confirm & Post Entry
+                                        {editingId ? 'Update Payment' : 'Confirm & Post Entry'}
                                     </Button>
                                 </div>
                             </form>

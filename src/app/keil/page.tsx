@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePermission } from '@/hooks/usePermission';
+import { AnnouncementSection } from '@/components/dashboard/AnnouncementSection';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -107,6 +108,9 @@ export default function KeilDashboard() {
                     </Button>
                 </div>
             </div>
+
+            {/* Announcements Section */}
+            <AnnouncementSection tenant="keil" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">

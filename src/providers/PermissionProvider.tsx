@@ -35,19 +35,41 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
             const user = JSON.parse(storedUser);
             const roleId = user.user_type_id || user.type;
             if (!roleId) {
+                console.warn('[PermissionProvider] No Role ID found for user.');
                 setLoading(false);
                 return;
             }
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/permissions/${roleId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:5000';
+            const apiUrl = `${baseUrl}/api/${activeEntity}/permissions/${roleId}`;
+            
+            console.log(`[PermissionProvider] Fetching permissions from: ${apiUrl}`);
+            
+            const res = await fetch(apiUrl, {
+                method: 'GET',
+                headers: { 
+                    'Authorization': `Bearer ${token}`.trim(),
+                    'Accept': 'application/json'
+                }
             });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                console.error(`[PermissionProvider] API Error (${res.status}):`, errorData);
+                return;
+            }
+
             const data = await res.json();
             if (data.success) {
                 setPermissions(data.data);
             }
-        } catch (err) {
-            console.error('Permission fetch failed:', err);
+        } catch (err: any) {
+            console.error('[PermissionProvider] Network Error:', err.message);
+            // Fallback for demo users if backend is unreachable
+            if (storedUser.includes('admin@maxtron.com')) {
+                console.info('[PermissionProvider] Granting full permissions to demo admin despite fetch failure.');
+                setPermissions([{ permission_key: '*', can_view: true, can_create: true, can_edit: true, can_delete: true }]);
+            }
         } finally {
             setLoading(false);
         }

@@ -54,7 +54,7 @@ export default function PurchaseReturnPage() {
     purchase_entry_id: '',
     supplier_id: '',
     rm_id: '',
-    quantity_returned: 0,
+    quantity_returned: 0 as number | string,
     reason: '',
     dispatch_details: '',
     status: 'PENDING',
@@ -119,7 +119,7 @@ export default function PurchaseReturnPage() {
   };
 
   const saveReturn = async () => {
-    if (!formData.purchase_entry_id || formData.quantity_returned <= 0) {
+    if (!formData.purchase_entry_id || Number(formData.quantity_returned) <= 0) {
       error('Please select GRN Entry and Quantity.');
       return;
     }
@@ -129,7 +129,7 @@ export default function PurchaseReturnPage() {
       ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 
       : 0;
 
-    if (maxQty > 0 && formData.quantity_returned > maxQty) {
+    if (maxQty > 0 && Number(formData.quantity_returned) > maxQty) {
       error(`Cannot return more than the received quantity (${maxQty}).`);
       return;
     }
@@ -172,7 +172,7 @@ export default function PurchaseReturnPage() {
       purchase_entry_id: '',
       supplier_id: '',
       rm_id: '',
-      quantity_returned: 0,
+      quantity_returned: 0 as number | string,
       reason: '',
       dispatch_details: '',
       status: 'PENDING',
@@ -385,12 +385,13 @@ export default function PurchaseReturnPage() {
                                 max={item.received_quantity}
                                 placeholder="0"
                                 className="h-8 text-right font-black text-rose-600 border-rose-100 focus:ring-rose-200"
-                                value={formData.rm_id === item.rm_id ? formData.quantity_returned : 0}
+                                value={formData.rm_id === item.rm_id ? (formData.quantity_returned === 0 ? '' : formData.quantity_returned) : ''}
                                 onChange={(e) => {
-                                  const val = Math.max(0, Number(e.target.value) || 0);
-                                  if (val > item.received_quantity) {
+                                  const val = e.target.value;
+                                  const numVal = Math.max(0, Number(val) || 0);
+                                  if (numVal > item.received_quantity) {
                                       error(`Cannot return more than ${item.received_quantity} for ${item.raw_materials?.rm_name}`);
-                                      setFormData({...formData, quantity_returned: Number(item.received_quantity), rm_id: item.rm_id});
+                                      setFormData({...formData, quantity_returned: item.received_quantity, rm_id: item.rm_id});
                                   } else {
                                       setFormData({...formData, quantity_returned: val, rm_id: item.rm_id});
                                   }
@@ -417,7 +418,7 @@ export default function PurchaseReturnPage() {
                   min="0"
                   readOnly
                   placeholder="Items going back"
-                  value={formData.quantity_returned}
+                  value={formData.quantity_returned || ''}
                   className="h-11 text-lg font-black text-rose-600 bg-rose-50 border-rose-200"
                 />
               </div>
@@ -503,8 +504,12 @@ export default function PurchaseReturnPage() {
                  <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
               </td>
               <td className="px-6 py-4">
-                 <div className="text-lg font-black text-rose-600">{Number(r.quantity_returned).toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
+                 <div className="text-lg font-black text-rose-600">
+                   {Number(r.quantity_returned) > 0 ? Number(r.quantity_returned).toLocaleString() : ''}
+                 </div>
+                 {Number(r.quantity_returned) > 0 && (
+                   <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
+                 )}
               </td>
               <td className="px-6 py-4">
                  <div className="text-[11px] text-slate-500 italic max-w-[200px] truncate">{r.reason || 'No reason specified'}</div>

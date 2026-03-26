@@ -2,7 +2,8 @@ import {
     Users,
     Settings,
     TrendingUp,
-    Truck
+    Truck,
+    DollarSign
 } from 'lucide-react';
 import { NavItem } from './types';
 
@@ -23,9 +24,18 @@ export const keilSidebarMenu: NavItem[] = [
             { title: "Company Information", path: "/keil/hr-payroll/company", permissionKey: "hr_company_view" },
             { title: "Attendance Details", path: "/keil/hr-payroll/attendance", permissionKey: "hr_attendance_view" },
             { title: "Attendance Summary", path: "/keil/hr-payroll/reports/attendance", permissionKey: "hr_attendance_view" },
-            { title: "Expense Heads", path: "/keil/hr-payroll/expense-heads", permissionKey: "hr_expense_head_view" },
-            { title: "Expenditure Entry", path: "/keil/hr-payroll/expenditures", permissionKey: "hr_expenditure_view" },
-            { title: "Payroll Management", path: "/keil/hr-payroll/payroll", permissionKey: "hr_payroll_view" },
+        ]
+    },
+    {
+        title: "FINANCIAL MANAGEMENT",
+        icon: DollarSign,
+        permissionKey: "fin_view",
+        children: [
+            { title: "HCE Collection Registry", path: "/keil/finance/collection", permissionKey: "fin_collection_view" },
+            { title: "Supplier Payment Entry", path: "/keil/finance/payment", permissionKey: "fin_payment_view" },
+            { title: "Expenditure Ledger", path: "/keil/hr-payroll/expenditures", permissionKey: "hr_expenditure_view" },
+            { title: "Expense Heads Master", path: "/keil/hr-payroll/expense-heads", permissionKey: "hr_expense_head_view" },
+            { title: "Payroll Management", path: "/keil/hr-payroll/payroll", permissionKey: "fin_payment_view" },
         ]
     },
     {

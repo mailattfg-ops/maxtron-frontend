@@ -209,6 +209,17 @@ export default function KeilPayrollPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate payment_date range
+        if (formData.payment_date) {
+            const date = new Date(formData.payment_date);
+            const year = date.getFullYear();
+            if (year < 2020 || year > 2099) {
+                error("Please enter a valid Payment Date (Year must be between 2020 and 2099)");
+                return;
+            }
+        }
+
         setSubmitting(true);
         try {
             const url = editingId 
@@ -516,6 +527,7 @@ export default function KeilPayrollPage() {
                                         onChange={handleInputChange} 
                                         className="h-11"
                                         required
+                                        max="2099-12-31"
                                     />
                                 </div>
 

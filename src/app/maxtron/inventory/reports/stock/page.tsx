@@ -190,7 +190,7 @@ export default function StockListPage() {
                   <div className={`h-full ${s.balance < (s.stock_threshold || 100) ? 'bg-rose-500 animate-pulse' : 'bg-primary'}`} style={{ width: `${Math.min((s.balance/s.purchased)*100 || 0, 100)}%` }}></div>
                </div>
             </td>
-            <td className="px-3 md:px-6 py-4">
+            <td className="px-3 md:px-0 py-4 flex justify-end">
                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
                  s.balance < (s.stock_threshold || 100) ? 'bg-rose-100 text-rose-700 border border-rose-200' : 
                  'bg-emerald-100 text-emerald-700 border border-emerald-200'

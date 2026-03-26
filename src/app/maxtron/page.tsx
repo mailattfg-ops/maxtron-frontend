@@ -33,6 +33,7 @@ import {
     Bar,
     Cell
 } from 'recharts';
+import { AnnouncementSection } from '@/components/dashboard/AnnouncementSection';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -155,13 +156,16 @@ export default function Dashboard() {
                     <p className="text-muted-foreground font-medium mt-1">Real-time analytical baseline for Maxtron Operations.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-2">
+                    {/* <div className="px-4 py-2 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">System Live</span>
-                    </div>
+                    </div> */}
                     <Button onClick={() => fetchDashboardData()} variant="outline" className="rounded-2xl border-border hover:bg-accent h-10 px-6 font-bold">Refresh Data</Button>
                 </div>
             </div>
+
+            {/* Announcements Section */}
+            <AnnouncementSection tenant="maxtron" />
 
             {/* Main Stats Hub */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -418,8 +422,7 @@ export default function Dashboard() {
                         ]).map((batch: any, i: number) => (
                             <div key={i} className="p-6 bg-muted/20 rounded-2xl border border-border/40 hover:border-secondary/30 transition-all hover:bg-card hover:shadow-xl group">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
-                                    <Clock className="w-4 h-4 text-muted-foreground/40" />
+                                    <div className="overflow-hidden text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
                                 </div>
                                 <h4 className="text-sm font-black text-foreground/90 uppercase tracking-tight mb-1">{batch.batch_number}</h4>
                                 <div className="text-2xl font-black text-foreground leading-none mb-1">{batch.extrusion_output_qty} <span className="text-[10px] text-muted-foreground ml-1 tracking-widest uppercase">KG</span></div>

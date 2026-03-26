@@ -189,6 +189,15 @@ export default function AttendancePage() {
 
       // Time validation check
       for (const item of bulkData) {
+        if (item.date) {
+            const date = new Date(item.date);
+            const year = date.getFullYear();
+            if (year < 2020 || year > 2099) {
+                error(`Invalid year in bulk entry for ${item.employee_name}. Please enter a valid date.`);
+                setSubmitting(false);
+                return;
+            }
+        }
         if (item.status !== 'ABSENT') {
           if (item.clock_out <= item.clock_in) {
             error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
@@ -233,6 +242,14 @@ export default function AttendancePage() {
         error('Clock-out time must be later than Clock-in time.');
         return;
       }
+    }
+
+    if (formData.date) {
+        const year = new Date(formData.date).getFullYear();
+        if (year < 2020 || year > 2099) {
+            error("Invalid date selected. Year must be between 2020 and 2099.");
+            return;
+        }
     }
 
     // Client-side duplicate check

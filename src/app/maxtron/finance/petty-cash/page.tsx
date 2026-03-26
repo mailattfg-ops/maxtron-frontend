@@ -5,11 +5,12 @@ import { TableView } from '@/components/ui/table-view';
 import { 
     Plus, 
     Calendar, 
-    DollarSign, 
+    IndianRupee, 
     Tag,
     User,
     Wallet,
     Trash2,
+    Edit,
     ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
@@ -28,6 +29,7 @@ export default function PettyCashPage() {
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [showScrollArrow, setShowScrollArrow] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -81,8 +83,12 @@ export default function PettyCashPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/petty-cash`, {
-                method: 'POST',
+            const url = editingId 
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/petty-cash/${editingId}`
+                : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/petty-cash`;
+            
+            const res = await fetch(url, {
+                method: editingId ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -92,8 +98,9 @@ export default function PettyCashPage() {
 
             const data = await res.json();
             if (data.success) {
-                toastSuccess('Expense recorded');
+                toastSuccess(editingId ? 'Record updated' : 'Expense recorded');
                 setIsModalOpen(false);
+                setEditingId(null);
                 setFormData({
                     date: new Date().toISOString().split('T')[0],
                     category: 'Tea/Snacks',
@@ -132,6 +139,30 @@ export default function PettyCashPage() {
         }
     };
 
+    const handleEdit = (row: any) => {
+        setFormData({
+            date: new Date(row.date).toISOString().split('T')[0],
+            category: row.category,
+            paid_to: row.paid_to,
+            amount: String(row.amount),
+            remarks: row.remarks || ''
+        });
+        setEditingId(row.id);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingId(null);
+        setFormData({
+            date: new Date().toISOString().split('T')[0],
+            category: 'Tea/Snacks',
+            paid_to: '',
+            amount: '',
+            remarks: ''
+        });
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
@@ -143,7 +174,7 @@ export default function PettyCashPage() {
                     <p className="text-slate-500 text-xs md:text-sm font-medium">Daily tracking of small operational expenditures</p>
                 </div>
                 <Button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => { handleCloseModal(); setIsModalOpen(true); }}
                     className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
                     <Plus className="w-5 h-5 mr-2" />
@@ -171,9 +202,14 @@ export default function PettyCashPage() {
                             <td className="px-6 py-4 font-bold">{row.paid_to}</td>
                             <td className="px-6 py-4 font-black text-orange-600">₹{Number(row.amount).toLocaleString()}</td>
                             <td className="px-6 py-4 text-right">
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold">
+                                        <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(row.id)} className="text-rose-600 hover:bg-rose-50 rounded-lg font-bold">
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                     )}
@@ -186,9 +222,9 @@ export default function PettyCashPage() {
                         <div className="bg-primary p-6 text-white flex justify-between items-center shrink-0">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Plus className="w-6 h-6" />
-                                New Petty Cash Voucher
+                                {editingId ? 'Edit Petty Cash Voucher' : 'New Petty Cash Voucher'}
                             </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white font-black">✕</button>
+                            <button onClick={handleCloseModal} className="text-white/80 hover:text-white font-black">✕</button>
                         </div>
                         <div 
                             ref={scrollRef}
@@ -216,14 +252,14 @@ export default function PettyCashPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700">Amount (₹)</label>
+                                        <label className="text-sm font-semibold text-slate-700">Amount {!formData.amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                                         <div className="relative">
-                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1-2 w-4 h-4 text-slate-400" />
                                             <Input
                                                 type="number"
                                                 required
                                                 placeholder="0.00"
-                                                value={formData.amount}
+                                                value={formData.amount === '0' ? '' : formData.amount}
                                                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                                 className="pl-10 h-10 bg-slate-50 border border-slate-200 rounded-xl"
                                             />
@@ -260,6 +296,7 @@ export default function PettyCashPage() {
                                             <Input
                                                 type="text"
                                                 required
+                                                maxLength={20}
                                                 placeholder="Recipient name"
                                                 value={formData.paid_to}
                                                 onChange={(e) => setFormData({ ...formData, paid_to: e.target.value })}
@@ -284,17 +321,17 @@ export default function PettyCashPage() {
                                 <div className="flex flex-col md:flex-row items-center gap-3 pt-4 sticky bottom-0 bg-white">
                                     <Button
                                         type="button"
-                                        onClick={() => setIsModalOpen(false)}
+                                        onClick={handleCloseModal}
                                         variant="outline"
                                         className="w-full md:flex-1 h-12 md:h-14 border border-slate-200 rounded-full font-bold text-slate-600 hover:bg-slate-50 transition-colors order-2 md:order-1"
                                     >
-                                        Cancel
+                                        Discard
                                     </Button>
                                     <Button
                                         type="submit"
                                         className="w-full md:flex-1 h-12 md:h-14 bg-secondary hover:bg-secondary/95 text-white rounded-full font-black transition-all shadow-lg shadow-secondary/20 hover:scale-105 active:scale-95 order-1 md:order-2"
                                     >
-                                        Record Expense
+                                        {editingId ? 'Update Record' : 'Record Expense'}
                                     </Button>
                                 </div>
                             </form>

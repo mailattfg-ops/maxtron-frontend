@@ -32,7 +32,7 @@ export const Sidebar = ({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="w-72 bg-primary text-primary-foreground hidden sidebar-hide:flex flex-col shadow-xl overflow-y-auto no-scrollbar flex-shrink-0">
+      <aside className="w-72 bg-primary text-primary-foreground hidden xl:flex flex-col shadow-xl overflow-y-auto no-scrollbar flex-shrink-0">
         <SidebarContent
           menuItems={menuItems}
           activeEntity={activeEntity}
@@ -49,7 +49,7 @@ export const Sidebar = ({
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground
         flex flex-col shadow-2xl overflow-y-auto no-scrollbar
-        transform transition-transform duration-300 ease-in-out sidebar-hide:hidden
+        transform transition-transform duration-300 ease-in-out xl:hidden
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Close button */}

@@ -105,7 +105,7 @@ export default function CustomerLedgerPage() {
                         ref: r.return_no,
                         type: 'Sales Return',
                         debit: 0,
-                        credit: Number(r.total_amount || 0)
+                        credit: Number(r.total_return_value || 0)
                     }))
             ].sort((a, b) => {
                 const dateA = new Date(a.date).getTime();
@@ -202,7 +202,7 @@ export default function CustomerLedgerPage() {
 
             {selectedCustomer && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-red-50 text-red-600 rounded-xl">
@@ -210,11 +210,11 @@ export default function CustomerLedgerPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Ending Balance</p>
-                                    <h2 className="text-2xl font-black text-slate-900">₹{balance.toLocaleString()}</h2>
+                                    <h2 className="text-2xl font-black text-slate-900">₹{Math.abs(balance).toLocaleString()}</h2>
                                 </div>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${balance > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                {balance > 0 ? 'DEBIT (DUE)' : 'CREDIT (ADVANCE)'}
+                                {balance > 0 ? 'DEBIT (DUE)' : balance < 0 ? 'CREDIT (ADVANCE)' : 'SETTLED'}
                             </span>
                         </div>
                     </div>
@@ -233,7 +233,7 @@ export default function CustomerLedgerPage() {
                                 <td className="px-6 py-4 text-xs font-mono">{item.ref}</td>
                                 <td className="px-6 py-4 font-bold text-red-600">{item.debit > 0 ? `₹${item.debit.toLocaleString()}` : '-'}</td>
                                 <td className="px-6 py-4 font-bold text-green-600">{item.credit > 0 ? `₹${item.credit.toLocaleString()}` : '-'}</td>
-                                <td className="px-6 py-4 font-black">₹{item.balance.toLocaleString()}</td>
+                                <td className="px-6 py-4 font-black">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Dr' : 'Cr'}</td>
                             </tr>
                         )}
                     />

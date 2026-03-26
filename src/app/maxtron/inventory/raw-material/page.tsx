@@ -38,6 +38,11 @@ export default function RawMaterialPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [codeError, setCodeError] = useState('');
+  const [nameError, setNameError] = useState('');
+  
+  const codeRegex = /^[A-Z0-9-]+$/;
+  const nameRegex = /^[a-zA-Z0-9\s-]+$/;
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -122,8 +127,32 @@ export default function RawMaterialPage() {
   };
 
   const saveMaterial = async () => {
-    if (!formData.rm_code || !formData.rm_name) {
+    const normalizedCode = (formData.rm_code || '').trim().toUpperCase();
+    const normalizedName = (formData.rm_name || '').trim();
+
+    if (!normalizedCode || !normalizedName) {
       error('Please fill Code and Name.');
+      return;
+    }
+
+    if (normalizedCode.length < 3 || normalizedCode.length > 30) {
+      error('Material Code must be 3-30 characters');
+      return;
+    }
+
+    if (normalizedName.length < 3 || normalizedName.length > 50) {
+      error('Material Name must be 3-50 characters');
+      return;
+    }
+
+    // Strict validation for Material Code (Capital alphanumeric with hyphens, no spaces)
+    if (codeError) {
+      error('Material Code can only contain uppercase letters, numbers, and hyphens (no spaces).');
+      return;
+    }
+
+    if (nameError) {
+      error('Material Name can only contain letters, numbers, spaces, and hyphens.');
       return;
     }
 
@@ -171,6 +200,8 @@ export default function RawMaterialPage() {
       company_id: currentCompanyId,
       stock_threshold: 100
     });
+    setCodeError('');
+    setNameError('');
   };
 
   const handleEdit = (rec: any) => {
@@ -344,21 +375,39 @@ export default function RawMaterialPage() {
                 <Input 
                   placeholder="e.g. RM-LDPE-001"
                   value={formData.rm_code}
-                  onChange={(e) => setFormData({...formData, rm_code: e.target.value})}
-                  className="h-11 font-bold"
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData({...formData, rm_code: val});
+                    if (val && !codeRegex.test(val)) {
+                      setCodeError('Invalid Format (A-Z, 0-9, -)');
+                    } else {
+                      setCodeError('');
+                    }
+                  }} 
+                  className={`h-11 font-bold ${codeError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
                 />
+                {codeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
               </div>
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
-                  <Package className="w-3 h-3 mr-2 text-primary" /> Material Name
+                   <Package className="w-3 h-3 mr-2 text-primary" /> Material Name
                 </label>
                 <Input 
                   placeholder="e.g. Virgin LDPE Granules"
                   value={formData.rm_name}
-                  onChange={(e) => setFormData({...formData, rm_name: e.target.value})}
-                  className="h-11 font-bold"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, rm_name: val});
+                    if (val && !nameRegex.test(val)) {
+                      setNameError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    } else {
+                      setNameError('');
+                    }
+                  }} 
+                  className={`h-11 font-bold ${nameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
                 />
+                {nameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{nameError}</p>}
               </div>
  
               <div className="space-y-2">
@@ -406,14 +455,13 @@ export default function RawMaterialPage() {
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
-                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit
+                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit {!formData.rate_per_unit && <span className="text-[10px] ml-1">(₹)</span>}
                 </label>
                 <div className="relative">
                   <Input 
                     type="number"
-                    min="0"
-                    placeholder="0.00"
-                    value={formData.rate_per_unit === 0 ? '' : formData.rate_per_unit}
+                    min="0"                    placeholder="0.00"
+                    value={formData.rate_per_unit || ''}
                     onChange={(e) => setFormData({...formData, rate_per_unit: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-emerald-600 pr-20"
                   />
@@ -422,7 +470,7 @@ export default function RawMaterialPage() {
                   </div>
                 </div>
               </div>
-
+ 
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
                    <Activity className="w-3 h-3 mr-2 text-primary" /> Stock Threshold
@@ -432,10 +480,11 @@ export default function RawMaterialPage() {
                     type="number"
                     min="0"
                     placeholder="100.00"
-                    value={formData.stock_threshold}
+                    value={formData.stock_threshold || ''}
                     onChange={(e) => setFormData({...formData, stock_threshold: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-rose-500 pr-12"
                   />
+
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
                     {formData.unit_type.toUpperCase()}
                   </div>
@@ -466,7 +515,6 @@ export default function RawMaterialPage() {
                   className="w-full h-24 p-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm resize-none"
                   placeholder="Notes about quality, chemical properties or vendor specifics..."
                   value={formData.rm_description}
-                  maxLength={50}
                   onChange={(e) => setFormData({...formData, rm_description: e.target.value})}
                 />
               </div>
@@ -518,12 +566,18 @@ export default function RawMaterialPage() {
                 </span>
               </td>
               <td className="px-6 py-4">
-                <div className="font-black text-slate-900 group-hover:text-primary transition-colors">₹ {m.rate_per_unit}</div>
+                <div className="font-black text-slate-900 group-hover:text-primary transition-colors">
+                  {Number(m.rate_per_unit) > 0 ? `₹ ${Number(m.rate_per_unit).toLocaleString()}` : ''}
+                </div>
                 <div className="text-[9px] font-bold text-muted-foreground uppercase">PER {m.unit_type || 'KG'}</div>
               </td>
               <td className="px-6 py-4">
-                <div className="font-bold text-rose-600 tracking-tighter">{m.stock_threshold || 100}</div>
-                <div className="text-[9px] font-bold text-muted-foreground uppercase">{m.unit_type || 'KG'}</div>
+                <div className="font-bold text-rose-600 tracking-tighter">
+                  {Number(m.stock_threshold) > 0 ? Number(m.stock_threshold).toLocaleString() : ''}
+                </div>
+                {Number(m.stock_threshold) > 0 && (
+                  <div className="text-[9px] font-bold text-muted-foreground uppercase">{m.unit_type || 'KG'}</div>
+                )}
               </td>
               <td className="px-6 py-4">
                 <span className={`flex items-center text-[11px] font-bold ${
@@ -537,7 +591,7 @@ export default function RawMaterialPage() {
               <td className="px-6 py-4 text-[11px] text-slate-400">
                 {new Date(m.created_at).toLocaleDateString()}
               </td>
-              <td className="md:px-6 py-4 text-right space-x-1.5">
+              <td className="px-2 py-4 text-right space-x-1.5">
                 {canEdit && (
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(m)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all">
                     <Edit className="w-3.5 h-3.5" />
