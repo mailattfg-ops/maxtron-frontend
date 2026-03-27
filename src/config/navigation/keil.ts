@@ -31,8 +31,6 @@ export const keilSidebarMenu: NavItem[] = [
         icon: DollarSign,
         permissionKey: "fin_view",
         children: [
-            { title: "HCE Collection Registry", path: "/keil/finance/collection", permissionKey: "fin_collection_view" },
-            { title: "Supplier Payment Entry", path: "/keil/finance/payment", permissionKey: "fin_payment_view" },
             { title: "Expenditure Ledger", path: "/keil/hr-payroll/expenditures", permissionKey: "hr_expenditure_view" },
             { title: "Expense Heads Master", path: "/keil/hr-payroll/expense-heads", permissionKey: "hr_expense_head_view" },
             { title: "Payroll Management", path: "/keil/hr-payroll/payroll", permissionKey: "fin_payment_view" },

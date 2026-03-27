@@ -30,8 +30,11 @@ const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 export default function ExtrusionPage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission('prod_extrusion_view', 'create');
+  const canEdit = hasPermission('prod_extrusion_view', 'edit');
+  const canDelete = hasPermission('prod_extrusion_view', 'delete');
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [batches, setBatches] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -40,6 +43,7 @@ export default function ExtrusionPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -162,21 +166,92 @@ export default function ExtrusionPage() {
     }
   };
 
-  const saveBatch = async () => {
-    if (!formData.product_id || !formData.operator_id) {
-      error('Please select product and operator.');
-      return;
-    }
+  const handleEdit = (b: any) => {
+    setEditingId(b.id);
+    setFormData({
+      batch_number: b.batch_number,
+      product_id: b.product_id,
+      shift: b.shift,
+      operator_id: b.operator_id,
+      supervisor_id: b.supervisor_id,
+      machine_no: b.machine_no,
+      raw_material_consumed_qty: b.raw_material_consumed_qty,
+      extrusion_output_qty: b.extrusion_output_qty,
+      date: b.date.split('T')[0],
+      company_id: b.company_id,
+      consumption_id: b.consumption_id
+    });
+    setShowForm(true);
+  };
 
-    if (!formData.consumption_id) {
-        error('Please select a material consumption record.');
-        return;
-    }
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this production batch? This action cannot be undone.',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(BATCH_API, {
-        method: 'POST',
+      const res = await fetch(`${BATCH_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Batch deleted successfully');
+        fetchBatches();
+      } else {
+        error(data.message);
+      }
+    } catch (err) {
+      error('Error deleting batch');
+    }
+  };
+
+  const saveBatch = async () => {
+    const requiredFields = [
+      { field: 'date', label: 'Production Date' },
+      { field: 'product_id', label: 'Finished Product' },
+      { field: 'shift', label: 'Shift' },
+      { field: 'machine_no', label: 'Machine Number' },
+      { field: 'operator_id', label: 'Operator' },
+      { field: 'supervisor_id', label: 'Supervisor' },
+      { field: 'consumption_id', label: 'Consumption Record' }
+    ];
+
+    for (const { field, label } of requiredFields) {
+      if (!formData[field]) {
+        error(`${label} is required.`);
+        return;
+      }
+    }
+
+    // Alphanumeric, spaces, dashes, and underscores only for Machine No
+    const machineRegex = /^[a-zA-Z0-9\-_ ]+$/;
+    if (!machineRegex.test(formData.machine_no)) {
+      error('Machine No contains invalid characters. Use only letters, numbers, dashes, or underscores.');
+      return;
+    }
+
+    if (formData.raw_material_consumed_qty <= 0) {
+      error('Raw material consumed quantity must be greater than zero.');
+      return;
+    }
+
+    if (formData.extrusion_output_qty <= 0) {
+      error('Extrusion output quantity must be greater than zero.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${BATCH_API}/${editingId}` : BATCH_API;
+
+    try {
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -185,8 +260,9 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Production batch recorded');
+        success(editingId ? 'Production batch updated' : 'Production batch recorded');
         setShowForm(false);
+        setEditingId(null);
         setFormData({
             ...formData,
             batch_number: `BAT-${Date.now().toString().slice(-6)}`,
@@ -220,7 +296,18 @@ export default function ExtrusionPage() {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
             <Button 
-              onClick={() => setShowForm(true)} 
+              onClick={() => {
+                setEditingId(null);
+                setFormData({
+                  ...formData,
+                  batch_number: `BAT-${Date.now().toString().slice(-6)}`,
+                  raw_material_consumed_qty: 0,
+                  extrusion_output_qty: 0,
+                  consumption_id: '',
+                  date: new Date().toISOString().split('T')[0]
+                });
+                setShowForm(true);
+              }} 
               className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> Record New Batch
@@ -233,9 +320,9 @@ export default function ExtrusionPage() {
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
             <CardTitle className="text-xl flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" /> New Production Batch
+              <Zap className="w-5 h-5 text-primary" /> {editingId ? 'Edit Production Batch' : 'New Production Batch'}
             </CardTitle>
-            <CardDescription>Enter extrusion output and machine details for the current shift.</CardDescription>
+            <CardDescription>{editingId ? 'Update details for the existing batch.' : 'Enter extrusion output and machine details for the current shift.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -244,10 +331,15 @@ export default function ExtrusionPage() {
                 <Input value={formData.batch_number} readOnly className="bg-muted cursor-not-allowed" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-primary" /> Production Date</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Calendar className="w-4 h-4 text-primary" /> Production Date <span className="text-rose-500">*</span>
+                </label>
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Box className="w-4 h-4 text-primary" /> Finished Product <span className="text-rose-500">*</span>
+                </label>
                 <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Finished Product" />
@@ -260,6 +352,9 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Clock className="w-4 h-4 text-primary" /> Shift <span className="text-rose-500">*</span>
+                </label>
                 <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Shift" />
@@ -272,10 +367,22 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Settings className="w-4 h-4 text-primary" /> Machine No</label>
-                <Input placeholder="e.g. EX-01" value={formData.machine_no} onChange={e => setFormData({ ...formData, machine_no: e.target.value })} />
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Settings className="w-4 h-4 text-primary" /> Machine No <span className="text-rose-500">*</span>
+                </label>
+                <Input 
+                  placeholder="e.g. EX-01" 
+                  value={formData.machine_no} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9\-_ ]/g, '').toUpperCase();
+                    setFormData({ ...formData, machine_no: val });
+                  }} 
+                />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Operator <span className="text-rose-500">*</span>
+                </label>
                 <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Operator" />
@@ -288,6 +395,9 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Supervisor <span className="text-rose-500">*</span>
+                </label>
                 <Select value={formData.supervisor_id} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Supervisor" />
@@ -300,6 +410,9 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Layers className="w-4 h-4 text-primary" /> Consumption Record <span className="text-rose-500">*</span>
+                </label>
                 <Select value={formData.consumption_id} onValueChange={(val) => handleConsumptionSelect(val)}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Consumption Record" />
@@ -315,11 +428,23 @@ export default function ExtrusionPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>
-                <Input type="number" readOnly className="bg-muted cursor-not-allowed" value={formData.raw_material_consumed_qty} />
+                <Input type="number" readOnly className="bg-muted cursor-not-allowed font-bold" value={formData.raw_material_consumed_qty} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg)</label>
-                <Input type="number" min={0} placeholder="0.00" value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} onChange={e => setFormData({ ...formData, extrusion_output_qty: parseFloat(e.target.value) || 0 })} />
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg) <span className="text-rose-500">*</span>
+                </label>
+                <Input 
+                  type="number" 
+                  min={0.01} 
+                  step="0.01"
+                  placeholder="0.00" 
+                  value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} 
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setFormData({ ...formData, extrusion_output_qty: isNaN(val) ? 0 : val });
+                  }} 
+                />
               </div>
             </div>
             <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">
@@ -361,7 +486,7 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator']}
+          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator', 'Actions']}
           data={batches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}
@@ -405,6 +530,30 @@ export default function ExtrusionPage() {
                       </div>
                       <span className="text-xs font-medium">{operator?.name || 'Unknown'}</span>
                     </div>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {canEdit && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEdit(b)}
+                        className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(b.id)}
+                        className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

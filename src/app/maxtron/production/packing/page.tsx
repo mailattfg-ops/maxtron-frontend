@@ -29,8 +29,11 @@ const CONVERSION_API = `${API_BASE}/api/maxtron/production/conversions`;
 export default function PackingDetailsPage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission('prod_packing_view', 'create');
+  const canEdit = hasPermission('prod_packing_view', 'edit');
+  const canDelete = hasPermission('prod_packing_view', 'delete');
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [packingRecords, setPackingRecords] = useState<any[]>([]);
   const [conversions, setConversions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,7 @@ export default function PackingDetailsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -102,6 +106,45 @@ export default function PackingDetailsPage() {
     }
   };
 
+  const handleEdit = (p: any) => {
+    setEditingId(p.id);
+    setFormData({
+      conversion_id: p.conversion_id,
+      bundle_count: parseFloat(p.bundle_count) || 0,
+      qty_per_bundle: parseFloat(p.qty_per_bundle) || 0,
+      total_packed_qty: parseFloat(p.total_packed_qty) || 0,
+      date: p.date.split('T')[0],
+      company_id: p.company_id
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this packing record? This action cannot be undone.',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${PACKING_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Record deleted successfully');
+        fetchPacking();
+      } else {
+        error(data.message);
+      }
+    } catch (err) {
+      error('Error deleting record');
+    }
+  };
+
   const savePacking = async () => {
     if (!formData.conversion_id || formData.bundle_count <= 0) {
       error('Please select conversion record and enter bundle count.');
@@ -109,9 +152,12 @@ export default function PackingDetailsPage() {
     }
 
     const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${PACKING_API}/${editingId}` : PACKING_API;
+
     try {
-      const res = await fetch(PACKING_API, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -120,8 +166,9 @@ export default function PackingDetailsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Packing record saved');
+        success(editingId ? 'Packing record updated' : 'Packing record saved');
         setShowForm(false);
+        setEditingId(null);
         setFormData({
             ...formData,
             bundle_count: 0,
@@ -163,7 +210,17 @@ export default function PackingDetailsPage() {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
             <Button 
-                onClick={() => setShowForm(true)} 
+                onClick={() => {
+                   setEditingId(null);
+                   setFormData({
+                     ...formData,
+                     bundle_count: 0,
+                     qty_per_bundle: 0,
+                     total_packed_qty: 0,
+                     date: new Date().toISOString().split('T')[0]
+                   });
+                   setShowForm(true);
+                }} 
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-full shadow-lg shadow-emerald-200 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> Record New Packing
@@ -176,9 +233,9 @@ export default function PackingDetailsPage() {
         <Card className="border-emerald-200 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
           <CardHeader className="bg-emerald-50 border-b border-emerald-100 py-4">
             <CardTitle className="text-xl flex items-center gap-2 text-emerald-900">
-              <Archive className="w-5 h-5" /> Final Packing Entry
+              <Archive className="w-5 h-5" /> {editingId ? 'Edit Packing Entry' : 'Final Packing Entry'}
             </CardTitle>
-            <CardDescription className="text-emerald-700/70">Bundling conversion output into finished units.</CardDescription>
+            <CardDescription className="text-emerald-700/70">{editingId ? 'Update details for the existing packing record.' : 'Bundling conversion output into finished units.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -244,7 +301,7 @@ export default function PackingDetailsPage() {
         <TableView
           title="Packed Unit Explorer"
           description="History of bundled finished products."
-          headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed']}
+          headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed', 'Actions']}
           data={packingRecords}
           loading={loading}
           searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
@@ -259,6 +316,30 @@ export default function PackingDetailsPage() {
                 <td className="px-6 py-4 font-black">{p.bundle_count}</td>
                 <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
                 <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {canEdit && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEdit(p)}
+                        className="h-8 w-8 rounded-full hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(p.id)}
+                        className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
               </tr>
             );
           }}

@@ -9,18 +9,19 @@ interface InputProps extends React.ComponentProps<"input"> {
 }
 
 function Input({ className, type, onChange, maxDecimals = 2, ...props }: InputProps) {
-  // Globally protect all date inputs from large/invalid years (e.g. 222222)
-  const finalProps = { ...props };
-  if (type === "date" && !finalProps.max) {
-    finalProps.max = "2099-12-31";
-  }
+  // Memoize props to ensure stable rendering and avoid serializing internal logic to server components
+  const finalProps = React.useMemo(() => {
+    const p = { ...props };
+    if (type === "date" && !p.max) {
+      p.max = "2099-12-31";
+    }
+    return p;
+  }, [props, type]);
 
-  // Globally restrict all numeric inputs to 2 decimal places (standard currency/quantities)
+  // Globally protect all numeric inputs to N decimal places (standard currency/quantities)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (type === "number") {
       const val = e.target.value;
-      // Regex allows integers and up to N fraction digits. 
-      // It also allows an empty string or a single trailing dot during typing.
       const regex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
       if (val !== "" && !regex.test(val)) {
         return;

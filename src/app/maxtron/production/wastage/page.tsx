@@ -30,8 +30,11 @@ const RM_API = `${API_BASE}/api/maxtron/raw-materials`;
 export default function DamagesWastagePage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission('prod_product_view', 'create');
+  const canEdit = hasPermission('prod_product_view', 'edit');
+  const canDelete = hasPermission('prod_product_view', 'delete');
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [wastageRecords, setWastageRecords] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -40,6 +43,7 @@ export default function DamagesWastagePage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -111,6 +115,47 @@ export default function DamagesWastagePage() {
     }
   };
 
+  const handleEdit = (w: any) => {
+    setEditingId(w.id);
+    setFormData({
+      stage: w.stage,
+      material_id: w.material_id || '',
+      product_id: w.product_id || '',
+      wastage_qty: parseFloat(w.wastage_qty) || 0,
+      reason_code: w.reason_code || '',
+      remarks: w.remarks || '',
+      date: w.date.split('T')[0],
+      company_id: w.company_id
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this wastage record? This action cannot be undone.',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${WASTAGE_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Record deleted successfully');
+        fetchWastage();
+      } else {
+        error(data.message);
+      }
+    } catch (err) {
+      error('Error deleting record');
+    }
+  };
+
   const saveWastage = async () => {
     if (formData.wastage_qty <= 0) {
       error('Please enter a valid wastage quantity.');
@@ -118,9 +163,12 @@ export default function DamagesWastagePage() {
     }
 
     const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${WASTAGE_API}/${editingId}` : WASTAGE_API;
+
     try {
-      const res = await fetch(WASTAGE_API, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -129,8 +177,9 @@ export default function DamagesWastagePage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Wastage record saved');
+        success(editingId ? 'Wastage record updated' : 'Wastage record saved');
         setShowForm(false);
+        setEditingId(null);
         setFormData({
             ...formData,
             wastage_qty: 0,
@@ -169,7 +218,17 @@ export default function DamagesWastagePage() {
         </div>
         <div className="flex items-center gap-3">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
+            <Button onClick={() => {
+              setEditingId(null);
+              setFormData({
+                ...formData,
+                wastage_qty: 0,
+                reason_code: '',
+                remarks: '',
+                date: new Date().toISOString().split('T')[0]
+              });
+              setShowForm(true);
+            }} className="shadow-sm hover:shadow-md transition-all gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
               <Plus className="w-4 h-4" /> Record New Damages
             </Button>
           )}
@@ -180,9 +239,9 @@ export default function DamagesWastagePage() {
         <Card className="border-rose-200 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
           <CardHeader className="bg-rose-50 border-b border-rose-100">
             <CardTitle className="text-xl flex items-center gap-2 text-rose-900">
-              <AlertTriangle className="w-5 h-5" /> Scrap Record Entry
+              <AlertTriangle className="w-5 h-5" /> {editingId ? 'Edit Scrap Record' : 'Scrap Record Entry'}
             </CardTitle>
-            <CardDescription className="text-rose-700/70">Pinpoint wastage events for extrusion, cutting, or packing stages.</CardDescription>
+            <CardDescription className="text-rose-700/70">{editingId ? 'Update details for the existing wastage record.' : 'Pinpoint wastage events for extrusion, cutting, or packing stages.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -233,7 +292,7 @@ export default function DamagesWastagePage() {
             <div className="mt-8 flex justify-end gap-3 border-t pt-6">
               <Button variant="outline" onClick={() => setShowForm(false)} className="px-6">Cancel</Button>
               <Button onClick={saveWastage} className="px-8 shadow-sm hover:shadow-md gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
-                <Save className="w-4 h-4" /> Save Scrap Entry
+                <Save className="w-4 h-4" /> {editingId ? 'Update Scrap Entry' : 'Save Scrap Entry'}
               </Button>
             </div>
           </CardContent>
@@ -244,7 +303,7 @@ export default function DamagesWastagePage() {
         <TableView
           title="Wastage Audit Log"
           description="Detailed log of production scrap and reason codes."
-          headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks']}
+          headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks', 'Actions']}
           data={wastageRecords}
           loading={loading}
           searchFields={['stage', 'reason_code', 'remarks']}
@@ -256,6 +315,30 @@ export default function DamagesWastagePage() {
               <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
               <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
               <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
+              <td className="px-6 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEdit(w)}
+                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDelete(w.id)}
+                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </td>
             </tr>
           )}
         />

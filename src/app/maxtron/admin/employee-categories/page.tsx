@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function EmployeeCategoriesPage() {
@@ -36,6 +37,7 @@ export default function EmployeeCategoriesPage() {
     });
 
     const { success, error } = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchInitialData();
@@ -140,7 +142,14 @@ export default function EmployeeCategoriesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this category?')) return;
+        const isConfirmed = await confirm({
+            title: 'Delete Category',
+            message: 'Are you sure you want to delete this classification? This action cannot be undone if no employees are assigned.',
+            type: 'danger',
+            confirmLabel: 'Delete Now'
+        });
+
+        if (!isConfirmed) return;
         setSubmitting(true);
         try {
             const res = await fetch(`${CATEGORIES_API}/${id}`, {

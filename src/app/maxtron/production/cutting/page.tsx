@@ -31,8 +31,11 @@ const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 export default function CuttingSealingPage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission('prod_cutting_view', 'create');
+  const canEdit = hasPermission('prod_cutting_view', 'edit');
+  const canDelete = hasPermission('prod_cutting_view', 'delete');
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [conversions, setConversions] = useState<any[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -42,6 +45,7 @@ export default function CuttingSealingPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -123,6 +127,50 @@ export default function CuttingSealingPage() {
     }
   };
 
+  const handleEdit = (c: any) => {
+    setEditingId(c.id);
+    setFormData({
+      batch_id: c.batch_id,
+      input_qty: parseFloat(c.input_qty) || 0,
+      operator_id: c.operator_id,
+      shift: c.shift || 'General',
+      date: c.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+      remarks: c.remarks || '',
+      company_id: c.company_id,
+      items: c.items?.map((it: any) => ({
+          product_id: it.product_id,
+          quantity: parseFloat(it.quantity) || 0
+      })) || []
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this cutting & sealing entry? This action cannot be undone.',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${CONVERSION_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Entry deleted successfully');
+        fetchConversions();
+      } else {
+        error(data.message);
+      }
+    } catch (err) {
+      error('Error deleting entry');
+    }
+  };
+
   const addItem = () => {
     setFormData({
       ...formData,
@@ -174,9 +222,12 @@ export default function CuttingSealingPage() {
     const wastage = formData.input_qty - totalOutput;
 
     const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${CONVERSION_API}/${editingId}` : CONVERSION_API;
+
     try {
-      const res = await fetch(CONVERSION_API, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -189,8 +240,9 @@ export default function CuttingSealingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Cutting & Sealing entry recorded');
+        success(editingId ? 'Cutting & Sealing entry updated' : 'Cutting & Sealing entry recorded');
         setShowForm(false);
+        setEditingId(null);
         resetForm();
         fetchConversions();
       } else {
@@ -233,7 +285,11 @@ export default function CuttingSealingPage() {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
             <Button 
-                onClick={() => setShowForm(true)} 
+                onClick={() => {
+                   setEditingId(null);
+                   resetForm();
+                   setShowForm(true);
+                }} 
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-full shadow-lg shadow-indigo-200 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> New Cutting Entry
@@ -246,9 +302,9 @@ export default function CuttingSealingPage() {
         <Card className="border-indigo-200 shadow-xl animate-in slide-in-from-top duration-500 overflow-hidden">
           <CardHeader className="bg-indigo-50 border-b border-indigo-100 py-4">
             <CardTitle className="text-xl flex items-center gap-2 text-indigo-900">
-              <Scissors className="w-5 h-5" /> Processing Job Entry
+              <Scissors className="w-5 h-5" /> {editingId ? 'Edit Processing Job' : 'Processing Job Entry'}
             </CardTitle>
-            <CardDescription className="text-indigo-700/70">Secondary conversion from extrusion batches to finished products.</CardDescription>
+            <CardDescription className="text-indigo-700/70">{editingId ? 'Update details for the existing cutting & sealing job.' : 'Secondary conversion from extrusion batches to finished products.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-8">
             {/* Header Fields */}
@@ -423,7 +479,7 @@ export default function CuttingSealingPage() {
         <TableView
           title="Conversion Log"
           description="Detailed history of processed quantities and cutting jobs."
-          headers={['Job No', 'Date', 'Batch', 'Items Produced', 'Input', 'Output', 'Wastage', 'Operator']}
+          headers={['Job No', 'Date', 'Batch', 'Items Produced', 'Input', 'Output', 'Wastage', 'Operator', 'Actions']}
           data={conversions}
           loading={loading}
           searchFields={['conversion_number', 'production_batches.batch_number']}
@@ -449,6 +505,30 @@ export default function CuttingSealingPage() {
               <td className="px-6 py-4 font-bold text-indigo-600">{c.output_qty}</td>
               <td className="px-6 py-4 text-rose-600 font-bold">{c.wastage_qty}</td>
               <td className="px-6 py-4 text-xs font-medium text-slate-600">{c.operator?.name}</td>
+              <td className="px-6 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEdit(c)}
+                      className="h-8 w-8 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDelete(c.id)}
+                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </td>
             </tr>
           )}
         />
