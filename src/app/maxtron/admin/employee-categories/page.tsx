@@ -172,19 +172,19 @@ export default function EmployeeCategoriesPage() {
 
     return (
         <div className="max-w-4xl mx-auto md:p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-primary/10">
                 <div className="flex items-start gap-3">
-                    <Tags className="w-10 h-10 text-indigo-600 p-2 bg-indigo-50 rounded-lg shrink-0" />
+                    <Tags className="w-10 h-10 text-primary p-2 bg-primary/5 rounded-lg shrink-0" />
                     <div>
-                        <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                        <h1 className="text-xl md:text-2xl font-bold text-primary">
                             Employee Categories
                         </h1>
-                        <p className="text-slate-500 text-xs md:text-sm mt-0.5">Configure classification groups for HR and Payroll.</p>
+                        <p className="text-muted-foreground text-xs md:text-sm mt-0.5 font-medium">Configure classification groups for HR and Payroll.</p>
                     </div>
                 </div>
                 <Button 
                     onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} 
-                    className="w-full md:w-auto gap-2 shadow-lg h-10 md:h-11 rounded-full font-bold"
+                    className="w-full md:w-auto gap-2 shadow-lg shadow-primary/20 h-10 md:h-11 rounded-full font-bold bg-primary hover:bg-primary/95 transition-all hover:scale-105 active:scale-95"
                 >
                     {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     {showForm ? "Cancel" : "Add Category"}
@@ -192,9 +192,9 @@ export default function EmployeeCategoriesPage() {
             </div>
 
             {showForm && (
-                <Card className="border-indigo-100 shadow-xl overflow-hidden">
-                    <CardHeader className="bg-indigo-50/50 border-b">
-                        <CardTitle className="text-indigo-900 text-lg">
+                <Card className="border-primary/20 shadow-xl overflow-hidden animate-in slide-in-from-top duration-500">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                        <CardTitle className="text-primary text-lg">
                             {editingId ? "Modify Classification" : "New Classification Entry"}
                         </CardTitle>
                     </CardHeader>
@@ -206,14 +206,14 @@ export default function EmployeeCategoriesPage() {
                                     placeholder="E.g. Management, Skilled Worker, Staff..." 
                                     value={formData.category_name} 
                                     onChange={e => setFormData(prev => ({ ...prev, category_name: e.target.value }))}
-                                    className="h-11 border-slate-200 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="h-11 border-primary/20 focus:ring-2 focus:ring-primary/20 transition-all font-bold"
                                     required
                                 />
                             </div>
                              <Button 
                                 type="submit" 
                                 loading={submitting}
-                                className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 rounded-full font-bold"
+                                className="h-11 px-8 gap-2 bg-primary hover:bg-primary/95 shadow-lg shadow-primary/20 rounded-full font-bold transition-all hover:scale-105 active:scale-95"
                              >
                                 <Save className="w-4 h-4" /> {editingId ? "Update" : "Save Category"}
                             </Button>
@@ -231,12 +231,12 @@ export default function EmployeeCategoriesPage() {
                     loading={loading}
                     searchFields={['category_name']}
                     renderRow={(cat: any) => (
-                        <tr key={cat.id} className="hover:bg-indigo-50/30 transition-all border-b last:border-0 group">
+                        <tr key={cat.id} className="hover:bg-primary/5 transition-all border-b last:border-0 group">
                             <td className="px-6 py-4">
-                                <div className="font-bold text-slate-800">{cat.category_name}</div>
+                                <div className="font-bold text-primary">{cat.category_name}</div>
                             </td>
                             <td className="px-6 py-4">
-                                <code className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">
+                                <code className="text-[10px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase font-bold">
                                     {cat.id.split('-')[0]}
                                 </code>
                             </td>
@@ -244,8 +244,8 @@ export default function EmployeeCategoriesPage() {
                                 <div className="flex items-center justify-end gap-2">
                                     {cat.company_id ? (
                                         <>
-                                            <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/10 rounded-full transition-colors"><Edit2 className="w-3.5 h-3.5" /></Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 border border-destructive/10 rounded-full transition-colors"><Trash2 className="w-3.5 h-3.5" /></Button>
                                         </>
                                     ) : (
                                         <span className="text-[10px] text-slate-400 font-bold uppercase truncate bg-slate-50 px-2 py-1 rounded">System Default</span>
@@ -257,10 +257,10 @@ export default function EmployeeCategoriesPage() {
                 />
             )}
 
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-4">
-                <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div className="text-xs text-amber-800 leading-relaxed font-medium">
-                    <p className="font-bold mb-1">System Administration Note:</p>
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-4 shadow-inner">
+                <ShieldCheck className="w-5 h-5 text-primary/60 mt-0.5" />
+                <div className="text-xs text-primary/70 leading-relaxed font-medium">
+                    <p className="font-black mb-1 uppercase tracking-widest text-[10px]">System Administration Note:</p>
                     Changing category names will update all linked employees immediately. You cannot delete a category that is currently assigned to one or more employees.
                 </div>
             </div>

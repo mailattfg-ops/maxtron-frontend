@@ -305,18 +305,19 @@ export default function ExpenseHeadsPage() {
                 </Card>
             ) : (
                 <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8">
+                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
                         <div>
                             <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Taxonomies</CardTitle>
                             <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Currently active expense categories.
                             </CardDescription>
                         </div>
-                    </CardHeader>
+                    </CardHeader> */}
                     <CardContent className="p-0">
                         <TableView 
+                            title="Currently active expense categories."
                             searchFields={['head_code', 'head_name']}
-                            headers={['Expense Code', 'Expense Name', '']}
+                            headers={['Expense Code', 'Expense Name', 'Action']}
                             data={heads}
                             loading={loading}
                             renderRow={(head: any) => (
@@ -329,8 +330,8 @@ export default function ExpenseHeadsPage() {
                                     <td className="px-8 py-6 font-black text-slate-800">
                                         {head.head_name}
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-2 transition-opacity">
+                                    <td className="px-2 py-6 text-right">
+                                        <div className="flex items-center justify-end gap-1 transition-opacity">
                                             {canEdit && (
                                                 <Button
                                                     variant="ghost"

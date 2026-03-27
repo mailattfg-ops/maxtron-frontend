@@ -329,12 +329,12 @@ export default function RawMaterialPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Global Grades</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">
                     {new Set(materials.map(m => m.grade).filter(Boolean)).size}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
-                  <Layers className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
+                <div className="bg-primary/5 p-2 md:p-3 rounded-xl md:rounded-2xl">
+                  <Layers className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
               </div>
               <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Standardized manufacturing quality</p>
@@ -346,12 +346,12 @@ export default function RawMaterialPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Price/Unit</p>
-                  <h3 className="text-xl md:text-2xl font-black text-emerald-600 mt-1">
+                  <h3 className="text-xl md:text-2xl font-black text-primary mt-1">
                     ₹ {materials.length > 0 ? (materials.reduce((acc, curr) => acc + (Number(curr.rate_per_unit) || 0), 0) / materials.length).toFixed(2) : '0.00'}
                   </h3>
                 </div>
-                <div className="bg-emerald-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
-                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+                <div className="bg-primary/5 p-2 md:p-3 rounded-xl md:rounded-2xl">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
               </div>
               <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Market rate fluctuations tracking</p>
@@ -384,9 +384,9 @@ export default function RawMaterialPage() {
                       setCodeError('');
                     }
                   }} 
-                  className={`h-11 font-bold ${codeError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  className={`h-11 font-bold ${codeError ? 'border-destructive bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
                 />
-                {codeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
+                {codeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
               </div>
  
               <div className="space-y-2">
@@ -405,9 +405,9 @@ export default function RawMaterialPage() {
                       setNameError('');
                     }
                   }} 
-                  className={`h-11 font-bold ${nameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  className={`h-11 font-bold ${nameError ? 'border-destructive bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
                 />
-                {nameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{nameError}</p>}
+                {nameError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{nameError}</p>}
               </div>
  
               <div className="space-y-2">
@@ -463,7 +463,7 @@ export default function RawMaterialPage() {
                     min="0"                    placeholder="0.00"
                     value={formData.rate_per_unit || ''}
                     onChange={(e) => setFormData({...formData, rate_per_unit: Math.max(0, Number(e.target.value))})}
-                    className="h-11 font-black text-emerald-600 pr-20"
+                    className="h-11 font-black text-primary pr-20"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
                     PER {formData.unit_type.toUpperCase()}
@@ -482,7 +482,7 @@ export default function RawMaterialPage() {
                     placeholder="100.00"
                     value={formData.stock_threshold || ''}
                     onChange={(e) => setFormData({...formData, stock_threshold: Math.max(0, Number(e.target.value))})}
-                    className="h-11 font-black text-rose-500 pr-12"
+                    className="h-11 font-black text-slate-600 pr-12"
                   />
 
                   <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
@@ -561,7 +561,7 @@ export default function RawMaterialPage() {
                 </span>
               </td>
               <td className="px-6 py-4">
-                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
                   {m.grade || 'STD'}
                 </span>
               </td>
@@ -572,7 +572,7 @@ export default function RawMaterialPage() {
                 <div className="text-[9px] font-bold text-muted-foreground uppercase">PER {m.unit_type || 'KG'}</div>
               </td>
               <td className="px-6 py-4">
-                <div className="font-bold text-rose-600 tracking-tighter">
+                <div className="font-bold text-slate-600 tracking-tighter">
                   {Number(m.stock_threshold) > 0 ? Number(m.stock_threshold).toLocaleString() : ''}
                 </div>
                 {Number(m.stock_threshold) > 0 && (
@@ -580,10 +580,7 @@ export default function RawMaterialPage() {
                 )}
               </td>
               <td className="px-6 py-4">
-                <span className={`flex items-center text-[11px] font-bold ${
-                  m.availability === 'Abroad' ? 'text-purple-600' : 
-                  m.availability === 'Outstation' ? 'text-amber-600' : 'text-emerald-600'
-                }`}>
+                <span className="flex items-center text-[11px] font-bold text-primary">
                   {m.availability === 'Abroad' ? <Globe2 className="w-3 h-3 mr-1" /> : <MapPin className="w-3 h-3 mr-1" />}
                   {m.availability}
                 </span>

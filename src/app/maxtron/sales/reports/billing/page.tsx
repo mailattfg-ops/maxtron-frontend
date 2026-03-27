@@ -101,35 +101,35 @@ export default function BillingSummary() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-indigo-600" /> Billing Summary
+          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-primary" /> Billing Summary
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">Monthly revenue analysis and tax breakdown.</p>
         </div>
-        <Button onClick={downloadExcel} variant="outline" className="gap-2 border-indigo-200 text-indigo-600 font-bold hover:bg-indigo-50 px-6 rounded-full shadow-sm h-11 transition-all active:scale-95">
+        <Button onClick={downloadExcel} variant="outline" className="gap-2 border-primary/20 text-primary font-bold hover:bg-primary/5 px-6 rounded-full shadow-sm h-11 transition-all active:scale-95">
           <Download className="w-4 h-4" /> Export Report
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="bg-white border-slate-100 shadow-lg rounded-3xl p-6 relative overflow-hidden group">
+          <Card className="bg-white border-primary/10 shadow-lg rounded-3xl p-6 relative overflow-hidden group">
               <div className="flex flex-col z-10 relative">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Total Taxable</span>
-                  <span className="text-2xl font-black mt-1">₹ {stats.totalAmount.toLocaleString()}</span>
+                  <span className="text-2xl font-black mt-1 text-slate-900">₹ {stats.totalAmount.toLocaleString()}</span>
               </div>
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><PiggyBank className="w-12 h-12" /></div>
           </Card>
-          <Card className="bg-white border-slate-100 shadow-lg rounded-3xl p-6 relative overflow-hidden group">
+          <Card className="bg-white border-primary/10 shadow-lg rounded-3xl p-6 relative overflow-hidden group">
               <div className="flex flex-col z-10 relative">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Total GST</span>
-                  <span className="text-2xl font-black mt-1 text-indigo-600">₹ {stats.totalTax.toLocaleString()}</span>
+                  <span className="text-2xl font-black mt-1 text-primary">₹ {stats.totalTax.toLocaleString()}</span>
               </div>
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Receipt className="w-12 h-12" /></div>
           </Card>
-          <Card className="bg-indigo-600 border-none shadow-xl rounded-3xl p-6 relative overflow-hidden group col-span-1 md:col-span-2">
+          <Card className="bg-primary border-none shadow-xl rounded-3xl p-6 relative overflow-hidden group col-span-1 md:col-span-2">
               <div className="flex flex-col z-10 relative text-white">
                   <span className="text-[10px] font-bold uppercase opacity-60">Grand Total Revenue (Net)</span>
                   <span className="text-4xl font-black mt-1">₹ {stats.totalNet.toLocaleString()}</span>
@@ -160,13 +160,13 @@ export default function BillingSummary() {
         loading={loading}
         searchFields={['invoice_number', 'customers.customer_name']}
         renderRow={(row: any) => (
-          <tr key={row.id} className="hover:bg-indigo-50/30 border-b last:border-0 transition-colors">
-            <td className="px-6 py-4 font-mono font-bold text-indigo-700">{row.invoice_number}</td>
-            <td className="px-6 py-4 text-sm font-medium">{new Date(row.invoice_date).toLocaleDateString()}</td>
+          <tr key={row.id} className="hover:bg-primary/5 border-b last:border-0 transition-colors group">
+            <td className="px-6 py-4 font-mono font-bold text-primary">{row.invoice_number}</td>
+            <td className="px-6 py-4 text-sm font-medium text-muted-foreground">{new Date(row.invoice_date).toLocaleDateString()}</td>
             <td className="px-6 py-4 font-bold text-slate-800">{row.customers?.customer_name}</td>
             <td className="px-6 py-4 text-right tabular-nums">₹ {parseFloat(row.total_amount).toLocaleString()}</td>
-            <td className="px-6 py-4 text-right tabular-nums text-indigo-500 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
-            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-slate-50">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums text-primary/70 font-semibold">₹ {parseFloat(row.tax_amount).toLocaleString()}</td>
+            <td className="px-6 py-4 text-right tabular-nums font-black text-slate-900 border-l border-primary/5">₹ {parseFloat(row.net_amount).toLocaleString()}</td>
           </tr>
         )}
       />

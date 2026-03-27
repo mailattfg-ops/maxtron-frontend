@@ -12,6 +12,10 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { exportToExcel } from '@/utils/export';
+import { useRouter } from 'next/navigation';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { Edit, Trash2 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const PACKING_API = `${API_BASE}/api/maxtron/production/packing`;
@@ -22,8 +26,13 @@ export default function PackingSummaryReport() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const router = useRouter();
+  const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission('prod_packing_view', 'edit');
+  const canDelete = hasPermission('prod_packing_view', 'delete');
 
-  const { info, error } = useToast();
+  const { info, error, success } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -56,6 +65,7 @@ export default function PackingSummaryReport() {
   const fetchReport = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
+    setLoading(true);
     try {
       const res = await fetch(`${PACKING_API}?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -66,6 +76,37 @@ export default function PackingSummaryReport() {
       }
     } catch (err) {
       error('Failed to fetch report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/maxtron/production/packing?editId=${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this packing record?',
+      type: 'danger'
+    });
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${PACKING_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (result.success) {
+        success('Record deleted successfully');
+        fetchReport();
+      } else {
+        error(result.message);
+      }
+    } catch (err) {
+      error('Error deleting record');
     }
   };
 
@@ -100,35 +141,35 @@ export default function PackingSummaryReport() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-emerald-950">Packing Summary</h1>
-          <p className="text-muted-foreground mt-1 text-emerald-700/60">Report on finished goods bundling and inventory readiness.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Packing Summary</h1>
+          <p className="text-muted-foreground mt-1 font-medium">Report on finished goods bundling and inventory readiness.</p>
         </div>
-        <Button onClick={downloadCSV} variant="outline" className="gap-2 border-emerald-200 hover:bg-emerald-50 text-emerald-700 shadow-sm transition-all">
+        <Button onClick={downloadCSV} variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary shadow-sm transition-all">
           <Download className="w-4 h-4" /> Export Excel
         </Button>
       </div>
 
-      <Card className="border-emerald-100 shadow-sm overflow-hidden bg-emerald-50/50">
-        <CardHeader className="pb-6 border-b border-emerald-100">
+      <Card className="border-primary/10 shadow-sm overflow-hidden bg-primary/5">
+        <CardHeader className="pb-6 border-b border-primary/10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-emerald-700/70 flex items-center gap-2 px-1">
+              <label className="text-xs font-bold uppercase tracking-wider text-primary/70 flex items-center gap-2 px-1">
                 <Calendar className="w-3 h-3" /> From Date
               </label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white border-emerald-200 focus:border-emerald-500" />
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white border-primary/20 focus:border-primary/50" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-emerald-700/70 flex items-center gap-2 px-1">
+              <label className="text-xs font-bold uppercase tracking-wider text-primary/70 flex items-center gap-2 px-1">
                 <Calendar className="w-3 h-3" /> To Date
               </label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white border-emerald-200 focus:border-emerald-500" />
+              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white border-primary/20 focus:border-primary/50" />
             </div>
             <div className="lg:col-span-2 flex justify-end">
-              <div className="bg-emerald-600 rounded-lg px-6 py-3 shadow-md flex items-center gap-8 text-emerald-50">
-                <div className="text-right border-r border-emerald-500/30 pr-8">
+              <div className="bg-primary rounded-lg px-6 py-3 shadow-md flex items-center gap-8 text-white">
+                <div className="text-right border-r border-white/20 pr-8">
                   <p className="text-[10px] uppercase font-bold tracking-widest leading-tight">Total Units Packed</p>
                   <p className="text-2xl font-black leading-none mt-1">
                     {filtered.reduce((sum, item) => sum + (parseFloat(item.total_packed_qty) || 0), 0).toFixed(2)}
@@ -150,20 +191,44 @@ export default function PackingSummaryReport() {
       <TableView
         title="Packing Activity Log"
         description="Historical data for packed units."
-        headers={['Date', 'Batch No', 'Product', 'Bundles', 'Qty/Bundle', 'Total Packed']}
+        headers={['Date', 'Batch No', 'Product', 'Bundles', 'Qty/Bundle', 'Total Packed', 'Actions']}
         data={filtered}
         loading={loading}
         searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
         renderRow={(p: any) => {
           const batch = p.production_conversions?.production_batches;
           return (
-            <tr key={p.id} className="hover:bg-emerald-50 border-b last:border-none">
-              <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-mono font-bold text-emerald-800">{batch?.batch_number}</td>
-              <td className="px-6 py-4">{batch?.finished_products?.product_name}</td>
+            <tr key={p.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
+              <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(p.date).toLocaleDateString()}</td>
+              <td className="px-6 py-4 font-mono font-bold text-primary">{batch?.batch_number || 'N/A'}</td>
+              <td className="px-6 py-4 font-bold">{batch?.finished_products?.product_name || 'N/A'}</td>
               <td className="px-6 py-4 font-black">{p.bundle_count}</td>
-              <td className="px-6 py-4 text-xs">{p.qty_per_bundle}</td>
-              <td className="px-6 py-4 font-bold text-emerald-600">{p.total_packed_qty} Kg</td>
+              <td className="px-6 py-4 text-xs font-semibold text-slate-500">{p.qty_per_bundle}</td>
+              <td className="px-6 py-4 font-black text-primary">{p.total_packed_qty} Kg</td>
+              <td className="px-6 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEdit(p.id)}
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDelete(p.id)}
+                      className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </td>
             </tr>
           );
         }}

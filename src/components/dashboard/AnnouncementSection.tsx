@@ -160,18 +160,14 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'critical': return <AlertTriangle className="w-5 h-5 text-rose-500" />;
-            case 'warning': return <AlertTriangle className="w-5 h-5 text-amber-500" />;
-            default: return <Info className="w-5 h-5 text-blue-500" />;
+            case 'critical': return <AlertTriangle className="w-5 h-5 text-primary" />;
+            case 'warning': return <AlertTriangle className="w-5 h-5 text-primary/90" />;
+            default: return <Info className="w-5 h-5 text-primary/80" />;
         }
     };
 
     const getBgColor = (type: string) => {
-        switch (type) {
-            case 'critical': return 'bg-rose-500/10 border-rose-500/20';
-            case 'warning': return 'bg-amber-500/10 border-amber-500/20';
-            default: return 'bg-blue-500/10 border-blue-500/20';
-        }
+        return 'bg-slate-50 border-slate-100';
     };
 
     const [activeIndex, setActiveIndex] = useState(0);
@@ -239,12 +235,12 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
 
             <div className="flex items-center justify-between mb-2 p-2 mt-0 rounded-2xl">
                 <div className="flex items-center gap-3 group/header">
-                    <div className="p-2.5 bg-primary/10 rounded-2xl ring-1 ring-primary/20 shadow-glow-primary group-hover/header:rotate-6 transition-transform duration-500">
-                        <Megaphone className="w-4 h-4 text-primary" />
+                    <div className="p-2.5 bg-slate-50 rounded-2xl ring-1 ring-slate-100 shadow-sm transition-transform duration-500">
+                        <Megaphone className="w-4 h-4 text-slate-400" />
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                            Active Notices <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />
+                            Active Notices
                         </h2>
                         <p className="text-[8px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-40">
                             Broadcast • {tenant.toUpperCase()} Control
@@ -275,8 +271,8 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                 </Card>
             ) : (
                 <div className="relative w-full px-2 md:px-4 mt-6">
-                    {/* Neural Glow Background */}
-                    <div className="absolute inset-x-0 -top-20 h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+                    {/* Neutral Background */}
+                    <div className="absolute inset-x-0 -top-20 h-[500px] bg-slate-50/30 blur-[120px] rounded-full pointer-events-none" />
 
                     <div className="perspective-container relative w-full h-[320px] md:h-[350px] flex items-center justify-center">
                         {announcements.map((item, index) => {
@@ -290,13 +286,13 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
 
                             if (pos > 2) return null;
 
-                            const auraClass = item.type === 'critical' ? 'aura-glow-rose' : item.type === 'warning' ? 'aura-glow-amber' : 'aura-glow-primary';
-                            const accentColor = item.type === 'critical' ? 'text-rose-500' : item.type === 'warning' ? 'text-amber-500' : 'text-primary';
+                            const auraClass = 'shadow-sm';
+                            const accentColor = 'text-primary';
 
                             return (
                                 <div 
                                     key={item.id} 
-                                    className={`absolute w-full max-w-4xl stack-card-wrapper ${stackClass} rounded-3xl md:rounded-[3rem] bg-white/70 backdrop-blur-2xl overflow-hidden transition-all duration-1000 ${pos === 0 ? auraClass : 'shadow-sm'}`}
+                                    className={`absolute w-full max-w-4xl stack-card-wrapper ${stackClass} rounded-3xl md:rounded-[3rem] bg-white/70 backdrop-blur-2xl overflow-hidden transition-all duration-1000 shadow-sm`}
                                 >
                                     <div className="elite-card-border" />
                                     
@@ -328,7 +324,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                                             <div className="space-y-3 md:space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${item.type === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-primary'}`} />
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${item.type === 'critical' ? 'bg-primary/90 animate-pulse' : 'bg-slate-300'}`} />
                                                         <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${accentColor}`}>
                                                             {item.type} Priority Broadcast
                                                         </span>
@@ -338,7 +334,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                                                     </span>
                                                 </div>
 
-                                                <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tighter leading-tight md:leading-[0.9]">
+                                                <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter leading-tight md:leading-[0.9]">
                                                     {item.title}
                                                 </h1>
 
@@ -407,7 +403,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                         {/* Modal Header */}
                         <div className="p-10 pb-6 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-between border-b border-primary/5">
                             <div className="flex items-center gap-5">
-                                <div className="p-4 bg-primary text-white rounded-2xl shadow-glow-primary">
+                                <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
                                     <Megaphone className="w-6 h-6" />
                                 </div>
                                 <div>
@@ -437,7 +433,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                                     placeholder="Enter a compelling title..."
                                     value={formData.title}
                                     onChange={(e: any) => setFormData({...formData, title: e.target.value})}
-                                    className="h-16 px-6 rounded-2xl border-slate-200 bg-slate-50/50 text-base font-bold focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-300"
+                                    className="h-16 px-6 rounded-2xl border-slate-200 bg-slate-50/50 text-base font-bold focus:ring-4 focus:ring-slate-100 transition-all placeholder:text-slate-300"
                                 />
                             </div>
 
@@ -461,7 +457,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Target</label>
-                                    <div className="h-16 rounded-2xl bg-indigo-500/5 ring-1 ring-inset ring-indigo-500/10 font-black flex items-center px-6 text-xs uppercase tracking-widest text-indigo-600/60">
+                                    <div className="h-16 rounded-2xl bg-primary/10 ring-primary/20 text-primary/80">
                                         {tenant.toUpperCase()} DASHBOARD
                                     </div>
                                 </div>

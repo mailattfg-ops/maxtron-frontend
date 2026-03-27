@@ -89,6 +89,7 @@ export default function VehicleMasterPage() {
         purpose: 'BMW Collection',
         seating_capacity: 0,
         is_active: true,
+        tax_expiry: '',
         company_id: ''
     });
 
@@ -184,6 +185,7 @@ export default function VehicleMasterPage() {
             permit_expiry: v.permit_expiry || '',
             pollution_expiry: v.pollution_expiry || '',
             gps_install_date: v.gps_install_date || '',
+            tax_expiry: v.tax_expiry || '',
             company_id: currentCompanyId
         });
         setShowForm(true);
@@ -216,7 +218,10 @@ export default function VehicleMasterPage() {
             const issues = vehicles.filter(v => {
                 const fitnessExpired = v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date();
                 const insuranceExpired = v.insurance_expiry && new Date(v.insurance_expiry) < new Date();
-                return fitnessExpired || insuranceExpired;
+                const permitExpired = v.permit_expiry && new Date(v.permit_expiry) < new Date();
+                const pollutionExpired = v.pollution_expiry && new Date(v.pollution_expiry) < new Date();
+                const taxExpired = v.tax_expiry && new Date(v.tax_expiry) < new Date();
+                return fitnessExpired || insuranceExpired || permitExpired || pollutionExpired || taxExpired;
             });
 
             if (issues.length === 0) {
@@ -258,6 +263,7 @@ export default function VehicleMasterPage() {
             purpose: 'BMW Collection',
             seating_capacity: 0,
             is_active: true,
+            tax_expiry: '',
             company_id: currentCompanyId
         });
         setActiveTab('basic');
@@ -377,6 +383,34 @@ export default function VehicleMasterPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Body Type</label>
+                                    <Input name="body_type" value={formData.body_type} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium" placeholder="e.g. Open Box" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Manufacturing Year</label>
+                                    <Input type="number" name="year" value={formData.year} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Operational Purpose</label>
+                                    <Select 
+                                        value={formData.purpose} 
+                                        onValueChange={(val) => setFormData(prev => ({ ...prev, purpose: val }))}
+                                    >
+                                        <SelectTrigger className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium">
+                                            <SelectValue placeholder="Select Purpose" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            {purposes.map(p => (
+                                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Seating Capacity</label>
+                                    <Input type="number" name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold" />
+                                </div>
                             </div>
                         )}
                         
@@ -409,6 +443,18 @@ export default function VehicleMasterPage() {
                                     </label>
                                     <Input type="number" name="current_km" value={formData.current_km} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-secondary/30 bg-secondary/5 text-secondary font-bold" />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Tank Capacity (Ltrs)</label>
+                                    <Input type="number" name="tank_capacity" value={formData.tank_capacity} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background font-bold text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Chassis Number</label>
+                                    <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background font-mono uppercase text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Engine Number</label>
+                                    <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background font-mono uppercase text-sm" />
+                                </div>
                             </div>
                         )}
 
@@ -416,11 +462,27 @@ export default function VehicleMasterPage() {
                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Insurance Expiry</label>
-                                    <Input type="date" name="insurance_expiry" value={formData.insurance_expiry} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold" />
+                                    <Input type="date" name="insurance_expiry" value={formData.insurance_expiry} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Initial Fitness Date</label>
+                                    <Input type="date" name="fitness_date" value={formData.fitness_date} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Fitness Renewal</label>
-                                    <Input type="date" name="fitness_renewal_date" value={formData.fitness_renewal_date} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold" />
+                                    <Input type="date" name="fitness_renewal_date" value={formData.fitness_renewal_date} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Permit Expiry</label>
+                                    <Input type="date" name="permit_expiry" value={formData.permit_expiry} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Pollution Expiry</label>
+                                    <Input type="date" name="pollution_expiry" value={formData.pollution_expiry} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-primary pl-1 uppercase tracking-wider">Road Tax Expiry</label>
+                                    <Input type="date" name="tax_expiry" value={formData.tax_expiry} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-primary/5 font-bold text-sm" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-muted-foreground pl-1 uppercase tracking-wider">Status</label>
@@ -450,6 +512,16 @@ export default function VehicleMasterPage() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium text-foreground/70 pl-1 uppercase">Owner Name</label>
                                         <Input name="owner_name" value={formData.owner_name} onChange={handleInputChange} className="h-10 rounded-md bg-white border-primary/20 font-bold" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-foreground/70 pl-1 uppercase">Owner Address</label>
+                                        <textarea 
+                                            name="owner_address" 
+                                            value={formData.owner_address} 
+                                            onChange={handleInputChange} 
+                                            className="w-full h-20 p-3 rounded-md border border-primary/20 bg-white text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none font-medium"
+                                            placeholder="Enter full address..."
+                                        />
                                     </div>
                                 </div>
 
@@ -516,7 +588,7 @@ export default function VehicleMasterPage() {
                             <div className="flex flex-col items-center">
                                 <span className="text-[9px] md:text-xs font-bold text-white/50 uppercase tracking-widest mb-1">Risks</span>
                                 <span className="text-2xl md:text-3xl font-bold italic text-secondary tabular-nums">
-                                    {vehicles.filter(v=>(v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date()) || (v.insurance_expiry && new Date(v.insurance_expiry) < new Date())).length}
+                                    {vehicles.filter(v=>(v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date()) || (v.insurance_expiry && new Date(v.insurance_expiry) < new Date()) || (v.permit_expiry && new Date(v.permit_expiry) < new Date()) || (v.pollution_expiry && new Date(v.pollution_expiry) < new Date()) || (v.tax_expiry && new Date(v.tax_expiry) < new Date())).length}
                                 </span>
                             </div>
                         </div>
@@ -536,7 +608,7 @@ export default function VehicleMasterPage() {
                             description="Comprehensive tracking of vehicles and compliance status."
                             headers={['Registry / Type', 'Technical', 'Compliance', 'Status', 'Actions']}
                             data={filterMode === 'compliance' 
-                                ? vehicles.filter(v => (v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date()) || (v.insurance_expiry && new Date(v.insurance_expiry) < new Date()))
+                                ? vehicles.filter(v => (v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date()) || (v.insurance_expiry && new Date(v.insurance_expiry) < new Date()) || (v.permit_expiry && new Date(v.permit_expiry) < new Date()) || (v.pollution_expiry && new Date(v.pollution_expiry) < new Date()) || (v.tax_expiry && new Date(v.tax_expiry) < new Date()))
                                 : vehicles
                             }
                             loading={loading}
@@ -544,6 +616,9 @@ export default function VehicleMasterPage() {
                             renderRow={(v: any) => {
                                 const fitnessExpired = v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date();
                                 const insuranceExpired = v.insurance_expiry && new Date(v.insurance_expiry) < new Date();
+                                const permitExpired = v.permit_expiry && new Date(v.permit_expiry) < new Date();
+                                const pollutionExpired = v.pollution_expiry && new Date(v.pollution_expiry) < new Date();
+                                const taxExpired = v.tax_expiry && new Date(v.tax_expiry) < new Date();
                                 
                                 return (
                                     <tr key={v.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0">
@@ -565,13 +640,18 @@ export default function VehicleMasterPage() {
                                             </div>
                                         </td>
                                         <td className="px-4 md:px-6 py-4">
-                                            <div className="flex gap-1.5">
+                                            <div className="flex flex-wrap gap-1.5 mt-1">
                                                 <div className={`w-7 h-7 rounded flex items-center justify-center border ${insuranceExpired ? 'bg-secondary/20 border-secondary/30 text-secondary animate-pulse' : 'bg-primary/5 border-primary/10 text-primary/40'}`} title="Insurance">
                                                     <ShieldCheck className="w-3.5 h-3.5" />
                                                 </div>
                                                 <div className={`w-7 h-7 rounded flex items-center justify-center border ${fitnessExpired ? 'bg-secondary/20 border-secondary/30 text-secondary animate-pulse' : 'bg-primary/5 border-primary/10 text-primary/40'}`} title="Fitness">
                                                     <Calendar className="w-3.5 h-3.5" />
                                                 </div>
+                                                {(permitExpired || pollutionExpired || taxExpired) && (
+                                                    <div className="w-7 h-7 rounded flex items-center justify-center border bg-amber-100 border-amber-200 text-amber-600 animate-bounce" title="Permit/Pollution/Tax Risk">
+                                                        <AlertCircle className="w-3.5 h-3.5" />
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-4 md:px-6 py-4">

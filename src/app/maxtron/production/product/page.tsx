@@ -256,7 +256,7 @@ export default function FinishedProductPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)</label>
-                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold || ''} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold || ''} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11 font-bold" />
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
@@ -289,28 +289,40 @@ export default function FinishedProductPage() {
           searchFields={['product_code', 'product_name', 'color']}
           searchPlaceholder="Search products..."
           renderRow={(p: any) => (
-            <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none">
-              <td className="px-6 py-4 font-mono text-xs font-bold">{p.product_code}</td>
-              <td className="px-6 py-4 font-bold">{p.product_name}</td>
-              <td className="px-6 py-4">{p.color}</td>
-              <td className="px-6 py-4">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>
-              <td className="px-6 py-4">{p.size}</td>
-              <td className="px-6 py-4">{Number(p.avg_count_per_kg) > 0 ? p.avg_count_per_kg : ''}</td>
-              <td className="px-6 py-4 font-bold text-amber-600 underline decoration-amber-200 underline-offset-4">
+            <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none group">
+              <td className="px-6 py-4 font-mono text-xs font-bold text-primary">{p.product_code}</td>
+              <td className="px-6 py-4 font-bold text-primary">{p.product_name}</td>
+              <td className="px-6 py-4 text-sm font-medium">{p.color}</td>
+              <td className="px-6 py-4 text-sm">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>
+              <td className="px-6 py-4 text-sm">{p.size}</td>
+              <td className="px-6 py-4 text-sm">{Number(p.avg_count_per_kg) > 0 ? p.avg_count_per_kg : ''}</td>
+              <td className="px-6 py-4 font-bold text-slate-700 underline decoration-primary/20 underline-offset-4">
                 {Number(p.stock_threshold) > 0 ? `${p.stock_threshold} Kg` : ''}
               </td>
-              <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} className="h-8 w-8 rounded-full">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
+              <td className="px-6 py-4 text-xs text-muted-foreground italic truncate max-w-[150px]">{p.description}</td>
+              <td className="md:px-6 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEdit(p)} 
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDelete(p.id)} 
+                      className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </td>
             </tr>
           )}

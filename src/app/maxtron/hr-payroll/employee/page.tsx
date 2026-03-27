@@ -671,10 +671,10 @@ export default function EmployeeInformationPage() {
       {newEmployeePopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none bg-card">
-            <CardHeader className="bg-emerald-500/10 pb-6 border-b border-border text-center rounded-t-xl">
-              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
-              <CardTitle className="text-2xl text-emerald-500">Employee Registered!</CardTitle>
-              <CardDescription className="text-emerald-500/80 font-medium">System access credentials successfully configured.</CardDescription>
+            <CardHeader className="bg-primary/10 pb-6 border-b border-border text-center rounded-t-xl">
+              <CheckCircle2 className="w-16 h-16 text-primary mx-auto mb-3" />
+              <CardTitle className="text-2xl text-primary">Employee Registered!</CardTitle>
+              <CardDescription className="text-primary/80 font-medium">System access credentials successfully configured.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border space-y-3">
@@ -709,9 +709,9 @@ export default function EmployeeInformationPage() {
                 <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
               </Button>
               
-              <div className="flex items-start p-4 bg-amber-50 rounded-xl border border-amber-200 mt-6 shadow-sm">
-                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-amber-550 flex-none" />
-                 <p className="text-xs font-medium leading-relaxed text-amber-800">
+              <div className="flex items-start p-4 bg-slate-50 rounded-xl border border-slate-200 mt-6 shadow-sm">
+                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-slate-500 flex-none" />
+                 <p className="text-xs font-medium leading-relaxed text-slate-800">
                    <strong>Strict Security Notice:</strong> Please securely provide these initial credentials to the employee. They will be strictly required to change their password upon their immediate first login.
                  </p>
               </div>
@@ -810,12 +810,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">
                     {employees.filter(e => e.employee_categories?.category_name === "Management").length}
                   </h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
-                  <Briefcase className="w-6 h-6 text-rose-500" />
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
+                  <Briefcase className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -826,12 +826,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
-                  <h3 className="text-3xl font-black text-blue-500 mt-1">
+                  <h3 className="text-3xl font-black text-slate-600 mt-1">
                     {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl shrink-0">
-                  <TrendingUp className="w-6 h-6 text-blue-500" />
+                <div className="bg-slate-50 p-3 rounded-2xl shrink-0">
+                  <TrendingUp className="w-6 h-6 text-slate-400" />
                 </div>
               </div>
             </CardContent>
@@ -855,7 +855,7 @@ export default function EmployeeInformationPage() {
                 <Card>
                   <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 rounded-2xl">
                     <CardTitle className="text-lg md:text-xl text-primary flex items-center">
-                      <UserPlus className="w-5 h-5 mr-3 text-secondary" />
+                      <UserPlus className="w-5 h-5 mr-3 text-primary" />
                       {isViewMode ? 'View Employee Details' : editingId ? 'Edit Personal Details' : 'Personal Details'}
                     </CardTitle>
                   </CardHeader>
@@ -867,13 +867,13 @@ export default function EmployeeInformationPage() {
                           name="employee_code" 
                           value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
                           disabled={true} 
-                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-blue-600 text-sm"
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-primary text-sm"
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-amber-400 bg-amber-50' : ''}`} />
-                        {errors.name && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.name}</p>}
+                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.name && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.name}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
@@ -884,22 +884,22 @@ export default function EmployeeInformationPage() {
                            value={formData.date_of_birth} 
                            onChange={handleInputChange} 
                            disabled={isViewMode} 
-                           className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-amber-400 bg-amber-50' : ''}`} 
+                           className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-destructive bg-amber-50' : ''}`} 
                         />
-                        {errors.date_of_birth && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.date_of_birth}</p>}
+                        {errors.date_of_birth && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.date_of_birth}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
-                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className={`h-10 md:h-11 ${errors.phone ? 'border-amber-400 bg-amber-50' : ''}`} />
-                        {errors.phone && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.phone}</p>}
+                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className={`h-10 md:h-11 ${errors.phone ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.phone && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.phone}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No</label>
-                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className={`h-10 md:h-11 ${errors.aadhaar ? 'border-amber-400 bg-amber-50' : ''}`} />
-                        {errors.aadhaar && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.aadhaar}</p>}
+                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className={`h-10 md:h-11 ${errors.aadhaar ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.aadhaar && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.aadhaar}</p>}
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
-                        <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -918,14 +918,14 @@ export default function EmployeeInformationPage() {
  
                       <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Permanent Address</h3>
+                          <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
                           {!isViewMode && (
                             <Button 
                               type="button" 
                               variant="ghost" 
                               size="sm" 
                               onClick={copyCommunicationAddress}
-                              className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                              className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
                             >
                               <Copy className="w-3 h-3 mr-1" /> <span className="hidden md:block">Same as Communication</span>
                             </Button>
@@ -999,8 +999,8 @@ export default function EmployeeInformationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-amber-400 bg-amber-50' : ''}`} />
-                {errors.username && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
+                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} />
+                {errors.username && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
               </div>
 
               <div className="space-y-2">
@@ -1026,7 +1026,7 @@ export default function EmployeeInformationPage() {
                     onChange={handleInputChange} 
                     disabled={isViewMode} 
                     placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
-                    className={`${errors.password ? 'border-amber-400 bg-amber-50' : ''}`}
+                    className={`${errors.password ? 'border-destructive bg-amber-50' : ''}`}
                   />
                   {!isViewMode && (
                     <Button
@@ -1040,7 +1040,7 @@ export default function EmployeeInformationPage() {
                     </Button>
                   )}
                 </div>
-                {errors.password && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
+                {errors.password && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
@@ -1528,15 +1528,10 @@ export default function EmployeeInformationPage() {
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors group">
-                      <td className="p-4 font-bold text-secondary">{emp.employee_code || 'SYS'}</td>
+                       <td className="p-4 font-bold text-primary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-bold text-foreground">{emp.name}</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                          emp.user_types?.name?.includes('HR') ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border bg-slate-100 text-slate-600 border-slate-200`}>
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
@@ -1544,7 +1539,7 @@ export default function EmployeeInformationPage() {
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {emp.is_deleted ? (
-                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
+                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
                             <CheckCircle2 className="w-4 h-4 mr-1.5" /> Reactivate
                           </Button>
                         ) : (
@@ -1553,10 +1548,10 @@ export default function EmployeeInformationPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
                             {hasPermission('hr_employee_view', 'edit') && (
-                              <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            )}
+                               <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => editEmployee(emp)}>
+                                 <Edit className="w-4 h-4" />
+                               </Button>
+                             )}
                             {hasPermission('hr_employee_view', 'delete') && (
                               <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
                                 <Trash2 className="w-4 h-4" />

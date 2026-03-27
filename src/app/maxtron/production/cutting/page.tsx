@@ -278,7 +278,7 @@ export default function CuttingSealingPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <Scissors className="w-8 h-8 md:w-10 md:h-10 text-indigo-600 shrink-0" /> <span className="truncate">Cutting & Sealing</span>
+            <Scissors className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate text-primary">Cutting & Sealing</span>
           </h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium">Record and manage secondary processing output.</p>
         </div>
@@ -290,7 +290,7 @@ export default function CuttingSealingPage() {
                    resetForm();
                    setShowForm(true);
                 }} 
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-full shadow-lg shadow-indigo-200 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+                className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> New Cutting Entry
             </Button>
@@ -299,22 +299,22 @@ export default function CuttingSealingPage() {
       </div>
 
       {showForm && (
-        <Card className="border-indigo-200 shadow-xl animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-indigo-50 border-b border-indigo-100 py-4">
-            <CardTitle className="text-xl flex items-center gap-2 text-indigo-900">
+        <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-500 overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
+            <CardTitle className="text-xl flex items-center gap-2 text-primary">
               <Scissors className="w-5 h-5" /> {editingId ? 'Edit Processing Job' : 'Processing Job Entry'}
             </CardTitle>
-            <CardDescription className="text-indigo-700/70">{editingId ? 'Update details for the existing cutting & sealing job.' : 'Secondary conversion from extrusion batches to finished products.'}</CardDescription>
+            <CardDescription className="text-primary/70">{editingId ? 'Update details for the existing cutting & sealing job.' : 'Secondary conversion from extrusion batches to finished products.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-8">
             {/* Header Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-indigo-600" /> Cutting No</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Cutting No</label>
                 <Input value="AUTO-GENERATED" disabled className="bg-slate-50 font-mono text-xs" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-indigo-600" /> Date of Job</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-primary" /> Date of Job</label>
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
@@ -369,7 +369,7 @@ export default function CuttingSealingPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-indigo-600" /> Input Qty (Kg)</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Input Qty (Kg)</label>
                 <Input type="number" readOnly value={formData.input_qty} className="bg-slate-50 font-bold" />
               </div>
             </div>
@@ -377,10 +377,10 @@ export default function CuttingSealingPage() {
             {/* Line Items Sections */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-primary flex items-center gap-2">
                     <Box className="w-5 h-5" /> Finished Product Details
                 </h3>
-                <Button variant="outline" size="sm" onClick={addItem} className="text-indigo-600 border-indigo-200">
+                <Button variant="outline" size="sm" onClick={addItem} className="text-primary border-primary/20 hover:bg-primary/5">
                     <Plus className="w-4 h-4 mr-1" />  <span className="hidden md:block">Add Product</span>
                 </Button>
               </div>
@@ -430,7 +430,7 @@ export default function CuttingSealingPage() {
             {/* Summary and Remarks */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t font-sans">
                 <div className="space-y-2">
-                    <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-indigo-600" /> Remarks</label>
+                    <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-primary" /> Remarks</label>
                     <textarea 
                         className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         placeholder="Any specific observations or wastage details..."
@@ -445,7 +445,7 @@ export default function CuttingSealingPage() {
                     </div>
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-slate-600">Total Output (Cut & Sealed)</span>
-                        <span className="font-bold text-indigo-600">{totalOutput.toFixed(2)} Kg</span>
+                        <span className="font-bold text-primary">{totalOutput.toFixed(2)} Kg</span>
                     </div>
                     <div className="flex justify-between items-center border-t pt-2">
                         <span className="text-slate-600 font-bold uppercase text-xs">Total Wastage</span>
@@ -466,7 +466,7 @@ export default function CuttingSealingPage() {
               </Button>
               <Button 
                 onClick={saveConversion} 
-                className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-10 rounded-full shadow-lg shadow-indigo-200 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
               >
                 <Save className="w-4 h-4 mr-2" /> Save Cutting Entry
               </Button>
@@ -485,8 +485,8 @@ export default function CuttingSealingPage() {
           searchFields={['conversion_number', 'production_batches.batch_number']}
           searchPlaceholder="Search job or batch no..."
           renderRow={(c: any) => (
-            <tr key={c.id} className="hover:bg-indigo-50/50 border-b last:border-none transition-all group">
-              <td className="px-6 py-4 font-mono font-bold text-indigo-700 text-xs">
+            <tr key={c.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
+              <td className="px-6 py-4 font-mono font-bold text-primary text-xs">
                   {c.conversion_number}
                   <div className="text-[9px] text-slate-400 font-normal uppercase">{c.shift}</div>
               </td>
@@ -495,14 +495,14 @@ export default function CuttingSealingPage() {
               <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
                       {c.items?.map((it: any, i: number) => (
-                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800">
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
                               {it.finished_products?.product_name}: {it.quantity}Kg
                           </span>
                       )) || <span className="text-slate-300 text-xs">No items</span>}
                   </div>
               </td>
               <td className="px-6 py-4 text-xs">{c.input_qty}</td>
-              <td className="px-6 py-4 font-bold text-indigo-600">{c.output_qty}</td>
+              <td className="px-6 py-4 font-bold text-primary">{c.output_qty}</td>
               <td className="px-6 py-4 text-rose-600 font-bold">{c.wastage_qty}</td>
               <td className="px-6 py-4 text-xs font-medium text-slate-600">{c.operator?.name}</td>
               <td className="px-6 py-4 text-right">
@@ -512,7 +512,7 @@ export default function CuttingSealingPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleEdit(c)}
-                      className="h-8 w-8 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors"
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -522,7 +522,7 @@ export default function CuttingSealingPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleDelete(c.id)}
-                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                      className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

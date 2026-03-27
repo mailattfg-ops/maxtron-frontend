@@ -313,7 +313,7 @@ export default function CustomerCollectionPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                        <ArrowDownLeft className="text-emerald-500 w-8 h-8 md:w-10 md:h-10 p-1.5 bg-emerald-50 rounded-lg shrink-0" />
+                        <ArrowDownLeft className="text-primary w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 rounded-lg shrink-0" />
                         <span className="truncate">Customer Collections</span>
                     </h1>
                     <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Record payments received and allocate against invoices</p>
@@ -342,7 +342,7 @@ export default function CustomerCollectionPage() {
                         <td className="px-6 py-4">
                             <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase">{row.payment_mode}</span>
                         </td>
-                        <td className="px-6 py-4 font-black text-emerald-600">₹{Number(row.amount).toLocaleString()}</td>
+                        <td className="px-6 py-4 font-black text-primary">₹{Number(row.amount).toLocaleString()}</td>
                         <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold">
                                 <Edit className="w-4 h-4" />
@@ -366,7 +366,7 @@ export default function CustomerCollectionPage() {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-in zoom-in duration-300 flex flex-col">
-                        <div className="bg-emerald-600 p-6 text-white flex justify-between items-center shrink-0">
+                        <div className="bg-primary p-6 text-white flex justify-between items-center shrink-0">
                             <div>
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <Plus className="w-6 h-6" />
@@ -383,7 +383,7 @@ export default function CustomerCollectionPage() {
                             className="overflow-y-auto p-8 custom-scrollbar relative"
                         >
                             {showScrollArrow && (
-                                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-emerald-600 text-white p-2 rounded-full shadow-lg">
+                                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-primary text-white p-2 rounded-full shadow-lg">
                                     <ChevronDown className="w-6 h-6" />
                                 </div>
                             )}
@@ -407,7 +407,7 @@ export default function CustomerCollectionPage() {
                                         <div className="flex items-center justify-between">
                                             <label className="text-sm font-bold text-slate-700">Select Customer</label>
                                             {customerBalance !== null && (
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${customerBalance > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${customerBalance > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-50 text-slate-500'}`}>
                                                     {customerBalance > 0 ? `To Collect: ₹${customerBalance.toLocaleString()}` : `Advance Credit: ₹${Math.abs(customerBalance).toLocaleString()}`}
                                                 </span>
                                             )}
@@ -421,7 +421,7 @@ export default function CustomerCollectionPage() {
                                                     handleCustomerChange(val);
                                                 }}
                                             >
-                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm h-11">
+                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm h-11">
                                                     <SelectValue placeholder="Choose Customer" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white border-slate-200">
@@ -448,7 +448,7 @@ export default function CustomerCollectionPage() {
                                                         setFormData({ ...formData, amount: val });
                                                     }
                                                 }}
-                                                className="pl-10 h-14 bg-white border-2 border-emerald-500/20 rounded-xl text-lg font-black text-emerald-600"
+                                                className="pl-10 h-14 bg-white border-2 border-primary/20 rounded-xl text-lg font-black text-primary"
                                             />
                                         </div>
                                     </div>
@@ -458,10 +458,10 @@ export default function CustomerCollectionPage() {
                                     <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                                             <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                                <FileText className="w-4 h-4 text-emerald-500" />
+                                                <FileText className="w-4 h-4 text-primary" />
                                                 Pending Invoices
                                             </h3>
-                                            <div className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-100 uppercase tracking-widest">
+                                            <div className="text-[10px] font-black bg-slate-50 text-slate-600 px-3 py-1 rounded-full border border-slate-100 uppercase tracking-widest">
                                                 Total Outstanding: ₹{pendingInvoices.reduce((s, si) => s + Number(si.pending_amount), 0).toLocaleString()}
                                             </div>
                                         </div>
@@ -491,7 +491,7 @@ export default function CustomerCollectionPage() {
                                                                 <td className="px-6 py-4">{new Date(inv.invoice_date).toLocaleDateString()}</td>
                                                                 <td className="px-6 py-4 text-right font-medium">₹{Number(inv.bill_amount).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-right">
-                                                                    <span className="text-blue-600 font-black">₹{Number(inv.pending_amount).toLocaleString()}</span>
+                                                                    <span className="text-primary font-black">₹{Number(inv.pending_amount).toLocaleString()}</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 w-48 text-center">
                                                                     <Input 
@@ -517,19 +517,19 @@ export default function CustomerCollectionPage() {
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                                    <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                            <span className="text-xs font-bold text-emerald-800 uppercase tracking-tight">Allocated against Bills</span>
+                                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-bold text-primary uppercase tracking-tight">Allocated against Bills</span>
                                         </div>
-                                        <span className="font-black text-emerald-600">₹{totalAllocated.toLocaleString()}</span>
+                                        <span className="font-black text-primary">₹{totalAllocated.toLocaleString()}</span>
                                     </div>
-                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4 text-blue-600" />
-                                            <span className="text-xs font-bold text-blue-800 uppercase tracking-tight">Advance Balance</span>
+                                            <AlertCircle className="w-4 h-4 text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-800 uppercase tracking-tight">Advance Balance</span>
                                         </div>
-                                        <span className="font-black text-blue-600">₹{advanceAmount.toLocaleString()}</span>
+                                        <span className="font-black text-slate-600">₹{advanceAmount.toLocaleString()}</span>
                                     </div>
                                     <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between">
                                         <span className="text-xs font-black uppercase tracking-widest text-white/60">Total Received</span>
@@ -591,7 +591,7 @@ export default function CustomerCollectionPage() {
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="w-full md:flex-1 h-12 md:h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-black shadow-lg shadow-emerald-100 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/90 text-white rounded-full font-black shadow-lg shadow-primary/10 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
                                     >
                                         {editingId ? 'Update Collection' : 'Post Collection'}
                                     </Button>

@@ -12,6 +12,10 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { exportToExcel } from '@/utils/export';
+import { useRouter } from 'next/navigation';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { usePermission } from '@/hooks/usePermission';
+import { Edit, Trash2 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const BATCH_API = `${API_BASE}/api/maxtron/production/batches`;
@@ -22,8 +26,13 @@ export default function ProductionSummaryReport() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const router = useRouter();
+  const { confirm } = useConfirm();
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission('prod_extrusion_view', 'edit');
+  const canDelete = hasPermission('prod_extrusion_view', 'delete');
 
-  const { info, error } = useToast();
+  const { info, error, success } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -56,6 +65,7 @@ export default function ProductionSummaryReport() {
   const fetchReport = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
+    setLoading(true);
     try {
       const res = await fetch(`${BATCH_API}?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -66,6 +76,37 @@ export default function ProductionSummaryReport() {
       }
     } catch (err) {
       error('Failed to fetch report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/maxtron/production/extrusion?editId=${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this production batch?',
+      type: 'danger'
+    });
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${BATCH_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (result.success) {
+        success('Batch deleted successfully');
+        fetchReport();
+      } else {
+        error(result.message);
+      }
+    } catch (err) {
+      error('Error deleting batch');
     }
   };
 
@@ -98,11 +139,11 @@ export default function ProductionSummaryReport() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Production Summary</h1>
-          <p className="text-muted-foreground mt-1">Detailed view of extrusion output and batch efficiency.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Production Summary</h1>
+          <p className="text-muted-foreground mt-1 font-medium">Detailed view of extrusion output and batch efficiency.</p>
         </div>
         <Button onClick={downloadCSV} variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 shadow-sm transition-all duration-300">
           <Download className="w-4 h-4 text-primary" /> Export Excel
@@ -147,19 +188,43 @@ export default function ProductionSummaryReport() {
       <TableView
         title="Production Report"
         description="Filtered view of production efficiency."
-        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Output (Kg)']}
+        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Output (Kg)', 'Actions']}
         data={filtered}
         loading={loading}
         searchFields={['batch_number', 'finished_products.product_name']}
         renderRow={(b: any) => (
-          <tr key={b.id} className="hover:bg-primary/5 border-b last:border-none">
-            <td className="px-6 py-4 text-xs">{new Date(b.date).toLocaleDateString()}</td>
-            <td className="px-6 py-4 font-mono font-bold">{b.batch_number}</td>
-            <td className="px-6 py-4 ">{b.finished_products?.product_name}</td>
-            <td className="px-6 py-4 text-xs font-bold uppercase">{b.shift}</td>
-            <td className="px-6 py-4 text-xs">{b.machine_no}</td>
-            <td className="px-6 py-4">{b.raw_material_consumed_qty}</td>
-            <td className="px-6 py-4 font-bold text-primary">{b.extrusion_output_qty}</td>
+          <tr key={b.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
+            <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(b.date).toLocaleDateString()}</td>
+            <td className="px-6 py-4 font-mono font-bold text-primary">{b.batch_number}</td>
+            <td className="px-6 py-4 font-bold">{b.finished_products?.product_name || 'N/A'}</td>
+            <td className="px-6 py-4 text-xs font-bold uppercase text-slate-500">{b.shift}</td>
+            <td className="px-6 py-4 text-xs font-semibold text-slate-500">{b.machine_no}</td>
+            <td className="px-6 py-4 text-slate-600 font-medium">{b.raw_material_consumed_qty}</td>
+            <td className="px-6 py-4 font-black text-primary">{b.extrusion_output_qty}</td>
+            <td className="px-6 py-4 text-right">
+              <div className="flex items-center justify-end gap-2">
+                {canEdit && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleEdit(b.id)}
+                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleDelete(b.id)}
+                    className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </td>
           </tr>
         )}
       />

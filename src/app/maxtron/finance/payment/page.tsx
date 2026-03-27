@@ -389,9 +389,9 @@ export default function SupplierPaymentPage() {
                                         <div className="flex items-center justify-between">
                                             <label className="text-sm font-bold text-slate-700">Select Supplier</label>
                                             {supplierBalance !== null && (
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                    {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Prepaid Balance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
-                                                </span>
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-50 text-slate-500'}`}>
+                                                     {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Prepaid Balance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
+                                                 </span>
                                             )}
                                         </div>
                                         <div className="relative">
@@ -447,7 +447,7 @@ export default function SupplierPaymentPage() {
                                                 <FileText className="w-4 h-4 text-primary" />
                                                 Pending Invoices
                                             </h3>
-                                            <div className="text-[10px] font-black bg-amber-50 text-amber-600 px-3 py-1 rounded-full border border-amber-100 uppercase tracking-widest">
+                                            <div className="text-[10px] font-black bg-slate-50 text-slate-600 px-3 py-1 rounded-full border border-slate-100 uppercase tracking-widest">
                                                 Total Outstanding: ₹{pendingBills.reduce((s, b) => s + Number(b.pending_amount), 0).toLocaleString()}
                                             </div>
                                         </div>
@@ -480,7 +480,7 @@ export default function SupplierPaymentPage() {
                                                                 <td className="px-6 py-4">{new Date(bill.entry_date).toLocaleDateString()}</td>
                                                                 <td className="px-6 py-4 text-right font-medium">₹{Number(bill.bill_amount).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-right">
-                                                                    <span className="text-amber-600 font-black">₹{Number(bill.pending_amount).toLocaleString()}</span>
+                                                                    <span className="text-primary font-black">₹{Number(bill.pending_amount).toLocaleString()}</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 w-48">
                                                                     <div className="relative">
@@ -510,19 +510,19 @@ export default function SupplierPaymentPage() {
 
                                 {/* Summary Bar */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                                    <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                            <span className="text-xs font-bold text-emerald-800 uppercase tracking-tight">Allocated against Bills</span>
+                                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-bold text-primary uppercase tracking-tight">Allocated against Bills</span>
                                         </div>
-                                        <span className="font-black text-emerald-600">₹{totalAllocated.toLocaleString()}</span>
+                                        <span className="font-black text-primary">₹{totalAllocated.toLocaleString()}</span>
                                     </div>
-                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4 text-blue-600" />
-                                            <span className="text-xs font-bold text-blue-800 uppercase tracking-tight">Advance Payment</span>
+                                            <AlertCircle className="w-4 h-4 text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-800 uppercase tracking-tight">Advance Payment</span>
                                         </div>
-                                        <span className="font-black text-blue-600">₹{advanceAmount.toLocaleString()}</span>
+                                        <span className="font-black text-slate-600">₹{advanceAmount.toLocaleString()}</span>
                                     </div>
                                     <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between">
                                         <span className="text-xs font-black uppercase tracking-widest text-white/60">Total Payment</span>

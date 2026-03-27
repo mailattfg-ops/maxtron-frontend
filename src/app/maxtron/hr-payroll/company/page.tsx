@@ -236,7 +236,7 @@ export default function CompanyInformationPage() {
       <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="text-lg md:text-xl text-primary flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-secondary" />
+            <Building2 className="w-5 h-5 text-primary" />
             Edit Company Information
           </CardTitle>
           <CardDescription className="text-xs md:text-sm">Enter legal and structural details below.</CardDescription>
@@ -287,7 +287,7 @@ export default function CompanyInformationPage() {
                 
                 {/* Office */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Office Location
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -312,7 +312,7 @@ export default function CompanyInformationPage() {
 
                 {/* Manufacturing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Manufacturing Unit
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,7 +337,7 @@ export default function CompanyInformationPage() {
 
                 {/* Billing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-green-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Billing Address
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -398,7 +398,7 @@ export default function CompanyInformationPage() {
       </CardContent>
       <CardFooter className="flex justify-end gap-3 border-t bg-slate-50/50 pt-4 mt-8">
         <Button variant="outline" onClick={cancelEdit}>Cancel</Button>
-        <Button onClick={saveCompany} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={saveCompany} className="bg-primary hover:bg-primary/95">
           <Save className="mr-2 h-4 w-4" />
           Save Changes
         </Button>
@@ -450,7 +450,7 @@ export default function CompanyInformationPage() {
                             <Card className="border-slate-200 overflow-hidden">
                                 <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row justify-between items-start py-5">
                                     <div className="flex items-center gap-4">
-                                        <div className="bg-blue-100 text-blue-700 p-3 rounded-xl border border-blue-200">
+                                        <div className="bg-primary/5 text-primary p-3 rounded-xl border border-primary/10 font-bold">
                                             <Building2 className="h-8 w-8" />
                                         </div>
                                         <div>
@@ -460,7 +460,7 @@ export default function CompanyInformationPage() {
                                     </div>
                                     <div className="flex gap-2">
                                         {canEdit && (
-                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
+                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-primary hover:text-primary/95 border-primary/10 hover:bg-primary/5 font-bold">
                                                 <Edit className="h-4 w-4 md:mr-2" /> <span className="hidden md:block">Edit Details</span>
                                             </Button>
                                         )}
@@ -496,15 +496,15 @@ export default function CompanyInformationPage() {
                                             <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2"><MapPin className="h-4 w-4" /> Locations</h4>
                                             
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">OFFICE</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">OFFICE</span>
                                                 {renderAddressDisplay(company, 'OFFICE')}
                                             </div>
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">MANUFACTURING UNIT</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">MANUFACTURING UNIT</span>
                                                 {renderAddressDisplay(company, 'MANUFACTURING_UNIT')}
                                             </div>
                                             <div className="text-sm pb-1 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">BILLING</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">BILLING</span>
                                                 {renderAddressDisplay(company, 'BILLING')}
                                             </div>
                                         </div>

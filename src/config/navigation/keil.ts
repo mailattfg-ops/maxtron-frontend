@@ -20,8 +20,8 @@ export const keilSidebarMenu: NavItem[] = [
         permissionKey: "hr_view",
         children: [
             { title: "Employee Management", path: "/keil/hr-payroll/employee", permissionKey: "hr_employee_view" },
-            { title: "Branch Registry", path: "/keil/operations/branch", permissionKey: "hr_branch_view" },
             { title: "Company Information", path: "/keil/hr-payroll/company", permissionKey: "hr_company_view" },
+            { title: "Branch Registry", path: "/keil/operations/branch", permissionKey: "hr_branch_view" },
             { title: "Attendance Details", path: "/keil/hr-payroll/attendance", permissionKey: "hr_attendance_view" },
             { title: "Attendance Summary", path: "/keil/hr-payroll/reports/attendance", permissionKey: "hr_attendance_view" },
         ]

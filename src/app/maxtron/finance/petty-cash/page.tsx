@@ -168,7 +168,7 @@ export default function PettyCashPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                        <Wallet className="text-amber-500 w-8 h-8 md:w-10 md:h-10 p-1.5 bg-amber-500/10 rounded-lg shrink-0" />
+                        <Wallet className="text-primary w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 rounded-lg shrink-0" />
                         <span className="truncate">Petty Cash Management</span>
                     </h1>
                     <p className="text-slate-500 text-xs md:text-sm font-medium">Daily tracking of small operational expenditures</p>
@@ -200,13 +200,13 @@ export default function PettyCashPage() {
                                 </span>
                             </td>
                             <td className="px-6 py-4 font-bold">{row.paid_to}</td>
-                            <td className="px-6 py-4 font-black text-orange-600">₹{Number(row.amount).toLocaleString()}</td>
+                            <td className="px-6 py-4 font-black text-primary">₹{Number(row.amount).toLocaleString()}</td>
                             <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold">
+                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-primary hover:bg-primary/5 rounded-lg font-bold">
                                         <Edit className="w-4 h-4" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(row.id)} className="text-rose-600 hover:bg-rose-50 rounded-lg font-bold">
+                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(row.id)} className="text-destructive hover:bg-destructive/5 rounded-lg font-bold">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -329,7 +329,7 @@ export default function PettyCashPage() {
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="w-full md:flex-1 h-12 md:h-14 bg-secondary hover:bg-secondary/95 text-white rounded-full font-black transition-all shadow-lg shadow-secondary/20 hover:scale-105 active:scale-95 order-1 md:order-2"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 order-1 md:order-2"
                                     >
                                         {editingId ? 'Update Record' : 'Record Expense'}
                                     </Button>

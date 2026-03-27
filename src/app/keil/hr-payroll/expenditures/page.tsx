@@ -523,16 +523,17 @@ export default function ExpendituresPage() {
                 </Card>
             ) : (
                 <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8">
+                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
                         <div>
                             <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Expenditure Ledger</CardTitle>
                             <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Complete audit trail of documented expenses.
                             </CardDescription>
                         </div>
-                    </CardHeader>
+                    </CardHeader> */}
                     <CardContent className="p-0">
                         <TableView 
+                            title="Complete audit trail of documented expenses."
                             searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
                             headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', '']}
                             data={expenditures}

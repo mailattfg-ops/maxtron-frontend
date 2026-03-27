@@ -121,11 +121,11 @@ export default function FGStockListPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Available Stock</p>
-                <h3 className="text-3xl font-black text-emerald-600 mt-1">
+                <h3 className="text-3xl font-black text-primary mt-1">
                     {stock.reduce((acc, curr) => acc + Number(curr.balance), 0).toLocaleString()} <span className="text-[10px]">Kg</span>
                 </h3>
               </div>
-              <CheckCircle2 className="w-8 h-8 text-emerald-500/20" />
+              <CheckCircle2 className="w-8 h-8 text-primary/20 group-hover:scale-110 transition-transform" />
             </div>
           </CardContent>
         </Card>
@@ -135,11 +135,11 @@ export default function FGStockListPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Produced</p>
-                <h3 className="text-3xl font-black text-blue-600 mt-1">
+                <h3 className="text-3xl font-black text-primary mt-1">
                     {stock.reduce((acc, curr) => acc + Number(curr.produced), 0).toLocaleString()} <span className="text-[10px]">Kg</span>
                 </h3>
               </div>
-              <TrendingUp className="w-8 h-8 text-blue-500/20" />
+              <TrendingUp className="w-8 h-8 text-primary/20 group-hover:scale-110 transition-transform" />
             </div>
           </CardContent>
         </Card>
@@ -153,18 +153,18 @@ export default function FGStockListPage() {
         loading={loading}
         searchFields={['product_name', 'product_code']}
         renderRow={(s: any) => (
-          <tr key={s.id} className="hover:bg-slate-50 transition-all group border-b border-indigo-50 last:border-none">
+          <tr key={s.id} className="hover:bg-primary/5 transition-all group border-b border-primary/5 last:border-none">
             <td className="px-6 py-4">
-               <div className="font-extrabold text-indigo-950">{s.product_name}</div>
+               <div className="font-extrabold text-primary">{s.product_name}</div>
                <div className="flex items-center mt-1.5 gap-2">
-                 <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 uppercase">{s.product_code}</span>
+                 <span className="text-[9px] font-black bg-primary/5 text-primary px-2 py-0.5 rounded-full border border-primary/10 uppercase tracking-wider">{s.product_code}</span>
                  <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
                     <ArrowRightLeft className="w-2 h-2" /> {s.size} | {s.color}
                  </span>
                </div>
             </td>
             <td className="px-6 py-4">
-               <div className="flex items-center text-emerald-600 font-black">
+               <div className="flex items-center text-primary font-black">
                  <TrendingUp className="w-3.5 h-3.5 mr-1" /> {Number(s.produced).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
                </div>
                <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TOTAL PRODUCTION</div>
@@ -183,14 +183,14 @@ export default function FGStockListPage() {
                <div className="flex items-center gap-2 mt-1">
                  <span className="text-[9px] font-bold text-slate-500">Threshold: {s.stock_threshold || 50} Kg</span>
                </div>
-               <div className="mt-1.5 w-full bg-slate-100/50 rounded-full h-2 overflow-hidden border border-slate-100">
-                  <div className={`h-full ${s.balance < (s.stock_threshold || 50) ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/s.produced)*100 || 0, 100)}%` }}></div>
+               <div className="mt-1.5 w-full bg-slate-100/50 rounded-full h-1.5 overflow-hidden border border-slate-100">
+                  <div className={`h-full ${s.balance < (s.stock_threshold || 50) ? 'bg-amber-400' : 'bg-primary'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/s.produced)*100 || 0, 100)}%` }}></div>
                </div>
             </td>
             <td className="px-6 py-4">
                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border-2 ${
                  s.balance < (s.stock_threshold || 50) ? 'bg-amber-50 text-amber-600 border-amber-200' : 
-                 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                 'bg-primary/10 text-primary border-primary/20'
                }`}>
                  {s.balance < (s.stock_threshold || 50) ? 'LOW STOCK' : 'AVAILABLE'}
                </span>

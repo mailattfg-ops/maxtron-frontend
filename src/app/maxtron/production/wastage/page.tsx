@@ -213,7 +213,7 @@ export default function DamagesWastagePage() {
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Damages </h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Damages & Wastage</h1>
           <p className="text-muted-foreground mt-1">Track scrap and damaged goods during various production phases.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -228,7 +228,7 @@ export default function DamagesWastagePage() {
                 date: new Date().toISOString().split('T')[0]
               });
               setShowForm(true);
-            }} className="shadow-sm hover:shadow-md transition-all gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
+            }} className="shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-2 bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-6 h-10 md:h-11">
               <Plus className="w-4 h-4" /> Record New Damages
             </Button>
           )}
@@ -236,21 +236,21 @@ export default function DamagesWastagePage() {
       </div>
 
       {showForm && (
-        <Card className="border-rose-200 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-rose-50 border-b border-rose-100">
-            <CardTitle className="text-xl flex items-center gap-2 text-rose-900">
+        <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b border-primary/10">
+            <CardTitle className="text-xl flex items-center gap-2 text-primary">
               <AlertTriangle className="w-5 h-5" /> {editingId ? 'Edit Scrap Record' : 'Scrap Record Entry'}
             </CardTitle>
-            <CardDescription className="text-rose-700/70">{editingId ? 'Update details for the existing wastage record.' : 'Pinpoint wastage events for extrusion, cutting, or packing stages.'}</CardDescription>
+            <CardDescription className="text-primary/70">{editingId ? 'Update details for the existing wastage record.' : 'Pinpoint wastage events for extrusion, cutting, or packing stages.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-rose-600" /> Date</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-primary" /> Date</label>
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-rose-600" /> Production Stage</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Production Stage</label>
                 <Select value={formData.stage} onValueChange={(val) => setFormData({ ...formData, stage: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Stage" />
@@ -264,11 +264,11 @@ export default function DamagesWastagePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-rose-600" />Damages Qty (Kg)</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" />Damages Qty (Kg)</label>
                 <Input type="number" min={0} step="0.001" placeholder="0.000" value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-rose-600" /> Reason Code</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-primary" /> Reason Code</label>
                 <Select value={formData.reason_code} onValueChange={(val) => setFormData({ ...formData, reason_code: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Reason" />
@@ -285,13 +285,13 @@ export default function DamagesWastagePage() {
                 </Select>
               </div>
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-rose-600" /> Remarks / Details</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-primary" /> Remarks / Details</label>
                 <Input placeholder="Describe the loss event..." value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
               </div>
             </div>
             <div className="mt-8 flex justify-end gap-3 border-t pt-6">
-              <Button variant="outline" onClick={() => setShowForm(false)} className="px-6">Cancel</Button>
-              <Button onClick={saveWastage} className="px-8 shadow-sm hover:shadow-md gap-2 bg-rose-600 hover:bg-rose-700 text-white font-medium">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="px-8 rounded-full h-11">Cancel</Button>
+              <Button onClick={saveWastage} className="px-10 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 gap-2 bg-primary hover:bg-primary/95 text-white font-bold rounded-full h-11">
                 <Save className="w-4 h-4" /> {editingId ? 'Update Scrap Entry' : 'Save Scrap Entry'}
               </Button>
             </div>
@@ -309,11 +309,11 @@ export default function DamagesWastagePage() {
           searchFields={['stage', 'reason_code', 'remarks']}
           searchPlaceholder="Search reason or stage..."
           renderRow={(w: any) => (
-            <tr key={w.id} className="hover:bg-rose-50/50 border-b last:border-none transition-all">
+            <tr key={w.id} className="hover:bg-primary/5 border-b last:border-none transition-all">
               <td className="px-6 py-4 text-xs">{new Date(w.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold text-rose-700">{w.stage}</td>
+              <td className="px-6 py-4 font-bold text-primary">{w.stage}</td>
               <td className="px-6 py-4 font-mono font-black">{w.wastage_qty} Kg</td>
-              <td className="px-6 py-4 underline decoration-rose-200 underline-offset-4 font-medium">{w.reason_code}</td>
+              <td className="px-6 py-4 underline decoration-primary/20 underline-offset-4 font-bold text-primary">{w.reason_code}</td>
               <td className="px-6 py-4 text-xs text-muted-foreground italic">{w.remarks}</td>
               <td className="px-6 py-4 text-right">
                 <div className="flex items-center justify-end gap-2">
@@ -322,7 +322,7 @@ export default function DamagesWastagePage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleEdit(w)}
-                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -332,7 +332,7 @@ export default function DamagesWastagePage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleDelete(w.id)}
-                      className="h-8 w-8 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                      className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

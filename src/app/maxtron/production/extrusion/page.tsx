@@ -289,7 +289,7 @@ export default function ExtrusionPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <Zap className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate">Production (Extrusion)</span>
+            <Zap className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate text-primary">Production (Extrusion)</span>
           </h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium">Record extrusion output by shift and operator.</p>
         </div>

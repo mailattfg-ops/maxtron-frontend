@@ -109,8 +109,8 @@ export default function Dashboard() {
             label: 'Monthly Sales', 
             value: `₹${Number(data?.stats?.totalSales || 0).toLocaleString()}`, 
             icon: TrendingUp, 
-            color: 'text-emerald-600', 
-            bg: 'bg-emerald-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: `${(data?.stats?.salesTrend || 0).toFixed(1)}%`,
             isPos: (data?.stats?.salesTrend || 0) >= 0
         },
@@ -118,8 +118,8 @@ export default function Dashboard() {
             label: 'Pending Orders', 
             value: data?.stats?.pendingOrdersCount || '0', 
             icon: ShoppingCart, 
-            color: 'text-blue-600', 
-            bg: 'bg-blue-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: '+5.2%',
             isPos: true
         },
@@ -127,8 +127,8 @@ export default function Dashboard() {
             label: 'Total Production', 
             value: `${Number(data?.stats?.totalProduction || 0).toLocaleString()} KG`, 
             icon: Settings, 
-            color: 'text-amber-600', 
-            bg: 'bg-amber-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: `${(data?.stats?.productionTrend || 0).toFixed(1)}%`,
             isPos: (data?.stats?.productionTrend || 0) >= 0
         },
@@ -136,8 +136,8 @@ export default function Dashboard() {
             label: 'Active Staff', 
             value: data?.stats?.presentToday !== undefined ? `${data?.stats?.presentToday}/${data?.stats?.employeeCount || 0}` : (data?.stats?.employeeCount || '0'), 
             icon: Users, 
-            color: 'text-violet-600', 
-            bg: 'bg-violet-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: '0.0%',
             isPos: true
         },
@@ -171,7 +171,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
                     <Card key={i} className="relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-none bg-card shadow-sm ring-1 ring-border/50">
-                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} ${theme === 'dark' ? 'opacity-10' : 'opacity-40'} rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
+                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} opacity-40 rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
                         <CardHeader className="pb-2">
                             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-2 group-hover:rotate-6 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
@@ -213,8 +213,8 @@ export default function Dashboard() {
                                         <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#64748b" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#64748b" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
@@ -236,7 +236,7 @@ export default function Dashboard() {
                                     cursor={{ stroke: theme === 'dark' ? '#334155' : '#e2e8f0', strokeWidth: 2 }}
                                 />
                                 <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#4f46e5' }} />
-                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#10b981' }} />
+                                <Area type="monotone" dataKey="income" stroke="#64748b" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#64748b' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -272,8 +272,8 @@ export default function Dashboard() {
                                     contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
                                     cursor={{ fill: theme === 'dark' ? '#1e293b' : '#f1f5f9' }}
                                 />
-                                <Bar dataKey="present" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={20} />
-                                <Bar dataKey="absent" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="present" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="absent" fill="#94a3b8" radius={[6, 6, 0, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
