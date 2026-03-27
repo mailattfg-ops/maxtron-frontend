@@ -166,7 +166,12 @@ export default function RouteRegistryPage() {
                 resetForm();
                 fetchRoutes(currentCompanyId);
             } else {
-                error(data.message);
+                // Meaningful Toast interception
+                if (data.message?.includes('duplicate key value violates unique constraint') || data.message?.includes('keil_routes_route_code_company_id_key')) {
+                    error("Duplicate Route Code: This code is already registered for your branch. Please use a unique route code.");
+                } else {
+                    error(data.message || "An unexpected error occurred while saving the route.");
+                }
             }
         } catch (err: any) {
             error(err.message);
@@ -197,6 +202,8 @@ export default function RouteRegistryPage() {
                 if (data.success) {
                     success("Route deleted.");
                     fetchRoutes(currentCompanyId);
+                } else {
+                    error(data.message || "Failed to delete route. It may have active assignments.");
                 }
             } catch (err: any) {
                 error(err.message);
@@ -313,7 +320,7 @@ export default function RouteRegistryPage() {
                             <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
                             <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
                             <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex md:justify-end items-center gap-2">
                                     {canEdit && (
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
                                             <Edit className="w-4 h-4" />

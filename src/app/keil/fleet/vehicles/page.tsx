@@ -67,7 +67,7 @@ export default function VehicleMasterPage() {
     const [filterMode, setFilterMode] = useState<'all' | 'compliance'>('all');
     const [isAuditing, setIsAuditing] = useState(false);
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<any>({
         registration_number: '',
         make: '',
         model: '',
@@ -92,7 +92,7 @@ export default function VehicleMasterPage() {
         gps_company: '',
         gps_install_date: '',
         purpose: 'BMW Collection',
-        seating_capacity: 0,
+        seating_capacity: '',
         is_active: true,
         company_id: ''
     });
@@ -118,7 +118,7 @@ export default function VehicleMasterPage() {
                 if (activeCo) {
                     coId = activeCo.id;
                     setCurrentCompanyId(coId);
-                    setFormData(prev => ({ ...prev, company_id: coId }));
+                    setFormData((prev: any) => ({ ...prev, company_id: coId }));
                 }
             }
 
@@ -239,7 +239,7 @@ export default function VehicleMasterPage() {
             gps_company: v.gps_company || '',
             gps_install_date: v.gps_install_date || '',
             purpose: v.purpose || 'BMW Collection',
-            seating_capacity: v.seating_capacity || 0,
+            seating_capacity: v.seating_capacity || '',
             is_active: v.is_active ?? true,
             company_id: currentCompanyId
         });
@@ -319,7 +319,7 @@ export default function VehicleMasterPage() {
             gps_company: '',
             gps_install_date: '',
             purpose: 'BMW Collection',
-            seating_capacity: 0,
+            seating_capacity: '',
             is_active: true,
             company_id: currentCompanyId
         });
@@ -328,7 +328,7 @@ export default function VehicleMasterPage() {
 
     const handleInputChange = (e: any) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ 
+        setFormData((prev: any) => ({ 
             ...prev, 
             [name]: type === 'checkbox' ? checked : value 
         }));
@@ -427,7 +427,7 @@ export default function VehicleMasterPage() {
                                     <Select 
                                         required 
                                         value={formData.vehicle_type} 
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, vehicle_type: val }))}
+                                        onValueChange={(val) => setFormData((prev:any) => ({ ...prev, vehicle_type: val }))}
                                     >
                                         <SelectTrigger className="w-full h-10 md:h-12 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium">
                                             <SelectValue placeholder="Select Type" />
@@ -455,7 +455,7 @@ export default function VehicleMasterPage() {
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Usage Purpose</label>
                                     <Select 
                                         value={formData.purpose} 
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, purpose: val }))}
+                                        onValueChange={(val) => setFormData((prev: any) => ({ ...prev, purpose: val }))}
                                     >
                                         <SelectTrigger className="w-full h-10 md:h-12 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium">
                                             <SelectValue placeholder="Select Purpose" />
@@ -476,7 +476,7 @@ export default function VehicleMasterPage() {
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Fuel Type</label>
                                     <Select 
                                         value={formData.fuel_type} 
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, fuel_type: val }))}
+                                        onValueChange={(val) => setFormData((prev: any) => ({ ...prev, fuel_type: val }))}
                                     >
                                         <SelectTrigger className="w-full h-10 md:h-12 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium">
                                             <SelectValue placeholder="Select Fuel" />
@@ -539,7 +539,7 @@ export default function VehicleMasterPage() {
                                     <label className="text-[10px] md:text-xs font-semibold text-muted-foreground pl-1 uppercase tracking-wider">Operational Status</label>
                                     <Select 
                                         value={formData.status} 
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
+                                        onValueChange={(val) => setFormData((prev: any) => ({ ...prev, status: val }))}
                                     >
                                         <SelectTrigger className="w-full h-10 md:h-12 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold">
                                             <SelectValue placeholder="Select Status" />
