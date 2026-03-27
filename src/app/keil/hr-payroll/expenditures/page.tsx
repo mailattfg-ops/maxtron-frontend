@@ -364,7 +364,7 @@ export default function ExpendituresPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 <div className="space-y-3">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-indigo-500" /> Execution Date
+                                        <Calendar className="w-4 h-4 text-primary/80" /> Execution Date
                                     </label>
                                     <Input 
                                         type="date"

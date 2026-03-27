@@ -426,9 +426,9 @@ export default function DailyCollectionEntryPage() {
                             <span className="text-[9px] font-black uppercase text-slate-700 tracking-widest">White Vol.</span>
                             <span className="text-2xl font-black text-slate-800">{totals.white} Boxes</span>
                         </div>
-                        <div className="bg-indigo-500/10 border border-indigo-200 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-indigo-700 tracking-widest">Bottle Vol.</span>
-                            <span className="text-2xl font-black text-indigo-800">{totals.bottle} Units</span>
+                        <div className="bg-primary/80/10 border border-primary/20 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
+                            <span className="text-[9px] font-black uppercase text-primary tracking-widest">Bottle Vol.</span>
+                            <span className="text-2xl font-black text-primary">{totals.bottle} Units</span>
                         </div>
                     </div>
 
@@ -448,7 +448,7 @@ export default function DailyCollectionEntryPage() {
                                     {assignedHces.map(a => {
                                         const isVisited = entries[a.hce_id]?.is_visited;
                                         return (
-                                            <tr key={a.id} className={`group border-b border-slate-50 transition-all ${isVisited ? 'bg-indigo-50/30' : 'hover:bg-slate-50'}`}>
+                                            <tr key={a.id} className={`group border-b border-slate-50 transition-all ${isVisited ? 'bg-primary/10/30' : 'hover:bg-slate-50'}`}>
                                                 <td className="px-6 py-6 text-center">
                                                     <div 
                                                         onClick={() => updateEntry(a.hce_id, 'is_visited', !isVisited)}

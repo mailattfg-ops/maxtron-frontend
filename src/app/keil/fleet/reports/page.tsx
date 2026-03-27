@@ -92,7 +92,7 @@ export default function FleetReportsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 md:p-8 rounded-xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 font-heading">
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
-                        <BarChart3 className="w-10 h-10 text-indigo-600" />
+                        <BarChart3 className="w-10 h-10 text-primary" />
                         Fleet Intelligence
                     </h1>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2 italic">
@@ -103,7 +103,7 @@ export default function FleetReportsPage() {
                     <Button variant="outline" className="flex-1 md:flex-none rounded-full border-slate-200 font-bold uppercase tracking-widest text-xs h-11 px-6 active:scale-95 transition-all">
                         <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">PDF Protocol</span><span className="sm:hidden">PDF</span>
                     </Button>
-                    <Button className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-black uppercase tracking-widest text-xs h-11 px-8 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                    <Button className="flex-1 md:flex-none bg-primary hover:bg-primary text-white rounded-full font-black uppercase tracking-widest text-xs h-11 px-8 shadow-lg shadow-primary/15 active:scale-95 transition-all">
                         <span className="hidden sm:inline">Export Dataset</span><span className="sm:hidden">Export</span>
                     </Button>
                 </div>
@@ -145,8 +145,8 @@ export default function FleetReportsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                  <Card className="lg:col-span-2 border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
-                        <div className="flex justify-between items-center">
+                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-8 rounded-[3rem] ">
+                        <div className="grid md:flex justify-between items-center gap-4 md:gap-0">
                             <div>
                                 <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Fleet Performance Table</CardTitle>
                                 <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Granular analysis per logistical unit.</CardDescription>
@@ -164,14 +164,14 @@ export default function FleetReportsPage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+                            <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
                                     <tr>
-                                        <th className="px-8 py-5">Vehicle ID</th>
-                                        <th className="px-8 py-5 text-center">Fuel Efficiency</th>
-                                        <th className="px-8 py-5 text-center">Maintenance Cost</th>
-                                        <th className="px-8 py-5 text-center">Distance Clout</th>
-                                        <th className="px-8 py-5 text-right">Performance Index</th>
+                                        <th className="px-6 py-4">Vehicle ID</th>
+                                        <th className="px-6 py-4 text-center">Fuel Efficiency</th>
+                                        <th className="px-6 py-4 text-center">Maintenance Cost</th>
+                                        <th className="px-6 py-4 text-center">Distance Clout</th>
+                                        <th className="px-6 py-4 text-right">Performance Index</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -196,9 +196,9 @@ export default function FleetReportsPage() {
                                             <td className="px-8 py-6 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: '85%' }} />
+                                                        <div className="h-full bg-primary/80 rounded-full" style={{ width: '85%' }} />
                                                     </div>
-                                                    <span className="text-xs font-black text-indigo-600">85%</span>
+                                                    <span className="text-xs font-black text-primary">85%</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -216,7 +216,7 @@ export default function FleetReportsPage() {
 
                  <div className="space-y-8">
                      <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-slate-900 text-white p-8 group relative">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/80/10 rounded-full blur-3xl -mr-16 -mt-16" />
                         <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-8 flex items-center gap-2">
                             <Clock className="w-4 h-4" /> Next Maintenance Window
                         </h3>
@@ -244,12 +244,12 @@ export default function FleetReportsPage() {
                                 </div>
                             )}
                         </div>
-                        <Button className="w-full mt-10 h-14 rounded-2xl bg-white text-slate-900 hover:bg-indigo-50 font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-500/10">
+                        <Button className="w-full mt-10 h-14 rounded-2xl bg-white text-slate-900 hover:bg-primary/10 font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/80/10">
                             Schedule Technical Audit
                         </Button>
                      </Card>
 
-                     <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-indigo-600 text-white p-8 relative overflow-hidden">
+                     <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-primary text-white p-8 relative overflow-hidden">
                         <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-24 -mb-24" />
                         <div className="relative z-10">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Environmental Impact</h3>

@@ -129,7 +129,7 @@ export default function ScorecardPage() {
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic text-center">Visualization Matrix Interface Coming Soon</p>
                     </div>
                 </div>
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-indigo-900 overflow-hidden relative">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-primary overflow-hidden relative">
                     <DollarSign className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
                     <h3 className="text-xl font-black mb-6 relative tracking-tight">Executive Summary</h3>
                     <ul className="space-y-4 relative">

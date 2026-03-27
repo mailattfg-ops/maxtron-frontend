@@ -310,19 +310,19 @@ export default function RouteRegistryPage() {
                     loading={loading}
                     searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
                     renderRow={(r: any) => (
-                        <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
+                        <tr key={r.id} className="hover:bg-primary/5 transition-colors group border-b last:border-0 border-slate-100">
                             <td className="px-6 py-4">
-                                <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
+                                <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider">{r.route_code}</span>
                             </td>
                             <td className="px-6 py-4">
                                 <span className="font-bold text-slate-700">{r.route_name}</span>
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
-                            <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
+                            <td className="px-6 py-4 font-medium text-primary">{r.branch_name}</td>
                             <td className="px-6 py-4">
                                 <div className="flex md:justify-end items-center gap-2">
                                     {canEdit && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-primary hover:text-primary/80">
                                             <Edit className="w-4 h-4" />
                                         </Button>
                                     )}
@@ -332,7 +332,7 @@ export default function RouteRegistryPage() {
                                         </Button>
                                     )}
                                     {canEdit && (
-                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
+                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-primary/20 text-primary hover:bg-primary/5" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
                                             Manage HCEs <ArrowRight className="w-3 h-3" />
                                         </Button>
                                     )}

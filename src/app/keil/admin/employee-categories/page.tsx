@@ -171,7 +171,7 @@ export default function EmployeeCategoriesPage() {
         }
     };
 
-    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-indigo-600" /></div>;
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
     if (!canView) return (
         <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
@@ -188,7 +188,7 @@ export default function EmployeeCategoriesPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-heading">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-                        <Tags className="w-8 h-8 text-indigo-600 p-1.5 bg-indigo-50 rounded-lg" />
+                        <Tags className="w-8 h-8 text-primary p-1.5 bg-primary/10 rounded-lg" />
                         Employee Categories
                     </h1>
                     <p className="text-slate-500 text-sm mt-1 italic">Configure employee classification groups for HR and Payroll.</p>
@@ -208,9 +208,9 @@ export default function EmployeeCategoriesPage() {
 
 
             {showForm && (
-                <Card className="border-indigo-100 shadow-xl overflow-hidden">
-                    <CardHeader className="bg-indigo-50/50 border-b">
-                        <CardTitle className="text-indigo-900 text-lg">
+                <Card className="border-primary/15 shadow-xl overflow-hidden">
+                    <CardHeader className="bg-primary/10/50 border-b">
+                        <CardTitle className="text-primary text-lg">
                             {editingId ? "Modify Classification" : "New Classification Entry"}
                         </CardTitle>
                     </CardHeader>
@@ -222,11 +222,11 @@ export default function EmployeeCategoriesPage() {
                                     placeholder="E.g. Management, Skilled Worker, Staff..." 
                                     value={formData.category_name} 
                                     onChange={e => setFormData(prev => ({ ...prev, category_name: e.target.value }))}
-                                    className="h-11 border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-indigo-400 focus:outline-none"
+                                    className="h-11 border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/60 focus:outline-none"
                                     required
                                 />
                             </div>
-                            <Button type="submit" className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                            <Button type="submit" className="h-11 px-8 gap-2 bg-primary hover:bg-primary shadow-lg shadow-primary/20">
                                 <Save className="w-4 h-4" /> {editingId ? "Update" : "Save Category"}
                             </Button>
                         </form>
@@ -242,7 +242,7 @@ export default function EmployeeCategoriesPage() {
                 loading={loading}
                 searchFields={['category_name']}
                 renderRow={(cat: any) => (
-                    <tr key={cat.id} className="hover:bg-indigo-50/30 transition-all border-b last:border-0 group">
+                    <tr key={cat.id} className="hover:bg-primary/10/30 transition-all border-b last:border-0 group">
                         <td className="px-6 py-4">
                             <div className="font-bold text-slate-800">{cat.category_name}</div>
                         </td>
@@ -255,7 +255,7 @@ export default function EmployeeCategoriesPage() {
                             <div className="flex items-center justify-end gap-2">
                                 {cat.company_id ? (
                                     <>
-                                        {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>}
+                                        {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/15"><Edit2 className="w-3.5 h-3.5" /></Button>}
                                         {canDelete && <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>}
                                     </>
                                 ) : (

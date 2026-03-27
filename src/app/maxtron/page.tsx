@@ -199,7 +199,7 @@ export default function Dashboard() {
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
                             <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                                <ChartIcon className="w-6 h-6 text-indigo-500" /> Revenue vs Collections
+                                <ChartIcon className="w-6 h-6 text-primary/80" /> Revenue vs Collections
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium italic">Financial performance monitoring</CardDescription>
                         </div>
@@ -209,8 +209,8 @@ export default function Dashboard() {
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#001b74" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#001b74" stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#64748b" stopOpacity={0.1}/>
@@ -235,7 +235,7 @@ export default function Dashboard() {
                                     contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
                                     cursor={{ stroke: theme === 'dark' ? '#334155' : '#e2e8f0', strokeWidth: 2 }}
                                 />
-                                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#4f46e5' }} />
+                                <Area type="monotone" dataKey="sales" stroke="#001b74" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#001b74' }} />
                                 <Area type="monotone" dataKey="income" stroke="#64748b" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#64748b' }} />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -272,7 +272,7 @@ export default function Dashboard() {
                                     contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
                                     cursor={{ fill: theme === 'dark' ? '#1e293b' : '#f1f5f9' }}
                                 />
-                                <Bar dataKey="present" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="present" fill="#001b74" radius={[6, 6, 0, 0]} barSize={20} />
                                 <Bar dataKey="absent" fill="#94a3b8" radius={[6, 6, 0, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
@@ -383,7 +383,7 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-sm ring-1 ring-blue-100 bg-gradient-to-br from-primary to-indigo-900 rounded-3xl overflow-hidden text-white group">
+                    <Card className="border-none shadow-sm ring-1 ring-blue-100 bg-gradient-to-br from-primary to-primary rounded-3xl overflow-hidden text-white group">
                         <CardContent className="p-8 space-y-6 relative overflow-hidden h-full flex flex-col justify-center">
                             <Wallet className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                             <div>

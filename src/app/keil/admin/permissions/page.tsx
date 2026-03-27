@@ -189,7 +189,7 @@ export default function KeilPermissionConsolePage() {
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-secondary/10 text-secondary rounded-lg shrink-0" /> 
-            <span className="truncate">KEIL Permissions</span>
+            <span className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading flex items-center gap-2">KEIL Permissions</span>
           </h1>
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Configure access based on Sidebar Menu structure.</p>
         </div>
@@ -215,7 +215,7 @@ export default function KeilPermissionConsolePage() {
            <div className="bg-primary/5 p-8 rounded-full mb-6">
               <Lock className="w-20 h-20 text-primary/20" />
            </div>
-           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest">Select a role to manage access</p>
+           <p className="text-primary/40 font-black text-2xl uppercase tracking-widest text-center">Select a role to manage access</p>
         </div>
       ) : loading ? (
         <div className="h-96 flex items-center justify-center">

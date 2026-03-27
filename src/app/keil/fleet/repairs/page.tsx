@@ -276,10 +276,10 @@ export default function VehicleRepairLogPage() {
 
     return (
         <div className="md:p-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-rose-100 font-heading">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 font-heading">
                 <div className="space-y-1">
                     <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase flex items-center gap-2">
-                        <Wrench className="w-8 h-8 text-rose-600" />
+                        <Wrench className="w-8 h-8 text-primary" />
                         Maintenance Protocol
                     </h1>
                     <p className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest italic">Workshop Registry & Repair Lifecycle Management</p>
@@ -288,7 +288,7 @@ export default function VehicleRepairLogPage() {
                     {canCreate && (
                         <Button 
                             onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-                            className="flex-1 md:flex-none bg-rose-600 hover:bg-rose-700 text-white rounded-full px-8 h-11 shadow-lg shadow-rose-100 font-black uppercase tracking-widest active:scale-95 transition-all text-sm"
+                            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-11 shadow-lg shadow-primary/10 font-black uppercase tracking-widest active:scale-95 transition-all text-sm"
                         >
                             {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                             {showForm ? 'Cancel Operation' : <><span className="hidden sm:inline">Log Workshop Visit</span><span className="sm:hidden">Log Visit</span></>}
@@ -300,8 +300,8 @@ export default function VehicleRepairLogPage() {
 
             {showForm ? (
                 <Card className="border-none shadow-2xl bg-white/70 backdrop-blur-xl rounded-3xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
-                    <CardHeader className="bg-rose-50 border-b border-rose-100 px-8 py-6">
-                        <CardTitle className="text-sm font-black uppercase tracking-widest text-rose-600">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-6">
+                        <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">
                             Maintenance Execution Module
                         </CardTitle>
                     </CardHeader>
@@ -309,7 +309,7 @@ export default function VehicleRepairLogPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                              <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Date *</label>
-                                <Input required type="date" className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
+                                <Input required type="date" className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
                             </div>
                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Vehicle No *</label>
@@ -317,10 +317,10 @@ export default function VehicleRepairLogPage() {
                                     value={formData.vehicle_id} 
                                     onValueChange={val => setFormData({ ...formData, vehicle_id: val })}
                                 >
-                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
                                         <SelectValue placeholder="Select Asset" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white border-rose-100">
+                                    <SelectContent className="bg-white border-primary/10">
                                         {vehicles.map(v => (
                                             <SelectItem key={v.id} value={v.id}>
                                                 {v.registration_number}
@@ -330,16 +330,16 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
-                            <div className="space-y-1.5 flex flex-col">
+                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Driver Name *</label>
                                 <Select 
                                     value={formData.driver_id} 
                                     onValueChange={val => setFormData({ ...formData, driver_id: val })}
                                 >
-                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
                                         <SelectValue placeholder="Select Driver" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white border-rose-100">
+                                    <SelectContent className="bg-white border-primary/10">
                                         {employees.map(m => (
                                             <SelectItem key={m.id} value={m.id}>
                                                 {m.name}
@@ -349,16 +349,16 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
-                            <div className="space-y-1.5 flex flex-col">
+                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Route Name *</label>
                                 <Select 
                                     value={formData.route_id} 
                                     onValueChange={val => setFormData({ ...formData, route_id: val })}
                                 >
-                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
                                         <SelectValue placeholder="Select Route" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white border-rose-100">
+                                    <SelectContent className="bg-white border-primary/10">
                                         {routes.map(r => (
                                             <SelectItem key={r.id} value={r.id}>
                                                 {r.route_name} ({r.company?.company_name})
@@ -368,24 +368,34 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair From Date *</label>
-                                <Input required type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 bg-rose-50/20 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.entry_date} onChange={e => setFormData({ ...formData, entry_date: e.target.value })} />
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Workshop / Service Center *</label>
+                                <Input 
+                                    required 
+                                    placeholder="Enter clinic/workshop name..." 
+                                    className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" 
+                                    value={formData.workshop_name} 
+                                    onChange={e => setFormData({ ...formData, workshop_name: e.target.value })} 
+                                />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 pl-1">Repair To Date</label>
-                                <Input type="datetime-local" className="h-12 rounded-xl font-bold border-rose-100 bg-rose-50/20 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.exit_date} onChange={e => setFormData({ ...formData, exit_date: e.target.value })} />
+                             <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary/80 pl-1">Repair From Date *</label>
+                                <Input required type="datetime-local" className="h-12 rounded-xl font-bold border-primary/20 bg-primary/5 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.entry_date} onChange={e => setFormData({ ...formData, entry_date: e.target.value })} />
                             </div>
-                            <div className="space-y-1.5">
+                             <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary/80 pl-1">Repair To Date</label>
+                                <Input type="datetime-local" className="h-12 rounded-xl font-bold border-primary/20 bg-primary/5 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.exit_date} onChange={e => setFormData({ ...formData, exit_date: e.target.value })} />
+                            </div>
+                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Repair Status</label>
                                 <Select 
                                     value={formData.status} 
                                     onValueChange={val => setFormData({ ...formData, status: val })}
                                 >
-                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-rose-400">
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
                                         <SelectValue placeholder="Select Status" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white border-rose-100">
+                                    <SelectContent className="bg-white border-primary/10">
                                         <SelectItem value="Pending">Pending</SelectItem>
                                         <SelectItem value="In Progress">In Progress</SelectItem>
                                         <SelectItem value="Completed">Completed</SelectItem>
@@ -393,27 +403,27 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
-                            <div className="space-y-1.5 bg-rose-50/30 p-4 rounded-2xl border border-rose-100">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-2">
+                             <div className="space-y-1.5 bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                     <CreditCard className="w-3 h-3" /> Amount (₹)
                                 </label>
-                                <Input type="number" min={0} className="h-12 rounded-xl font-black text-xl border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
+                                <Input type="number" min={0} className="h-12 rounded-xl font-black text-xl border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
                             </div>
 
-                            <div className="lg:col-span-2 space-y-1.5">
+                             <div className="lg:col-span-2 space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Description of repair works *</label>
-                                <Input required placeholder="Describe the job in detail..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.repair_description} onChange={e => setFormData({ ...formData, repair_description: e.target.value })} />
+                                <Input required placeholder="Describe the job in detail..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.repair_description} onChange={e => setFormData({ ...formData, repair_description: e.target.value })} />
                             </div>
                             <div className="lg:col-span-1 space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Remarks</label>
-                                <Input placeholder="Additional notes..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-400 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
+                                <Input placeholder="Additional notes..." className="h-12 rounded-xl font-bold border-slate-100 bg-white shadow-inner focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
                             </div>
                         </div>
 
                         <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
                             <Button 
                                 onClick={handleSave} 
-                                className="flex-1 md:flex-none bg-rose-600 hover:bg-rose-700 text-white rounded-full px-10 h-12 shadow-xl shadow-rose-100 font-black uppercase tracking-widest active:scale-95 transition-all"
+                                className="flex-1 md:flex-none bg-primary hover:bg-primary/90 text-white rounded-full px-10 h-12 shadow-xl shadow-primary/10 font-black uppercase tracking-widest active:scale-95 transition-all"
                             >
                                 <Save className="w-5 h-5 mr-3" />
                                 {editingId ? 'Update Record' : 'Log Maintenance Session'}
@@ -436,7 +446,7 @@ export default function VehicleRepairLogPage() {
                                 <td className="px-6 py-8">
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-lg bg-rose-600 flex items-center justify-center text-white shadow-lg">
+                                            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg">
                                                 <Truck className="w-4 h-4" />
                                             </div>
                                             <span className="text-base font-black text-slate-700 tracking-tight">{r.vehicle?.registration_number}</span>
@@ -458,8 +468,15 @@ export default function VehicleRepairLogPage() {
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-6">
+                                 <td className="px-6 py-6">
                                     <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/10 w-fit">
+                                            <Wrench className="w-3 h-3 text-primary" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-primary/50 uppercase leading-none">Workshop/Service Center</span>
+                                                <span className="text-[10px] font-bold text-slate-700">{r.workshop_name || 'In-House Service'}</span>
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 w-fit">
                                             <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-400 shadow-sm">
                                                 <User className="w-3 h-3" />
@@ -469,11 +486,11 @@ export default function VehicleRepairLogPage() {
                                                 <span className="text-[10px] font-bold text-slate-600">{r.driver?.name || 'Unassigned'}</span>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col gap-1 px-3 py-2 bg-rose-50/30 rounded-xl border border-rose-50 w-fit">
+                                        <div className="flex flex-col gap-1 px-3 py-2 bg-primary/5 rounded-xl border border-primary/10 w-fit">
                                             <span className={`text-[8px] font-black uppercase tracking-widest ${
                                                 r.status === 'Completed' ? 'text-emerald-500' :
                                                 r.status === 'In Progress' ? 'text-amber-500' :
-                                                'text-rose-500'
+                                                'text-primary'
                                             }`}>
                                                 {r.status}
                                             </span>
@@ -501,15 +518,14 @@ export default function VehicleRepairLogPage() {
                                 </td>
                                 <td className="px-6 py-6">
                                     <div className="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-[2rem] border border-slate-800 shadow-xl group-hover:scale-105 transition-transform">
-                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Financial Impact</span>
                                         <span className="text-lg font-black text-white tracking-tight">₹{parseFloat(r.cost).toLocaleString()}</span>
-                                        <div className="w-8 h-1 bg-rose-600 rounded-full mt-2" />
+                                        <div className="w-8 h-1 bg-primary rounded-full mt-2" />
                                     </div>
                                 </td>
                                 <td className="px-6 py-6 text-right">
                                     <div className="flex justify-end gap-2 transition-all">
                                         {canEdit && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="hover:bg-indigo-50 text-indigo-600 rounded-xl h-10 w-10 border border-transparent hover:border-indigo-100">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="hover:bg-primary/10 text-primary rounded-xl h-10 w-10 border border-transparent hover:border-primary/20">
                                                 <Edit className="w-5 h-5" />
                                             </Button>
                                         )}

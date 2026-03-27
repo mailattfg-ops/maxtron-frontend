@@ -289,7 +289,7 @@ export default function RouteCollectionReportPage() {
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
                                         <span className="font-bold text-slate-700 text-sm">{batch.route?.route_name}</span>
-                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{batch.route?.route_code}</span>
+                                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">{batch.route?.route_code}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -313,7 +313,7 @@ export default function RouteCollectionReportPage() {
                                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
                                             <div 
                                                 className={`h-full transition-all duration-1000 ${
-                                                    (batch.total_visited / (batch.total_hce_assigned || 1)) >= 1 ? 'bg-emerald-500' : 'bg-indigo-500'
+                                                    (batch.total_visited / (batch.total_hce_assigned || 1)) >= 1 ? 'bg-emerald-500' : 'bg-primary/80'
                                                 }`}
                                                 style={{ width: `${(batch.total_visited / (batch.total_hce_assigned || 1)) * 100}%` }}
                                             />
@@ -324,7 +324,7 @@ export default function RouteCollectionReportPage() {
                                     {batch.remarks || 'No remarks logged.'}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <Button variant="outline" size="sm" className="h-8 gap-2 text-[10px] font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/reports/batch/${batch.id}`}>
+                                    <Button variant="outline" size="sm" className="h-8 gap-2 text-[10px] font-bold border-primary/20 text-primary hover:bg-primary/10" onClick={() => window.location.href = `/keil/operations/reports/batch/${batch.id}`}>
                                         View <ArrowRight className="w-3 h-3" />
                                     </Button>
                                 </td>

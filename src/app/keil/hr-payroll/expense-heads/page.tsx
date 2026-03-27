@@ -282,7 +282,7 @@ export default function ExpenseHeadsPage() {
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Coins className="w-4 h-4 text-indigo-500" /> Category Name
+                                        <Coins className="w-4 h-4 text-primary/80" /> Category Name
                                     </label>
                                     <Input 
                                         value={formData.head_name}
@@ -336,7 +336,7 @@ export default function ExpenseHeadsPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary"
                                                     onClick={() => handleEdit(head)}
                                                 >
                                                     <Edit className="w-4 h-4" />

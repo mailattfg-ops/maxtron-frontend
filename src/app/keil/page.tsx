@@ -178,7 +178,7 @@ export default function KeilDashboard() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Button variant="outline" className="h-20 flex flex-col items-center justify-center border-slate-100 hover:bg-indigo-50 hover:text-primary hover:border-indigo-200 transition-all rounded-2xl group" onClick={() => window.location.href='/keil/operations/branch'}>
+                        <Button variant="outline" className="h-20 flex flex-col items-center justify-center border-slate-100 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-all rounded-2xl group" onClick={() => window.location.href='/keil/operations/branch'}>
                             <Building2 className="w-6 h-6 mb-1 text-slate-400 group-hover:text-primary mr-0" />
                             <span className="font-black text-xs uppercase tracking-widest">Branch Registry</span>
                         </Button>

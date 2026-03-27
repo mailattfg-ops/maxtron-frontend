@@ -449,7 +449,7 @@ export default function VehicleMasterPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Seating Capacity</label>
-                                    <Input type="number" name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium" />
+                                    <Input type="number" placeholder='0' name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-medium" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Usage Purpose</label>

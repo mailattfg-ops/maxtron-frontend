@@ -308,7 +308,7 @@ export default function CompanyInformationPage() {
 
                 {/* Manufacturing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Manufacturing Unit
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -508,7 +508,7 @@ export default function CompanyInformationPage() {
                                                 {renderAddressDisplay(company, 'OFFICE')}
                                             </div>
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-indigo-600 font-medium absolute -top-1 bg-indigo-50 px-1 rounded">MANUFACTURING UNIT</span>
+                                                <span className="text-xs text-primary font-medium absolute -top-1 bg-primary/10 px-1 rounded">MANUFACTURING UNIT</span>
                                                 {renderAddressDisplay(company, 'MANUFACTURING_UNIT')}
                                             </div>
                                             <div className="text-sm pb-1 relative">
