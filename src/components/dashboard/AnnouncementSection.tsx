@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { 
     Megaphone, 
     AlertTriangle, 
@@ -426,7 +433,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-10 space-y-8">
+                        <div className="p-5 space-y-8">
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Headline</label>
                                 <Input
@@ -440,24 +447,23 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Priority</label>
-                                    <div className="relative group">
-                                        <select
-                                            value={formData.type}
-                                            onChange={(e) => setFormData({...formData, type: e.target.value as any})}
-                                            className="h-16 w-full rounded-2xl border border-slate-200 bg-slate-50/50 font-black px-6 text-xs uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
-                                        >
-                                            <option value="info">💡 Information</option>
-                                            <option value="warning">⚠️ Warning</option>
-                                            <option value="critical">🚨 Critical / Urgent</option>
-                                        </select>
-                                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                                            <Plus className="w-4 h-4 rotate-45" />
-                                        </div>
-                                    </div>
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(val) => setFormData({...formData, type: val as any})}
+                                    >
+                                        <SelectTrigger className="h-16 w-full rounded-2xl border border-slate-200 bg-slate-50/50 font-black px-6 text-xs uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-left">
+                                            <SelectValue placeholder="Priority Broadcast" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200 rounded-2xl shadow-2xl z-[10001]">
+                                            <SelectItem value="info" className="font-black text-xs uppercase tracking-widest">💡 Information</SelectItem>
+                                            <SelectItem value="warning" className="font-black text-xs uppercase tracking-widest">⚠️ Warning</SelectItem>
+                                            <SelectItem value="critical" className="font-black text-xs uppercase tracking-widest text-rose-600">🚨 Critical / Urgent</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Target</label>
-                                    <div className="h-16 rounded-2xl bg-primary/10 ring-primary/20 text-primary/80">
+                                    <div className="h-9 flex justify-center items-center rounded-2xl bg-primary/10 ring-primary/20 text-primary/80">
                                         {tenant.toUpperCase()} DASHBOARD
                                     </div>
                                 </div>
@@ -469,7 +475,7 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                                     placeholder="Write your announcement details here..."
                                     value={formData.content}
                                     onChange={(e: any) => setFormData({...formData, content: e.target.value})}
-                                    className="min-h-[160px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-6 font-medium resize-none focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm placeholder:text-slate-300"
+                                    className="min-h-[50px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-6 font-medium resize-none focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm placeholder:text-slate-300"
                                 />
                             </div>
                         </div>
