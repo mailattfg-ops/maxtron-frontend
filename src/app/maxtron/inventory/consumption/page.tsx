@@ -104,6 +104,16 @@ export default function ConsumptionPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync slip number if consumptions list updates while form is open (and not editing)
+    if (showForm && !editingId && consumptions.length > 0) {
+       const currentNo = formData.consumption_slip_no;
+       if (!currentNo || currentNo === 'CSN-000001' || currentNo === 'GENERATING...') {
+          resetForm(consumptions);
+       }
+    }
+  }, [consumptions, showForm, editingId]);
+
   const fetchConsumptions = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -205,18 +215,28 @@ export default function ConsumptionPage() {
   };
 
   const resetForm = (latestConsumptions: any[] = consumptions) => {
-    let nextSlipNo = '';
-    if (latestConsumptions && latestConsumptions.length > 0) {
-      let max = 0;
-      latestConsumptions.forEach(c => {
-        if (c.consumption_slip_no && c.consumption_slip_no.startsWith('CSN-')) {
-          const numStr = c.consumption_slip_no.substring(4);
-          const num = parseInt(numStr, 10);
-          if (!isNaN(num) && num > max) {
-            max = num;
-          }
-        }
-      });
+    // If we have no data and it's still loading, show a placeholder
+    if (loading && latestConsumptions.length === 0) {
+      setFormData(prev => ({
+        ...prev,
+        consumption_slip_no: 'GENERATING...'
+      }));
+      return;
+    }
+
+    let nextSlipNo = 'CSN-000001';
+    
+    // Filter and find the actual maximum number using a case-insensitive regex
+    const validNumbers = latestConsumptions
+      .filter(c => c.consumption_slip_no && /^CSN-\d+$/i.test(c.consumption_slip_no))
+      .map(c => {
+        const parts = c.consumption_slip_no.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validNumbers.length > 0) {
+      const max = Math.max(...validNumbers);
       nextSlipNo = `CSN-${String(max + 1).padStart(6, '0')}`;
     }
 
