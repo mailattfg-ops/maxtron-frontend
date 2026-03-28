@@ -29,6 +29,15 @@ export default function FinishedProductPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [colorError, setColorError] = useState('');
+  const [sizeError, setSizeError] = useState('');
+  
+  const codeRegex = /^[A-Z0-9-]+$/;
+  const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+  const colorRegex = /^[a-zA-Z\s]+$/;
+  const sizeRegex = /^[a-zA-Z0-9\s*x.-]+$/;
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -95,6 +104,11 @@ export default function FinishedProductPage() {
   const saveProduct = async () => {
     if (!formData.product_code || !formData.product_name) {
       error('Please fill Code and Name.');
+      return;
+    }
+
+    if (codeError || nameError || colorError || sizeError) {
+      error('Please correct the validation errors before saving.');
       return;
     }
 
@@ -181,6 +195,10 @@ export default function FinishedProductPage() {
       stock_threshold: 50
     });
     setEditingId(null);
+    setCodeError('');
+    setNameError('');
+    setColorError('');
+    setSizeError('');
   };
 
   const filteredProducts = products.filter(p => 
@@ -216,7 +234,7 @@ export default function FinishedProductPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl flex items-center gap-2">
                 {editingId ? <Edit className="w-5 h-5 text-primary" /> : <Plus className="w-5 h-5 text-primary" />}
@@ -232,15 +250,48 @@ export default function FinishedProductPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Product Code</label>
-                <Input placeholder="e.g. PP-001" value={formData.product_code} onChange={e => setFormData({ ...formData, product_code: e.target.value })} className="h-11 font-mono uppercase" />
+                <Input 
+                  placeholder="e.g. PP-001" 
+                  value={formData.product_code} 
+                  onChange={e => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData({ ...formData, product_code: val });
+                    if (val && !codeRegex.test(val)) setCodeError('Invalid Format (A-Z, 0-9, -)');
+                    else setCodeError('');
+                  }} 
+                  className={`h-11 font-mono uppercase ${codeError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {codeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{codeError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Box className="w-4 h-4 text-primary" /> Product Name</label>
-                <Input placeholder="e.g. Milky Polybag" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} className="h-11 font-bold" />
+                <Input 
+                  placeholder="e.g. Milky Polybag" 
+                  value={formData.product_name} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, product_name: val });
+                    if (val && !nameRegex.test(val)) setNameError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    else setNameError('');
+                  }} 
+                  className={`h-11 font-bold ${nameError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {nameError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{nameError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Palette className="w-4 h-4 text-primary" /> Color</label>
-                <Input placeholder="e.g. White" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className="h-11" />
+                <Input 
+                  placeholder="e.g. White" 
+                  value={formData.color} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, color: val });
+                    if (val && !colorRegex.test(val)) setColorError('Invalid characters (Letters only)');
+                    else setColorError('');
+                  }} 
+                  className={`h-11 ${colorError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {colorError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{colorError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Layers className="w-4 h-4 text-primary" /> Thickness (Microns)</label>
@@ -248,7 +299,18 @@ export default function FinishedProductPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Ruler className="w-4 h-4 text-primary" /> Size</label>
-                <Input placeholder="e.g. 10x12" value={formData.size} onChange={e => setFormData({ ...formData, size: e.target.value })} className="h-11" />
+                <Input 
+                  placeholder="e.g. 10x12" 
+                  value={formData.size} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, size: val });
+                    if (val && !sizeRegex.test(val)) setSizeError('Invalid characters (Use 0-9, x, *, -, .)');
+                    else setSizeError('');
+                  }} 
+                  className={`h-11 px-3 ${sizeError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {sizeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{sizeError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
@@ -300,7 +362,7 @@ export default function FinishedProductPage() {
                 {Number(p.stock_threshold) > 0 ? `${p.stock_threshold} Kg` : ''}
               </td>
               <td className="px-6 py-4 text-xs text-muted-foreground italic truncate max-w-[150px]">{p.description}</td>
-              <td className="md:px-6 py-4 text-right">
+              <td className="md:px-3 py-4 text-right">
                 <div className="flex items-center justify-end gap-2">
                   {canEdit && (
                     <Button 

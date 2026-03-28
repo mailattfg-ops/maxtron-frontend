@@ -22,6 +22,10 @@ export default function CompanyInformationPage() {
   const { success, error } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [licenseError, setLicenseError] = useState('');
+  const [pcbError, setPcbError] = useState('');
+  
+  const licenseRegex = /^[A-Z0-9\-/]+$/;
 
 
   const emptyFormData = {
@@ -97,6 +101,24 @@ export default function CompanyInformationPage() {
         value = String(Math.max(0, Number(value) || 0));
     }
 
+    if (name === 'license_no') {
+        value = value.toUpperCase();
+        if (value && !licenseRegex.test(value)) {
+            setLicenseError('Invalid characters (Use A-Z, 0-9, -, /)');
+        } else {
+            setLicenseError('');
+        }
+    }
+
+    if (name === 'pcb_authorization_no') {
+        value = value.toUpperCase();
+        if (value && !licenseRegex.test(value)) {
+            setPcbError('Invalid characters (Use A-Z, 0-9, -, /)');
+        } else {
+            setPcbError('');
+        }
+    }
+
     setFormData({ ...formData, [name]: value });
   };
 
@@ -120,6 +142,11 @@ export default function CompanyInformationPage() {
     if (formData.gst_no && formData.gst_no.length !== 15) {
       error('GST Number must be exactly 15 characters.');
       return false;
+    }
+
+    if (licenseError || pcbError) {
+        error('Please correct errors in Licensing section before saving.');
+        return false;
     }
 
     // Address Validations (Street is marked with * in UI)
@@ -229,6 +256,8 @@ export default function CompanyInformationPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setFormData({ ...emptyFormData });
+    setLicenseError('');
+    setPcbError('');
   };
 
   const renderForm = () => (
@@ -369,7 +398,13 @@ export default function CompanyInformationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">License No</label>
-                    <Input name="license_no" value={formData.license_no} onChange={handleInputChange} />
+                    <Input 
+                        name="license_no" 
+                        value={formData.license_no} 
+                        onChange={handleInputChange} 
+                        className={`font-mono text-xs uppercase ${licenseError ? 'border-destructive bg-rose-50' : ''}`}
+                    />
+                    {licenseError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{licenseError}</p>}
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                     <label className="text-sm font-medium text-slate-700">License Details</label>
@@ -382,7 +417,13 @@ export default function CompanyInformationPage() {
 
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">PCB Authorization No</label>
-                    <Input name="pcb_authorization_no" value={formData.pcb_authorization_no} onChange={handleInputChange} />
+                    <Input 
+                        name="pcb_authorization_no" 
+                        value={formData.pcb_authorization_no} 
+                        onChange={handleInputChange} 
+                        className={`font-mono text-xs uppercase ${pcbError ? 'border-destructive bg-rose-50' : ''}`}
+                    />
+                    {pcbError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{pcbError}</p>}
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                     <label className="text-sm font-medium text-slate-700">PCB Details</label>

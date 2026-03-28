@@ -40,9 +40,11 @@ export default function RawMaterialPage() {
   const [submitting, setSubmitting] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [nameError, setNameError] = useState('');
+  const [gradeError, setGradeError] = useState('');
   
   const codeRegex = /^[A-Z0-9-]+$/;
   const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+  const gradeRegex = /^[a-zA-Z0-9\s+-/]+$/;
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -155,6 +157,11 @@ export default function RawMaterialPage() {
       error('Material Name can only contain letters, numbers, spaces, and hyphens.');
       return;
     }
+    
+    if (gradeError) {
+      error('Grade contains invalid characters.');
+      return;
+    }
 
     setSubmitting(true);
     const token = localStorage.getItem('token');
@@ -202,6 +209,7 @@ export default function RawMaterialPage() {
     });
     setCodeError('');
     setNameError('');
+    setGradeError('');
   };
 
   const handleEdit = (rec: any) => {
@@ -417,9 +425,18 @@ export default function RawMaterialPage() {
                 <Input 
                   placeholder="e.g. Grade A+"
                   value={formData.grade}
-                  onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                  className="h-11 font-bold"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, grade: val});
+                    if (val && !gradeRegex.test(val)) {
+                      setGradeError('Invalid characters (Use A-Z, 0-9, +, -, /)');
+                    } else {
+                      setGradeError('');
+                    }
+                  }}
+                  className={`h-11 font-bold ${gradeError ? 'border-destructive bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
                 />
+                {gradeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{gradeError}</p>}
               </div>
 
               <div className="space-y-2">

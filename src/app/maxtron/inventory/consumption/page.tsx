@@ -205,7 +205,7 @@ export default function ConsumptionPage() {
   };
 
   const resetForm = (latestConsumptions: any[] = consumptions) => {
-    let nextSlipNo = 'CSN-000001';
+    let nextSlipNo = '';
     if (latestConsumptions && latestConsumptions.length > 0) {
       let max = 0;
       latestConsumptions.forEach(c => {

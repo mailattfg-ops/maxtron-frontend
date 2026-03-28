@@ -30,6 +30,20 @@ function Input({ className, type, onChange, maxDecimals = 2, ...props }: InputPr
     onChange?.(e);
   };
 
+  // Prevent manual typing for date fields to enforce picker usage
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (type === "date") {
+      // Allow focus management and navigation keys
+      if (["Tab", "Escape", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        return;
+      }
+      e.preventDefault();
+      // Auto-trigger browser date picker on interaction
+      (e.target as HTMLInputElement).showPicker?.();
+    }
+    props.onKeyDown?.(e);
+  };
+
   return (
     <input
       type={type}
@@ -42,6 +56,8 @@ function Input({ className, type, onChange, maxDecimals = 2, ...props }: InputPr
       )}
       {...finalProps}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onPaste={(e) => { if (type === "date") e.preventDefault(); props.onPaste?.(e); }}
     />
   )
 }
