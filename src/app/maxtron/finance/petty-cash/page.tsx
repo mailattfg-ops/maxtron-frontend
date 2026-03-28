@@ -30,6 +30,7 @@ export default function PettyCashPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
     const [showScrollArrow, setShowScrollArrow] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -82,6 +83,7 @@ export default function PettyCashPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitting(true);
         try {
             const url = editingId 
                 ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/petty-cash/${editingId}`
@@ -114,6 +116,8 @@ export default function PettyCashPage() {
             }
         } catch (error) {
             toastError('Failed to save record');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -201,7 +205,7 @@ export default function PettyCashPage() {
                             </td>
                             <td className="px-6 py-4 font-bold">{row.paid_to}</td>
                             <td className="px-6 py-4 font-black text-primary">₹{Number(row.amount).toLocaleString()}</td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-3 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                     <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-primary hover:bg-primary/5 rounded-lg font-bold">
                                         <Edit className="w-4 h-4" />
@@ -254,7 +258,7 @@ export default function PettyCashPage() {
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-700">Amount {!formData.amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                                         <div className="relative">
-                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1-2 w-4 h-4 text-slate-400" />
+                                            <IndianRupee className="absolute left-3 top-1/3 -translate-y-1-2 w-4 h-4 text-slate-400" />
                                             <Input
                                                 type="number"
                                                 required
@@ -318,7 +322,7 @@ export default function PettyCashPage() {
                                     />
                                 </div>
 
-                                <div className="flex flex-col md:flex-row items-center gap-3 pt-4 sticky bottom-0 bg-white">
+                                <div className="flex flex-col md:flex-row items-center gap-3 pt-4 bg-white">
                                     <Button
                                         type="button"
                                         onClick={handleCloseModal}
@@ -329,6 +333,7 @@ export default function PettyCashPage() {
                                     </Button>
                                     <Button
                                         type="submit"
+                                        loading={submitting}
                                         className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 order-1 md:order-2"
                                     >
                                         {editingId ? 'Update Record' : 'Record Expense'}

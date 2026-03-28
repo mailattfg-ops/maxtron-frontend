@@ -311,13 +311,14 @@ export default function CuttingSealingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Cutting No</label>
-                <Input value="AUTO-GENERATED" disabled className="bg-slate-50 font-mono text-xs" />
+                <Input value="AUTO-GENERATED" disabled className="bg-slate-50 font-mono text-xs h-10" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-primary" /> Date of Job</label>
-                <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                <Input type="date" className="h-10" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Production Shift</label>
                 <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Shift" />
@@ -330,6 +331,7 @@ export default function CuttingSealingPage() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Operator</label>
                 <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Operator" />
@@ -343,8 +345,9 @@ export default function CuttingSealingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Base Production Batch (Input Source)</label>
                 <Select 
                   value={formData.batch_id} 
                   onValueChange={(val) => {
@@ -370,7 +373,7 @@ export default function CuttingSealingPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Input Qty (Kg)</label>
-                <Input type="number" readOnly value={formData.input_qty} className="bg-slate-50 font-bold" />
+                <Input type="number" readOnly value={formData.input_qty} className="bg-slate-50 font-bold h-10" />
               </div>
             </div>
 

@@ -44,6 +44,13 @@ export default function CustomersPage() {
     credit_limit: 0,
     delivery_period: '',
     delivery_mode: '',
+    mobile_no: '',
+    email_id: '',
+    department: '',
+    custom_label1: '',
+    custom_value1: '',
+    custom_label2: '',
+    custom_value2: '',
     opening_balance: 0,
     is_active: true,
     company_id: '',
@@ -115,11 +122,32 @@ export default function CustomersPage() {
     setFormData({ ...formData, addresses: newAddresses });
   };
 
-  const saveCustomer = async () => {
+  const validateForm = () => {
     if (!formData.customer_name || !formData.customer_code) {
       error('Customer name and code are required.');
-      return;
+      return false;
     }
+
+    if (formData.mobile_no && !/^[0-9]{10,12}$/.test(formData.mobile_no)) {
+      error('Invalid mobile number. Please enter 10-12 digits.');
+      return false;
+    }
+
+    if (formData.email_id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_id)) {
+      error('Invalid email format. Please check again.');
+      return false;
+    }
+
+    if (formData.department && formData.department.length < 2) {
+      error('Department name should be at least 2 characters.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveCustomer = async () => {
+    if (!validateForm()) return;
 
     setSubmitting(true);
     const token = localStorage.getItem('token');
@@ -162,6 +190,13 @@ export default function CustomersPage() {
       delivery_period: '',
       delivery_mode: '',
       opening_balance: 0,
+      mobile_no: '',
+      email_id: '',
+      department: '',
+      custom_label1: '',
+      custom_value1: '',
+      custom_label2: '',
+      custom_value2: '',
       is_active: true,
       company_id: currentCompanyId,
       addresses: [
@@ -276,12 +311,78 @@ export default function CustomersPage() {
                   <Input name="gst_no" value={formData.gst_no} onChange={handleInputChange} placeholder="GSTXXXXXXXXXXXX" />
                 </div>
                 <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
+                  <Input name="mobile_no" value={formData.mobile_no} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
+                  <Input name="email_id" value={formData.email_id} onChange={handleInputChange} placeholder="contact@company.com" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Department</label>
+                  <Input name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g. Purchase, Finance" />
+                </div>
+                <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Period</label>
                   <Input name="delivery_period" value={formData.delivery_period} onChange={handleInputChange} placeholder="e.g. 7-10 Days" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Mode</label>
                   <Input name="delivery_mode" value={formData.delivery_mode} onChange={handleInputChange} placeholder="e.g. Courier, Hand-delivery" />
+                </div>
+                
+                {/* Custom Fields Section */}
+                <div className="md:col-span-2 lg:col-span-3 pt-4 border-t border-primary/5">
+                  <h3 className="text-sm font-bold text-primary mb-4 flex items-center">
+                    Custom Information (Optional)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 1</label>
+                        <Input 
+                          name="custom_label1" 
+                          value={formData.custom_label1} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Preferred Contact Time" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 1</label>
+                        <Input 
+                          name="custom_value1" 
+                          value={formData.custom_value1} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. 10 AM - 4 PM" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 2</label>
+                        <Input 
+                          name="custom_label2" 
+                          value={formData.custom_label2} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Lead Source" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 2</label>
+                        <Input 
+                          name="custom_value2" 
+                          value={formData.custom_value2} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Website Referral" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -363,10 +464,7 @@ export default function CustomersPage() {
                   <Button 
                     onClick={() => {
                       if (activeTab === 'basic') {
-                        if (!formData.customer_name || !formData.customer_code) {
-                          error('Customer name and code are required.');
-                          return;
-                        }
+                        if (!validateForm()) return;
                         setActiveTab('address');
                       }
                       else if (activeTab === 'address') setActiveTab('financial');
@@ -410,6 +508,22 @@ export default function CustomersPage() {
                 <td className="px-4 py-4">
                   <span className="md:hidden text-[9px] text-slate-400 block mb-1 font-bold">CLIENT NAME</span>
                   <div className="font-bold text-foreground group-hover:text-primary transition-colors text-sm md:text-base">{c.customer_name}</div>
+                  <div className="hidden md:flex items-center gap-3 mt-1 text-[10px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                    {c.mobile_no && <span className="flex items-center"><Phone className="w-2.5 h-2.5 mr-1" /> {c.mobile_no}</span>}
+                    {c.email_id && <span className="flex items-center"><Mail className="w-2.5 h-2.5 mr-1" /> {c.email_id}</span>}
+                  </div>
+                  <div className="hidden md:flex flex-wrap gap-2 mt-2">
+                    {c.custom_label1 && c.custom_value1 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/5 text-[9px] font-medium text-primary border border-primary/10">
+                        <span className="opacity-70 mr-1">{c.custom_label1}:</span> {c.custom_value1}
+                      </span>
+                    )}
+                    {c.custom_label2 && c.custom_value2 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary/5 text-[9px] font-medium text-secondary border border-secondary/10">
+                        <span className="opacity-70 mr-1">{c.custom_label2}:</span> {c.custom_value2}
+                      </span>
+                    )}
+                  </div>
                   <div className="md:hidden mt-2 text-[10px] font-semibold text-slate-500">GST: {c.gst_no || 'NA'}</div>
                 </td>
                 <td className="table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>

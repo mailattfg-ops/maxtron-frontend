@@ -523,7 +523,7 @@ export default function PurchaseEntryPage() {
                           </td>
                           <td className="p-4">
                              <div className="h-10 flex items-center justify-end px-3 font-mono font-black text-slate-900 bg-slate-100 rounded">
-                               ₹ {Number(item.amount).toLocaleString()}
+                               ₹{Number(item.amount).toLocaleString()}
                              </div>
                           </td>
                           <td className="p-4 text-center">
@@ -612,7 +612,10 @@ export default function PurchaseEntryPage() {
                  <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
               </td>
               <td className="px-6 py-4">
-                 <div className="font-black text-slate-900 tracking-tight">₹ {e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.amount), 0).toLocaleString()}</div>
+                 <div className="font-black text-slate-900 tracking-tight text-base">₹ {Number(e.total_amount || 0).toLocaleString()}</div>
+                 {Number(e.unloading_charges || 0) > 0 && (
+                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Incl. ₹{e.unloading_charges} labor</div>
+                 )}
               </td>
               <td className="px-6 py-4">
                  <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>

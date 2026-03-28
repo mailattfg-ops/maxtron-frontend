@@ -318,7 +318,7 @@ export default function ExtrusionPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <CardTitle className="text-xl flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" /> {editingId ? 'Edit Production Batch' : 'New Production Batch'}
             </CardTitle>

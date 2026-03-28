@@ -64,7 +64,7 @@ export default function CustomerOrderEntry() {
     remarks: '',
     company_id: '',
     items: [
-      { product_id: '', quantity: 0, rate: 0, value: 0 }
+      { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }
     ]
   });
 
@@ -136,7 +136,7 @@ export default function CustomerOrderEntry() {
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, value: 0 }]
+      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
     });
   };
 
@@ -151,10 +151,11 @@ export default function CustomerOrderEntry() {
     const newItems = [...formData.items];
     const item = { ...newItems[index], [field]: value };
     
-    // Auto-calculate value and enforce stock limit
-    if (field === 'quantity' || field === 'rate') {
+    // Auto-calculate GST and total value
+    if (field === 'quantity' || field === 'rate' || field === 'gst_percent') {
       let qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
       const rate = field === 'rate' ? parseFloat(value) || 0 : item.rate;
+      const gstP = field === 'gst_percent' ? parseFloat(value) || 0 : item.gst_percent;
       
       // Force limit if quantity is being changed
       if (field === 'quantity') {
@@ -166,7 +167,9 @@ export default function CustomerOrderEntry() {
         }
       }
       
-      item.value = qty * rate;
+      const taxableValue = qty * rate;
+      item.gst_amount = (taxableValue * gstP) / 100;
+      item.total_value = taxableValue + item.gst_amount;
     }
 
     // Auto-set rate if product selected
@@ -194,7 +197,9 @@ export default function CustomerOrderEntry() {
         product_id: i.product_id,
         quantity: i.quantity,
         rate: i.rate,
-        value: i.value
+        gst_percent: i.gst_percent || 0,
+        gst_amount: i.gst_amount || 0,
+        total_value: i.total_value || (i.quantity * i.rate)
       }))
     });
     setShowForm(true);
@@ -237,8 +242,16 @@ export default function CustomerOrderEntry() {
     });
   };
 
-  const totalOrderValue = useMemo(() => {
-    return formData.items.reduce((sum, item) => sum + (item.value || 0), 0);
+  const orderCalculations = useMemo(() => {
+    return formData.items.reduce((acc, item) => {
+        const taxable = (item.quantity * item.rate) || 0;
+        const gst = item.gst_amount || 0;
+        return {
+            taxableValue: acc.taxableValue + taxable,
+            taxAmount: acc.taxAmount + gst,
+            netAmount: acc.netAmount + taxable + gst
+        };
+    }, { taxableValue: 0, taxAmount: 0, netAmount: 0 });
   }, [formData.items]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,7 +285,9 @@ export default function CustomerOrderEntry() {
         },
         body: JSON.stringify({
           ...formData,
-          total_value: totalOrderValue
+          total_value: orderCalculations.taxableValue,
+          tax_amount: orderCalculations.taxAmount,
+          net_amount: orderCalculations.netAmount
         })
       });
 
@@ -292,7 +307,7 @@ export default function CustomerOrderEntry() {
             order_date: new Date().toISOString().split('T')[0],
             remarks: '',
             company_id: currentCompanyId,
-            items: [{ product_id: '', quantity: 0, rate: 0, value: 0 }]
+            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
         });
         fetchOrders();
       } else {
@@ -499,9 +514,10 @@ export default function CustomerOrderEntry() {
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Product Details</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Quantity</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Rate (₹)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-40">Value (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-24">Quantity</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Rate (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-24">GST %</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-32">Total (₹)</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
                         </thead>
@@ -543,8 +559,18 @@ export default function CustomerOrderEntry() {
                                             placeholder="0.00"
                                         />
                                     </td>
+                                    <td className="p-4 text-center">
+                                        <Input 
+                                            type="number" 
+                                            min={0}
+                                            value={item.gst_percent === 0 ? '' : item.gst_percent} 
+                                            onChange={e => handleItemChange(index, 'gst_percent', e.target.value)}
+                                            className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
+                                            placeholder="0"
+                                        />
+                                    </td>
                                     <td className="p-4 text-right">
-                                        <span className="text-xs md:text-sm font-black text-slate-700">₹ {item.value.toLocaleString()}</span>
+                                        <span className="text-xs md:text-sm font-black text-slate-700">₹ {item.total_value.toLocaleString()}</span>
                                     </td>
                                     <td className="p-4 text-center">
                                         <button 
@@ -558,10 +584,20 @@ export default function CustomerOrderEntry() {
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="bg-slate-900 text-white font-black">
+                        <tfoot className="bg-primary text-white font-black">
+                             <tr>
+                                <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total Value</td>
+                                <td className="p-3 text-right text-sm">₹ {orderCalculations.taxableValue.toLocaleString()}</td>
+                                <td></td>
+                            </tr>
                             <tr>
-                                <td colSpan={3} className="px-4 py-4 text-right uppercase tracking-widest text-[10px]">Grand Total</td>
-                                <td className="px-4 py-4 text-right text-lg">₹ {totalOrderValue.toLocaleString()}</td>
+                                <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total GST</td>
+                                <td className="p-3 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString()}</td>
+                                <td></td>
+                            </tr>
+                            <tr className="border-t border-white/20">
+                                <td colSpan={4} className="px-6 py-6 text-right uppercase tracking-widest text-xs font-black">Grand Total</td>
+                                <td className="p-3 text-right text-2xl font-black">₹ {orderCalculations.netAmount.toLocaleString()}</td>
                                 <td></td>
                             </tr>
                         </tfoot>
