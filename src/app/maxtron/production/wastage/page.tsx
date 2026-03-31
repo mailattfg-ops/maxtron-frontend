@@ -41,6 +41,8 @@ export default function DamagesWastagePage() {
   const [loading, setLoading] = useState(true);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -157,10 +159,18 @@ export default function DamagesWastagePage() {
   };
 
   const saveWastage = async () => {
-    if (formData.wastage_qty <= 0) {
-      error('Please enter a valid wastage quantity.');
+    const newErrors: Record<string, string> = {};
+    if (!formData.reason_code) newErrors.reason_code = 'Reason code is required';
+    if (formData.wastage_qty <= 0) newErrors.wastage_qty = 'Quantity must be greater than zero';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      error('Please correct the highlighted errors.');
       return;
     }
+
+    setSubmitting(true);
+    setErrors({});
 
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
@@ -192,6 +202,8 @@ export default function DamagesWastagePage() {
       }
     } catch (err) {
       error('Error saving record');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -237,7 +249,7 @@ export default function DamagesWastagePage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <CardTitle className="text-xl flex items-center gap-2 text-primary">
               <AlertTriangle className="w-5 h-5" /> {editingId ? 'Edit Scrap Record' : 'Scrap Record Entry'}
             </CardTitle>
@@ -257,6 +269,7 @@ export default function DamagesWastagePage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
                     <SelectItem value="Extrusion">Extrusion (RM to Roll)</SelectItem>
+                    <SelectItem value="Printing">Printing Section</SelectItem>
                     <SelectItem value="Cutting">Cutting & Sealing (Secondary)</SelectItem>
                     <SelectItem value="Packing">Final Packing</SelectItem>
                     <SelectItem value="Storage">Warehouse / Storage</SelectItem>
@@ -264,13 +277,29 @@ export default function DamagesWastagePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" />Damages Qty (Kg)</label>
-                <Input type="number" min={0} step="0.001" placeholder="0" value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" />Damages Qty (Kg) <span className="text-rose-500">*</span></label>
+                <Input 
+                  type="number" 
+                  min={0} 
+                  step="0.001" 
+                  placeholder="0.000" 
+                  className={errors.wastage_qty ? "border-rose-500 focus-visible:ring-rose-500" : ""}
+                  value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} 
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, wastage_qty: val });
+                    if (val > 0) setErrors(prev => { const { wastage_qty: _, ...rest } = prev; return rest; });
+                  }} 
+                />
+                {errors.wastage_qty && <p className="text-xs text-rose-600 font-bold">{errors.wastage_qty}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-primary" /> Reason Code</label>
-                <Select value={formData.reason_code} onValueChange={(val) => setFormData({ ...formData, reason_code: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-primary" /> Reason Code <span className="text-rose-500">*</span></label>
+                <Select value={formData.reason_code} onValueChange={(val) => {
+                  setFormData({ ...formData, reason_code: val });
+                  setErrors(prev => { const { reason_code: _, ...rest } = prev; return rest; });
+                }}>
+                  <SelectTrigger className={`h-10 w-full bg-background shadow-sm ${errors.reason_code ? "border-rose-500" : "border-input"}`}>
                     <SelectValue placeholder="Select Reason" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
@@ -283,6 +312,7 @@ export default function DamagesWastagePage() {
                     <SelectItem value="Other">Other (See Remarks)</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.reason_code && <p className="text-xs text-rose-600 font-bold">{errors.reason_code}</p>}
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><FileText className="w-4 h-4 text-primary" /> Remarks / Details</label>
@@ -291,7 +321,11 @@ export default function DamagesWastagePage() {
             </div>
             <div className="mt-8 flex justify-end gap-3 border-t pt-6">
               <Button variant="outline" onClick={() => setShowForm(false)} className="px-8 rounded-full h-11">Cancel</Button>
-              <Button onClick={saveWastage} className="px-10 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 gap-2 bg-primary hover:bg-primary/95 text-white font-bold rounded-full h-11">
+              <Button 
+                onClick={saveWastage} 
+                loading={submitting}
+                className="px-10 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 gap-2 bg-primary hover:bg-primary/95 text-white font-bold rounded-full h-11"
+              >
                 <Save className="w-4 h-4" /> {editingId ? 'Update Scrap Entry' : 'Save Scrap Entry'}
               </Button>
             </div>

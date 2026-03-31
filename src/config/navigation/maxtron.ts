@@ -49,6 +49,7 @@ export const maxtronSidebarMenu: NavItem[] = [
         permissionKey: "prod_view",
         children: [
             { title: "Production (Extrusion)", path: "/maxtron/production/extrusion", permissionKey: "prod_extrusion_view" },
+            { title: "Printing Section", path: "/maxtron/production/printing", permissionKey: "prod_extrusion_view" },
             { title: "Cutting & Sealing", path: "/maxtron/production/cutting", permissionKey: "prod_cutting_view" },
             { title: "Packing Details", path: "/maxtron/production/packing", permissionKey: "prod_packing_view" },
             { title: "Damages & Wastage", path: "/maxtron/production/wastage", permissionKey: "prod_product_view" },

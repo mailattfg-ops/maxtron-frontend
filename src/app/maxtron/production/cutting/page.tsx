@@ -25,6 +25,7 @@ import { usePermission } from '@/hooks/usePermission';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const CONVERSION_API = `${API_BASE}/api/maxtron/production/conversions`;
 const BATCH_API = `${API_BASE}/api/maxtron/production/batches`;
+const PRINTING_API = `${API_BASE}/api/maxtron/production/printing`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 
@@ -38,6 +39,7 @@ export default function CuttingSealingPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [conversions, setConversions] = useState<any[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
+  const [printingJobs, setPrintingJobs] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [finishedProducts, setFinishedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,18 +85,21 @@ export default function CuttingSealingPage() {
         }
       }
 
-      const [batchRes, empRes, prodRes] = await Promise.all([
+      const [batchRes, empRes, prodRes, printRes] = await Promise.all([
         fetch(`${BATCH_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${PRODUCTS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${PRODUCTS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${PRINTING_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
       const batchData = await batchRes.json();
       const empData = await empRes.json();
       const prodData = await prodRes.json();
+      const printData = await printRes.json();
       
       if (batchData.success) setBatches(batchData.data);
       if (prodData.success) setFinishedProducts(prodData.data);
+      if (printData.success) setPrintingJobs(printData.data);
       if (empData.success) {
         // Filter by "Cutting & Sealing" category if it exists, otherwise show all production staff
         const categoryEmp = empData.data.filter((e: any) => 
@@ -277,16 +282,32 @@ export default function CuttingSealingPage() {
   const availableBatches = useMemo(() => {
     // Collect all batch_ids already used in conversions
     const usedBatchIds = conversions.map(c => c.batch_id);
-    // Filter batches: unused OR explicitly selected in the current editing state
-    return batches.filter(b => 
-        !usedBatchIds.includes(b.id) || b.id === formData.batch_id
-    );
-  }, [batches, conversions, formData.batch_id]);
+    const printedBatchIds = printingJobs.map(j => j.batch_id);
+    
+    const printingRequiredColors = ['BLUE', 'RED', 'YELLOW'];
+
+    // Filter batches: unused AND (no printing required OR already printed)
+    return batches.filter(b => {
+        // Essential check: already used in cutting?
+        if (usedBatchIds.includes(b.id) && b.id !== formData.batch_id) return false;
+
+        const color = (b.finished_products?.color || '').toUpperCase();
+        const requiresPrinting = printingRequiredColors.includes(color);
+        
+        if (requiresPrinting) {
+            // Must have a printing record
+            return printedBatchIds.includes(b.id) || b.id === formData.batch_id;
+        }
+
+        // Direct from extrusion
+        return true;
+    });
+  }, [batches, conversions, printingJobs, formData.batch_id]);
 
   const totalOutput = formData.items.reduce((sum, it) => sum + it.quantity, 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700 overflow-hidden">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -502,12 +523,12 @@ export default function CuttingSealingPage() {
           searchPlaceholder="Search job or batch no..."
           renderRow={(c: any) => (
             <tr key={c.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
-              <td className="px-6 py-4 font-mono font-bold text-primary text-xs">
+              <td className="px-6 py-4 font-mono font-bold text-primary text-xs min-w-[180px] whitespace-nowrap">
                   {c.conversion_number}
                   <div className="text-[9px] text-slate-400 font-normal uppercase">{c.shift}</div>
               </td>
               <td className="px-6 py-4 text-xs">{new Date(c.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-mono text-xs">{c.production_batches?.batch_number}</td>
+              <td className="px-6 py-4 font-mono text-xs min-w-[120px]">{c.production_batches?.batch_number}</td>
               <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
                       {c.items?.map((it: any, i: number) => (

@@ -195,7 +195,7 @@ export default function ProductionSummaryReport() {
         renderRow={(b: any) => (
           <tr key={b.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
             <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(b.date).toLocaleDateString()}</td>
-            <td className="px-6 py-4 font-mono font-bold text-primary">{b.batch_number}</td>
+            <td className="px-6 py-4 font-mono font-bold text-primary min-w-[150px] whitespace-nowrap">{b.batch_number}</td>
             <td className="px-6 py-4 font-bold">{b.finished_products?.product_name || 'N/A'}</td>
             <td className="px-6 py-4 text-xs font-bold uppercase text-slate-500">{b.shift}</td>
             <td className="px-6 py-4 text-xs font-semibold text-slate-500">{b.machine_no}</td>

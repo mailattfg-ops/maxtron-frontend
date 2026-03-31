@@ -51,6 +51,7 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [activeTab, setActiveTab] = useState('basic');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { success, error } = useToast();
   const { confirm } = useConfirm();
@@ -82,6 +83,40 @@ export default function VehiclesPage() {
     company_id: '',
     is_active: true
   });
+
+  const validateTab = (tab: string) => {
+    const newErrors: Record<string, string> = {};
+    
+    if (tab === 'basic') {
+      if (!formData.registration_number.trim()) newErrors.registration_number = 'Required';
+      else if (!/^[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,2}[-\s]?[0-9]{4}$/i.test(formData.registration_number)) {
+        newErrors.registration_number = 'Invalid format (e.g. DL-01-AB-1234)';
+      }
+      
+      if (!formData.model.trim()) newErrors.model = 'Required';
+      if (!formData.vehicle_type) newErrors.vehicle_type = 'Required';
+      if (!formData.purpose) newErrors.purpose = 'Required';
+      
+      if (Number(formData.seating_capacity) <= 0) newErrors.seating_capacity = 'Must be > 0';
+    }
+
+    if (tab === 'tech') {
+      if (formData.fitness_date && formData.fitness_renewal_date) {
+        if (new Date(formData.fitness_renewal_date) <= new Date(formData.fitness_date)) {
+          newErrors.fitness_renewal_date = 'Must be after Fitness Date';
+        }
+      }
+      if (Number(formData.km_on_day_1) < 0) newErrors.km_on_day_1 = 'Cannot be negative';
+    }
+
+    if (tab === 'owner' && formData.gps_installed) {
+      if (!formData.gps_company.trim()) newErrors.gps_company = 'GPS Provider required';
+      if (!formData.gps_install_date) newErrors.gps_install_date = 'Install date required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -128,10 +163,16 @@ export default function VehiclesPage() {
     const { name, value, type } = e.target;
     let finalValue: any = value;
     
-    if (type === 'number') finalValue = parseFloat(value);
+    if (type === 'number') {
+      finalValue = value === '' ? 0 : parseFloat(value);
+    }
     if (type === 'checkbox') finalValue = (e.target as HTMLInputElement).checked;
     
     setFormData({ ...formData, [name]: finalValue });
+    if (errors[name]) setErrors(prev => {
+      const { [name]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const resetForm = () => {
@@ -155,12 +196,13 @@ export default function VehiclesPage() {
       company_id: currentCompanyId,
       is_active: true
     });
+    setErrors({});
     setActiveTab('basic');
   };
 
   const saveVehicle = async () => {
-    if (!formData.registration_number) {
-      error('Registration number is required.');
+    if (!validateTab('basic') || !validateTab('tech') || !validateTab('owner')) {
+      error('Please correct errors in all sections.');
       return;
     }
 
@@ -199,8 +241,8 @@ export default function VehiclesPage() {
   };
 
   const handleEdit = (v: any) => {
-    setEditingId(v.id);
     setFormData({ ...v });
+    setErrors({});
     setShowForm(true);
   };
 
@@ -274,19 +316,33 @@ export default function VehiclesPage() {
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8">
             {activeTab === 'basic' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-500 px-6 md:px-0">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Registration Number *</label>
-                  <Input name="registration_number" value={formData.registration_number} onChange={handleInputChange} placeholder="e.g. DL-01-AB-1234" className="uppercase font-mono" />
+                  <Input 
+                    name="registration_number" 
+                    value={formData.registration_number} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. DL-01-AB-1234" 
+                    className={`uppercase font-mono ${errors.registration_number ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`} 
+                  />
+                  {errors.registration_number && <p className="text-[10px] text-rose-600 font-bold">{errors.registration_number}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Model</label>
-                  <Input name="model" value={formData.model} onChange={handleInputChange} placeholder="e.g. Tata Ace, Bolero" />
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Model *</label>
+                  <Input 
+                    name="model" 
+                    value={formData.model} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. Tata Ace, Bolero" 
+                    className={errors.model ? 'border-rose-500 focus-visible:ring-rose-500' : ''} 
+                  />
+                  {errors.model && <p className="text-[10px] text-rose-600 font-bold">{errors.model}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicle Type</label>
-                  <Select value={formData.vehicle_type} onValueChange={(val) => setFormData({...formData, vehicle_type: val})}>
-                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicle Type *</label>
+                  <Select value={formData.vehicle_type} onValueChange={(val) => { setFormData({...formData, vehicle_type: val}); if(errors.vehicle_type) setErrors(prev => { const { vehicle_type: _, ...rest } = prev; return rest; }); }}>
+                    <SelectTrigger className={`w-full h-10 border text-sm shadow-sm font-medium ${errors.vehicle_type ? 'border-rose-500' : 'border-slate-200'}`}>
                       <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
@@ -295,19 +351,29 @@ export default function VehiclesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.vehicle_type && <p className="text-[10px] text-rose-600 font-bold">{errors.vehicle_type}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Body Type</label>
                   <Input name="body_type" value={formData.body_type} onChange={handleInputChange} placeholder="e.g. Open Box, Container" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seating Capacity</label>
-                  <Input type="number" min={0} name="seating_capacity" value={formData.seating_capacity} onChange={handleInputChange} />
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seating Capacity *</label>
+                  <Input 
+                    type="number" 
+                    min={0} 
+                    name="seating_capacity" 
+                    value={formData.seating_capacity === 0 ? '' : formData.seating_capacity} 
+                    onChange={handleInputChange} 
+                    placeholder="Enter capacity"
+                    className={errors.seating_capacity ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                  />
+                  {errors.seating_capacity && <p className="text-[10px] text-rose-600 font-bold">{errors.seating_capacity}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purpose of Usage</label>
-                  <Select value={formData.purpose} onValueChange={(val) => setFormData({...formData, purpose: val})}>
-                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purpose of Usage *</label>
+                  <Select value={formData.purpose} onValueChange={(val) => { setFormData({...formData, purpose: val}); if(errors.purpose) setErrors(prev => { const { purpose: _, ...rest } = prev; return rest; }); }}>
+                    <SelectTrigger className={`w-full h-10 border text-sm shadow-sm font-medium ${errors.purpose ? 'border-rose-500' : 'border-slate-200'}`}>
                       <SelectValue placeholder="Select Purpose" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
@@ -316,12 +382,13 @@ export default function VehiclesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.purpose && <p className="text-[10px] text-rose-600 font-bold">{errors.purpose}</p>}
                 </div>
               </div>
             )}
 
             {activeTab === 'tech' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-right duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-right duration-500 px-6 md:px-0">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Engine No</label>
                   <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="font-mono" />
@@ -332,7 +399,15 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">KM on Day 1</label>
-                  <Input type="number" min={0} name="km_on_day_1" value={formData.km_on_day_1} onChange={handleInputChange} />
+                  <Input 
+                    type="number" 
+                    min={0} 
+                    name="km_on_day_1" 
+                    value={formData.km_on_day_1 === 0 ? '' : formData.km_on_day_1} 
+                    onChange={handleInputChange} 
+                    className={errors.km_on_day_1 ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                  />
+                  {errors.km_on_day_1 && <p className="text-[10px] text-rose-600 font-bold">{errors.km_on_day_1}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center"><Calendar className="w-3 h-3 mr-1" /> Fitness Date</label>
@@ -340,13 +415,20 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center"><ShieldCheck className="w-3 h-3 mr-1" /> Fitness Renewal Date</label>
-                  <Input type="date" name="fitness_renewal_date" value={formData.fitness_renewal_date} onChange={handleInputChange} />
+                  <Input 
+                    type="date" 
+                    name="fitness_renewal_date" 
+                    value={formData.fitness_renewal_date} 
+                    onChange={handleInputChange} 
+                    className={errors.fitness_renewal_date ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                  />
+                  {errors.fitness_renewal_date && <p className="text-[10px] text-rose-600 font-bold">{errors.fitness_renewal_date}</p>}
                 </div>
               </div>
             )}
 
             {activeTab === 'owner' && (
-              <div className="space-y-8 animate-in slide-in-from-right duration-500">
+              <div className="space-y-8 animate-in slide-in-from-right duration-500 px-6 md:px-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="bg-slate-50/50 p-6 rounded-xl border border-primary/5 space-y-4">
                     <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center">
@@ -368,7 +450,7 @@ export default function VehiclesPage() {
                         <Navigation className="w-4 h-4 mr-2" /> GPS Tracking
                       </h3>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold">INSTALLED?</span>
+                        <span className="text-xs font-bold text-slate-500">INSTALLED?</span>
                         <Checkbox 
                           checked={formData.gps_installed} 
                           onCheckedChange={(checked: boolean) => setFormData({...formData, gps_installed: !!checked})}
@@ -379,12 +461,26 @@ export default function VehiclesPage() {
                     {formData.gps_installed && (
                       <div className="grid grid-cols-1 gap-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="space-y-2">
-                          <label className="text-xs font-medium">GPS Provider/Company</label>
-                          <Input name="gps_company" value={formData.gps_company} onChange={handleInputChange} placeholder="e.g. MapmyIndia, Fleetx" />
+                          <label className="text-xs font-medium">GPS Provider/Company *</label>
+                          <Input 
+                            name="gps_company" 
+                            value={formData.gps_company} 
+                            onChange={handleInputChange} 
+                            placeholder="e.g. MapmyIndia, Fleetx" 
+                            className={errors.gps_company ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                          />
+                          {errors.gps_company && <p className="text-[10px] text-rose-600 font-bold">{errors.gps_company}</p>}
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-medium">Date of Installation</label>
-                          <Input type="date" name="gps_install_date" value={formData.gps_install_date} onChange={handleInputChange} />
+                          <label className="text-xs font-medium">Date of Installation *</label>
+                          <Input 
+                            type="date" 
+                            name="gps_install_date" 
+                            value={formData.gps_install_date} 
+                            onChange={handleInputChange} 
+                            className={errors.gps_install_date ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                          />
+                          {errors.gps_install_date && <p className="text-[10px] text-rose-600 font-bold">{errors.gps_install_date}</p>}
                         </div>
                       </div>
                     )}
@@ -421,13 +517,11 @@ export default function VehiclesPage() {
                   <Button 
                     onClick={() => {
                       if (activeTab === 'basic') {
-                        if (!formData.registration_number) {
-                          error('Vehicle registration number is required.');
-                          return;
-                        }
-                        setActiveTab('tech');
+                        if (validateTab('basic')) setActiveTab('tech');
                       }
-                      else if (activeTab === 'tech') setActiveTab('owner');
+                      else if (activeTab === 'tech') {
+                        if (validateTab('tech')) setActiveTab('owner');
+                      }
                     }}
                     className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
                   >

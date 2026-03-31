@@ -18,6 +18,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { exportToPDF } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const EXPENSES_API = `${API_BASE}/api/maxtron/production/expenses`;
@@ -144,6 +145,28 @@ export default function MiscellaneousExpensesReport() {
     window.print();
   };
 
+  const handleExportPDF = async () => {
+    if (filteredExpenses.length === 0) return;
+    
+    const headers = ['Date', 'Category', 'Description', 'Amount', 'Payment Mode', 'Reference No'];
+    const rows = filteredExpenses.map(ex => [
+      new Date(ex.expense_date).toLocaleDateString(),
+      ex.category,
+      ex.description,
+      `INR ${Number(ex.amount).toLocaleString()}`,
+      ex.payment_mode,
+      ex.reference_no || '-'
+    ]);
+
+    await exportToPDF({
+      headers,
+      rows,
+      filename: `Misc_Expenses_Report_${startDate}_to_${endDate}.pdf`,
+      title: 'Miscellaneous Expenses Report',
+      subtitle: `Period: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()} | Total: INR ${stats.total.toLocaleString()}`
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700 print:bg-white print:p-0">
       {/* Header - Hidden on Print */}
@@ -159,7 +182,10 @@ export default function MiscellaneousExpensesReport() {
             <Button variant="outline" onClick={handlePrint} className="rounded-full shadow-sm hover:bg-slate-50">
                 <Printer className="w-4 h-4 mr-2" /> Print Report
             </Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg shadow-emerald-200 font-bold px-6">
+            <Button 
+                onClick={handleExportPDF}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg shadow-emerald-200 font-bold px-6"
+            >
                 <Download className="w-4 h-4 mr-2" /> Export PDF
             </Button>
         </div>
