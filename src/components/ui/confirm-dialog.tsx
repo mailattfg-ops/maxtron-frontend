@@ -1,9 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { AlertCircle, X, Check, ChevronDown } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from './button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from './dialog';
+import { VisuallyHidden } from './visually-hidden';
 
 interface ConfirmOptions {
   title?: string;
@@ -23,25 +31,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const [resolveRef, setResolveRef] = useState<((val: boolean) => void) | null>(null);
-  const [showScrollArrow, setShowScrollArrow] = useState(false);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 20) {
-        setShowScrollArrow(false);
-      } else {
-        setShowScrollArrow(true);
-      }
-    }
-  };
-
-  React.useEffect(() => {
-    if (isOpen) {
-      setTimeout(handleScroll, 200);
-    }
-  }, [isOpen, options]);
 
   const confirm = useCallback((opts: ConfirmOptions) => {
     setOptions(opts);
@@ -64,51 +53,39 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {isOpen && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={handleCancel} />
-          
-          <Card className="relative w-full max-w-[400px] max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in duration-300 border-primary/20 bg-white flex flex-col">
-            <CardHeader className="bg-slate-50/50 border-b p-6">
-              <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-full ${options?.type === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-primary/10 text-primary'}`}>
-                  {options?.type === 'danger' ? <AlertCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold">{options?.title || 'Are you sure?'}</CardTitle>
-                </div>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-[400px] sm:rounded-[2rem]">
+          <DialogHeader>
+            <div className="flex items-center gap-4 mb-2">
+              <div className={`p-2 rounded-full ${options?.type === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-primary/10 text-primary'}`}>
+                <AlertCircle className="w-5 h-5" />
               </div>
-            </CardHeader>
-            <CardContent 
-              ref={scrollRef}
-              onScroll={handleScroll}
-              className="p-6 overflow-y-auto relative"
+              <DialogTitle className="text-xl font-bold">
+                {options?.title || 'Are you sure?'}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm font-medium text-slate-600 leading-relaxed text-left">
+              {options?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex-row sm:justify-end gap-3">
+            <Button 
+                variant="outline" 
+                onClick={handleCancel} 
+                className="flex-1 sm:flex-none rounded-full px-6 font-semibold border-slate-200"
             >
-              {showScrollArrow && (
-                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-primary text-white p-2 rounded-full shadow-lg">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              )}
-              <CardDescription className="text-sm font-medium text-slate-700 leading-relaxed mb-8">
-                {options?.message}
-              </CardDescription>
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={handleCancel} className="rounded-full px-6 font-semibold">
-                  {options?.cancelLabel || 'Cancel'}
-                </Button>
-                <Button 
-                  variant={options?.type === 'danger' ? 'destructive' : 'default'} 
-                  onClick={handleConfirm}
-                  className="rounded-full px-6 font-bold shadow-lg"
-                >
-                  {options?.confirmLabel || 'Proceed'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              {options?.cancelLabel || 'Cancel'}
+            </Button>
+            <Button 
+              variant={options?.type === 'danger' ? 'destructive' : 'default'} 
+              onClick={handleConfirm}
+              className="flex-1 sm:flex-none rounded-full px-8 font-bold shadow-lg shadow-primary/10"
+            >
+              {options?.confirmLabel || 'Proceed'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ConfirmContext.Provider>
   );
 }

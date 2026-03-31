@@ -19,6 +19,15 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const DELIVERIES_API = `${API_BASE}/api/maxtron/sales/deliveries`;
@@ -293,31 +302,56 @@ export default function DeliveryDetails() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Alert Component */}
-      {alert.show && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setAlert({...alert, show: false})} />
-            <Card className="relative w-full max-w-[440px] shadow-2xl bg-white rounded-3xl overflow-hidden p-8 text-center">
-                <div className="flex justify-center mb-6">
-                    {alert.type === 'success' && <CheckCircle2 className="w-12 h-12 text-emerald-500" />}
-                    {alert.type === 'error' && <XCircle className="w-12 h-12 text-rose-500" />}
-                    {alert.type === 'confirm' && <AlertCircle className="w-12 h-12 text-primary" />}
-                </div>
-                <h3 className="text-2xl font-black mb-2">{alert.title}</h3>
-                <p className="text-slate-500">{alert.message}</p>
-                <div className="mt-8 flex gap-3 justify-center">
-                    {alert.type === 'confirm' ? (
-                        <>
-                            <Button variant="outline" onClick={() => setAlert({...alert, show: false})}>Cancel</Button>
-                            <Button onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} className="bg-rose-600 hover:bg-rose-700">Delete</Button>
-                        </>
-                    ) : (
-                        <Button onClick={() => setAlert({...alert, show: false})} className="px-10">Got it</Button>
-                    )}
-                </div>
-            </Card>
-        </div>
-      )}
+      {/* Standardized Accessible Alert Dialog */}
+      <Dialog open={alert.show} onOpenChange={(open) => !open && setAlert({...alert, show: false})}>
+          <DialogContent className="max-w-[440px] p-8 text-center sm:rounded-[3rem] border-none shadow-2xl">
+              <VisuallyHidden>
+                  <DialogDescription>
+                      System notification: {alert.title}
+                  </DialogDescription>
+              </VisuallyHidden>
+              
+              <div className="flex justify-center mb-6">
+                  {alert.type === 'success' && <CheckCircle2 className="w-16 h-16 text-emerald-500 animate-in zoom-in duration-500" />}
+                  {alert.type === 'error' && <XCircle className="w-16 h-16 text-rose-500 animate-in zoom-in duration-500" />}
+                  {alert.type === 'confirm' && <AlertCircle className="w-16 h-16 text-primary animate-in zoom-in duration-500" />}
+              </div>
+              
+              <DialogTitle className="text-3xl font-black mb-2 tracking-tight">
+                  {alert.title}
+              </DialogTitle>
+              <p className="text-slate-500 font-medium leading-relaxed">
+                  {alert.message}
+              </p>
+              
+              <DialogFooter className="mt-10 flex-row justify-center gap-3">
+                  {alert.type === 'confirm' ? (
+                      <>
+                          <Button 
+                              variant="outline" 
+                              onClick={() => setAlert({...alert, show: false})} 
+                              className="flex-1 rounded-full px-6 font-bold border-slate-200"
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                              onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} 
+                              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full font-bold shadow-lg shadow-rose-200"
+                          >
+                            Confirm Delete
+                          </Button>
+                      </>
+                  ) : (
+                      <Button 
+                          onClick={() => setAlert({...alert, show: false})} 
+                          className="px-12 h-12 rounded-full font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                      >
+                        Got it
+                      </Button>
+                  )}
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-primary/10 mb-6 transition-all">
         <div>

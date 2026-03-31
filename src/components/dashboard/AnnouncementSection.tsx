@@ -29,6 +29,15 @@ import { usePermission } from '@/hooks/usePermission';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -401,109 +410,102 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
                 </div>
             )}
 
-            {/* Premium Glassmorphic Modal for Posting Notice */}
-            {isDialogOpen && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 animate-in fade-in duration-500">
-                    <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-md" onClick={() => setIsDialogOpen(false)} />
-
-                    <Card className="relative w-full max-w-[600px] max-h-[90vh] overflow-y-auto custom-scrollbar border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] rounded-[2.5rem] bg-white/95 backdrop-blur-xl p-0 animate-in zoom-in-95 slide-in-from-bottom-12 duration-500">
-                        {/* Modal Header */}
-                        <div className="p-10 pb-6 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-between border-b border-primary/5">
-                            <div className="flex items-center gap-5">
-                                <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
-                                    <Megaphone className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-3xl font-black text-foreground uppercase tracking-tighter">
-                                        New Broadcast
-                                    </CardTitle>
-                                    <CardDescription className="text-primary/60 font-black uppercase tracking-widest text-[10px] mt-1">
-                                        Official {tenant.toLocaleUpperCase()} Communications
-                                    </CardDescription>
-                                </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-[600px] p-0 border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] rounded-[2.5rem] bg-white/95 backdrop-blur-xl overflow-hidden">
+                    <VisuallyHidden>
+                        <DialogDescription>
+                            Create a new broadcast announcement for the {tenant} dashboard.
+                        </DialogDescription>
+                    </VisuallyHidden>
+                    
+                    {/* Modal Header */}
+                    <div className="p-10 pb-6 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-between border-b border-primary/5">
+                        <div className="flex items-center gap-5">
+                            <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
+                                <Megaphone className="w-6 h-6" />
                             </div>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => setIsDialogOpen(false)} 
-                                className="rounded-2xl hover:bg-rose-500/10 hover:text-rose-500 w-12 h-12 transition-colors"
-                            >
-                                <X className="w-6 h-6" />
-                            </Button>
+                            <div>
+                                <DialogTitle className="text-3xl font-black text-foreground uppercase tracking-tighter">
+                                    New Broadcast
+                                </DialogTitle>
+                                <p className="text-primary/60 font-black uppercase tracking-widest text-[10px] mt-1">
+                                    Official {tenant.toLocaleUpperCase()} Communications
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="p-10 space-y-8">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Headline</label>
+                            <Input
+                                placeholder="Enter a compelling title..."
+                                value={formData.title}
+                                onChange={(e: any) => setFormData({...formData, title: e.target.value})}
+                                className="h-16 px-6 rounded-2xl border-slate-200 bg-slate-50/50 text-base font-bold focus:ring-4 focus:ring-slate-100 transition-all placeholder:text-slate-300"
+                            />
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-5 space-y-8">
+                        <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Headline</label>
-                                <Input
-                                    placeholder="Enter a compelling title..."
-                                    value={formData.title}
-                                    onChange={(e: any) => setFormData({...formData, title: e.target.value})}
-                                    className="h-16 px-6 rounded-2xl border-slate-200 bg-slate-50/50 text-base font-bold focus:ring-4 focus:ring-slate-100 transition-all placeholder:text-slate-300"
-                                />
+                                <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Priority</label>
+                                <Select
+                                    value={formData.type}
+                                    onValueChange={(val) => setFormData({...formData, type: val as any})}
+                                >
+                                    <SelectTrigger className="h-16 w-full rounded-2xl border border-slate-200 bg-slate-50/50 font-black px-6 text-xs uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-left">
+                                        <SelectValue placeholder="Priority Broadcast" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-slate-200 rounded-2xl shadow-2xl z-[10001]">
+                                        <SelectItem value="info" className="font-black text-xs uppercase tracking-widest">💡 Information</SelectItem>
+                                        <SelectItem value="warning" className="font-black text-xs uppercase tracking-widest">⚠️ Warning</SelectItem>
+                                        <SelectItem value="critical" className="font-black text-xs uppercase tracking-widest text-rose-600">🚨 Critical / Urgent</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Priority</label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={(val) => setFormData({...formData, type: val as any})}
-                                    >
-                                        <SelectTrigger className="h-16 w-full rounded-2xl border border-slate-200 bg-slate-50/50 font-black px-6 text-xs uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-left">
-                                            <SelectValue placeholder="Priority Broadcast" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white border-slate-200 rounded-2xl shadow-2xl z-[10001]">
-                                            <SelectItem value="info" className="font-black text-xs uppercase tracking-widest">💡 Information</SelectItem>
-                                            <SelectItem value="warning" className="font-black text-xs uppercase tracking-widest">⚠️ Warning</SelectItem>
-                                            <SelectItem value="critical" className="font-black text-xs uppercase tracking-widest text-rose-600">🚨 Critical / Urgent</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Target</label>
-                                    <div className="h-9 flex justify-center items-center rounded-2xl bg-primary/10 ring-primary/20 text-primary/80">
-                                        {tenant.toUpperCase()} DASHBOARD
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Message Body</label>
-                                <textarea
-                                    placeholder="Write your announcement details here..."
-                                    value={formData.content}
-                                    onChange={(e: any) => setFormData({...formData, content: e.target.value})}
-                                    className="min-h-[50px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-6 font-medium resize-none focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm placeholder:text-slate-300"
-                                />
+                                <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Target</label>
+                                <div className="h-16 flex justify-center items-center rounded-2xl bg-primary/10 ring-1 ring-primary/20 text-primary font-bold text-xs">
+                                    {tenant.toUpperCase()} DASHBOARD
+                                </div>
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-10 pt-0 flex gap-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsDialogOpen(false)}
-                                className="flex-1 h-14 rounded-2xl font-black border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-all uppercase tracking-widest text-[10px]"
-                            >
-                                Discard Change
-                            </Button>
-                            <Button
-                                onClick={handleCreate}
-                                disabled={submitting}
-                                className="flex-[2] h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 flex gap-3"
-                            >
-                                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                    <>
-                                        Broadcast Now <Sparkles className="w-4 h-4" />
-                                    </>
-                                )}
-                            </Button>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-primary uppercase tracking-[0.25em] ml-1 opacity-60">Message Body</label>
+                            <textarea
+                                placeholder="Write your announcement details here..."
+                                value={formData.content}
+                                onChange={(e: any) => setFormData({...formData, content: e.target.value})}
+                                className="min-h-[120px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-6 font-medium resize-none focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-sm placeholder:text-slate-300"
+                            />
                         </div>
-                    </Card>
-                </div>
-            )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-10 pt-0 flex gap-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDialogOpen(false)}
+                            className="flex-1 h-14 rounded-2xl font-black border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-all uppercase tracking-widest text-[10px]"
+                        >
+                            Discard
+                        </Button>
+                        <Button
+                            onClick={handleCreate}
+                            disabled={submitting}
+                            className="flex-[2] h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 flex gap-3"
+                        >
+                            {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                <>
+                                    Broadcast Now <Sparkles className="w-4 h-4" />
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </section>
     );
 }
