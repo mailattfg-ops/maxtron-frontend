@@ -20,6 +20,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
@@ -113,6 +120,25 @@ export default function RouteRegistryPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        const routeName = (formData.route_name || '').trim();
+        const routeCode = (formData.route_code || '').trim().toUpperCase();
+
+        if (!routeName || !routeCode) {
+            error("Route Name and Code are required.");
+            return;
+        }
+
+        if (routeCode.length < 2 || routeCode.length > 10) {
+            error("Route Code must be 2-10 characters.");
+            return;
+        }
+
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(routeName) || !nameRegex.test(routeCode)) {
+            error("Only letters, numbers, spaces, and hyphens are allowed in names/codes.");
+            return;
+        }
+
         if (!formData.branch_id) {
             error("Please select an organizational Branch for this logistical route.");
             return;
@@ -140,7 +166,12 @@ export default function RouteRegistryPage() {
                 resetForm();
                 fetchRoutes(currentCompanyId);
             } else {
-                error(data.message);
+                // Meaningful Toast interception
+                if (data.message?.includes('duplicate key value violates unique constraint') || data.message?.includes('keil_routes_route_code_company_id_key')) {
+                    error("Duplicate Route Code: This code is already registered for your branch. Please use a unique route code.");
+                } else {
+                    error(data.message || "An unexpected error occurred while saving the route.");
+                }
             }
         } catch (err: any) {
             error(err.message);
@@ -171,6 +202,8 @@ export default function RouteRegistryPage() {
                 if (data.success) {
                     success("Route deleted.");
                     fetchRoutes(currentCompanyId);
+                } else {
+                    error(data.message || "Failed to delete route. It may have active assignments.");
                 }
             } catch (err: any) {
                 error(err.message);
@@ -203,17 +236,19 @@ export default function RouteRegistryPage() {
 
     return (
         <div className="md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">Route Registry</h1>
-                    <p className="text-muted-foreground text-sm font-medium">Define and Manage Logistical Collection Routes</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Route Registry</h1>
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium">Define and Manage Logistical Collection Routes</p>
                 </div>
                 {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)} 
-                        className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"
+                        className="flex-1 md:flex-none h-10 md:h-11 bg-primary hover:bg-primary/90 text-white px-4 md:px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <Plus className="w-4 h-4 mr-2" /> Define New Route
+                        <Plus className="w-4 h-4" /> 
+                        <span className="hidden md:inline">Define New Route</span>
+                        <span className="md:hidden">Define Route</span>
                     </Button>
                 )}
             </div>
@@ -248,15 +283,16 @@ export default function RouteRegistryPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
-                                <select 
-                                    required
-                                    className="flex h-10 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ring"
-                                    value={formData.branch_id}
-                                    onChange={e => setFormData({ ...formData, branch_id: e.target.value })}
-                                >
-                                    <option value="">Select Branch</option>
-                                    {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                                </select>
+                                <Select value={formData.branch_id} onValueChange={(val) => setFormData({ ...formData, branch_id: val })}>
+                                    <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                        <SelectValue placeholder="Select Branch" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {branches.map(b => (
+                                            <SelectItem key={b.id} value={b.id}>{b.branch_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="col-span-full pt-4 flex justify-end gap-3 border-t border-primary/10">
                                 <Button type="button" variant="outline" className="rounded-full px-6" onClick={() => { setIsFormOpen(false); resetForm(); }}>Cancel</Button>
@@ -274,19 +310,19 @@ export default function RouteRegistryPage() {
                     loading={loading}
                     searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
                     renderRow={(r: any) => (
-                        <tr key={r.id} className="hover:bg-indigo-50/50 transition-colors group border-b last:border-0 border-slate-100">
+                        <tr key={r.id} className="hover:bg-primary/5 transition-colors group border-b last:border-0 border-slate-100">
                             <td className="px-6 py-4">
-                                <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{r.route_code}</span>
+                                <span className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-wider">{r.route_code}</span>
                             </td>
                             <td className="px-6 py-4">
                                 <span className="font-bold text-slate-700">{r.route_name}</span>
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-500">{r.route_type}</td>
-                            <td className="px-6 py-4 font-medium text-indigo-600">{r.branch_name}</td>
+                            <td className="px-6 py-4 font-medium text-primary">{r.branch_name}</td>
                             <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex md:justify-end items-center gap-2">
                                     {canEdit && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-indigo-500 hover:text-indigo-700">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="h-8 w-8 text-primary hover:text-primary/80">
                                             <Edit className="w-4 h-4" />
                                         </Button>
                                     )}
@@ -296,7 +332,7 @@ export default function RouteRegistryPage() {
                                         </Button>
                                     )}
                                     {canEdit && (
-                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
+                                        <Button variant="outline" size="sm" className="h-8 gap-1 ml-2 text-xs border-primary/20 text-primary hover:bg-primary/5" onClick={() => window.location.href = `/keil/operations/assignments?route_id=${r.id}`}>
                                             Manage HCEs <ArrowRight className="w-3 h-3" />
                                         </Button>
                                     )}

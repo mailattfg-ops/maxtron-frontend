@@ -20,6 +20,13 @@ import { exportToExcel } from '@/utils/export';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from "@/components/ui/table-view";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -173,26 +180,22 @@ export default function HCEServiceLedgerPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold text-primary tracking-tight">HCE Service Ledger</h1>
-                    <p className="text-sm font-medium text-muted-foreground">Full collection history and waste volume analysis.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <Activity className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+                        <span className="truncate">HCE Service Ledger</span>
+                    </h1>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Full collection history and waste volume analysis.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Button 
-                        variant="outline" 
                         onClick={handleExport}
                         disabled={entries.length === 0}
-                        className="rounded-full px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10"
+                        className="h-11 px-8 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 uppercase tracking-wider text-xs"
                     >
-                        <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel Export
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        className="rounded-full px-6 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10" 
-                        onClick={() => window.print()}
-                    >
-                        <FileText className="w-4 h-4 mr-2" /> Print Ledger
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Excel Download
                     </Button>
                 </div>
             </div>
@@ -211,14 +214,16 @@ export default function HCEServiceLedgerPage() {
                             <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider pl-1">HCE Facility</label>
                             <div className="relative group">
                                 <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                <select 
-                                    className="pl-9 h-10 w-full rounded-md border border-primary/20 bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all shadow-sm"
-                                    value={filters.hce_id}
-                                    onChange={e => handleFilterChange('hce_id', e.target.value)}
-                                >
-                                    <option value="">Choose Hospital / Clinic</option>
-                                    {hces.map(h => <option key={h.id} value={h.id}>{h.hce_name} ({h.hce_code})</option>)}
-                                </select>
+                                <Select value={filters.hce_id} onValueChange={(val) => handleFilterChange('hce_id', val)}>
+                                    <SelectTrigger className="pl-9 h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                        <SelectValue placeholder="Choose Hospital / Clinic" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        {hces.map(h => (
+                                            <SelectItem key={h.id} value={h.id}>{h.hce_name} ({h.hce_code})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="space-y-2">

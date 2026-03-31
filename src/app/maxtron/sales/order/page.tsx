@@ -11,6 +11,13 @@ import {
   ChevronRight, Info, AlertCircle, Edit2, CheckCircle2,
   AlertTriangle, XCircle
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
@@ -57,7 +64,7 @@ export default function CustomerOrderEntry() {
     remarks: '',
     company_id: '',
     items: [
-      { product_id: '', quantity: 0, rate: 0, value: 0 }
+      { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }
     ]
   });
 
@@ -129,7 +136,7 @@ export default function CustomerOrderEntry() {
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, value: 0 }]
+      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
     });
   };
 
@@ -144,10 +151,11 @@ export default function CustomerOrderEntry() {
     const newItems = [...formData.items];
     const item = { ...newItems[index], [field]: value };
     
-    // Auto-calculate value and enforce stock limit
-    if (field === 'quantity' || field === 'rate') {
+    // Auto-calculate GST and total value
+    if (field === 'quantity' || field === 'rate' || field === 'gst_percent') {
       let qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
       const rate = field === 'rate' ? parseFloat(value) || 0 : item.rate;
+      const gstP = field === 'gst_percent' ? parseFloat(value) || 0 : item.gst_percent;
       
       // Force limit if quantity is being changed
       if (field === 'quantity') {
@@ -159,7 +167,9 @@ export default function CustomerOrderEntry() {
         }
       }
       
-      item.value = qty * rate;
+      const taxableValue = qty * rate;
+      item.gst_amount = (taxableValue * gstP) / 100;
+      item.total_value = taxableValue + item.gst_amount;
     }
 
     // Auto-set rate if product selected
@@ -187,7 +197,9 @@ export default function CustomerOrderEntry() {
         product_id: i.product_id,
         quantity: i.quantity,
         rate: i.rate,
-        value: i.value
+        gst_percent: i.gst_percent || 0,
+        gst_amount: i.gst_amount || 0,
+        total_value: i.total_value || (i.quantity * i.rate)
       }))
     });
     setShowForm(true);
@@ -230,8 +242,16 @@ export default function CustomerOrderEntry() {
     });
   };
 
-  const totalOrderValue = useMemo(() => {
-    return formData.items.reduce((sum, item) => sum + (item.value || 0), 0);
+  const orderCalculations = useMemo(() => {
+    return formData.items.reduce((acc, item) => {
+        const taxable = (item.quantity * item.rate) || 0;
+        const gst = item.gst_amount || 0;
+        return {
+            taxableValue: acc.taxableValue + taxable,
+            taxAmount: acc.taxAmount + gst,
+            netAmount: acc.netAmount + taxable + gst
+        };
+    }, { taxableValue: 0, taxAmount: 0, netAmount: 0 });
   }, [formData.items]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -265,7 +285,9 @@ export default function CustomerOrderEntry() {
         },
         body: JSON.stringify({
           ...formData,
-          total_value: totalOrderValue
+          total_value: orderCalculations.taxableValue,
+          tax_amount: orderCalculations.taxAmount,
+          net_amount: orderCalculations.netAmount
         })
       });
 
@@ -285,7 +307,7 @@ export default function CustomerOrderEntry() {
             order_date: new Date().toISOString().split('T')[0],
             remarks: '',
             company_id: currentCompanyId,
-            items: [{ product_id: '', quantity: 0, rate: 0, value: 0 }]
+            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
         });
         fetchOrders();
       } else {
@@ -381,14 +403,18 @@ export default function CustomerOrderEntry() {
       )}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <ShoppingBag className="w-8 h-8 text-primary" /> Customer Order Entry
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <ShoppingBag className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+            <span className="truncate">Customer Order Entry</span>
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-medium">Create and manage sales orders from customers.</p>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Create and manage sales orders from customers.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg transition-all hover:scale-105">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <Button 
+          onClick={() => setShowForm(!showForm)} 
+          className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"}`}
+        >
+          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? "Cancel Entry" : "New Customer Order"}
         </Button>
       </div>
@@ -401,7 +427,7 @@ export default function CustomerOrderEntry() {
               {editingId ? "Edit Customer Order" : "New Order Form"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
@@ -420,32 +446,32 @@ export default function CustomerOrderEntry() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <User className="w-3 h-3" /> Select Customer
                   </label>
-                  <select 
-                    value={formData.customer_id} 
-                    onChange={e => setFormData({...formData, customer_id: e.target.value})}
-                    className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                  >
-                    <option value="">Choose Customer...</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</option>
-                    ))}
-                  </select>
+                  <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm">
+                      <SelectValue placeholder="Choose Customer..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {customers.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Briefcase className="w-3 h-3" /> Sales Executive
                   </label>
-                  <select 
-                    value={formData.executive_id} 
-                    onChange={e => setFormData({...formData, executive_id: e.target.value})}
-                    className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                  >
-                    <option value="">Choose Executive...</option>
-                    {executives.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </select>
+                  <Select value={formData.executive_id} onValueChange={(val) => setFormData({...formData, executive_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm">
+                      <SelectValue placeholder="Choose Executive..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {executives.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -488,9 +514,10 @@ export default function CustomerOrderEntry() {
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Product Details</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Quantity</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Rate (₹)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-40">Value (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-24">Quantity</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Rate (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-24">GST %</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-32">Total (₹)</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
                         </thead>
@@ -498,25 +525,25 @@ export default function CustomerOrderEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50/50 transition-colors group">
                                     <td className="p-4">
-                                        <select 
-                                            value={item.product_id}
-                                            onChange={e => handleItemChange(index, 'product_id', e.target.value)}
-                                            className="w-full text-[10px] md:text-sm font-medium border-none bg-transparent focus:ring-0"
-                                        >
-                                            <option value="">Select Product...</option>
-                                            {products.filter(p => (Number(p.balance) > 0 || item.product_id === p.id)).map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.product_name} [{p.product_code}] - Available: {p.balance} Kg
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(index, 'product_id', val)}>
+                                            <SelectTrigger className="w-full border-none bg-transparent shadow-none focus:ring-0 text-[10px] md:text-sm font-medium">
+                                                <SelectValue placeholder="Select Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {products.filter(p => (Number(p.balance) > 0 || item.product_id === p.id)).map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>
+                                                        {p.product_name} [{p.product_code}] - Available: {p.balance} Kg
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4">
                                         <Input 
                                             type="number" 
                                             min={0}
                                             max={products.find(p => p.id === item.product_id)?.balance || 0}
-                                            value={item.quantity} 
+                                            value={item.quantity === 0 ? '' : item.quantity} 
                                             onChange={e => handleItemChange(index, 'quantity', e.target.value)}
                                             className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
                                             placeholder="0.00"
@@ -526,14 +553,24 @@ export default function CustomerOrderEntry() {
                                         <Input 
                                             type="number" 
                                             min={0}
-                                            value={item.rate} 
+                                            value={item.rate === 0 ? '' : item.rate} 
                                             onChange={e => handleItemChange(index, 'rate', e.target.value)}
                                             className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
                                             placeholder="0.00"
                                         />
                                     </td>
+                                    <td className="p-4 text-center">
+                                        <Input 
+                                            type="number" 
+                                            min={0}
+                                            value={item.gst_percent === 0 ? '' : item.gst_percent} 
+                                            onChange={e => handleItemChange(index, 'gst_percent', e.target.value)}
+                                            className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"
+                                            placeholder="0"
+                                        />
+                                    </td>
                                     <td className="p-4 text-right">
-                                        <span className="text-xs md:text-sm font-black text-slate-700">₹ {item.value.toLocaleString()}</span>
+                                        <span className="text-xs md:text-sm font-black text-slate-700">₹ {item.total_value.toLocaleString()}</span>
                                     </td>
                                     <td className="p-4 text-center">
                                         <button 
@@ -547,10 +584,20 @@ export default function CustomerOrderEntry() {
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="bg-slate-900 text-white font-black">
+                        <tfoot className="bg-primary text-white font-black">
+                             <tr>
+                                <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total Value</td>
+                                <td className="p-3 text-right text-sm">₹ {orderCalculations.taxableValue.toLocaleString()}</td>
+                                <td></td>
+                            </tr>
                             <tr>
-                                <td colSpan={3} className="px-4 py-4 text-right uppercase tracking-widest text-[10px]">Grand Total</td>
-                                <td className="px-4 py-4 text-right text-lg">₹ {totalOrderValue.toLocaleString()}</td>
+                                <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total GST</td>
+                                <td className="p-3 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString()}</td>
+                                <td></td>
+                            </tr>
+                            <tr className="border-t border-white/20">
+                                <td colSpan={4} className="px-6 py-6 text-right uppercase tracking-widest text-xs font-black">Grand Total</td>
+                                <td className="p-3 text-right text-2xl font-black">₹ {orderCalculations.netAmount.toLocaleString()}</td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -568,11 +615,11 @@ export default function CustomerOrderEntry() {
                   />
               </div>
 
-              <div className="flex justify-end pt-4 gap-3">
+              <div className="flex justify-end pt-4 gap-3 px-4 md:px-0">
                 <Button 
                   type="submit" 
                   loading={submitting}
-                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl animate-pulse hover:animate-none"
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl animate-pulse hover:animate-none hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
                   <Save className="w-5 h-5" /> {editingId ? "Update Order Details" : "Confirm & Post Order"}
                 </Button>

@@ -9,6 +9,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -58,7 +65,7 @@ export default function ConsumptionReportPage() {
   const filtered = useMemo(() => consumptions.filter(c => {
     if (dateFrom && new Date(c.consumption_date) < new Date(dateFrom)) return false;
     if (dateTo && new Date(c.consumption_date) > new Date(dateTo)) return false;
-    if (filterProcess && c.process_type !== filterProcess) return false;
+    if (filterProcess && filterProcess !== 'all' && c.process_type !== filterProcess) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -258,14 +265,17 @@ export default function ConsumptionReportPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Process Type</label>
-              <select
-                value={filterProcess}
-                onChange={e => setFilterProcess(e.target.value)}
-                className="h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 focus:bg-white w-full uppercase font-bold"
-              >
-                <option value="">All Processes</option>
-                {processTypes.map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
-              </select>
+              <Select value={filterProcess} onValueChange={setFilterProcess}>
+                <SelectTrigger className="h-10 rounded-xl border border-slate-200 text-xs outline-none bg-slate-50 focus:bg-white w-full uppercase font-bold">
+                  <SelectValue placeholder="All Processes" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  <SelectItem value="all">All Processes</SelectItem>
+                  {processTypes.map(p => (
+                    <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
               <Button onClick={() => fetchReport()} className="flex-1 bg-slate-900 text-white h-10 rounded-xl text-xs font-bold">Apply Filters</Button>
@@ -288,7 +298,6 @@ export default function ConsumptionReportPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Issuance Detail Log</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{filtered.length} Records</span>

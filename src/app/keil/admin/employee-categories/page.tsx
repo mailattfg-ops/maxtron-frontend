@@ -98,6 +98,22 @@ export default function EmployeeCategoriesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const catName = (formData.category_name || '').trim();
+        if (catName.length < 3) {
+            error('Category name must be at least 3 characters long');
+            return;
+        }
+        if (catName.length > 30) {
+            error('Category name cannot exceed 30 characters');
+            return;
+        }
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(catName)) {
+            error('Category name can only contain letters, numbers, spaces, and hyphens');
+            return;
+        }
+        
         try {
             const url = editingId ? `${CATEGORIES_API}/${editingId}` : CATEGORIES_API;
             const method = editingId ? 'PUT' : 'POST';
@@ -155,7 +171,7 @@ export default function EmployeeCategoriesPage() {
         }
     };
 
-    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-indigo-600" /></div>;
+    if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
     if (!canView) return (
         <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
@@ -169,26 +185,32 @@ export default function EmployeeCategoriesPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-heading">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Tags className="w-8 h-8 text-indigo-600 p-1.5 bg-indigo-50 rounded-lg" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+                        <Tags className="w-8 h-8 text-primary p-1.5 bg-primary/10 rounded-lg" />
                         Employee Categories
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Configure employee classification groups for HR and Payroll.</p>
+                    <p className="text-slate-500 text-sm mt-1 italic">Configure employee classification groups for HR and Payroll.</p>
                 </div>
-                {canCreate && (
-                    <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} className="gap-2 shadow-lg">
-                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {showForm ? "Cancel" : "Add Category"}
-                    </Button>
-                )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_name: '', company_id: currentCompanyId }); }} 
+                            className="flex-1 md:flex-none h-11 gap-2 shadow-lg rounded-full px-8 active:scale-95 transition-all font-bold uppercase"
+                        >
+                            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {showForm ? "Cancel Entry" : "Add Category"}
+                        </Button>
+                    )}
+                </div>
             </div>
 
+
             {showForm && (
-                <Card className="border-indigo-100 shadow-xl overflow-hidden">
-                    <CardHeader className="bg-indigo-50/50 border-b">
-                        <CardTitle className="text-indigo-900 text-lg">
+                <Card className="border-primary/15 shadow-xl overflow-hidden">
+                    <CardHeader className="bg-primary/10/50 border-b">
+                        <CardTitle className="text-primary text-lg">
                             {editingId ? "Modify Classification" : "New Classification Entry"}
                         </CardTitle>
                     </CardHeader>
@@ -200,11 +222,11 @@ export default function EmployeeCategoriesPage() {
                                     placeholder="E.g. Management, Skilled Worker, Staff..." 
                                     value={formData.category_name} 
                                     onChange={e => setFormData(prev => ({ ...prev, category_name: e.target.value }))}
-                                    className="h-11 border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-indigo-400 focus:outline-none"
+                                    className="h-11 border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/60 focus:outline-none"
                                     required
                                 />
                             </div>
-                            <Button type="submit" className="h-11 px-8 gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                            <Button type="submit" className="h-11 px-8 gap-2 bg-primary hover:bg-primary shadow-lg shadow-primary/20">
                                 <Save className="w-4 h-4" /> {editingId ? "Update" : "Save Category"}
                             </Button>
                         </form>
@@ -220,7 +242,7 @@ export default function EmployeeCategoriesPage() {
                 loading={loading}
                 searchFields={['category_name']}
                 renderRow={(cat: any) => (
-                    <tr key={cat.id} className="hover:bg-indigo-50/30 transition-all border-b last:border-0 group">
+                    <tr key={cat.id} className="hover:bg-primary/10/30 transition-all border-b last:border-0 group">
                         <td className="px-6 py-4">
                             <div className="font-bold text-slate-800">{cat.category_name}</div>
                         </td>
@@ -230,10 +252,10 @@ export default function EmployeeCategoriesPage() {
                             </code>
                         </td>
                         <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-end gap-2">
                                 {cat.company_id ? (
                                     <>
-                                        {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50 border border-indigo-100"><Edit2 className="w-3.5 h-3.5" /></Button>}
+                                        {canEdit && <Button variant="ghost" size="sm" onClick={() => handleEdit(cat)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border border-primary/15"><Edit2 className="w-3.5 h-3.5" /></Button>}
                                         {canDelete && <Button variant="ghost" size="sm" onClick={() => handleDelete(cat.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border border-rose-100"><Trash2 className="w-3.5 h-3.5" /></Button>}
                                     </>
                                 ) : (

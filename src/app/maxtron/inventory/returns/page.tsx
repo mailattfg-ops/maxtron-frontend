@@ -10,6 +10,13 @@ import {
   Truck, Calendar, Hash, User, AlertTriangle, 
   Download, FileText, Undo2, Ban
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -47,7 +54,7 @@ export default function PurchaseReturnPage() {
     purchase_entry_id: '',
     supplier_id: '',
     rm_id: '',
-    quantity_returned: 0,
+    quantity_returned: 0 as number | string,
     reason: '',
     dispatch_details: '',
     status: 'PENDING',
@@ -112,7 +119,7 @@ export default function PurchaseReturnPage() {
   };
 
   const saveReturn = async () => {
-    if (!formData.purchase_entry_id || formData.quantity_returned <= 0) {
+    if (!formData.purchase_entry_id || Number(formData.quantity_returned) <= 0) {
       error('Please select GRN Entry and Quantity.');
       return;
     }
@@ -122,7 +129,7 @@ export default function PurchaseReturnPage() {
       ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 
       : 0;
 
-    if (maxQty > 0 && formData.quantity_returned > maxQty) {
+    if (maxQty > 0 && Number(formData.quantity_returned) > maxQty) {
       error(`Cannot return more than the received quantity (${maxQty}).`);
       return;
     }
@@ -165,7 +172,7 @@ export default function PurchaseReturnPage() {
       purchase_entry_id: '',
       supplier_id: '',
       rm_id: '',
-      quantity_returned: 0,
+      quantity_returned: 0 as number | string,
       reason: '',
       dispatch_details: '',
       status: 'PENDING',
@@ -235,31 +242,31 @@ export default function PurchaseReturnPage() {
 
       {!showForm && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in slide-in-from-right-4 duration-500">
-          <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-rose-400">
+          <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-primary">
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rejections MTD</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-rose-600 mt-1">{returns.length}</h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{returns.length}</h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
-                  <Undo2 className="w-6 h-6 text-rose-500" />
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
+                  <Undo2 className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-orange-400">
+          <Card className="bg-white border-primary/10 shadow-sm border-r-4 border-r-slate-400">
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pending Dispatch</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-orange-600 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-slate-600 mt-1">
                     {returns.filter(r => r.status === 'PENDING').length}
                   </h3>
                 </div>
-                <div className="bg-orange-50 p-3 rounded-2xl shrink-0">
-                  <Truck className="w-6 h-6 text-orange-500" />
+                <div className="bg-slate-50 p-3 rounded-2xl shrink-0">
+                  <Truck className="w-6 h-6 text-slate-400" />
                 </div>
               </div>
             </CardContent>
@@ -310,42 +317,48 @@ export default function PurchaseReturnPage() {
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Link to GRN Entry</label>
-                <select 
-                  value={formData.purchase_entry_id}
-                  onChange={(e) => {
-                    const sel = entries.find(p => p.id === e.target.value);
+                <Select 
+                  value={formData.purchase_entry_id} 
+                  onValueChange={(val) => {
+                    const sel = entries.find(p => p.id === val);
                     if (sel) {
-                      setFormData({...formData, purchase_entry_id: e.target.value, supplier_id: sel.supplier_id});
+                      setFormData({...formData, purchase_entry_id: val, supplier_id: sel.supplier_id});
                     } else {
-                      setFormData({...formData, purchase_entry_id: e.target.value});
+                      setFormData({...formData, purchase_entry_id: val});
                     }
                   }}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-semibold"
                 >
-                  <option value="">-- Choose Arrival Entry --</option>
-                  {entries.map(e => (
-                    <option key={e.id} value={e.id}>{e.entry_number} - {e.supplier_master?.supplier_name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm font-semibold shadow-sm">
+                    <SelectValue placeholder="-- Choose Arrival Entry --" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {entries.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.entry_number} - {e.supplier_master?.supplier_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Supplier</label>
-                <select 
-                  value={formData.supplier_id}
-                  onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
+                <Select 
+                  value={formData.supplier_id} 
+                  onValueChange={(val) => setFormData({...formData, supplier_id: val})}
                   disabled={!!formData.purchase_entry_id}
                 >
-                  <option value="">Select vendor...</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select vendor..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.supplier_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-full space-y-4">
-                <div className="flex items-center space-x-2 text-rose-600 border-b border-rose-100 pb-2">
+                <div className="flex items-center space-x-2 text-primary-foreground bg-primary/10">
                    <AlertTriangle className="w-4 h-4" />
                    <h3 className="text-sm font-black uppercase tracking-widest">Return Item Details</h3>
                 </div>
@@ -371,13 +384,14 @@ export default function PurchaseReturnPage() {
                                 min="0"
                                 max={item.received_quantity}
                                 placeholder="0"
-                                className="h-8 text-right font-black text-rose-600 border-rose-100 focus:ring-rose-200"
-                                value={formData.rm_id === item.rm_id ? formData.quantity_returned : 0}
+                                className="h-8 text-right font-black text-primary border-primary/10 focus:ring-primary/20"
+                                value={formData.rm_id === item.rm_id ? (formData.quantity_returned === 0 ? '' : formData.quantity_returned) : ''}
                                 onChange={(e) => {
-                                  const val = Math.max(0, Number(e.target.value) || 0);
-                                  if (val > item.received_quantity) {
+                                  const val = e.target.value;
+                                  const numVal = Math.max(0, Number(val) || 0);
+                                  if (numVal > item.received_quantity) {
                                       error(`Cannot return more than ${item.received_quantity} for ${item.raw_materials?.rm_name}`);
-                                      setFormData({...formData, quantity_returned: Number(item.received_quantity), rm_id: item.rm_id});
+                                      setFormData({...formData, quantity_returned: item.received_quantity, rm_id: item.rm_id});
                                   } else {
                                       setFormData({...formData, quantity_returned: val, rm_id: item.rm_id});
                                   }
@@ -404,23 +418,24 @@ export default function PurchaseReturnPage() {
                   min="0"
                   readOnly
                   placeholder="Items going back"
-                  value={formData.quantity_returned}
-                  className="h-11 text-lg font-black text-rose-600 bg-rose-50 border-rose-200"
+                  value={formData.quantity_returned || ''}
+                  className="h-11 text-lg font-black text-primary bg-primary/5 border-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Return Status</label>
-                <select 
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                   <option value="PENDING">Pending (QC Rejected)</option>
-                  <option value="DISPATCHED">Dispatched to Vendor</option>
-                  <option value="Credit Received">Credit Received</option>
-                  <option value="CREDITED">Credited to Account</option>
-                </select>
+                <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Return Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="PENDING">Pending (QC Rejected)</SelectItem>
+                    <SelectItem value="DISPATCHED">Dispatched to Vendor</SelectItem>
+                    <SelectItem value="Credit Received">Credit Received</SelectItem>
+                    <SelectItem value="CREDITED">Credited to Account</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-2 space-y-2">
@@ -436,7 +451,7 @@ export default function PurchaseReturnPage() {
               <div className="md:col-span-full space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Rejection Reason</label>
                 <textarea 
-                  className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 transition-all resize-none"
+                  className="w-full h-24 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   value={formData.reason}
                   maxLength={50}
                   onChange={(e) => setFormData({...formData, reason: e.target.value})}
@@ -452,10 +467,10 @@ export default function PurchaseReturnPage() {
               <Button 
                 onClick={saveReturn} 
                 loading={submitting}
-                className="bg-rose-600 hover:bg-rose-700 text-white px-10 h-11 rounded-full shadow-lg shadow-rose-200 flex items-center font-bold"
+                className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/10 flex items-center font-bold"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Debit Note' : 'Generate Debit Note'}
+                {editingId ? 'Update' : 'Generate'}
               </Button>
             </div>
           </CardContent>
@@ -472,9 +487,9 @@ export default function PurchaseReturnPage() {
           searchFields={['return_no', 'suppliers.supplier_name', 'purchase_entries.entry_number']}
           searchPlaceholder="Find DN or vendor..."
           renderRow={(r: any) => (
-            <tr key={r.id} className="hover:bg-rose-50 transition-all group border-b border-slate-50 last:border-none">
+            <tr key={r.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
               <td className="px-6 py-4">
-                 <div className="font-black text-rose-500 text-[13px]">{r.return_no}</div>
+                 <div className="font-black text-primary text-[13px]">{r.return_no}</div>
                  <div className="text-[10px] text-muted-foreground flex items-center mt-0.5">
                   <Calendar className="w-2.5 h-2.5 mr-1" /> {new Date(r.return_date).toLocaleDateString()}
                  </div>
@@ -482,25 +497,25 @@ export default function PurchaseReturnPage() {
               <td className="px-6 py-4">
                  <div className="font-bold text-slate-700">{r.purchase_entries?.entry_number || 'Manual'}</div>
                  {r.raw_materials?.rm_name && (
-                   <div className="text-[10px] font-black text-rose-500 uppercase mt-0.5 tracking-tighter">{r.raw_materials.rm_name}</div>
+                   <div className="text-[10px] font-black text-primary/70 uppercase mt-0.5 tracking-tighter">{r.raw_materials.rm_name}</div>
                  )}
               </td>
               <td className="px-6 py-4">
                  <div className="font-bold text-slate-700">{r.supplier_master?.supplier_name}</div>
               </td>
               <td className="px-6 py-4">
-                 <div className="text-lg font-black text-rose-600">{Number(r.quantity_returned).toLocaleString()}</div>
-                 <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
+                 <div className="text-lg font-black text-primary">
+                   {Number(r.quantity_returned) > 0 ? Number(r.quantity_returned).toLocaleString() : ''}
+                 </div>
+                 {Number(r.quantity_returned) > 0 && (
+                   <div className="text-[10px] text-slate-400 font-bold uppercase">UNITS RETURNED</div>
+                 )}
               </td>
               <td className="px-6 py-4">
                  <div className="text-[11px] text-slate-500 italic max-w-[200px] truncate">{r.reason || 'No reason specified'}</div>
               </td>
-              <td className="px-6 py-4">
-                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest ${
-                   r.status === 'CREDITED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                   r.status === 'DISPATCHED' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                   'bg-amber-100 text-amber-700 border border-amber-200'
-                 }`}>
+              <td className="px-6 py-4 text-center">
+                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-slate-100 text-slate-600 border border-slate-200`}>
                    {r.status}
                  </span>
               </td>

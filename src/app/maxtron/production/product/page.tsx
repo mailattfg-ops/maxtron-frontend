@@ -29,6 +29,15 @@ export default function FinishedProductPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [colorError, setColorError] = useState('');
+  const [sizeError, setSizeError] = useState('');
+  
+  const codeRegex = /^[A-Z0-9-]+$/;
+  const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+  const colorRegex = /^[a-zA-Z\s]+$/;
+  const sizeRegex = /^[a-zA-Z0-9\s*x.-]+$/;
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -76,6 +85,16 @@ export default function FinishedProductPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if products list updates while form is open (and not editing)
+    if (showForm && !editingId && products.length > 0) {
+       const currentCode = formData.product_code;
+       if (!currentCode || currentCode === 'FP-000001' || currentCode === 'GENERATING...') {
+          resetForm(products);
+       }
+    }
+  }, [products, showForm, editingId]);
+
   const fetchProducts = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -85,7 +104,11 @@ export default function FinishedProductPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setProducts(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setProducts(sorted);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -95,6 +118,11 @@ export default function FinishedProductPage() {
   const saveProduct = async () => {
     if (!formData.product_code || !formData.product_name) {
       error('Please fill Code and Name.');
+      return;
+    }
+
+    if (codeError || nameError || colorError || sizeError) {
+      error('Please correct the validation errors before saving.');
       return;
     }
 
@@ -168,9 +196,28 @@ export default function FinishedProductPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestProducts: any[] = products) => {
+    if (loading && latestProducts.length === 0) {
+      setFormData(prev => ({ ...prev, product_code: 'GENERATING...' }));
+      return;
+    }
+
+    let nextCode = 'FP-000001';
+    const validCodes = latestProducts
+      .filter(p => p.product_code && /^FP-\d+$/i.test(p.product_code))
+      .map(p => {
+        const parts = p.product_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `FP-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      product_code: '',
+      product_code: nextCode,
       product_name: '',
       color: '',
       thickness_microns: 0,
@@ -181,6 +228,10 @@ export default function FinishedProductPage() {
       stock_threshold: 50
     });
     setEditingId(null);
+    setCodeError('');
+    setNameError('');
+    setColorError('');
+    setSizeError('');
   };
 
   const filteredProducts = products.filter(p => 
@@ -216,7 +267,7 @@ export default function FinishedProductPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl flex items-center gap-2">
                 {editingId ? <Edit className="w-5 h-5 text-primary" /> : <Plus className="w-5 h-5 text-primary" />}
@@ -232,31 +283,70 @@ export default function FinishedProductPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Product Code</label>
-                <Input placeholder="e.g. PP-001" value={formData.product_code} onChange={e => setFormData({ ...formData, product_code: e.target.value })} className="h-11 font-mono uppercase" />
+                <Input 
+                  placeholder="e.g. FP-001" 
+                  value={formData.product_code} 
+                  readOnly
+                  className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
+                />
+                {codeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{codeError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Box className="w-4 h-4 text-primary" /> Product Name</label>
-                <Input placeholder="e.g. Milky Polybag" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} className="h-11 font-bold" />
+                <Input 
+                  placeholder="e.g. Milky Polybag" 
+                  value={formData.product_name} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, product_name: val });
+                    if (val && !nameRegex.test(val)) setNameError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    else setNameError('');
+                  }} 
+                  className={`h-11 font-bold ${nameError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {nameError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{nameError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Palette className="w-4 h-4 text-primary" /> Color</label>
-                <Input placeholder="e.g. White" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className="h-11" />
+                <Input 
+                  placeholder="e.g. White" 
+                  value={formData.color} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, color: val });
+                    if (val && !colorRegex.test(val)) setColorError('Invalid characters (Letters only)');
+                    else setColorError('');
+                  }} 
+                  className={`h-11 ${colorError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {colorError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{colorError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Layers className="w-4 h-4 text-primary" /> Thickness (Microns)</label>
-                <Input type="number" min="0" placeholder="0.00" value={formData.thickness_microns} onChange={e => setFormData({ ...formData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="0.00" value={formData.thickness_microns || ''} onChange={e => setFormData({ ...formData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Ruler className="w-4 h-4 text-primary" /> Size</label>
-                <Input placeholder="e.g. 10x12" value={formData.size} onChange={e => setFormData({ ...formData, size: e.target.value })} className="h-11" />
+                <Input 
+                  placeholder="e.g. 10x12" 
+                  value={formData.size} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, size: val });
+                    if (val && !sizeRegex.test(val)) setSizeError('Invalid characters (Use 0-9, x, *, -, .)');
+                    else setSizeError('');
+                  }} 
+                  className={`h-11 px-3 ${sizeError ? 'border-destructive bg-rose-50' : ''}`} 
+                />
+                {sizeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{sizeError}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Avg Count per Kg</label>
-                <Input type="number" min="0" placeholder="0" value={formData.avg_count_per_kg} onChange={e => setFormData({ ...formData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="0" value={formData.avg_count_per_kg || ''} onChange={e => setFormData({ ...formData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)</label>
-                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
+                <Input type="number" min="0" placeholder="50" value={formData.stock_threshold || ''} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11 font-bold" />
               </div>
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
@@ -289,26 +379,40 @@ export default function FinishedProductPage() {
           searchFields={['product_code', 'product_name', 'color']}
           searchPlaceholder="Search products..."
           renderRow={(p: any) => (
-            <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none">
-              <td className="px-6 py-4 font-mono text-xs font-bold">{p.product_code}</td>
-              <td className="px-6 py-4 font-bold">{p.product_name}</td>
-              <td className="px-6 py-4">{p.color}</td>
-              <td className="px-6 py-4">{p.thickness_microns}</td>
-              <td className="px-6 py-4">{p.size}</td>
-              <td className="px-6 py-4">{p.avg_count_per_kg}</td>
-              <td className="px-6 py-4 font-bold text-amber-600 underline decoration-amber-200 underline-offset-4">{p.stock_threshold || 50} Kg</td>
-              <td className="px-6 py-4 text-xs text-muted-foreground truncate max-w-[150px]">{p.description}</td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(p)} className="h-8 w-8 rounded-full">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
+            <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none group">
+              <td className="px-6 py-4 font-mono text-xs font-bold text-primary">{p.product_code}</td>
+              <td className="px-6 py-4 font-bold text-primary">{p.product_name}</td>
+              <td className="px-6 py-4 text-sm font-medium">{p.color}</td>
+              <td className="px-6 py-4 text-sm">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>
+              <td className="px-6 py-4 text-sm">{p.size}</td>
+              <td className="px-6 py-4 text-sm">{Number(p.avg_count_per_kg) > 0 ? p.avg_count_per_kg : ''}</td>
+              <td className="px-6 py-4 font-bold text-slate-700 underline decoration-primary/20 underline-offset-4">
+                {Number(p.stock_threshold) > 0 ? `${p.stock_threshold} Kg` : ''}
+              </td>
+              <td className="px-6 py-4 text-xs text-muted-foreground italic truncate max-w-[150px]">{p.description}</td>
+              <td className="md:px-3 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleEdit(p)} 
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDelete(p.id)} 
+                      className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </td>
             </tr>
           )}

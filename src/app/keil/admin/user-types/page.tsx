@@ -77,8 +77,32 @@ export default function KeilUserTypesPage() {
   };
 
   const handleCreateOrUpdate = async () => {
-    if (!formData.name) {
-      error('Role name is required');
+    if (!formData.name || formData.name.trim().length < 3) {
+      error('Role name must be at least 3 characters long');
+      return;
+    }
+
+    // Validation for special characters (allow alphanumeric and spaces only)
+    const roleNameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (!roleNameRegex.test(formData.name)) {
+      error('Role name can only contain letters, numbers, spaces, and hyphens');
+      return;
+    }
+
+    if (formData.name.length > 30) {
+      error('Role name cannot exceed 30 characters');
+      return;
+    }
+    
+    if ((formData.description || '').trim().length > 100) {
+      error('Description cannot exceed 100 characters');
+      return;
+    }
+
+    // Validation for description (allow alphanumeric, spaces, and basic punctuation)
+    const descriptionRegex = /^[a-zA-Z0-9\s.,!-]*$/;
+    if (formData.description && !descriptionRegex.test(formData.description)) {
+      error('Description can only contain letters, numbers, spaces, and basic punctuation (.,!-)');
       return;
     }
 
@@ -146,23 +170,23 @@ export default function KeilUserTypesPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">{activeTenant} User Roles</h1>
-          <p className="text-foreground/60 mt-2">Manage system access levels for {activeTenant} Operations.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">{activeTenant} User Roles</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Manage system access levels for {activeTenant} Operations.</p>
         </div>
         <Button 
           onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ name: '', description: '', company_id: currentCompanyId }); }}
-          className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 shadow-lg shadow-primary/20"
+          className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white rounded-full px-6 md:px-8 h-10 md:h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
         >
-          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {showForm ? 'Cancel' : 'Add New Role'}
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? 'Cancel' : <><span className="hidden md:inline">Add New Role</span><span className="md:hidden">Add Role</span></>}
         </Button>
       </div>
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <CardTitle className="text-lg font-semibold text-primary">
               {editingId ? 'Edit Role' : 'Create New Role'}
             </CardTitle>

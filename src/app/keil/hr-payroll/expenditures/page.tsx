@@ -27,6 +27,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const EXPENDITURES_API = `${API_BASE}/api/keil/hr-payroll/expenses/records`;
@@ -357,7 +364,7 @@ export default function ExpendituresPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 <div className="space-y-3">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-indigo-500" /> Execution Date
+                                        <Calendar className="w-4 h-4 text-primary/80" /> Execution Date
                                     </label>
                                     <Input 
                                         type="date"
@@ -371,23 +378,26 @@ export default function ExpendituresPage() {
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Coins className="w-4 h-4 text-rose-500" /> Expense Taxonomy
                                     </label>
-                                    <select 
+                                    <Select 
                                         value={formData.expense_head_id}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, expense_head_id: e.target.value }))}
-                                        className="w-full h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                        onValueChange={(val) => setFormData(prev => ({ ...prev, expense_head_id: val }))}
                                         required
                                     >
-                                        <option value="">Select Configuration Head</option>
-                                        {expenseHeads.map((h: any) => (
-                                            <option key={h.id} value={h.id}>{h.head_name}</option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                            <SelectValue placeholder="Select Configuration Head" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-slate-200">
+                                            {expenseHeads.map((h: any) => (
+                                                <SelectItem key={h.id} value={h.id}>{h.head_name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3 md:col-span-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Users className="w-4 h-4 text-orange-500" /> Payee Type
                                     </label>
-                                    <div className="flex items-center gap-6 h-14 px-6 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <div className="grid md:flex items-center gap-6 h-auto md:h-14 py-6 md:py-0 px-6 rounded-2xl bg-slate-50 border border-slate-200">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input 
                                                 type="radio" 
@@ -418,16 +428,19 @@ export default function ExpendituresPage() {
                                         <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                             <Users className="w-4 h-4 text-emerald-500" /> Employee
                                         </label>
-                                        <select 
+                                        <Select 
                                             value={formData.employee_id}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, employee_id: e.target.value }))}
-                                            className="w-full h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                            onValueChange={(val) => setFormData(prev => ({ ...prev, employee_id: val }))}
                                         >
-                                            <option value="">Select Employee...</option>
-                                            {employees.map((emp: any) => (
-                                                <option key={emp.id} value={emp.id}>{emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}</option>
-                                            ))}
-                                        </select>
+                                            <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                                <SelectValue placeholder="Select Employee..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {employees.map((emp: any) => (
+                                                    <SelectItem key={emp.id} value={emp.id}>{emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 ) : (
                                     <>
@@ -488,7 +501,18 @@ export default function ExpendituresPage() {
                                 </div>
                             </div>
                             
-                             <div className="flex justify-end pt-6 border-t border-slate-100">
+                             <div className="flex justify-end items-center gap-3 pt-6 border-t border-slate-100">
+                                <Button 
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setIsFormOpen(false);
+                                        resetForm();
+                                    }}
+                                    className="h-12 md:h-14 px-8 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs"
+                                >
+                                    Discard
+                                </Button>
                                 <Button type="submit" className="w-full md:w-auto bg-slate-900 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-12 md:h-14 px-10 shadow-xl transition-colors duration-300">
                                     <Save className="w-4 h-4 mr-3" />
                                     {editingId ? 'Update Ledger' : 'Commit Ledger'}
@@ -499,16 +523,17 @@ export default function ExpendituresPage() {
                 </Card>
             ) : (
                 <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8">
+                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
                         <div>
                             <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Expenditure Ledger</CardTitle>
                             <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Complete audit trail of documented expenses.
                             </CardDescription>
                         </div>
-                    </CardHeader>
+                    </CardHeader> */}
                     <CardContent className="p-0">
                         <TableView 
+                            title="Complete audit trail of documented expenses."
                             searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
                             headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', '']}
                             data={expenditures}
@@ -545,21 +570,21 @@ export default function ExpendituresPage() {
                                             {canEdit && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    size="sm"
+                                                    className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold"
                                                     onClick={() => handleEdit(ex)}
                                                 >
-                                                    <Edit className="w-4 h-4" />
+                                                    Edit
                                                 </Button>
                                             )}
                                             {canDelete && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                                                    size="sm"
+                                                    className="text-rose-600 hover:bg-rose-50 rounded-lg font-bold"
                                                     onClick={() => handleDelete(ex.id)}
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete
                                                 </Button>
                                             )}
                                         </div>

@@ -12,6 +12,14 @@ import {
     DollarSign, Lock, Copy, AlertCircle, Users, TrendingUp, 
     FileDown, Download, Eye, EyeOff 
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -35,6 +43,7 @@ export default function EmployeeInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermission();
@@ -233,17 +242,30 @@ export default function EmployeeInformationPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value, type } = e.target;
-    
+    updateFormData(name, value, type);
+  };
+
+  const updateFormData = (name: string, value: any, type?: string) => {
+    let val = value;
     // Restrict to digits only for phone and aadhaar
     if (name === 'phone' || name === 'aadhaar') {
-      value = value.replace(/\D/g, '');
+      val = val.replace(/\D/g, '');
     }
 
     // Restrict negative values for number inputs
-    if (type === 'number' && Number(value) < 0) {
-      value = '0';
+    if (type === 'number' && Number(val) < 0) {
+      val = '0';
     }
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: val }));
+    
+    // Auto-clear error when user types
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleAddressChange = (index: number, field: string, value: string) => {
@@ -288,12 +310,12 @@ export default function EmployeeInformationPage() {
         error("Future dates are not allowed for past work experience.");
         return;
       }
-      if (field === 'to_period' && list[index].from_period && value < list[index].from_period) {
-        error("'To' date cannot be before 'From' date.");
+      if (field === 'to_period' && list[index].from_period && value <= list[index].from_period) {
+        error("'To' date must be strictly greater than 'From' date.");
         return;
       }
-      if (field === 'from_period' && list[index].to_period && value > list[index].to_period) {
-        error("'From' date cannot be after 'To' date.");
+      if (field === 'from_period' && list[index].to_period && value >= list[index].to_period) {
+        error("'From' date must be strictly before 'To' date.");
         return;
       }
     }
@@ -389,65 +411,71 @@ export default function EmployeeInformationPage() {
       { key: 'username', label: 'Login Email' }
     ];
 
+    const newErrors: Record<string, string> = {};
+
     for (const field of requiredFields) {
       if (!formData[field.key] || String(formData[field.key]).trim() === '') {
-        error(`${field.label} is required.`);
-        return false;
+        newErrors[field.key] = `${field.label} required`;
       }
     }
 
-    // Phone validation (basic 10 digits check)
-    if (!/^\d{10}$/.test(formData.phone)) {
-      error('Please enter a valid 10-digit phone number.');
-      return false;
+    const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (formData.name && !nameRegex.test(formData.name.trim())) {
+        newErrors.name = 'Invalid characters (A-Z, 0-9, -)';
     }
 
-    // For new employees, password is also required
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (formData.username && !emailRegex.test(formData.username)) {
+      newErrors.username = 'Invalid email format';
+    }
+
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      newErrors.phone = 'Must be 10 digits';
+    }
+
     if (!editingId && !formData.password) {
-      error('Password is required for new registration.');
-      return false;
+      newErrors.password = 'Password required';
     }
 
-    // Password validation (If provided)
     if (formData.password) {
-      if (formData.password.length < 8) {
-        error('Password must be at least 8 characters long.');
-        return false;
-      }
-      if (!/[A-Z]/.test(formData.password)) {
-        error('Password must contain at least one capital letter.');
-        return false;
-      }
-      if (!/\d/.test(formData.password)) {
-        error('Password must contain at least one number.');
-        return false;
-      }
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        error('Password must contain at least one special character.');
-        return false;
-      }
+      if (formData.password.length < 8) newErrors.password = 'Min 8 characters';
+      else if (!/[A-Z]/.test(formData.password)) newErrors.password = 'Need uppercase';
+      else if (!/\d/.test(formData.password)) newErrors.password = 'Need number';
+      else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) newErrors.password = 'Need special char';
     }
 
-    // Aadhaar validation (Strict format: 12 digits, cannot start with 0 or 1)
-    if (!/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
-      error('Please enter a valid 12-digit Aadhaar number (cannot start with 0 or 1).');
-      return false;
+    if (formData.aadhaar && !/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
+      newErrors.aadhaar = 'Invalid Aadhaar (12 digits, no 0/1 start)';
     }
 
-    // DOB Validation (At least 18 years old)
     if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
-      const isActuallyOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
+      if (age < 18) newErrors.date_of_birth = 'Must be 18+ years old';
+    }
 
-      if (!isActuallyOver18) {
-        error('Employee must be at least 18 years old.');
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      error('Please correct the highlighted errors.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateQualificationsTab = () => {
+    // Validate each experience entry
+    for (const exp of formData.employee_experiences) {
+      if (!exp.company_name || !exp.from_period || !exp.to_period || !exp.post) {
+        error("Please complete all required fields for each Work Experience entry.");
+        return false;
+      }
+      if (exp.to_period <= exp.from_period) {
+        error(`Work Experience at ${exp.company_name}: 'To' date must be greater than 'From' date.`);
         return false;
       }
     }
-
     return true;
   };
 
@@ -460,13 +488,38 @@ export default function EmployeeInformationPage() {
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
+      const sanitizedData = {
+        ...formData,
+        basic_salary: Number(formData.basic_salary) || 0,
+        employee_loans: formData.employee_loans.map(l => ({
+          ...l,
+          loan_availed: Number(l.loan_availed) || 0,
+          balance_receivable: Number(l.balance_receivable) || 0
+        })),
+        employee_suspenses: formData.employee_suspenses.map(s => ({
+          ...s,
+          suspense_issued: Number(s.suspense_issued) || 0,
+          balance_receivable: Number(s.balance_receivable) || 0
+        })),
+        employee_targets: formData.employee_targets.map(t => ({
+          ...t,
+          minimum_target: Number(t.minimum_target) || 0
+        })),
+        employee_incentive_slabs: formData.employee_incentive_slabs.map(slab => ({
+          ...slab,
+          slab_from: Number(slab.slab_from) || 0,
+          slab_to: Number(slab.slab_to) || 0,
+          incentive_percent: Number(slab.incentive_percent) || 0
+        }))
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(sanitizedData)
       });
       const submittedCreds = { username: formData.username, password: formData.password };
       const data = await res.json();
@@ -490,6 +543,7 @@ export default function EmployeeInformationPage() {
           guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
+        setErrors({});
         setActiveTab('personal');
       } else {
         error(data.error || data.message || 'Operation failed');
@@ -617,10 +671,10 @@ export default function EmployeeInformationPage() {
       {newEmployeePopup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none bg-card">
-            <CardHeader className="bg-emerald-500/10 pb-6 border-b border-border text-center rounded-t-xl">
-              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
-              <CardTitle className="text-2xl text-emerald-500">Employee Registered!</CardTitle>
-              <CardDescription className="text-emerald-500/80 font-medium">System access credentials successfully configured.</CardDescription>
+            <CardHeader className="bg-primary/10 pb-6 border-b border-border text-center rounded-t-xl">
+              <CheckCircle2 className="w-16 h-16 text-primary mx-auto mb-3" />
+              <CardTitle className="text-2xl text-primary">Employee Registered!</CardTitle>
+              <CardDescription className="text-primary/80 font-medium">System access credentials successfully configured.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border space-y-3">
@@ -655,9 +709,9 @@ export default function EmployeeInformationPage() {
                 <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
               </Button>
               
-              <div className="flex items-start p-4 bg-amber-50 rounded-xl border border-amber-200 mt-6 shadow-sm">
-                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-amber-550 flex-none" />
-                 <p className="text-xs font-medium leading-relaxed text-amber-800">
+              <div className="flex items-start p-4 bg-slate-50 rounded-xl border border-slate-200 mt-6 shadow-sm">
+                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-slate-500 flex-none" />
+                 <p className="text-xs font-medium leading-relaxed text-slate-800">
                    <strong>Strict Security Notice:</strong> Please securely provide these initial credentials to the employee. They will be strictly required to change their password upon their immediate first login.
                  </p>
               </div>
@@ -674,11 +728,11 @@ export default function EmployeeInformationPage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
           {!showForm ? (
             <>
-              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
-                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
+              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 md:order-1 flex-1 md:flex-none transition-all hover:scale-105 active:scale-95">
+                 <Download className="w-4 h-4 mr-2" /> <span className="md:hidden">Export Details</span><span className="hidden md:inline">Download Employee List</span>
               </Button>
               {hasPermission('hr_employee_view', 'create') && (
                 <Button onClick={() => {
@@ -694,31 +748,33 @@ export default function EmployeeInformationPage() {
                   });
                   setIsViewMode(false);
                   setShowForm(true);
-                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
+                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 md:order-2 px-6 rounded-full flex-1 md:flex-none">
                   <Plus className="w-5 h-5 mr-2" /> Add Employee
                 </Button>
               )}
             </>
           ) : (
-            <div className="flex space-x-2 md:space-x-3 w-full">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
+            <div className="flex space-x-2 md:space-x-3 w-full md:w-auto">
+              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 md:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                <X className="w-4 h-4 mr-2" /> <span className="hidden md:inline">Cancel</span>
               </Button>
               {activeTab !== 'personal' && (
-                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
+                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 md:flex-none border-primary/10 rounded-full h-10 md:h-11">
+                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden md:inline">Back</span>
                 </Button>
               )}
               <Button onClick={() => {
                 if (activeTab === 'personal') {
                   if (validatePersonalTab()) setActiveTab('qualifications');
                 }
-                else if (activeTab === 'qualifications') setActiveTab('financials');
+                else if (activeTab === 'qualifications') {
+                  if (validateQualificationsTab()) setActiveTab('financials');
+                }
                 else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
                 else saveEmployee();
               }} 
               loading={submitting}
-              className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
+              className="flex-[2] md:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
               >
                 {isViewMode && activeTab === 'financials' ? (
                   <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
@@ -754,12 +810,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">
                     {employees.filter(e => e.employee_categories?.category_name === "Management").length}
                   </h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
-                  <Briefcase className="w-6 h-6 text-rose-500" />
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
+                  <Briefcase className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -770,12 +826,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
-                  <h3 className="text-3xl font-black text-blue-500 mt-1">
+                  <h3 className="text-3xl font-black text-slate-600 mt-1">
                     {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl shrink-0">
-                  <TrendingUp className="w-6 h-6 text-blue-500" />
+                <div className="bg-slate-50 p-3 rounded-2xl shrink-0">
+                  <TrendingUp className="w-6 h-6 text-slate-400" />
                 </div>
               </div>
             </CardContent>
@@ -799,7 +855,7 @@ export default function EmployeeInformationPage() {
                 <Card>
                   <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 rounded-2xl">
                     <CardTitle className="text-lg md:text-xl text-primary flex items-center">
-                      <UserPlus className="w-5 h-5 mr-3 text-secondary" />
+                      <UserPlus className="w-5 h-5 mr-3 text-primary" />
                       {isViewMode ? 'View Employee Details' : editingId ? 'Edit Personal Details' : 'Personal Details'}
                     </CardTitle>
                   </CardHeader>
@@ -811,12 +867,13 @@ export default function EmployeeInformationPage() {
                           name="employee_code" 
                           value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
                           disabled={true} 
-                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-blue-600 text-sm"
+                          className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-primary text-sm"
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.name && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.name}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
@@ -827,19 +884,22 @@ export default function EmployeeInformationPage() {
                            value={formData.date_of_birth} 
                            onChange={handleInputChange} 
                            disabled={isViewMode} 
-                           className="h-10 md:h-11" 
+                           className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-destructive bg-amber-50' : ''}`} 
                         />
+                        {errors.date_of_birth && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.date_of_birth}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
-                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className="h-10 md:h-11" />
+                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className={`h-10 md:h-11 ${errors.phone ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.phone && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.phone}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No</label>
-                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className="h-10 md:h-11" />
+                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className={`h-10 md:h-11 ${errors.aadhaar ? 'border-destructive bg-amber-50' : ''}`} />
+                        {errors.aadhaar && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.aadhaar}</p>}
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
-                        <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
+                        <h3 className="text-xs font-black text-primary uppercase tracking-widest">Communication Address</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                            <div className="space-y-2 sm:col-span-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Street / Building</label>
@@ -858,14 +918,14 @@ export default function EmployeeInformationPage() {
  
                       <div className="space-y-4 col-span-full bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Permanent Address</h3>
+                          <h3 className="text-xs font-black text-primary uppercase tracking-widest">Permanent Address</h3>
                           {!isViewMode && (
                             <Button 
                               type="button" 
                               variant="ghost" 
                               size="sm" 
                               onClick={copyCommunicationAddress}
-                              className="h-7 text-[10px] font-bold text-blue-600 bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                              className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
                             >
                               <Copy className="w-3 h-3 mr-1" /> <span className="hidden md:block">Same as Communication</span>
                             </Button>
@@ -892,13 +952,11 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2 flex items-center h-full pt-4">
                         <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
-                          <input 
-                             type="checkbox" 
+                          <Checkbox 
                              name="is_married" 
                              checked={formData.is_married} 
-                             onChange={(e) => !isViewMode && setFormData({...formData, is_married: e.target.checked})} 
+                             onCheckedChange={(checked) => !isViewMode && setFormData({...formData, is_married: !!checked})} 
                              disabled={isViewMode}
-                             className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
                           />
                           <span>Is Married?</span>
                         </label>
@@ -928,40 +986,38 @@ export default function EmployeeInformationPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Employee Category</label>
-                <select 
-                  name="category_id" 
-                  value={formData.category_id} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.category_name}</option>
-                  ))}
-                </select>
+                <Select value={formData.category_id} onValueChange={(val) => updateFormData('category_id', val)} disabled={isViewMode}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.category_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
+                <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
+                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} />
+                {errors.username && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Company / Department Appointed</label>
-                <select 
-                  name="company_id" 
-                  value={formData.company_id} 
-                  onChange={handleInputChange} 
-                  disabled={true}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.company_name}</option>
-                  ))}
-                </select>
+                <Select value={formData.company_id} onValueChange={(val) => updateFormData('company_id', val)} disabled={true}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select Company" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
+                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password' : 'Appoint Temporary Password'} {!editingId && !formData.password && <span className="text-muted-foreground/50 text-[10px]">(Necessary)</span>}</label>
                 <div className="relative">
                   <Input 
                     type={showFormPassword ? "text" : "password"} 
@@ -970,6 +1026,7 @@ export default function EmployeeInformationPage() {
                     onChange={handleInputChange} 
                     disabled={isViewMode} 
                     placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
+                    className={`${errors.password ? 'border-destructive bg-amber-50' : ''}`}
                   />
                   {!isViewMode && (
                     <Button
@@ -983,21 +1040,20 @@ export default function EmployeeInformationPage() {
                     </Button>
                   )}
                 </div>
+                {errors.password && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">System Role</label>
-                <select 
-                  name="type" 
-                  value={formData.type} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select System Role</option>
-                  {userTypes.map((role) => (
-                    <option key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</option>
-                  ))}
-                </select>
+                <Select value={formData.type} onValueChange={(val) => updateFormData('type', val)} disabled={isViewMode}>
+                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                    <SelectValue placeholder="Select System Role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {userTypes.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -1026,16 +1082,16 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                         {formData.employee_qualifications.map((q, idx) => (
-                           <div key={idx} className="flex gap-4 items-center animate-in fade-in">
-                              <select 
-                                value={q.qualification_type} 
-                                onChange={(e) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', e.target.value)}
-                                disabled={isViewMode}
-                                className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                              >
-                                <option value="BASIC">Basic</option>
-                                <option value="ADDITIONAL">Additional</option>
-                              </select>
+                            <div key={idx} className="flex gap-4 items-center animate-in fade-in">
+                              <Select value={q.qualification_type} onValueChange={(val) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', val)} disabled={isViewMode}>
+                                <SelectTrigger className="h-9 w-40 border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="BASIC">Basic</SelectItem>
+                                  <SelectItem value="ADDITIONAL">Additional</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Input 
                                 placeholder="Qualification Details (e.g. Master's in IT)" 
                                 value={q.qualification_name}
@@ -1122,11 +1178,12 @@ export default function EmployeeInformationPage() {
                           </h3>
                           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
                        </div>
-                       <div className="w-64">
+                       <div className="w-64 space-y-1 text-right">
+                          <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Basic Salary {!formData.basic_salary && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                           <Input 
                             type="number" 
                             name="basic_salary" 
-                            value={formData.basic_salary} 
+                            value={Number(formData.basic_salary) || ''} 
                             onChange={handleInputChange} 
                             disabled={isViewMode} 
                             placeholder="0.00" 
@@ -1142,7 +1199,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_license} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_license: !!checked})} disabled={isViewMode} />
                             <span>License Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1151,7 +1208,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1175,15 +1232,15 @@ export default function EmployeeInformationPage() {
                          <div key={idx} className="grid lg:flex gap-3 items-center animate-in fade-in bg-muted/20 p-3 rounded-lg">
                             <div className="space-y-1 flex-none w-full lg:w-48">
                               <label className="text-xs text-muted-foreground">Type</label>
-                              <select 
-                                value={cert.certificate_type} 
-                                onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', e.target.value)}
-                                disabled={isViewMode}
-                                className="flex h-9 w-full rounded-md border border-input bg-card/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                              >
-                                <option value="MEDICAL">Medical Certificate</option>
-                                <option value="POLICE_VERIFICATION">Police Verification</option>
-                              </select>
+                              <Select value={cert.certificate_type} onValueChange={(val) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', val)} disabled={isViewMode}>
+                                <SelectTrigger className="h-9 w-full border-input bg-card/50 px-3 py-1 text-sm shadow-sm">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="MEDICAL">Medical Certificate</SelectItem>
+                                  <SelectItem value="POLICE_VERIFICATION">Police Verification</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             {/* <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
@@ -1220,22 +1277,54 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Loan Amount</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_loans.length >= 3) {
+                                info('Maximum limit of 3 loan entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
-                                <Input type="number" min="0" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
+                               <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Loan Availed {!loan.loan_availed && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="0.00" 
+                                  value={Number(loan.loan_availed) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'loan_availed', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" min="0" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                               <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Received {!loan.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="0.00" 
+                                  value={Number(loan.balance_receivable) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'balance_receivable', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
+
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Date Issued</label>
                                 <Input type="date" value={loan.loan_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_date', e.target.value)} disabled={isViewMode} />
@@ -1256,22 +1345,54 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Suspense Amounts</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_suspenses.length >= 3) {
+                                info('Maximum limit of 3 suspense entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                          {formData.employee_suspenses.map((susp, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
                                 <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Suspense Issued</label>
-                                <Input type="number" min="0" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
+                                <label className="text-xs text-muted-foreground">Suspense Issued {!susp.suspense_issued ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Suspense Issued" 
+                                  value={Number(susp.suspense_issued) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
                               <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                <Input type="number" min="0" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                                <label className="text-xs text-muted-foreground">Balance Received {!susp.balance_receivable ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Balance Received" 
+                                  value={Number(susp.balance_receivable) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
+
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1297,10 +1418,13 @@ export default function EmployeeInformationPage() {
                         )}
                       </div>
                       <div className="space-y-3">
-                        {formData.employee_targets.map((tgt, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
-                               {!isViewMode && (
+                         {formData.employee_targets.map((tgt, idx) => (
+                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-xs text-muted-foreground font-bold tracking-tight">Minimum Target {!tgt.minimum_target && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input type="number" min="0" placeholder="Target Minimum" value={Number(tgt.minimum_target) || ''} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
+                               </div>
+                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
                                    <Trash2 className="w-4 h-4" />
                                  </Button>
@@ -1321,10 +1445,10 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
-                           <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
+                               <Input type="number" min="0" placeholder="From Amount" value={Number(slab.slab_from) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
+                               <Input type="number" min="0" placeholder="To Amount" value={Number(slab.slab_to) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
+                               <Input type="number" min="0" max="100" placeholder="Percent (%)" value={Number(slab.incentive_percent) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
                                {!isViewMode && (
                                  <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
                                    <Trash2 className="w-4 h-4" />
@@ -1352,13 +1476,11 @@ export default function EmployeeInformationPage() {
             <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="grid grid-cols-1 md:flex gap-4 items-center">
-            <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
-               <input 
-                  type="checkbox" 
+            <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+               <Checkbox 
                   id="showDeactivated"
                   checked={showDeactivated} 
-                  onChange={(e) => { setShowDeactivated(e.target.checked); setCurrentPage(1); }}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  onCheckedChange={(checked) => { setShowDeactivated(!!checked); setCurrentPage(1); }}
                />
                <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
             </div>
@@ -1406,23 +1528,18 @@ export default function EmployeeInformationPage() {
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors group">
-                      <td className="p-4 font-bold text-secondary">{emp.employee_code || 'SYS'}</td>
+                       <td className="p-4 font-bold text-primary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-bold text-foreground">{emp.name}</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                          emp.user_types?.name?.includes('HR') ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                          emp.user_types?.name?.includes('SALES') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border bg-slate-100 text-slate-600 border-slate-200`}>
                           {emp.user_types?.name || 'User'}
                         </span>
                       </td>
-                      <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
+                      <td className="p-4 font-bold text-primary">{Number(emp.basic_salary) > 0 ? `₹${Number(emp.basic_salary).toLocaleString()}` : '-'}</td>
                       <td className="p-4 font-bold text-foreground">{emp.username}</td>
                       <td className="p-4 text-right space-x-2">
                         {emp.is_deleted ? (
-                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
+                          <Button variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 rounded-full px-4" onClick={() => activateEmployee(emp.id)}>
                             <CheckCircle2 className="w-4 h-4 mr-1.5" /> Reactivate
                           </Button>
                         ) : (
@@ -1431,10 +1548,10 @@ export default function EmployeeInformationPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
                             {hasPermission('hr_employee_view', 'edit') && (
-                              <Button variant="outline" size="icon" className="h-8 w-8 text-secondary border-secondary/20 hover:bg-secondary/10" onClick={() => editEmployee(emp)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            )}
+                               <Button variant="outline" size="icon" className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/10" onClick={() => editEmployee(emp)}>
+                                 <Edit className="w-4 h-4" />
+                               </Button>
+                             )}
                             {hasPermission('hr_employee_view', 'delete') && (
                               <Button variant="outline" size="icon" className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteEmployee(emp.id)}>
                                 <Trash2 className="w-4 h-4" />

@@ -10,6 +10,14 @@ import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileT
     DollarSign,
     Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2 
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -35,6 +43,7 @@ export default function EmployeeInformationPage() {
   const [showDeactivated, setShowDeactivated] = useState(false);
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { hasPermission, loading: permissionLoading } = usePermission();
 
   const canView = hasPermission('hr_employee_view', 'view');
@@ -231,19 +240,33 @@ export default function EmployeeInformationPage() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    let { name, value, type } = e.target;
+  const updateFormData = (name: string, value: any) => {
+    let sanitizedValue = value;
     
     // Restrict to digits only for phone and aadhaar
     if (name === 'phone' || name === 'aadhaar') {
-      value = value.replace(/\D/g, '');
+      sanitizedValue = String(value).replace(/\D/g, '');
     }
 
     // Restrict negative values for number inputs
-    if (type === 'number' && Number(value) < 0) {
-      value = '0';
+    if (name === 'basic_salary' && Number(value) < 0) {
+      sanitizedValue = 0;
     }
-    setFormData({ ...formData, [name]: value });
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    updateFormData(name, value);
   };
 
   const handleAddressChange = (index: number, field: string, value: string) => {
@@ -288,12 +311,12 @@ export default function EmployeeInformationPage() {
         error("Future dates are not allowed for past work experience.");
         return;
       }
-      if (field === 'to_period' && list[index].from_period && value < list[index].from_period) {
-        error("'To' date cannot be before 'From' date.");
+      if (field === 'to_period' && list[index].from_period && value <= list[index].from_period) {
+        error("'To' date must be strictly greater than 'From' date.");
         return;
       }
-      if (field === 'from_period' && list[index].to_period && value > list[index].to_period) {
-        error("'From' date cannot be after 'To' date.");
+      if (field === 'from_period' && list[index].to_period && value >= list[index].to_period) {
+        error("'From' date must be strictly before 'To' date.");
         return;
       }
     }
@@ -379,75 +402,70 @@ export default function EmployeeInformationPage() {
   };
 
   const validatePersonalTab = () => {
-    const requiredFields: {key: keyof typeof formData, label: string}[] = [
-      { key: 'name', label: 'Full Name' },
-      { key: 'date_of_birth', label: 'Date of Birth' },
-      { key: 'phone', label: 'Phone Number' },
-      { key: 'aadhaar', label: 'Aadhaar Card No' },
-      { key: 'category_id', label: 'Employee Category' },
-      { key: 'type', label: 'System Role' },
-      { key: 'username', label: 'Login Email' }
-    ];
+    const newErrors: Record<string, string> = {};
 
-    for (const field of requiredFields) {
-      if (!formData[field.key] || String(formData[field.key]).trim() === '') {
-        error(`${field.label} is required.`);
-        return false;
-      }
+    if (!formData.name?.trim()) newErrors.name = 'Full Name is required';
+    else if (!/^[a-zA-Z0-9\s-]+$/.test(formData.name.trim())) {
+      newErrors.name = 'Alphanumeric, spaces, and hyphens only';
     }
 
-    // For new employees, password is also required
+    if (!formData.username?.trim()) newErrors.username = 'Login Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username)) {
+      newErrors.username = 'Invalid email format';
+    }
+
     if (!editingId && !formData.password) {
-      error('Password is required for new registration.');
-      return false;
+      newErrors.password = 'Password is required for new registration';
+    } else if (formData.password) {
+      if (formData.password.length < 8) newErrors.password = 'Min 8 characters needed';
+      else if (!/[A-Z]/.test(formData.password)) newErrors.password = 'Must contain 1 uppercase letter';
+      else if (!/\d/.test(formData.password)) newErrors.password = 'Must contain 1 number';
+      else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) newErrors.password = 'Must contain 1 special character';
     }
 
-    // Password validation (If provided)
-    if (formData.password) {
-      if (formData.password.length < 8) {
-        error('Password must be at least 8 characters long.');
-        return false;
-      }
-      if (!/[A-Z]/.test(formData.password)) {
-        error('Password must contain at least one capital letter.');
-        return false;
-      }
-      if (!/\d/.test(formData.password)) {
-        error('Password must contain at least one number.');
-        return false;
-      }
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        error('Password must contain at least one special character.');
-        return false;
-      }
+    if (!formData.phone?.trim()) newErrors.phone = 'Phone Number is required';
+    else if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = 'Strict 10-digit number required';
+
+    if (!formData.aadhaar?.trim()) newErrors.aadhaar = 'Aadhaar Card No is required';
+    else if (!/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
+      newErrors.aadhaar = 'Invalid 12-digit Aadhaar (cannot start with 0/1)';
     }
 
-    // Phone validation (basic 10 digits check)
-    if (!/^\d{10}$/.test(formData.phone)) {
-      error('Please enter a valid 10-digit phone number.');
-      return false;
-    }
-
-    // Aadhaar validation (Strict format: 12 digits, cannot start with 0 or 1)
-    if (!/^[2-9]{1}[0-9]{11}$/.test(formData.aadhaar)) {
-      error('Please enter a valid 12-digit Aadhaar number (cannot start with 0 or 1).');
-      return false;
-    }
-
-    // DOB Validation (At least 18 years old)
-    if (formData.date_of_birth) {
+    if (!formData.date_of_birth) newErrors.date_of_birth = 'Date of Birth is required';
+    else {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
       const monthDiff = today.getMonth() - dob.getMonth();
-      const isActuallyOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
+      const isOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
+      if (!isOver18) newErrors.date_of_birth = 'Employee must be 18+ years old';
+    }
 
-      if (!isActuallyOver18) {
-        error('Employee must be at least 18 years old.');
+    if (!formData.category_id) newErrors.category_id = 'Employee Category is required';
+    if (!formData.type) newErrors.type = 'System Role is required';
+
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      error('Please correct the highlighted errors before continuing.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateQualificationsTab = () => {
+    // Validate each experience entry
+    for (const exp of formData.employee_experiences) {
+      if (!exp.company_name || !exp.from_period || !exp.to_period || !exp.post) {
+        error("Please complete all required fields for each Work Experience entry.");
+        return false;
+      }
+      if (exp.to_period <= exp.from_period) {
+        error(`Work Experience at ${exp.company_name}: 'To' date must be greater than 'From' date.`);
         return false;
       }
     }
-
     return true;
   };
 
@@ -459,13 +477,38 @@ export default function EmployeeInformationPage() {
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
+      const sanitizedData = {
+        ...formData,
+        basic_salary: Number(formData.basic_salary) || 0,
+        employee_loans: formData.employee_loans.map(l => ({
+          ...l,
+          loan_availed: Number(l.loan_availed) || 0,
+          balance_receivable: Number(l.balance_receivable) || 0
+        })),
+        employee_suspenses: formData.employee_suspenses.map(s => ({
+          ...s,
+          suspense_issued: Number(s.suspense_issued) || 0,
+          balance_receivable: Number(s.balance_receivable) || 0
+        })),
+        employee_targets: formData.employee_targets.map(t => ({
+          ...t,
+          minimum_target: Number(t.minimum_target) || 0
+        })),
+        employee_incentive_slabs: formData.employee_incentive_slabs.map(slab => ({
+          ...slab,
+          slab_from: Number(slab.slab_from) || 0,
+          slab_to: Number(slab.slab_to) || 0,
+          incentive_percent: Number(slab.incentive_percent) || 0
+        }))
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(sanitizedData)
       });
       const submittedCreds = { username: formData.username, password: formData.password };
       const data = await res.json();
@@ -490,6 +533,7 @@ export default function EmployeeInformationPage() {
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
         setActiveTab('personal');
+        setErrors({});
       } else {
         error(data.error || data.message || 'Operation failed');
       }
@@ -535,6 +579,7 @@ export default function EmployeeInformationPage() {
     });
     setIsViewMode(false);
     setActiveTab('personal');
+    setErrors({});
     setShowForm(true);
   };
 
@@ -680,56 +725,77 @@ export default function EmployeeInformationPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-6 font-heading">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary font-heading">Employee Management</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Employee Management</h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 md:mt-2 italic">Comprehensive staff directory with bio-data, technical skills, and access control.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
           {!showForm ? (
             <>
-              <Button onClick={downloadEmployeeList} variant="outline" className="h-10 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 sm:order-1">
-                 <Download className="w-4 h-4 mr-2" /> <span className="sm:hidden">Export</span><span className="hidden sm:inline">Download Employee List</span>
+              <Button 
+                onClick={downloadEmployeeList} 
+                variant="outline" 
+                className="flex-1 md:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold active:scale-95 transition-all rounded-full px-6"
+              >
+                 <Download className="w-4 h-4 mr-2" /> 
+                 <span className="hidden sm:inline">Download Export</span>
+                 <span className="sm:hidden">Download</span>
               </Button>
               {canCreate && (
-                <Button onClick={() => {
-                  setEditingId(null);
-                  const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
-                  setFormData({ 
-                    employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
-                    addresses: [
-                      { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
-                      { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
-                    ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
-                  });
-                  setIsViewMode(false);
-                  setShowForm(true);
-                }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 sm:order-2 px-6 rounded-full">
-                  <Plus className="w-5 h-5 mr-2" /> Add Employee
+                <Button 
+                  onClick={() => {
+                    setEditingId(null);
+                    const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
+                    setFormData({ 
+                      employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                      addresses: [
+                        { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
+                        { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
+                      ],
+                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    });
+                    setIsViewMode(false);
+                    setErrors({});
+                    setShowForm(true);
+                  }} 
+                  className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold active:scale-95 rounded-full px-8"
+                >
+                  <Plus className="w-5 h-5 mr-2" /> <span className="hidden sm:inline">Add Employee</span><span className="sm:hidden">Add New</span>
                 </Button>
               )}
             </>
           ) : (
-            <div className="flex space-x-2 md:space-x-3 w-full">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                <X className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Cancel</span>
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                onClick={() => { setShowForm(false); setEditingId(null); setActiveTab('personal'); }} 
+                className="flex-1 md:flex-none border-primary/10 rounded-full h-11 px-6 active:scale-95"
+              >
+                <X className="w-4 h-4 mr-2" /> Cancel
               </Button>
               {activeTab !== 'personal' && (
-                <Button variant="outline" onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} className="flex-1 sm:flex-none border-primary/10 rounded-full h-10 md:h-11">
-                  <ChevronLeft className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Back</span>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setActiveTab(activeTab === 'financials' ? 'qualifications' : 'personal')} 
+                  className="flex-1 md:flex-none border-primary/10 rounded-full h-11 px-6 active:scale-95"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
               )}
-              <Button onClick={() => {
+              <Button 
+                onClick={() => {
                 if (activeTab === 'personal') {
                   if (validatePersonalTab()) setActiveTab('qualifications');
                 }
-                else if (activeTab === 'qualifications') setActiveTab('financials');
-                else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
-                else saveEmployee();
-              }} 
-              loading={submitting}
-              className="flex-[2] sm:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 font-bold"
+                else if (activeTab === 'qualifications') {
+                  if (validateQualificationsTab()) setActiveTab('financials');
+                }
+                  else if (isViewMode) { setShowForm(false); setIsViewMode(false); setActiveTab('personal'); }
+                  else saveEmployee();
+                }} 
+                loading={submitting}
+                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-11 font-bold px-8 active:scale-95"
               >
                 {isViewMode && activeTab === 'financials' ? (
                   <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
@@ -743,6 +809,7 @@ export default function EmployeeInformationPage() {
           )}
         </div>
       </div>
+
 
       {!showForm && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -826,11 +893,12 @@ export default function EmployeeInformationPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className="h-10 md:h-11 font-bold" />
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name {!formData.name && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
+                        <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-amber-400 bg-amber-50/30' : ''}`} />
+                        {errors.name && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.name}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth {!formData.date_of_birth && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
                         <Input 
                            type="date" 
                            name="date_of_birth" 
@@ -838,16 +906,19 @@ export default function EmployeeInformationPage() {
                            value={formData.date_of_birth} 
                            onChange={handleInputChange} 
                            disabled={isViewMode} 
-                           className="h-10 md:h-11" 
+                           className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-amber-400 bg-amber-50/30' : ''}`} 
                         />
+                        {errors.date_of_birth && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.date_of_birth}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
-                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className="h-10 md:h-11" />
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number {!formData.phone && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
+                        <Input name="phone" maxLength={10} value={formData.phone} onChange={handleInputChange} disabled={isViewMode} placeholder="10 Digit Number" className={`h-10 md:h-11 ${errors.phone ? 'border-amber-400 bg-amber-50/30' : ''}`} />
+                        {errors.phone && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.phone}</p>}
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No</label>
-                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className="h-10 md:h-11" />
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Aadhaar Card No {!formData.aadhaar && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
+                        <Input name="aadhaar" maxLength={12} value={formData.aadhaar} onChange={handleInputChange} disabled={isViewMode} placeholder="12 Digit Number" className={`h-10 md:h-11 ${errors.aadhaar ? 'border-amber-400 bg-amber-50/30' : ''}`} />
+                        {errors.aadhaar && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.aadhaar}</p>}
                       </div>
                       <div className="space-y-4 col-span-full md:col-span-1 lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
                         <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest">Communication Address</h3>
@@ -903,13 +974,11 @@ export default function EmployeeInformationPage() {
                       </div>
                       <div className="space-y-2 flex items-center h-full pt-4">
                         <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
-                          <input 
-                             type="checkbox" 
+                          <Checkbox 
                              name="is_married" 
                              checked={formData.is_married} 
-                             onChange={(e) => !isViewMode && setFormData({...formData, is_married: e.target.checked})} 
+                             onCheckedChange={(checked) => !isViewMode && setFormData({...formData, is_married: !!checked})} 
                              disabled={isViewMode}
-                             className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20"
                           />
                           <span>Is Married?</span>
                         </label>
@@ -936,50 +1005,55 @@ export default function EmployeeInformationPage() {
               <CardTitle className="text-xl text-primary">System & Role Access</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee Category {!formData.category_id && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
+                  <Select 
+                    value={formData.category_id} 
+                    onValueChange={(val) => updateFormData('category_id', val)}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger className={`w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700 ${errors.category_id ? 'border-amber-400 bg-amber-50/30' : ''}`}>
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.category_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category_id && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.category_id}</p>}
+                </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Employee Category</label>
-                <select 
-                  name="category_id" 
-                  value={formData.category_id} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.category_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Login Email (Username)</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Login Email {!formData.username && <span className="text-[10px] font-medium lowercase">(Username)</span>}</label>
+                <Input name="username" className={`w-full h-10 md:h-11 ${errors.username ? 'border-amber-400 bg-amber-50/30' : ''}`} value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@keil.com" />
+                {errors.username && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.username}</p>}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Company / Department Appointed</label>
-                <select 
-                  name="company_id" 
+                <Select 
                   value={formData.company_id} 
-                  onChange={handleInputChange} 
+                  onValueChange={(val) => updateFormData('company_id', val)}
                   disabled={true}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
                 >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.company_name}</option>
-                  ))}
-                </select>
-              </div>
+                  <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-slate-50 shadow-sm font-bold text-slate-700">
+                    <SelectValue placeholder="Select Company" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'}</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{editingId ? 'Change Password' : 'Login Password'} {!formData.password && !editingId && <span className="text-[10px] font-medium lowercase">(Mandatory)</span>}</label>
                 <div className="relative">
                   <Input 
                     type={showFormPassword ? "text" : "password"} 
+                    className={`w-full h-10 md:h-11 pr-10 ${errors.password ? 'border-amber-400 bg-amber-50/30' : ''}`}
                     name="password" 
                     value={formData.password} 
                     onChange={handleInputChange} 
                     disabled={isViewMode} 
-                    placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
+                    placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : 'Minimum 8 chars'} 
                   />
                   {!isViewMode && (
                     <Button
@@ -993,22 +1067,26 @@ export default function EmployeeInformationPage() {
                     </Button>
                   )}
                 </div>
+                {errors.password && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.password}</p>}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">System Role</label>
-                <select 
-                  name="type" 
-                  value={formData.type} 
-                  onChange={handleInputChange} 
-                  disabled={isViewMode}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary font-medium disabled:opacity-50"
-                >
-                  <option value="" disabled>Select System Role</option>
-                  {userTypes.map((role) => (
-                    <option key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</option>
-                  ))}
-                </select>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">System Role {!formData.type && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
+                  <Select 
+                    value={formData.type} 
+                    onValueChange={(val) => updateFormData('type', val)}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger className={`w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700 ${errors.type ? 'border-amber-400 bg-amber-50/30' : ''}`}>
+                      <SelectValue placeholder="Select System Role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {userTypes.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.type && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.type}</p>}
+                </div>
             </CardContent>
           </Card>
         </div>
@@ -1037,15 +1115,19 @@ export default function EmployeeInformationPage() {
                       <div className="space-y-3">
                         {formData.employee_qualifications.map((q, idx) => (
                            <div key={idx} className="flex gap-4 items-center animate-in fade-in">
-                              <select 
+                              <Select 
                                 value={q.qualification_type} 
-                                onChange={(e) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', e.target.value)}
+                                onValueChange={(val) => handleNestedRowChange('employee_qualifications', idx, 'qualification_type', val)}
                                 disabled={isViewMode}
-                                className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                               >
-                                <option value="BASIC">Basic</option>
-                                <option value="ADDITIONAL">Additional</option>
-                              </select>
+                                <SelectTrigger className="h-9 w-40 border-slate-200 bg-white shadow-sm font-medium">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="BASIC">Basic</SelectItem>
+                                  <SelectItem value="ADDITIONAL">Additional</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Input 
                                 placeholder="Qualification Details (e.g. Master's in IT)" 
                                 value={q.qualification_name}
@@ -1132,14 +1214,15 @@ export default function EmployeeInformationPage() {
                           </h3>
                           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Base salary for payroll generation</p>
                        </div>
-                       <div className="w-64">
+                       <div className="w-64 space-y-1 text-right">
+                          <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Basic Salary {!formData.basic_salary && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                           <Input 
                             type="number" 
                             name="basic_salary" 
-                            value={formData.basic_salary} 
+                            value={Number(formData.basic_salary) || ''} 
                             onChange={handleInputChange} 
                             disabled={isViewMode} 
-                            placeholder="0.00" 
+                            placeholder="0" 
                             className="h-12 font-black text-xl text-primary bg-white border-primary/20 rounded-xl text-right"
                             min="0"
                           />
@@ -1152,7 +1235,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_license} onChange={(e) => !isViewMode && setFormData({...formData, has_license: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_license} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_license: !!checked})} disabled={isViewMode} />
                             <span>License Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1161,7 +1244,7 @@ export default function EmployeeInformationPage() {
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <input type="checkbox" checked={formData.has_passport} onChange={(e) => !isViewMode && setFormData({...formData, has_passport: e.target.checked})} disabled={isViewMode} className="rounded text-primary focus:ring-primary" />
+                            <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
                       </div>
@@ -1185,15 +1268,19 @@ export default function EmployeeInformationPage() {
                          <div key={idx} className="grid lg:flex gap-3 items-center animate-in fade-in bg-secondary/5 p-3 rounded-lg">
                             <div className="space-y-1 flex-none w-full lg:w-48">
                               <label className="text-xs text-muted-foreground">Type</label>
-                              <select 
+                              <Select 
                                 value={cert.certificate_type} 
-                                onChange={(e) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', e.target.value)}
+                                onValueChange={(val) => handleNestedRowChange('employee_certificates', idx, 'certificate_type', val)}
                                 disabled={isViewMode}
-                                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                               >
-                                <option value="MEDICAL">Medical Certificate</option>
-                                <option value="POLICE_VERIFICATION">Police Verification</option>
-                              </select>
+                                <SelectTrigger className="h-9 w-full border-slate-200 bg-white/50 shadow-sm font-medium">
+                                  <SelectValue placeholder="Select Type" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  <SelectItem value="MEDICAL">Medical Certificate</SelectItem>
+                                  <SelectItem value="POLICE_VERIFICATION">Police Verification</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             {/* <div className="space-y-1 flex-none w-20">
                               <label className="text-xs text-muted-foreground">Issued?</label>
@@ -1230,22 +1317,54 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Advanced Loans</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_loans.length >= 3) {
+                                info('Maximum limit of 3 loan entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_loans', { loan_availed: '', balance_receivable: '', loan_date: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Loan Availed ₹</label>
-                                 <Input type="number" min="0" placeholder="0.00" value={loan.loan_availed} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_availed', e.target.value)} disabled={isViewMode} />
+                               <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Loan Availed {!loan.loan_availed && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Loan Amount" 
+                                  value={Number(loan.loan_availed) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'loan_availed', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
                               <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Recived ₹</label>
-                                 <Input type="number" min="0" placeholder="0.00" value={loan.balance_receivable} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Receivable {!loan.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input 
+                                  type="number" 
+                                  min="0" 
+                                  placeholder="Balance Receivable" 
+                                  value={Number(loan.balance_receivable) || ''} 
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length <= 10) handleNestedRowChange('employee_loans', idx, 'balance_receivable', val);
+                                  }} 
+                                  disabled={isViewMode} 
+                                />
                               </div>
+
                               <div className="flex-1 space-y-1">
                                 <label className="text-xs text-muted-foreground">Date Issued</label>
                                  <Input type="date" value={loan.loan_date?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_loans', idx, 'loan_date', e.target.value)} disabled={isViewMode} />
@@ -1267,16 +1386,53 @@ export default function EmployeeInformationPage() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-foreground/90">Suspense Amounts</h3>
                         {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' })}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              if (formData.employee_suspenses.length >= 3) {
+                                info('Maximum limit of 3 suspense entries reached.');
+                                return;
+                              }
+                              addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' });
+                            }}
+                          >
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
+
                       </div>
                       <div className="space-y-3">
                          {formData.employee_suspenses.map((susp, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="Suspense Issued ₹" value={susp.suspense_issued} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" placeholder="Balance Recived ₹" value={susp.balance_receivable} onChange={(e) => handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', e.target.value)} disabled={isViewMode} />
+                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-xs text-muted-foreground font-bold tracking-tight">Suspense Issued {!susp.suspense_issued && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input 
+                                   type="number" 
+                                   min="0" 
+                                   placeholder="Suspense Issued" 
+                                   value={Number(susp.suspense_issued) || ''} 
+                                   onChange={(e) => {
+                                     const val = e.target.value;
+                                     if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', val);
+                                   }} 
+                                   disabled={isViewMode} 
+                                 />
+                               </div>
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Receivable {!susp.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                 <Input 
+                                   type="number" 
+                                   min="0" 
+                                   placeholder="Balance Receivable" 
+                                   value={Number(susp.balance_receivable) || ''} 
+                                   onChange={(e) => {
+                                     const val = e.target.value;
+                                     if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', val);
+                                   }} 
+                                   disabled={isViewMode} 
+                                 />
+                               </div>
                               {!isViewMode && (
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
                                   <Trash2 className="w-4 h-4" />
@@ -1284,6 +1440,7 @@ export default function EmployeeInformationPage() {
                               )}
                            </div>
                         ))}
+
                         {formData.employee_suspenses.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No suspense amounts recorded.</p>}
                       </div>
                     </div>
@@ -1305,7 +1462,7 @@ export default function EmployeeInformationPage() {
                       <div className="space-y-3">
                          {formData.employee_targets.map((tgt, idx) => (
                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="Target Minimum" value={tgt.minimum_target} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="Target Minimum" value={Number(tgt.minimum_target) || ''} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
                               {!isViewMode && (
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
                                   <Trash2 className="w-4 h-4" />
@@ -1329,9 +1486,9 @@ export default function EmployeeInformationPage() {
                       <div className="space-y-3">
                          {formData.employee_incentive_slabs.map((slab, idx) => (
                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                              <Input type="number" min="0" placeholder="From Amount" value={slab.slab_from} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" placeholder="To Amount" value={slab.slab_to} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={slab.incentive_percent} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="From Amount" value={Number(slab.slab_from) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" placeholder="To Amount" value={Number(slab.slab_to) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
+                              <Input type="number" min="0" max="100" placeholder="Percent (%)" value={Number(slab.incentive_percent) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
                               {!isViewMode && (
                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
                                   <Trash2 className="w-4 h-4" />
@@ -1360,13 +1517,11 @@ export default function EmployeeInformationPage() {
             <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
           </div>
           <div className="grid grid-cols-1 md:flex gap-4 items-center">
-            <div className="flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
-               <input 
-                  type="checkbox" 
+            <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+               <Checkbox 
                   id="showDeactivated"
                   checked={showDeactivated} 
-                  onChange={(e) => { setShowDeactivated(e.target.checked); setCurrentPage(1); }}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  onCheckedChange={(checked) => { setShowDeactivated(!!checked); setCurrentPage(1); }}
                />
                <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
             </div>
@@ -1394,8 +1549,8 @@ export default function EmployeeInformationPage() {
 
             return (
               <>
-                <div className="border rounded-xl mx-2 overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-sm whitespace-nowrap">
+                <div className="border rounded-xl mx-2 overflow-x-auto shadow-sm">
+                  <table className="w-full min-w-[800px] text-left text-sm whitespace-nowrap">
                     <thead className="bg-primary/5 text-primary">
                       <tr>
                         <th className="p-4 font-semibold w-24">Emp Code</th>

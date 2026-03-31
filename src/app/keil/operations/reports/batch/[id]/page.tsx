@@ -56,7 +56,7 @@ export default function BatchDetailsPage() {
         }
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center"><Activity className="w-10 h-10 animate-spin text-indigo-600" /></div>;
+    if (loading) return <div className="h-screen flex items-center justify-center"><Activity className="w-10 h-10 animate-spin text-primary" /></div>;
     if (!batch) return <div className="p-10 text-center text-slate-400">Batch details not found.</div>;
 
     const totals = batch.entries.reduce((acc: any, curr: any) => ({

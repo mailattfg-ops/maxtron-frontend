@@ -10,6 +10,14 @@ import {
   MapPin, Phone, Mail, FileCheck, CreditCard, 
   Truck, Package, Wallet, Download, Trash, Globe, Copy
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -42,6 +50,17 @@ export default function SupplierPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [gstError, setGstError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [deliveryPeriodError, setDeliveryPeriodError] = useState('');
+  const [zipError, setZipError] = useState('');
+  const [billingZipError, setBillingZipError] = useState('');
+  
+  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  const nameRegex = /^[a-zA-Z0-9\s.\-&',]+$/;
+  const codeRegex = /^[A-Z0-9\-]+$/;
+  const deliveryPeriodRegex = /^[a-zA-Z0-9\s-]+$/;
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -100,6 +119,16 @@ export default function SupplierPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if suppliers list updates while form is open (and not editing)
+    if (showForm && !editingId && suppliers.length > 0) {
+       const currentCode = formData.supplier_code;
+       if (!currentCode || currentCode === 'VEN-000001' || currentCode === 'GENERATING...') {
+          resetForm(suppliers);
+       }
+    }
+  }, [suppliers, showForm, editingId]);
+
   const checkGstExistence = (gst: string) => {
     if (!gst || gst.trim() === '') {
       setGstExists(false);
@@ -109,6 +138,11 @@ export default function SupplierPage() {
       s.gst_no?.toLowerCase() === gst.toLowerCase() && s.id !== editingId
     );
     setGstExists(exists);
+    if (gst && !gstRegex.test(gst)) {
+      // setGstError('Invalid GST format (Example: 29ABCDE1234F1Z5)');
+    } else {
+      setGstError('');
+    }
   };
 
   const fetchSuppliers = async (coId?: string) => {
@@ -120,7 +154,11 @@ export default function SupplierPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSuppliers(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setSuppliers(sorted);
       }
     } catch (err) {
       console.error('Error fetching suppliers:', err);
@@ -130,6 +168,36 @@ export default function SupplierPage() {
   const saveSupplier = async () => {
     if (!formData.supplier_name || !formData.supplier_code) {
       error('Name and Code are required.');
+      return;
+    }
+
+    if (nameError) {
+      error('Please provide a valid supplier name without special characters.');
+      return;
+    }
+
+    if (formData.gst_no && !gstRegex.test(formData.gst_no)) {
+      error('Please provide a valid 15-digit GST number or keep it empty.');
+      return;
+    }
+
+    if (codeError) {
+      error('Please provide a valid supplier code without spaces or special characters.');
+      return;
+    }
+
+    if (deliveryPeriodError) {
+      error('Delivery Period contains invalid characters.');
+      return;
+    }
+
+    if (zipError || billingZipError) {
+      error('Please provide valid 6-digit zip codes.');
+      return;
+    }
+
+    if (gstExists) {
+      error('GST number already exists for another supplier.');
       return;
     }
 
@@ -184,9 +252,28 @@ export default function SupplierPage() {
     success('Address copied successfully!');
   };
 
-  const resetForm = () => {
+  const resetForm = (latestSuppliers: any[] = suppliers) => {
+    if (loading && latestSuppliers.length === 0) {
+      setFormData(prev => ({ ...prev, supplier_code: 'GENERATING...' }));
+      return;
+    }
+
+    let nextCode = 'VEN-000001';
+    const validCodes = latestSuppliers
+      .filter(s => s.supplier_code && /^VEN-\d+$/i.test(s.supplier_code))
+      .map(s => {
+        const parts = s.supplier_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `VEN-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      supplier_code: '',
+      supplier_code: nextCode,
       supplier_name: '',
       supplier_address: { ...defaultAddress },
       billing_address: { ...defaultAddress },
@@ -200,6 +287,13 @@ export default function SupplierPage() {
       supplied_materials: [],
       company_id: currentCompanyId
     });
+    setGstError('');
+    setGstExists(false);
+    setNameError('');
+    setCodeError('');
+    setDeliveryPeriodError('');
+    setZipError('');
+    setBillingZipError('');
   };
 
   const handleEdit = (s: any) => {
@@ -362,31 +456,57 @@ export default function SupplierPage() {
           <CardContent className="p-4 md:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Code</label>
-                <Input value={formData.supplier_code} onChange={(e) => setFormData({...formData, supplier_code: e.target.value})} className="h-11 font-mono uppercase font-bold" placeholder="e.g. VEN-001" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                  <span>Supplier Code</span>
+                </label>
+                <Input 
+                  value={formData.supplier_code} 
+                  readOnly
+                  className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
+                  placeholder="e.g. VEN-001" 
+                />
+                {codeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
               </div>
  
               <div className="space-y-2 sm:col-span-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Name</label>
-                <Input value={formData.supplier_name} onChange={(e) => setFormData({...formData, supplier_name: e.target.value})} className="h-11 font-bold" placeholder="Company Name" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                  <span>Supplier Name</span>
+                </label>
+                <Input 
+                  value={formData.supplier_name} 
+                  maxLength={255}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, supplier_name: val});
+                    if (val && !nameRegex.test(val)) {
+                      setNameError('Special characters not allowed');
+                    } else {
+                      setNameError('');
+                    }
+                  }} 
+                  className={`h-11 font-bold ${nameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`}
+                  placeholder="Supplier Name" 
+                />
+                {nameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{nameError}</p>}
               </div>
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
-                  <span>GST No (optional)</span>
-                  {gstExists && <span className="text-rose-500 animate-pulse">Already Exists!</span>}
+                  <span>GST No {!formData.gst_no && <span className="text-muted-foreground/60">(optional)</span>}</span>
                 </label>
                 <Input 
                   value={formData.gst_no} 
+                  maxLength={15}
                   onChange={(e) => {
                     const val = e.target.value.toUpperCase();
                     setFormData({...formData, gst_no: val});
                     checkGstExistence(val);
                   }} 
-                  className={`h-11 uppercase font-bold transition-all ${gstExists ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
+                  className={`h-11 uppercase font-bold transition-all ${gstExists || gstError ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
                   placeholder="29XXXXX..." 
                 />
-                {gstExists && <p className="text-[9px] font-bold text-rose-500 mt-1 ml-1 uppercase">This GST number is already registered in the system.</p>}
+                {gstExists && <p className="text-[10px] font-bold text-rose-500 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">Already registered in the system.</p>}
+                {!gstExists && gstError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{gstError}</p>}
               </div>
             </div>
 
@@ -412,7 +532,19 @@ export default function SupplierPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
-                    <Input value={formData.supplier_address.zip_code} onChange={(e) => setFormData({...formData, supplier_address: {...formData.supplier_address, zip_code: e.target.value}})} placeholder="XXXXXX" />
+                    <Input 
+                        value={formData.supplier_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setFormData({...formData, supplier_address: {...formData.supplier_address, zip_code: val}});
+                            if (val && val.length !== 6) setZipError('Must be 6 digits');
+                            else setZipError('');
+                        }} 
+                        className={zipError ? 'border-amber-400 bg-amber-50' : ''}
+                        placeholder="XXXXXX" 
+                    />
+                    {zipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{zipError}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
@@ -426,7 +558,9 @@ export default function SupplierPage() {
                 <div className="flex items-center justify-between text-slate-600 border-b border-slate-100 pb-2">
                    <div className="flex items-center space-x-2">
                      <FileCheck className="w-4 h-4" />
-                     <h3 className="text-sm font-black uppercase tracking-widest">Billing Address (optional)</h3>
+                     <h3 className="text-sm font-black uppercase tracking-widest">
+                       Billing Address {(!formData.billing_address.street && !formData.billing_address.city && !formData.billing_address.state) && <span className="text-[10px] text-muted-foreground ml-1 lowercase">(optional)</span>}
+                     </h3>
                    </div>
                    <Button 
                     type="button" 
@@ -453,7 +587,18 @@ export default function SupplierPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
-                    <Input value={formData.billing_address.zip_code} onChange={(e) => setFormData({...formData, billing_address: {...formData.billing_address, zip_code: e.target.value}})} />
+                    <Input 
+                        value={formData.billing_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setFormData({...formData, billing_address: {...formData.billing_address, zip_code: val}});
+                            if (val && val.length !== 6) setBillingZipError('Must be 6 digits');
+                            else setBillingZipError('');
+                        }} 
+                        className={billingZipError ? 'border-amber-400 bg-amber-50' : ''}
+                    />
+                    {billingZipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{billingZipError}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
@@ -477,17 +622,15 @@ export default function SupplierPage() {
                 <div className="border border-slate-200 rounded-md p-3 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 bg-slate-50">
                   {materials.map(m => (
                     <label key={m.id} className="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
-                      <input 
-                        type="checkbox" 
+                      <Checkbox 
                         checked={formData.supplied_materials.includes(m.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
+                        onCheckedChange={(checked: boolean) => {
+                          if (checked) {
                             setFormData({...formData, supplied_materials: [...formData.supplied_materials, m.id]});
                           } else {
                             setFormData({...formData, supplied_materials: formData.supplied_materials.filter(id => id !== m.id)});
                           }
                         }}
-                        className="rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary w-4 h-4"
                       />
                       <span className="truncate">{m.rm_name}</span>
                     </label>
@@ -498,36 +641,50 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Delivery Mode</label>
-                <select 
-                   value={formData.delivery_mode} 
-                   onChange={(e) => setFormData({...formData, delivery_mode: e.target.value})}
-                   className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="">Select Mode...</option>
-                  <option value="Direct Truck">Direct Truck</option>
-                  <option value="Courier">Courier</option>
-                  <option value="Self Pickup">Self Pickup</option>
-                </select>
+                <Select value={formData.delivery_mode} onValueChange={(val) => setFormData({...formData, delivery_mode: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Mode..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Direct Truck">Direct Truck</SelectItem>
+                    <SelectItem value="Courier">Courier</SelectItem>
+                    <SelectItem value="Self Pickup">Self Pickup</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Delivery Period</label>
-                <Input value={formData.delivery_period} onChange={(e) => setFormData({...formData, delivery_period: e.target.value})} className="h-11" placeholder="e.g. 2-4 Days" />
+                <Input 
+                  value={formData.delivery_period} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, delivery_period: val});
+                    if (val && !deliveryPeriodRegex.test(val)) {
+                      setDeliveryPeriodError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    } else {
+                      setDeliveryPeriodError('');
+                    }
+                  }} 
+                  className={`h-11 ${deliveryPeriodError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  placeholder="e.g. 2-4 Days" 
+                />
+                {deliveryPeriodError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{deliveryPeriodError}</p>}
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Period (Days)</label>
-                <Input type="number" min="0" value={formData.credit_period} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_period || ''} onChange={(e) => setFormData({...formData, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Credit Limit (₹)</label>
-                <Input type="number" min="0" value={formData.credit_limit} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.credit_limit || ''} onChange={(e) => setFormData({...formData, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Opening Balance (₹)</label>
-                <Input type="number" min="0" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+                <Input type="number" min="0" value={formData.opening_balance || ''} onChange={(e) => setFormData({...formData, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
               </div>
             </div>
 
@@ -575,8 +732,8 @@ export default function SupplierPage() {
                  </div>
               </td>
               <td className="px-6 py-4">
-                 <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>
-                 <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period || 0} DAYS CREDIT</div>
+                 {s.credit_limit > 0 && <div className="text-[11px] font-black text-slate-800 tracking-tight">Limit: ₹{Number(s.credit_limit).toLocaleString()}</div>}
+                 {s.credit_period > 0 && <div className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-widest">{s.credit_period} DAYS CREDIT</div>}
               </td>
               <td className="px-6 py-4">
                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[9px] font-black tracking-widest rounded border border-slate-200">

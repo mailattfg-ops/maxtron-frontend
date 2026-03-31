@@ -33,6 +33,7 @@ import {
     Bar,
     Cell
 } from 'recharts';
+import { AnnouncementSection } from '@/components/dashboard/AnnouncementSection';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -108,8 +109,8 @@ export default function Dashboard() {
             label: 'Monthly Sales', 
             value: `₹${Number(data?.stats?.totalSales || 0).toLocaleString()}`, 
             icon: TrendingUp, 
-            color: 'text-emerald-600', 
-            bg: 'bg-emerald-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: `${(data?.stats?.salesTrend || 0).toFixed(1)}%`,
             isPos: (data?.stats?.salesTrend || 0) >= 0
         },
@@ -117,8 +118,8 @@ export default function Dashboard() {
             label: 'Pending Orders', 
             value: data?.stats?.pendingOrdersCount || '0', 
             icon: ShoppingCart, 
-            color: 'text-blue-600', 
-            bg: 'bg-blue-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: '+5.2%',
             isPos: true
         },
@@ -126,8 +127,8 @@ export default function Dashboard() {
             label: 'Total Production', 
             value: `${Number(data?.stats?.totalProduction || 0).toLocaleString()} KG`, 
             icon: Settings, 
-            color: 'text-amber-600', 
-            bg: 'bg-amber-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: `${(data?.stats?.productionTrend || 0).toFixed(1)}%`,
             isPos: (data?.stats?.productionTrend || 0) >= 0
         },
@@ -135,8 +136,8 @@ export default function Dashboard() {
             label: 'Active Staff', 
             value: data?.stats?.presentToday !== undefined ? `${data?.stats?.presentToday}/${data?.stats?.employeeCount || 0}` : (data?.stats?.employeeCount || '0'), 
             icon: Users, 
-            color: 'text-violet-600', 
-            bg: 'bg-violet-50',
+            color: 'text-primary', 
+            bg: 'bg-primary/10',
             trend: '0.0%',
             isPos: true
         },
@@ -155,19 +156,22 @@ export default function Dashboard() {
                     <p className="text-muted-foreground font-medium mt-1">Real-time analytical baseline for Maxtron Operations.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-2">
+                    {/* <div className="px-4 py-2 bg-card rounded-2xl border border-border shadow-sm flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">System Live</span>
-                    </div>
+                    </div> */}
                     <Button onClick={() => fetchDashboardData()} variant="outline" className="rounded-2xl border-border hover:bg-accent h-10 px-6 font-bold">Refresh Data</Button>
                 </div>
             </div>
+
+            {/* Announcements Section */}
+            <AnnouncementSection tenant="maxtron" />
 
             {/* Main Stats Hub */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
                     <Card key={i} className="relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-none bg-card shadow-sm ring-1 ring-border/50">
-                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} ${theme === 'dark' ? 'opacity-10' : 'opacity-40'} rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
+                        <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} opacity-40 rounded-bl-full -z-10 group-hover:scale-125 transition-transform duration-700`}></div>
                         <CardHeader className="pb-2">
                             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-2 group-hover:rotate-6 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
@@ -195,7 +199,7 @@ export default function Dashboard() {
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div>
                             <CardTitle className="text-xl font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                                <ChartIcon className="w-6 h-6 text-indigo-500" /> Revenue vs Collections
+                                <ChartIcon className="w-6 h-6 text-primary/80" /> Revenue vs Collections
                             </CardTitle>
                             <CardDescription className="text-muted-foreground font-medium italic">Financial performance monitoring</CardDescription>
                         </div>
@@ -205,12 +209,12 @@ export default function Dashboard() {
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#001b74" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#001b74" stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#64748b" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#64748b" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
@@ -231,8 +235,8 @@ export default function Dashboard() {
                                     contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
                                     cursor={{ stroke: theme === 'dark' ? '#334155' : '#e2e8f0', strokeWidth: 2 }}
                                 />
-                                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#4f46e5' }} />
-                                <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#10b981' }} />
+                                <Area type="monotone" dataKey="sales" stroke="#001b74" strokeWidth={4} fillOpacity={1} fill="url(#colorSales)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#001b74' }} />
+                                <Area type="monotone" dataKey="income" stroke="#64748b" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" dot={{ r: 4, fill: theme === 'dark' ? '#1e293b' : '#fff', stroke: '#64748b' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -268,8 +272,8 @@ export default function Dashboard() {
                                     contentStyle={{ background: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}
                                     cursor={{ fill: theme === 'dark' ? '#1e293b' : '#f1f5f9' }}
                                 />
-                                <Bar dataKey="present" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={20} />
-                                <Bar dataKey="absent" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="present" fill="#001b74" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="absent" fill="#94a3b8" radius={[6, 6, 0, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -379,7 +383,7 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-sm ring-1 ring-blue-100 bg-gradient-to-br from-primary to-indigo-900 rounded-3xl overflow-hidden text-white group">
+                    <Card className="border-none shadow-sm ring-1 ring-blue-100 bg-gradient-to-br from-primary to-primary rounded-3xl overflow-hidden text-white group">
                         <CardContent className="p-8 space-y-6 relative overflow-hidden h-full flex flex-col justify-center">
                             <Wallet className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                             <div>
@@ -418,8 +422,7 @@ export default function Dashboard() {
                         ]).map((batch: any, i: number) => (
                             <div key={i} className="p-6 bg-muted/20 rounded-2xl border border-border/40 hover:border-secondary/30 transition-all hover:bg-card hover:shadow-xl group">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
-                                    <Clock className="w-4 h-4 text-muted-foreground/40" />
+                                    <div className="overflow-hidden text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
                                 </div>
                                 <h4 className="text-sm font-black text-foreground/90 uppercase tracking-tight mb-1">{batch.batch_number}</h4>
                                 <div className="text-2xl font-black text-foreground leading-none mb-1">{batch.extrusion_output_qty} <span className="text-[10px] text-muted-foreground ml-1 tracking-widest uppercase">KG</span></div>

@@ -49,9 +49,11 @@ export const maxtronSidebarMenu: NavItem[] = [
         permissionKey: "prod_view",
         children: [
             { title: "Production (Extrusion)", path: "/maxtron/production/extrusion", permissionKey: "prod_extrusion_view" },
+            { title: "Printing Section", path: "/maxtron/production/printing", permissionKey: "prod_extrusion_view" },
             { title: "Cutting & Sealing", path: "/maxtron/production/cutting", permissionKey: "prod_cutting_view" },
             { title: "Packing Details", path: "/maxtron/production/packing", permissionKey: "prod_packing_view" },
             { title: "Damages & Wastage", path: "/maxtron/production/wastage", permissionKey: "prod_product_view" },
+            { title: "Miscellaneous Expenses", path: "/maxtron/production/expenses", permissionKey: "prod_extrusion_view" },
             { title: "Production Summary", path: "/maxtron/production/reports/summary", permissionKey: "prod_extrusion_view" },
             { title: "Packing Summary", path: "/maxtron/production/reports/packing", permissionKey: "prod_packing_view" },
             { title: "Finished Good Stock List", path: "/maxtron/production/reports/fg-stock", permissionKey: "prod_product_view" },
@@ -86,7 +88,8 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Customer Ledger", path: "/maxtron/finance/reports/customer-ledger", permissionKey: "fin_collection_view" },
             { title: "Supplier Ledger", path: "/maxtron/finance/reports/supplier-ledger", permissionKey: "fin_payment_view" },
             { title: "Financial Summary", path: "/maxtron/finance/reports/summary", permissionKey: "fin_petty_cash_view" },
-            { title: "Period Wise Scorecard", path: "/maxtron/finance/reports/scorecard", permissionKey: "fin_collection_view" }
+            { title: "Period Wise Scorecard", path: "/maxtron/finance/reports/scorecard", permissionKey: "fin_collection_view" },
+            { title: "Miscellaneous Expenses", path: "/maxtron/finance/reports/miscellaneous-expenses", permissionKey: "fin_petty_cash_view" }
         ]
     },
     {

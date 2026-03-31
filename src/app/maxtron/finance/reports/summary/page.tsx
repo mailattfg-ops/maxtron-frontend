@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
+import { exportToExcel, exportToCSV } from '@/utils/export';
 
 export default function FinancialSummaryPage() {
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -82,6 +83,26 @@ export default function FinancialSummaryPage() {
         }
     };
 
+    const downloadSummary = async () => {
+        if (transactions.length === 0) return;
+        const headers = ['Date', 'Type', 'Voucher', 'Party / Recipient', 'Flow', 'Amount'];
+        const rows = transactions.map(t => [
+            new Date(t.date).toLocaleDateString(),
+            t.type,
+            t.ref,
+            t.party,
+            t.flow,
+            Number(t.amount || 0)
+        ]);
+
+        await exportToCSV({
+            headers,
+            rows,
+            filename: `Financial_Summary_${new Date().toISOString().split('T')[0]}.csv`
+        });
+        toastSuccess('Summary exported successfully as CSV');
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -93,8 +114,13 @@ export default function FinancialSummaryPage() {
                     <p className="text-slate-500 text-sm mt-1">Consolidated view of all financial inflows and outflows</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" className="rounded-xl flex items-center gap-2 h-11 px-6">
-                        <Download className="w-4 h-4" /> Export CSV
+                    <Button 
+                        onClick={downloadSummary}
+                        variant="outline" 
+                        disabled={transactions.length === 0}
+                        className="rounded-xl flex items-center gap-2 h-11 px-6 font-bold"
+                    >
+                        <Download className="w-4 h-4" /> Export Report
                     </Button>
                     <Button onClick={fetchSummary} className="rounded-xl h-11 px-8 font-bold">Refresh</Button>
                 </div>
@@ -156,7 +182,7 @@ export default function FinancialSummaryPage() {
                                 </span>
                             )}
                         </td>
-                        <td className={`px-6 py-4 font-black ${row.flow === 'IN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <td className={`px-6 py-4 font-black flex justify-end ${row.flow === 'IN' ? 'text-emerald-600' : 'text-rose-600'}`}>
                             ₹{row.amount.toLocaleString()}
                         </td>
                     </tr>

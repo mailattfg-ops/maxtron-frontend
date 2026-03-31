@@ -308,7 +308,7 @@ export default function CompanyInformationPage() {
 
                 {/* Manufacturing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Manufacturing Unit
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -437,7 +437,7 @@ export default function CompanyInformationPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
+    <div className="md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl border border-primary/10 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Company Information</h1>
@@ -469,7 +469,7 @@ export default function CompanyInformationPage() {
                                     <div className="flex gap-2">
                                         {canEdit && (
                                             <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
-                                                <Edit className="h-4 w-4 mr-2" /> Edit Details
+                                                <Edit className="h-4 w-4 md:mr-2" /> Edit Details
                                             </Button>
                                         )}
                                     </div>
@@ -508,7 +508,7 @@ export default function CompanyInformationPage() {
                                                 {renderAddressDisplay(company, 'OFFICE')}
                                             </div>
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-indigo-600 font-medium absolute -top-1 bg-indigo-50 px-1 rounded">MANUFACTURING UNIT</span>
+                                                <span className="text-xs text-primary font-medium absolute -top-1 bg-primary/10 px-1 rounded">MANUFACTURING UNIT</span>
                                                 {renderAddressDisplay(company, 'MANUFACTURING_UNIT')}
                                             </div>
                                             <div className="text-sm pb-1 relative">

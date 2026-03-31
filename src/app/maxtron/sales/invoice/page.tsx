@@ -11,6 +11,13 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
@@ -300,10 +307,10 @@ export default function SalesInvoiceEntry() {
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
                  onClick={() => setAlert({...alert, show: false})} />
             <Card className="relative w-full max-w-[440px] shadow-2xl border-none bg-white rounded-3xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300">
-                <div className={`h-2 w-full ${alert.type === 'success' ? 'bg-emerald-500' : alert.type === 'error' ? 'bg-rose-500' : 'bg-primary'}`} />
+                <div className={`h-2 w-full ${alert.type === 'success' ? 'bg-primary' : alert.type === 'error' ? 'bg-destructive' : 'bg-primary'}`} />
                 <CardContent className="p-10 text-center">
                     <div className="flex justify-center mb-6">
-                        <div className={`p-5 rounded-full ${alert.type === 'success' ? 'bg-emerald-50 text-emerald-500' : alert.type === 'error' ? 'bg-rose-50 text-rose-500' : 'bg-primary/5 text-primary'}`}>
+                        <div className={`p-5 rounded-full ${alert.type === 'success' ? 'bg-primary/5 text-primary' : alert.type === 'error' ? 'bg-destructive/5 text-destructive' : 'bg-primary/5 text-primary'}`}>
                             {alert.type === 'success' && <CheckCircle2 className="w-12 h-12" />}
                             {alert.type === 'error' && <XCircle className="w-12 h-12" />}
                             {alert.type === 'confirm' && <AlertCircle className="w-12 h-12" />}
@@ -315,7 +322,7 @@ export default function SalesInvoiceEntry() {
                         {alert.type === 'confirm' ? (
                             <>
                                 <Button variant="outline" onClick={() => setAlert({...alert, show: false})} className="rounded-2xl px-8 h-12 border-slate-200 font-bold">Cancel</Button>
-                                <Button onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} className="rounded-2xl px-10 h-12 bg-rose-600 hover:bg-rose-700 font-black shadow-lg">Yes, Delete</Button>
+                                <Button onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} className="rounded-2xl px-10 h-12 bg-primary hover:bg-primary/90 font-black shadow-lg shadow-primary/20">Yes, Delete</Button>
                             </>
                         ) : (
                             <Button onClick={() => setAlert({...alert, show: false})} className="rounded-2xl px-12 h-12 font-black shadow-lg">Got it</Button>
@@ -327,14 +334,18 @@ export default function SalesInvoiceEntry() {
       )}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <FileText className="w-8 h-8 text-primary" /> Sales / Invoice Entry
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <FileText className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+            <span className="truncate">Sales / Invoice Entry</span>
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-medium">Generate tax invoices and link to customer orders.</p>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Generate tax invoices and link to customer orders.</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg transition-all hover:scale-105">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <Button 
+          onClick={() => setShowForm(!showForm)} 
+          className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"}`}
+        >
+          {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? "Cancel Entry" : "New Sales Invoice"}
         </Button>
       </div>
@@ -346,7 +357,7 @@ export default function SalesInvoiceEntry() {
               <Plus className="w-5 h-5" /> {editingId ? "Edit Invoice" : "Create New Invoice"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="md:p-8">
+          <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
@@ -360,22 +371,33 @@ export default function SalesInvoiceEntry() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Search className="w-3 h-3" /> Link Order (Optional)
                   </label>
-                  <select value={formData.order_id} onChange={e => handleOrderSelect(e.target.value)} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm">
-                    <option value="">Manual Entry (No Order)</option>
-                    {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
-                      <option key={o.id} value={o.id}>{o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items</option>
-                    ))}
-                  </select>
+                  <Select value={formData.order_id} onValueChange={handleOrderSelect}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-bold">
+                      <SelectValue placeholder="Manual Entry (No Order)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="manual">Manual Entry (No Order)</SelectItem>
+                      {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <User className="w-3 h-3" /> Customer
                   </label>
-                  <select value={formData.customer_id} onChange={e => setFormData({...formData, customer_id: e.target.value})} className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm">
-                    <option value="">Select Customer...</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</option>)}
-                  </select>
+                  <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
+                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-bold">
+                      <SelectValue placeholder="Select Customer..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {customers.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
@@ -389,11 +411,11 @@ export default function SalesInvoiceEntry() {
               </div>
 
               {selectedCustomer && (
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-center gap-6">
-                    <Info className="w-6 h-6 text-blue-600" />
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-6">
+                    <Info className="w-6 h-6 text-primary" />
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-1 flex-1">
-                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-400 uppercase">GST No</span><span className="text-sm font-bold">{selectedCustomer.gst_no || 'N/A'}</span></div>
-                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-400 uppercase">Limit</span><span className="text-sm font-bold">₹ {selectedCustomer.credit_limit || 0}</span></div>
+                         <div className="flex flex-col"><span className="text-[10px] font-bold text-primary/60 uppercase">GST No</span><span className="text-sm font-bold">{selectedCustomer.gst_no || 'N/A'}</span></div>
+                         <div className="flex flex-col"><span className="text-[10px] font-bold text-primary/60 uppercase">Limit</span><span className="text-sm font-bold">₹ {selectedCustomer.credit_limit || 0}</span></div>
                     </div>
                 </div>
               )}
@@ -419,16 +441,22 @@ export default function SalesInvoiceEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50 group">
                                     <td className="p-4">
-                                        <select value={item.product_id} onChange={e => handleItemChange(index, 'product_id', e.target.value)} className="w-full bg-transparent border-none text-[10px] md:text-sm font-medium focus:ring-0">
-                                            <option value="">Select Product...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.product_code} - {p.product_name} </option>)}
-                                        </select>
+                                        <Select value={item.product_id} onValueChange={(val) => handleItemChange(index, 'product_id', val)}>
+                                            <SelectTrigger className="w-full border-none bg-transparent shadow-none focus:ring-0 font-bold">
+                                                <SelectValue placeholder="Select Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-slate-200">
+                                                {products.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </td>
-                                    <td className="p-4"><Input type="number" min="0" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
-                                    <td className="p-4"><Input type="number" min="0" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
+                                    <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
+                                    <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
                                     <td className="p-4 text-right font-black text-slate-500 text-xs md:text-sm">₹ {(item.amount || 0).toLocaleString()}</td>
                                     <td className="p-4 text-center">
-                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -450,12 +478,12 @@ export default function SalesInvoiceEntry() {
                     <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
                         <div className="flex justify-between text-sm font-medium text-slate-500"><span>Subtotal</span><span>₹ {totals.subtotal.toLocaleString()}</span></div>
                         <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500">Tax (GST) (+)</span>
-                            <Input type="number" min="0" value={formData.tax_amount} onChange={e => setFormData({...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
+                            <span className="text-slate-500">Tax (GST) (+) {!formData.tax_amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</span>
+                            <Input type="number" placeholder='₹ 0' min="0" value={formData.tax_amount === 0 ? '' : formData.tax_amount} onChange={e => setFormData({...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
                         </div>
                         <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500">Discount (-)</span>
-                            <Input type="number" min="0" value={formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
+                            <span className="text-slate-500">Discount (-) {!formData.discount_amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</span>
+                            <Input type="number" placeholder='₹ 0' min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
                         </div>
                         <div className="h-px bg-slate-200 my-2" />
                         <div className="flex justify-between text-xl font-black text-primary"><span>Total Value</span><span>₹ {totals.net.toLocaleString()}</span></div>
@@ -463,11 +491,11 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 px-4 md:px-0">
                 <Button 
                   type="submit" 
                   loading={submitting}
-                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl"
+                  className="gap-2 px-10 h-12 text-base font-bold shadow-xl hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
                   <Save className="w-5 h-5" /> {editingId ? "Update Invoice" : "Generate Invoice"}
                 </Button>
@@ -494,8 +522,8 @@ export default function SalesInvoiceEntry() {
               <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
               <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10"><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-rose-600 border border-rose-100"><Trash2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10 font-bold"><Edit2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-destructive border border-destructive/10 font-bold"><Trash2 className="w-4 h-4" /></Button>
                   </div>
               </td>
             </tr>

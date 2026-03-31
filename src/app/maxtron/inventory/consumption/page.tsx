@@ -10,6 +10,13 @@ import {
   Settings, Calendar, Hash, User, 
   Download, FileText, Activity, Layers, Zap, CheckCircle
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -33,6 +40,7 @@ export default function ConsumptionPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -96,6 +104,16 @@ export default function ConsumptionPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync slip number if consumptions list updates while form is open (and not editing)
+    if (showForm && !editingId && consumptions.length > 0) {
+       const currentNo = formData.consumption_slip_no;
+       if (!currentNo || currentNo === 'CSN-000001' || currentNo === 'GENERATING...') {
+          resetForm(consumptions);
+       }
+    }
+  }, [consumptions, showForm, editingId]);
+
   const fetchConsumptions = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -112,9 +130,32 @@ export default function ConsumptionPage() {
     }
   };
 
+    const validateForm = () => {
+        const newErrors: Record<string, string> = {};
+        
+        // Material & Quantity
+        if (!formData.rm_id) newErrors.rm_id = 'Select material';
+        if (formData.quantity_used <= 0) newErrors.quantity_used = 'Enter quantity > 0';
+
+        // Date validation: prevent future dates
+        const today = new Date().toISOString().split('T')[0];
+        if (formData.consumption_date > today) {
+            newErrors.consumption_date = 'Future dates not allowed';
+        }
+
+        // Machine validation: Alphanumeric, hyphen, slash
+        const machineRegex = /^[A-Z0-9\-/]+$/i;
+        if (formData.machine_no && !machineRegex.test(formData.machine_no)) {
+            newErrors.machine_no = 'Invalid (A-Z, 0-9, -, / only)';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const saveConsumption = async () => {
-        if (!formData.rm_id || formData.quantity_used <= 0) {
-            error('Please select Material and enter Quantity.');
+        if (!validateForm()) {
+            error('Please correct the highlighted errors.');
             return;
         }
 
@@ -130,8 +171,9 @@ export default function ConsumptionPage() {
         }
 
         if (formData.quantity_used > limit) {
-            error(`Insufficient stock. Current balance: ${availableStock} ${selectedMaterial?.unit_type || ''}.`);
-            return;
+          setErrors(prev => ({ ...prev, quantity_used: `Max: ${limit}` }));
+          error(`Insufficient stock. Current balance: ${availableStock} ${selectedMaterial?.unit_type || ''}.`);
+          return;
         }
 
         const token = localStorage.getItem('token');
@@ -173,18 +215,28 @@ export default function ConsumptionPage() {
   };
 
   const resetForm = (latestConsumptions: any[] = consumptions) => {
+    // If we have no data and it's still loading, show a placeholder
+    if (loading && latestConsumptions.length === 0) {
+      setFormData(prev => ({
+        ...prev,
+        consumption_slip_no: 'GENERATING...'
+      }));
+      return;
+    }
+
     let nextSlipNo = 'CSN-000001';
-    if (latestConsumptions && latestConsumptions.length > 0) {
-      let max = 0;
-      latestConsumptions.forEach(c => {
-        if (c.consumption_slip_no && c.consumption_slip_no.startsWith('CSN-')) {
-          const numStr = c.consumption_slip_no.substring(4);
-          const num = parseInt(numStr, 10);
-          if (!isNaN(num) && num > max) {
-            max = num;
-          }
-        }
-      });
+    
+    // Filter and find the actual maximum number using a case-insensitive regex
+    const validNumbers = latestConsumptions
+      .filter(c => c.consumption_slip_no && /^CSN-\d+$/i.test(c.consumption_slip_no))
+      .map(c => {
+        const parts = c.consumption_slip_no.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validNumbers.length > 0) {
+      const max = Math.max(...validNumbers);
       nextSlipNo = `CSN-${String(max + 1).padStart(6, '0')}`;
     }
 
@@ -199,6 +251,7 @@ export default function ConsumptionPage() {
       remarks: '',
       company_id: currentCompanyId
     });
+    setErrors({});
   };
 
   const handleEdit = (rec: any) => {
@@ -214,6 +267,7 @@ export default function ConsumptionPage() {
       remarks: rec.remarks || '',
       company_id: rec.company_id
     });
+    setErrors({});
     setShowForm(true);
   };
 
@@ -341,25 +395,41 @@ export default function ConsumptionPage() {
                 <Input 
                   type="date"
                   value={formData.consumption_date}
-                  onChange={(e) => setFormData({...formData, consumption_date: e.target.value})}
-                  className="h-11 font-bold"
+                  onChange={(e) => {
+                    setFormData({...formData, consumption_date: e.target.value});
+                    if (errors.consumption_date) setErrors(prev => {
+                      const next = {...prev};
+                      delete next.consumption_date;
+                      return next;
+                    });
+                  }}
+                  className={`h-11 font-bold ${errors.consumption_date ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
+                {errors.consumption_date && <p className="text-[10px] font-bold text-destructive ml-1">{errors.consumption_date}</p>}
               </div>
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Raw Material Link</label>
-                <select 
-                  value={formData.rm_id}
-                  onChange={(e) => setFormData({...formData, rm_id: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm font-black focus:ring-2 focus:ring-primary/20 outline-none"
-                >
-                  <option value="">Select feedstock...</option>
-                  {materials.filter(m => Number(m.balance || 0) > 0 || m.id === formData.rm_id).map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
-                    </option>
-                  ))}
-                </select>
+                <Select value={formData.rm_id} onValueChange={(val) => {
+                  setFormData({...formData, rm_id: val});
+                  if (errors.rm_id) setErrors(prev => {
+                    const next = {...prev};
+                    delete next.rm_id;
+                    return next;
+                  });
+                }}>
+                  <SelectTrigger className={`w-full h-11 border text-sm font-black shadow-sm ${errors.rm_id ? 'border-destructive' : 'border-slate-200'}`}>
+                    <SelectValue placeholder="Select feedstock..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {materials.filter(m => Number(m.balance || 0) > 0 || m.id === formData.rm_id).map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.rm_name} (Stock: {Number(m.balance || 0).toLocaleString()} {m.unit_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.rm_id && <p className="text-[10px] font-bold text-destructive ml-1">{errors.rm_id}</p>}
               </div>
  
               <div className="space-y-2">
@@ -369,25 +439,35 @@ export default function ConsumptionPage() {
                   min="0"
                   step="0.01"
                   placeholder="0.00"
-                  value={formData.quantity_used}
-                  onChange={(e) => setFormData({...formData, quantity_used: Math.max(0, Number(e.target.value) || 0)})}
-                  className="h-11 text-xl font-black text-primary border-primary/20 bg-primary/[0.02]"
+                  value={formData.quantity_used === 0 ? '' : formData.quantity_used}
+                  onChange={(e) => {
+                    const val = Math.max(0, Number(e.target.value) || 0);
+                    setFormData({...formData, quantity_used: val});
+                    if (errors.quantity_used) setErrors(prev => {
+                      const next = {...prev};
+                      delete next.quantity_used;
+                      return next;
+                    });
+                  }}
+                  className={`h-11 text-xl font-black text-primary bg-primary/[0.02] ${errors.quantity_used ? 'border-destructive focus-visible:ring-destructive' : 'border-primary/20'}`}
                 />
+                {errors.quantity_used && <p className="text-[10px] font-bold text-destructive ml-1">{errors.quantity_used}</p>}
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Production Process</label>
-                <select 
-                  value={formData.process_type}
-                  onChange={(e) => setFormData({...formData, process_type: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="Extrusion">Extrusion</option>
-                  <option value="Printing">Printing</option>
-                  <option value="Cutting">Cutting</option>
-                  <option value="Slitting">Slitting</option>
-                  <option value="Sealing">Sealing</option>
-                </select>
+                <Select value={formData.process_type} onValueChange={(val) => setFormData({...formData, process_type: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Process..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Extrusion">Extrusion</SelectItem>
+                    <SelectItem value="Printing">Printing</SelectItem>
+                    <SelectItem value="Cutting">Cutting</SelectItem>
+                    <SelectItem value="Slitting">Slitting</SelectItem>
+                    <SelectItem value="Sealing">Sealing</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -395,23 +475,31 @@ export default function ConsumptionPage() {
                 <Input 
                   placeholder="e.g. L-1 or M-05"
                   value={formData.machine_no}
-                  onChange={(e) => setFormData({...formData, machine_no: e.target.value})}
-                  className="h-11 uppercase"
+                  onChange={(e) => {
+                    setFormData({...formData, machine_no: e.target.value});
+                    if (errors.machine_no) setErrors(prev => {
+                      const next = {...prev};
+                      delete next.machine_no;
+                      return next;
+                    });
+                  }}
+                  className={`h-11 uppercase ${errors.machine_no ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
+                {errors.machine_no && <p className="text-[10px] font-bold text-destructive ml-1">{errors.machine_no}</p>}
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Issued To / Supervisor</label>
-                <select 
-                  value={formData.issued_by}
-                  onChange={(e) => setFormData({...formData, issued_by: e.target.value})}
-                  className="w-full h-11 px-3 rounded-md border border-slate-200 text-sm"
-                >
-                  <option value="">Select staff...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                <Select value={formData.issued_by} onValueChange={(val) => setFormData({...formData, issued_by: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm">
+                    <SelectValue placeholder="Select staff..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="md:col-span-full space-y-2">

@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePermission } from '@/hooks/usePermission';
+import { AnnouncementSection } from '@/components/dashboard/AnnouncementSection';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -102,35 +103,25 @@ export default function KeilDashboard() {
                     <Button variant="outline" className="gap-2 font-bold" onClick={() => fetchDashboardStats()}>
                         Refresh Real-time
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-bold" onClick={() => window.location.href='/keil/operations/collection'}>
+                    <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/10 font-bold" onClick={() => window.location.href='/keil/operations/collection'}>
                         <Activity className="w-4 h-4 mr-2" /> Log Collection
                     </Button>
                 </div>
             </div>
 
+            {/* Announcements Section */}
+            <AnnouncementSection tenant="keil" />
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
+                <Card className="border-none shadow-xl bg-white group hover:scale-[1.02] transition-transform duration-300">
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Regional Branches</p>
-                                <p className="text-4xl font-black">{stats.branches}</p>
-                                <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full inline-block font-bold">Operational Zones</div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Regional Branches</p>
+                                <p className="text-4xl font-black text-slate-800">{stats.branches}</p>
+                                <p className="text-[10px] text-slate-400 font-medium font-bold">Operational Zones</p>
                             </div>
-                            <Building2 className="w-10 h-10 text-white/20" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-                    <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100">Enrolled Facilities</p>
-                                <p className="text-4xl font-black">{stats.hces}</p>
-                                <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full inline-block font-bold">HCE Service Network</div>
-                            </div>
-                            <Activity className="w-10 h-10 text-white/20" />
+                            <Building2 className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -139,11 +130,24 @@ export default function KeilDashboard() {
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Active Routes</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Enrolled Facilities</p>
+                                <p className="text-4xl font-black text-slate-800">{stats.hces}</p>
+                                <p className="text-[10px] text-slate-400 font-medium font-bold">HCE Service Network</p>
+                            </div>
+                            <Activity className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-white group hover:scale-[1.02] transition-transform duration-300">
+                    <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Active Routes</p>
                                 <p className="text-4xl font-black text-slate-800">{stats.routes}</p>
-                                <p className="text-[10px] text-slate-400 font-medium">Mapped Collection Loops</p>
+                                <p className="text-[10px] text-slate-400 font-medium font-bold">Mapped Collection Loops</p>
                             </div>
-                            <Map className="w-10 h-10 text-indigo-50 group-hover:text-indigo-100 transition-colors" />
+                            <Map className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -152,11 +156,11 @@ export default function KeilDashboard() {
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">Daily Sessions</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Daily Sessions</p>
                                 <p className="text-4xl font-black text-slate-800">{stats.collectionsToday}</p>
                                 <p className="text-[10px] text-slate-400 font-medium font-bold">Today's Batch Entries</p>
                             </div>
-                            <Truck className="w-10 h-10 text-rose-50 group-hover:text-rose-100 transition-colors" />
+                            <Truck className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -174,8 +178,8 @@ export default function KeilDashboard() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Button variant="outline" className="h-20 flex flex-col items-center justify-center border-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all rounded-2xl group" onClick={() => window.location.href='/keil/operations/branch'}>
-                            <Building2 className="w-6 h-6 mb-1 text-slate-400 group-hover:text-indigo-600 mr-0" />
+                        <Button variant="outline" className="h-20 flex flex-col items-center justify-center border-slate-100 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-all rounded-2xl group" onClick={() => window.location.href='/keil/operations/branch'}>
+                            <Building2 className="w-6 h-6 mb-1 text-slate-400 group-hover:text-primary mr-0" />
                             <span className="font-black text-xs uppercase tracking-widest">Branch Registry</span>
                         </Button>
                         <Button variant="outline" className="h-20 flex flex-col items-center justify-center border-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all rounded-2xl group" onClick={() => window.location.href='/keil/operations/hce'}>
@@ -196,7 +200,7 @@ export default function KeilDashboard() {
                 <div className="space-y-6">
                     <Card className="border-none shadow-xl bg-white p-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                            <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
                                 <Users className="w-6 h-6" />
                             </div>
                             <div className="flex-1">

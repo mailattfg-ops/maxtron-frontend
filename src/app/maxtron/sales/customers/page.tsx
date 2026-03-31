@@ -44,6 +44,13 @@ export default function CustomersPage() {
     credit_limit: 0,
     delivery_period: '',
     delivery_mode: '',
+    mobile_no: '',
+    email_id: '',
+    department: '',
+    custom_label1: '',
+    custom_value1: '',
+    custom_label2: '',
+    custom_value2: '',
     opening_balance: 0,
     is_active: true,
     company_id: '',
@@ -81,6 +88,16 @@ export default function CustomersPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if customers list updates while form is open (and not editing)
+    if (showForm && !editingId && customers.length > 0) {
+       const currentCode = formData.customer_code;
+       if (!currentCode || currentCode === 'CUST-000001' || currentCode === 'GENERATING...') {
+          resetForm(customers);
+       }
+    }
+  }, [customers, showForm, editingId]);
+
   const fetchCustomers = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -90,7 +107,11 @@ export default function CustomersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setCustomers(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setCustomers(sorted);
       }
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -115,11 +136,32 @@ export default function CustomersPage() {
     setFormData({ ...formData, addresses: newAddresses });
   };
 
-  const saveCustomer = async () => {
+  const validateForm = () => {
     if (!formData.customer_name || !formData.customer_code) {
       error('Customer name and code are required.');
-      return;
+      return false;
     }
+
+    if (formData.mobile_no && !/^[0-9]{10,12}$/.test(formData.mobile_no)) {
+      error('Invalid mobile number. Please enter 10-12 digits.');
+      return false;
+    }
+
+    if (formData.email_id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_id)) {
+      error('Invalid email format. Please check again.');
+      return false;
+    }
+
+    if (formData.department && formData.department.length < 2) {
+      error('Department name should be at least 2 characters.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveCustomer = async () => {
+    if (!validateForm()) return;
 
     setSubmitting(true);
     const token = localStorage.getItem('token');
@@ -152,16 +194,42 @@ export default function CustomersPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestCustomers: any[] = customers) => {
+    if (loading && latestCustomers.length === 0) {
+        setFormData(prev => ({ ...prev, customer_code: 'GENERATING...' }));
+        return;
+    }
+
+    let nextCode = 'CUST-000001';
+    const validCodes = latestCustomers
+      .filter(c => c.customer_code && /^CUST-\d+$/i.test(c.customer_code))
+      .map(c => {
+        const parts = c.customer_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `CUST-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
       customer_name: '',
-      customer_code: '',
+      customer_code: nextCode,
       gst_no: '',
       credit_period: 0,
       credit_limit: 0,
       delivery_period: '',
       delivery_mode: '',
       opening_balance: 0,
+      mobile_no: '',
+      email_id: '',
+      department: '',
+      custom_label1: '',
+      custom_value1: '',
+      custom_label2: '',
+      custom_value2: '',
       is_active: true,
       company_id: currentCompanyId,
       addresses: [
@@ -267,13 +335,31 @@ export default function CustomersPage() {
                   <label className="text-sm font-semibold">Customer Name *</label>
                   <Input name="customer_name" value={formData.customer_name} onChange={handleInputChange} placeholder="Legal Company Name" />
                 </div>
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Customer Code *</label>
-                  <Input name="customer_code" value={formData.customer_code} onChange={handleInputChange} placeholder="UNIQUE-CODE-01" />
+                  <Input 
+                    name="customer_code" 
+                    value={formData.customer_code} 
+                    readOnly
+                    className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                    placeholder="e.g. CUST-001" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>
                   <Input name="gst_no" value={formData.gst_no} onChange={handleInputChange} placeholder="GSTXXXXXXXXXXXX" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
+                  <Input name="mobile_no" value={formData.mobile_no} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
+                  <Input name="email_id" value={formData.email_id} onChange={handleInputChange} placeholder="contact@company.com" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Department</label>
+                  <Input name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g. Purchase, Finance" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Period</label>
@@ -282,6 +368,60 @@ export default function CustomersPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Mode</label>
                   <Input name="delivery_mode" value={formData.delivery_mode} onChange={handleInputChange} placeholder="e.g. Courier, Hand-delivery" />
+                </div>
+                
+                {/* Custom Fields Section */}
+                <div className="md:col-span-2 lg:col-span-3 pt-4 border-t border-primary/5">
+                  <h3 className="text-sm font-bold text-primary mb-4 flex items-center">
+                    Custom Information (Optional)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 1</label>
+                        <Input 
+                          name="custom_label1" 
+                          value={formData.custom_label1} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Preferred Contact Time" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 1</label>
+                        <Input 
+                          name="custom_value1" 
+                          value={formData.custom_value1} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. 10 AM - 4 PM" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 2</label>
+                        <Input 
+                          name="custom_label2" 
+                          value={formData.custom_label2} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Lead Source" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 2</label>
+                        <Input 
+                          name="custom_value2" 
+                          value={formData.custom_value2} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g. Website Referral" 
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -322,15 +462,15 @@ export default function CustomersPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
-                  <Input type="number" min={0} name="credit_limit" value={formData.credit_limit} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_limit" value={formData.credit_limit || ''} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Credit Period (Days)</label>
-                  <Input type="number" min={0} name="credit_period" value={formData.credit_period} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="credit_period" value={formData.credit_period || ''} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Opening Balance (₹)</label>
-                  <Input type="number" min={0} name="opening_balance" value={formData.opening_balance} onChange={handleInputChange} />
+                  <Input type="number" min={0} name="opening_balance" value={formData.opening_balance || ''} onChange={handleInputChange} />
                 </div>
               </div>
             )}
@@ -363,10 +503,7 @@ export default function CustomersPage() {
                   <Button 
                     onClick={() => {
                       if (activeTab === 'basic') {
-                        if (!formData.customer_name || !formData.customer_code) {
-                          error('Customer name and code are required.');
-                          return;
-                        }
+                        if (!validateForm()) return;
                         setActiveTab('address');
                       }
                       else if (activeTab === 'address') setActiveTab('financial');
@@ -410,13 +547,33 @@ export default function CustomersPage() {
                 <td className="px-4 py-4">
                   <span className="md:hidden text-[9px] text-slate-400 block mb-1 font-bold">CLIENT NAME</span>
                   <div className="font-bold text-foreground group-hover:text-primary transition-colors text-sm md:text-base">{c.customer_name}</div>
+                  <div className="hidden md:flex items-center gap-3 mt-1 text-[10px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                    {c.mobile_no && <span className="flex items-center"><Phone className="w-2.5 h-2.5 mr-1" /> {c.mobile_no}</span>}
+                    {c.email_id && <span className="flex items-center"><Mail className="w-2.5 h-2.5 mr-1" /> {c.email_id}</span>}
+                  </div>
+                  <div className="hidden md:flex flex-wrap gap-2 mt-2">
+                    {c.custom_label1 && c.custom_value1 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/5 text-[9px] font-medium text-primary border border-primary/10">
+                        <span className="opacity-70 mr-1">{c.custom_label1}:</span> {c.custom_value1}
+                      </span>
+                    )}
+                    {c.custom_label2 && c.custom_value2 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary/5 text-[9px] font-medium text-secondary border border-secondary/10">
+                        <span className="opacity-70 mr-1">{c.custom_label2}:</span> {c.custom_value2}
+                      </span>
+                    )}
+                  </div>
                   <div className="md:hidden mt-2 text-[10px] font-semibold text-slate-500">GST: {c.gst_no || 'NA'}</div>
                 </td>
                 <td className="table-cell px-4 py-4 text-xs font-semibold">{c.gst_no || 'N/A'}</td>
                 <td className="px-4 py-4">
-                  <span className="md:hidden text-[9px] text-slate-400 block mb-1">CREDIT</span>
-                  <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
-                  <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>
+                  <span className="md:hidden text-[9px] text-slate-400 block mb-1 font-bold italic text-rose-500">CREDIT</span>
+                  {c.credit_period > 0 ? (
+                    <div className="text-xs font-bold text-primary">{c.credit_period} Days</div>
+                  ) : !c.credit_limit ? (
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Cash Only</div>
+                  ) : null}
+                  {c.credit_limit > 0 && <div className="hidden md:block text-[10px] text-muted-foreground">Limit: ₹{c.credit_limit?.toLocaleString()}</div>}
                 </td>
                 <td className="table-cell px-4 py-4">
                   <div className="text-xs font-semibold">{c.delivery_mode || 'N/A'}</div>

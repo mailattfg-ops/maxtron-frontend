@@ -4,14 +4,30 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   Truck, Plus, Trash2, Save, X, Search, 
   User, Calendar, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, XCircle,
   FileText, ClipboardList
 } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const DELIVERIES_API = `${API_BASE}/api/maxtron/sales/deliveries`;
@@ -31,6 +47,7 @@ export default function DeliveryDetails() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [alert, setAlert] = useState<{
     show: boolean, 
@@ -174,7 +191,9 @@ export default function DeliveryDetails() {
     if (!formData.delivery_person_id) newErrors.delivery_person_id = true;
     if (!formData.receiver_name) newErrors.receiver_name = true;
     if (!formData.receiver_section) newErrors.receiver_section = true;
-    if (!formData.contact_number) newErrors.contact_number = true;
+    if (!formData.contact_number || !/^[0-9]{10}$/.test(formData.contact_number.replace(/\s/g, ''))) {
+        newErrors.contact_number = true;
+    }
     if (!formData.delivery_time) newErrors.delivery_time = true;
     if (!formData.dc_no) newErrors.dc_no = true;
     
@@ -283,44 +302,140 @@ export default function DeliveryDetails() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Alert Component */}
-      {alert.show && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setAlert({...alert, show: false})} />
-            <Card className="relative w-full max-w-[440px] shadow-2xl bg-white rounded-3xl overflow-hidden p-8 text-center">
-                <div className="flex justify-center mb-6">
-                    {alert.type === 'success' && <CheckCircle2 className="w-12 h-12 text-emerald-500" />}
-                    {alert.type === 'error' && <XCircle className="w-12 h-12 text-rose-500" />}
-                    {alert.type === 'confirm' && <AlertCircle className="w-12 h-12 text-primary" />}
-                </div>
-                <h3 className="text-2xl font-black mb-2">{alert.title}</h3>
-                <p className="text-slate-500">{alert.message}</p>
-                <div className="mt-8 flex gap-3 justify-center">
-                    {alert.type === 'confirm' ? (
-                        <>
-                            <Button variant="outline" onClick={() => setAlert({...alert, show: false})}>Cancel</Button>
-                            <Button onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} className="bg-rose-600 hover:bg-rose-700">Delete</Button>
-                        </>
-                    ) : (
-                        <Button onClick={() => setAlert({...alert, show: false})} className="px-10">Got it</Button>
-                    )}
-                </div>
-            </Card>
+      {/* Standardized Accessible Alert Dialog */}
+      <Dialog open={alert.show} onOpenChange={(open) => !open && setAlert({...alert, show: false})}>
+          <DialogContent className="max-w-[440px] p-8 text-center sm:rounded-[3rem] border-none shadow-2xl">
+              <VisuallyHidden>
+                  <DialogDescription>
+                      System notification: {alert.title}
+                  </DialogDescription>
+              </VisuallyHidden>
+              
+              <div className="flex justify-center mb-6">
+                  {alert.type === 'success' && <CheckCircle2 className="w-16 h-16 text-emerald-500 animate-in zoom-in duration-500" />}
+                  {alert.type === 'error' && <XCircle className="w-16 h-16 text-rose-500 animate-in zoom-in duration-500" />}
+                  {alert.type === 'confirm' && <AlertCircle className="w-16 h-16 text-primary animate-in zoom-in duration-500" />}
+              </div>
+              
+              <DialogTitle className="text-3xl font-black mb-2 tracking-tight">
+                  {alert.title}
+              </DialogTitle>
+              <p className="text-slate-500 font-medium leading-relaxed">
+                  {alert.message}
+              </p>
+              
+              <DialogFooter className="mt-10 flex-row justify-center gap-3">
+                  {alert.type === 'confirm' ? (
+                      <>
+                          <Button 
+                              variant="outline" 
+                              onClick={() => setAlert({...alert, show: false})} 
+                              className="flex-1 rounded-full px-6 font-bold border-slate-200"
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                              onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} 
+                              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full font-bold shadow-lg shadow-rose-200"
+                          >
+                            Confirm Delete
+                          </Button>
+                      </>
+                  ) : (
+                      <Button 
+                          onClick={() => setAlert({...alert, show: false})} 
+                          className="px-12 h-12 rounded-full font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                      >
+                        Got it
+                      </Button>
+                  )}
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-primary/10 mb-6 transition-all">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-primary flex items-center gap-3">
+            <Truck className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span>Delivery Details</span>
+          </h1>
+          <p className="text-muted-foreground mt-1 md:mt-2 text-xs md:text-sm font-semibold opacity-80">Streamlined logistics tracking, vehicle assignments, and dispatch management.</p>
+        </div>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+          {!showForm ? (
+            <>
+              <Button variant="outline" className="h-10 md:h-11 border-primary/20 text-primary hover:bg-primary/5 shadow-sm font-bold order-2 md:order-1 flex-1 md:flex-none transition-all hover:scale-105 active:scale-95 px-6 rounded-full">
+                 <FileText className="w-4 h-4 mr-2" /> Export Logs
+              </Button>
+              <Button 
+                onClick={() => { setEditingId(null); setShowForm(true); }} 
+                className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 md:order-2 px-8 rounded-full flex-1 md:flex-none"
+              >
+                <Plus className="w-5 h-5 mr-2" /> New Dispatch
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 w-full md:w-auto">
+               <Button 
+                  variant="outline" 
+                  onClick={() => { setShowForm(false); setEditingId(null); setErrors({}); }} 
+                  className="flex-1 md:flex-none border-primary/10 rounded-full h-10 md:h-11 px-6 font-bold hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                >
+                  <X className="w-4 h-4 mr-2" /> Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit}
+                  className="flex-[2] md:flex-none bg-primary hover:bg-primary/95 text-white shadow-lg rounded-full h-10 md:h-11 px-10 font-black tracking-wide"
+                >
+                  <Save className="w-4 h-4 mr-2" /> {editingId ? "Update Record" : "Save Dispatch"}
+                </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!showForm && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
+            <CardContent className="p-4 md:p-6 flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                 <Truck className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Dispatches</p>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 leading-none">{deliveries.length}</h3>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white border-emerald-500/10 shadow-sm hover:shadow-md transition-shadow rounded-2xl overflow-hidden ring-1 ring-emerald-100">
+            <CardContent className="p-4 md:p-6 flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                 <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Delivered Today</p>
+                <h3 className="text-2xl md:text-3xl font-black text-emerald-700 leading-none">
+                  {deliveries.filter(d => d.status === 'DELIVERED' && new Date(d.delivery_date).toDateString() === new Date().toDateString()).length}
+                </h3>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-blue-500/10 shadow-sm hover:shadow-md transition-shadow rounded-2xl overflow-hidden ring-1 ring-blue-100">
+            <CardContent className="p-4 md:p-6 flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                 <Package className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Out for Delivery</p>
+                <h3 className="text-2xl md:text-3xl font-black text-blue-700 leading-none">
+                  {deliveries.filter(d => d.status === 'OUT_FOR_DELIVERY').length}
+                </h3>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <Truck className="w-10 h-10 text-primary" /> Delivery Details
-          </h1>
-          <p className="text-muted-foreground mt-1 font-medium">Manage dispatches, vehicle assignments, and delivery tracking.</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "outline" : "default"} className="gap-2 shadow-lg">
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? "Cancel Dispatch" : "New Delivery Dispatch"}
-        </Button>
-      </div>
 
       {showForm && (
         <Card className="border-primary/20 shadow-2xl overflow-hidden">
@@ -527,40 +642,80 @@ export default function DeliveryDetails() {
       )}
 
       {!showForm && (
-          <TableView
-            title="Dispatch Logs"
-            description="Recent delivery tracking and vehicle assignments."
-            headers={['Del No', 'Date', 'Delivery Person', 'Receiver', 'DC No', 'Status', 'Actions']}
-            data={deliveries}
-            loading={loading}
-            searchFields={['delivery_number', 'vehicles.registration_number', 'invoices.invoice_number', 'receiver_name', 'dc_no']}
-            renderRow={(del: any) => (
-              <tr key={del.id} className="hover:bg-primary/5 transition-all group border-b last:border-0">
-                <td className="px-6 py-4 font-mono font-black text-primary">{del.delivery_number}</td>
-                <td className="px-6 py-4 text-xs font-semibold">{new Date(del.delivery_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-bold">{del.delivery_person?.name || 'Unassigned'}</td>
-                <td className="px-6 py-4">
-                  <div className="font-bold text-slate-800">{del.receiver_name || 'N/A'}</div>
-                  <div className="text-[10px] text-slate-400 uppercase">{del.receiver_section}</div>
-                </td>
-                <td className="px-6 py-4 text-xs italic">{del.dc_no || 'N/A'}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                      del.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
-                      del.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                      {del.status.replace(/_/g, ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(del)} className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border"><Edit2 className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(del.id)} className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 border"><Trash2 className="w-4 h-4" /></Button>
-                   </div>
-                </td>
-              </tr>
-            )}
-          />
+        <Card className="border-border/40 shadow-xl overflow-hidden bg-white">
+          <CardHeader className="grid md:flex flex-row items-center justify-between pb-6 border-b border-slate-100 bg-slate-50/30">
+            <div>
+              <CardTitle className="text-xl text-primary font-black uppercase tracking-tight">Dispatch Logs</CardTitle>
+              <CardDescription className="text-slate-500 font-medium">Recent delivery tracking and vehicle assignments.</CardDescription>
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input 
+                className="pl-9 w-full md:w-72 rounded-full border-slate-200 bg-white" 
+                placeholder="Search by DC No, Invoice..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 animate-in fade-in duration-500">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Del No</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Date</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Delivery Person</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Receiver</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">DC No</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Status</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loading ? (
+                    <tr><td colSpan={7} className="p-10 text-center text-slate-400 font-bold">Loading dispatch records...</td></tr>
+                  ) : deliveries.length === 0 ? (
+                    <tr><td colSpan={7} className="p-10 text-center text-slate-400 font-bold">No delivery records found.</td></tr>
+                  ) : (
+                    deliveries
+                      .filter(del => 
+                        (del.delivery_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (del.dc_no || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (del.receiver_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((del) => (
+                        <tr key={del.id} className="hover:bg-primary/5 transition-all group">
+                          <td className="px-6 py-4 font-mono font-black text-primary">{del.delivery_number}</td>
+                          <td className="px-6 py-4 text-xs font-bold text-slate-600">{new Date(del.delivery_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="px-6 py-4 font-bold text-slate-700">{del.delivery_person?.name || 'Unassigned'}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-slate-900">{del.receiver_name || 'N/A'}</div>
+                            <div className="text-[10px] text-slate-400 font-black uppercase">{del.receiver_section}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-black text-slate-500 bg-slate-50/50">{del.dc_no || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                                del.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
+                                del.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                                {del.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                             <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(del)} className="h-8 w-8 text-primary hover:bg-primary/10 border border-slate-100 rounded-full"><Edit2 className="w-4 h-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(del.id)} className="h-8 w-8 text-rose-600 hover:bg-rose-50 border border-slate-100 rounded-full"><Trash2 className="w-4 h-4" /></Button>
+                             </div>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

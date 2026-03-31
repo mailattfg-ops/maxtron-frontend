@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -23,8 +30,11 @@ const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 export default function ExtrusionPage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission('prod_extrusion_view', 'create');
+  const canEdit = hasPermission('prod_extrusion_view', 'edit');
+  const canDelete = hasPermission('prod_extrusion_view', 'delete');
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [batches, setBatches] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -33,6 +43,7 @@ export default function ExtrusionPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { success, error, info } = useToast();
+  const { confirm } = useConfirm();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
@@ -98,8 +109,10 @@ export default function ExtrusionPage() {
       
       if (empData.success && Array.isArray(empData.data)) {
         setEmployees(empData.data.filter((e: any) => 
-          e.companies?.company_name?.toUpperCase() === activeTenant ||
-          e.companies?.company_name?.toUpperCase().includes(activeTenant)
+          (e.companies?.company_name?.toUpperCase() === activeTenant ||
+          e.companies?.company_name?.toUpperCase().includes(activeTenant)) &&
+          (e.employee_categories?.category_name?.toLowerCase().includes('production') ||
+           e.user_types?.name?.toLowerCase().includes('production'))
         ));
       }
 
@@ -111,6 +124,16 @@ export default function ExtrusionPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Sync batch number if batches list updates while form is open (and not editing)
+    if (showForm && !editingId && batches.length > 0) {
+       const currentNo = formData.batch_number;
+       if (!currentNo || currentNo.includes('BAT-') && currentNo.length < 10 || currentNo === 'GENERATING...') {
+          resetForm(batches);
+       }
+    }
+  }, [batches, showForm, editingId]);
 
   const handleConsumptionSelect = (id: string) => {
     const consumption = consumptions.find(c => c.id === id);
@@ -144,7 +167,11 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setBatches(data.data || []);
+        // Sort by date descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setBatches(sorted);
       }
     } catch (err) {
       console.error('Error fetching batches:', err);
@@ -153,21 +180,127 @@ export default function ExtrusionPage() {
     }
   };
 
-  const saveBatch = async () => {
-    if (!formData.product_id || !formData.operator_id) {
-      error('Please select product and operator.');
-      return;
-    }
-
-    if (!formData.consumption_id) {
-        error('Please select a material consumption record.');
+  const resetForm = (latestBatches: any[] = batches) => {
+    if (loading && latestBatches.length === 0) {
+        setFormData((prev: any) => ({ ...prev, batch_number: 'GENERATING...' }));
         return;
     }
 
+    let nextBatchNo = 'BAT-000001';
+    const validBatches = latestBatches
+      .filter(b => b.batch_number && /^BAT-\d+$/i.test(b.batch_number))
+      .map(b => {
+        const parts = b.batch_number.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validBatches.length > 0) {
+      const max = Math.max(...validBatches);
+      nextBatchNo = `BAT-${String(max + 1).padStart(6, '0')}`;
+    }
+
+    setFormData({
+      batch_number: nextBatchNo,
+      product_id: '',
+      shift: 'Morning',
+      operator_id: '',
+      supervisor_id: '',
+      machine_no: '',
+      raw_material_consumed_qty: 0,
+      extrusion_output_qty: 0,
+      date: new Date().toISOString().split('T')[0],
+      company_id: currentCompanyId,
+      consumption_id: ''
+    });
+  };
+
+  const handleEdit = (b: any) => {
+    setEditingId(b.id);
+    setFormData({
+      batch_number: b.batch_number,
+      product_id: b.product_id,
+      shift: b.shift,
+      operator_id: b.operator_id,
+      supervisor_id: b.supervisor_id,
+      machine_no: b.machine_no,
+      raw_material_consumed_qty: b.raw_material_consumed_qty,
+      extrusion_output_qty: b.extrusion_output_qty,
+      date: b.date.split('T')[0],
+      company_id: b.company_id,
+      consumption_id: b.consumption_id
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const isConfirmed = await confirm({
+      message: 'Are you sure you want to delete this production batch? This action cannot be undone.',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(BATCH_API, {
-        method: 'POST',
+      const res = await fetch(`${BATCH_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Batch deleted successfully');
+        fetchBatches();
+      } else {
+        error(data.message);
+      }
+    } catch (err) {
+      error('Error deleting batch');
+    }
+  };
+
+  const saveBatch = async () => {
+    const requiredFields = [
+      { field: 'date', label: 'Production Date' },
+      { field: 'product_id', label: 'Finished Product' },
+      { field: 'shift', label: 'Shift' },
+      { field: 'machine_no', label: 'Machine Number' },
+      { field: 'operator_id', label: 'Operator' },
+      { field: 'supervisor_id', label: 'Supervisor' },
+      { field: 'consumption_id', label: 'Consumption Record' }
+    ];
+
+    for (const { field, label } of requiredFields) {
+      if (!formData[field]) {
+        error(`${label} is required.`);
+        return;
+      }
+    }
+
+    // Alphanumeric, spaces, dashes, and underscores only for Machine No
+    const machineRegex = /^[a-zA-Z0-9\-_ ]+$/;
+    if (!machineRegex.test(formData.machine_no)) {
+      error('Machine No contains invalid characters. Use only letters, numbers, dashes, or underscores.');
+      return;
+    }
+
+    if (formData.raw_material_consumed_qty <= 0) {
+      error('Raw material consumed quantity must be greater than zero.');
+      return;
+    }
+
+    if (formData.extrusion_output_qty <= 0) {
+      error('Extrusion output quantity must be greater than zero.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${BATCH_API}/${editingId}` : BATCH_API;
+
+    try {
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -176,16 +309,11 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Production batch recorded');
+        success(editingId ? 'Production batch updated' : 'Production batch recorded');
         setShowForm(false);
-        setFormData({
-            ...formData,
-            batch_number: `BAT-${Date.now().toString().slice(-6)}`,
-            raw_material_consumed_qty: 0,
-            extrusion_output_qty: 0,
-            consumption_id: ''
-        });
+        setEditingId(null);
         fetchBatches();
+        resetForm();
       } else {
         error(data.message);
       }
@@ -193,6 +321,15 @@ export default function ExtrusionPage() {
       error('Error saving batch');
     }
   };
+
+  const availableConsumptions = useMemo(() => {
+    // Collect all consumption_ids already used in batches
+    const usedConsumptionIds = batches.map(b => b.consumption_id).filter(id => !!id);
+    // Filter consumptions: unused OR explicitly selected in the current editing state
+    return consumptions.filter(c => 
+        !usedConsumptionIds.includes(c.id) || c.id === formData.consumption_id
+    );
+  }, [consumptions, batches, formData.consumption_id]);
 
   const filteredBatches = batches.filter(b => 
     b.batch_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,14 +339,23 @@ export default function ExtrusionPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Production (Extrusion)</h1>
-          <p className="text-muted-foreground mt-1">Record extrusion output by shift and operator.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Zap className="w-8 h-8 md:w-10 md:h-10 text-primary shrink-0" /> <span className="truncate text-primary">Production (Extrusion)</span>
+          </h1>
+          <p className="text-muted-foreground text-xs md:text-sm font-medium">Record extrusion output by shift and operator.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {!showForm && canCreate && (
-            <Button onClick={() => setShowForm(true)} className="shadow-sm hover:shadow-md transition-all gap-2">
-              <Plus className="w-4 h-4" /> Record New Batch
+            <Button 
+              onClick={() => {
+                setEditingId(null);
+                resetForm();
+                setShowForm(true);
+              }} 
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Record New Batch
             </Button>
           )}
         </div>
@@ -217,11 +363,11 @@ export default function ExtrusionPage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-lg animate-in slide-in-from-top duration-500 overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
             <CardTitle className="text-xl flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" /> New Production Batch
+              <Zap className="w-5 h-5 text-primary" /> {editingId ? 'Edit Production Batch' : 'New Production Batch'}
             </CardTitle>
-            <CardDescription>Enter extrusion output and machine details for the current shift.</CardDescription>
+            <CardDescription>{editingId ? 'Update details for the existing batch.' : 'Enter extrusion output and machine details for the current shift.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -230,102 +376,152 @@ export default function ExtrusionPage() {
                 <Input value={formData.batch_number} readOnly className="bg-muted cursor-not-allowed" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Calendar className="w-4 h-4 text-primary" /> Production Date</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Calendar className="w-4 h-4 text-primary" /> Production Date <span className="text-rose-500">*</span>
+                </label>
                 <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Box className="w-4 h-4 text-primary" /> Select Product</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.product_id}
-                  onChange={e => setFormData({ ...formData, product_id: e.target.value })}
-                >
-                  <option value="">Select Finished Product</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.product_name} ({p.product_code})</option>)}
-                </select>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Box className="w-4 h-4 text-primary" /> Finished Product <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Finished Product" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {products.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.product_name} ({p.product_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Shift</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.shift}
-                  onChange={e => setFormData({ ...formData, shift: e.target.value })}
-                >
-                  <option value="Morning">Morning (6AM - 2PM)</option>
-                  <option value="Afternoon">Afternoon (2PM - 10PM)</option>
-                  <option value="Night">Night (10PM - 6AM)</option>
-                </select>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Clock className="w-4 h-4 text-primary" /> Shift <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Shift" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="Morning">Morning (6AM - 2PM)</SelectItem>
+                    <SelectItem value="Afternoon">Afternoon (2PM - 10PM)</SelectItem>
+                    <SelectItem value="Night">Night (10PM - 6AM)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Settings className="w-4 h-4 text-primary" /> Machine No</label>
-                <Input placeholder="e.g. EX-01" value={formData.machine_no} onChange={e => setFormData({ ...formData, machine_no: e.target.value })} />
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Settings className="w-4 h-4 text-primary" /> Machine No <span className="text-rose-500">*</span>
+                </label>
+                <Input 
+                  placeholder="e.g. EX-01" 
+                  value={formData.machine_no} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9\-_ ]/g, '').toUpperCase();
+                    setFormData({ ...formData, machine_no: val });
+                  }} 
+                />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Operator</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.operator_id}
-                  onChange={e => setFormData({ ...formData, operator_id: e.target.value })}
-                >
-                  <option value="">Select Operator</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_code})</option>)}
-                </select>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Operator <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Operator" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Supervisor</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.supervisor_id}
-                  onChange={e => setFormData({ ...formData, supervisor_id: e.target.value })}
-                >
-                  <option value="">Select Supervisor</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_code})</option>)}
-                </select>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Supervisor <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.supervisor_id} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Supervisor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Select Material Consumption</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.consumption_id}
-                  onChange={e => handleConsumptionSelect(e.target.value)}
-                >
-                  <option value="">Select Consumption Record</option>
-                  {consumptions.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
-                    </option>
-                  ))}
-                </select>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <Layers className="w-4 h-4 text-primary" /> Consumption Record <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.consumption_id} onValueChange={(val) => handleConsumptionSelect(val)}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Consumption Record" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {availableConsumptions.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>
-                <Input type="number" readOnly className="bg-muted cursor-not-allowed" value={formData.raw_material_consumed_qty} />
+                <Input type="number" readOnly className="bg-muted cursor-not-allowed font-bold" value={formData.raw_material_consumed_qty} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg)</label>
-                <Input type="number" min={0} placeholder="0.00" value={formData.extrusion_output_qty} onChange={e => setFormData({ ...formData, extrusion_output_qty: parseFloat(e.target.value) || 0 })} />
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg) <span className="text-rose-500">*</span>
+                </label>
+                <Input 
+                  type="number" 
+                  min={0.01} 
+                  step="0.01"
+                  placeholder="0.00" 
+                  value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} 
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setFormData({ ...formData, extrusion_output_qty: isNaN(val) ? 0 : val });
+                  }} 
+                />
               </div>
             </div>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 justify-end gap-3 border-t pt-6">
-              <div className="mr-auto flex items-center gap-4">
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total RM Input</span>
-                    <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
-                 </div>
-                 <div className="w-[1px] h-8 bg-slate-200"></div>
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recovery %</span>
-                    <span className="text-xl font-black text-emerald-600">
-                        {formData.raw_material_consumed_qty > 0 
-                            ? ((formData.extrusion_output_qty / formData.raw_material_consumed_qty) * 100).toFixed(1) 
-                            : '0.0'}%
-                    </span>
-                 </div>
-              </div>
-              <Button variant="outline" onClick={() => setShowForm(false)} className="w-full px-6">Cancel</Button>
-              <Button onClick={saveBatch} className="px-8 shadow-sm hover:shadow-md gap-2 bg-primary">
-                <Save className="w-4 h-4" /> Save Batch Entry
-              </Button>
+            <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">
+               <div className="mr-auto hidden md:flex items-center gap-4">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Total RM Input</span>
+                     <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-slate-200"></div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Recovery %</span>
+                     <span className="text-xl font-black text-emerald-600">
+                         {formData.raw_material_consumed_qty > 0 
+                             ? ((formData.extrusion_output_qty / formData.raw_material_consumed_qty) * 100).toFixed(1) 
+                             : '0.0'}%
+                     </span>
+                  </div>
+               </div>
+               
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowForm(false)} 
+                 className="flex-1 md:flex-none px-8 rounded-full h-12 order-2 md:order-1"
+               >
+                 Cancel Entry
+               </Button>
+               <Button 
+                 onClick={saveBatch} 
+                 className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+               >
+                 <Save className="w-4 h-4 mr-2" /> Save Batch Entry
+               </Button>
             </div>
           </CardContent>
         </Card>
@@ -335,7 +531,7 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator']}
+          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator', 'Actions']}
           data={batches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}
@@ -379,6 +575,30 @@ export default function ExtrusionPage() {
                       </div>
                       <span className="text-xs font-medium">{operator?.name || 'Unknown'}</span>
                     </div>
+                </td>
+                <td className="px-3 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {canEdit && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEdit(b)}
+                        className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(b.id)}
+                        className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

@@ -82,8 +82,26 @@ export default function RMTypeCodePage() {
     };
 
     const saveCode = async () => {
-        if (!formData.code || !formData.name) {
+        const normalizedCode = (formData.code || '').trim().toUpperCase();
+        const normalizedName = (formData.name || '').trim();
+
+        if (!normalizedCode || !normalizedName) {
             error('Please fill both Code and Name.');
+            return;
+        }
+
+        if (normalizedCode.length < 2 || normalizedCode.length > 10) {
+            error('Code must be 2-10 characters long.');
+            return;
+        }
+        if (normalizedName.length < 3 || normalizedName.length > 50) {
+            error('Name must be 3-50 characters long.');
+            return;
+        }
+
+        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+        if (!nameRegex.test(normalizedCode) || !nameRegex.test(normalizedName)) {
+            error('Only letters, numbers, spaces, and hyphens are allowed.');
             return;
         }
 

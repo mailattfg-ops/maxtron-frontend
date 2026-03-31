@@ -282,7 +282,7 @@ export default function ExpenseHeadsPage() {
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Coins className="w-4 h-4 text-indigo-500" /> Category Name
+                                        <Coins className="w-4 h-4 text-primary/80" /> Category Name
                                     </label>
                                     <Input 
                                         value={formData.head_name}
@@ -305,18 +305,19 @@ export default function ExpenseHeadsPage() {
                 </Card>
             ) : (
                 <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8">
+                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
                         <div>
                             <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Taxonomies</CardTitle>
                             <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Currently active expense categories.
                             </CardDescription>
                         </div>
-                    </CardHeader>
+                    </CardHeader> */}
                     <CardContent className="p-0">
                         <TableView 
+                            title="Currently active expense categories."
                             searchFields={['head_code', 'head_name']}
-                            headers={['Expense Code', 'Expense Name', '']}
+                            headers={['Expense Code', 'Expense Name', 'Action']}
                             data={heads}
                             loading={loading}
                             renderRow={(head: any) => (
@@ -329,13 +330,13 @@ export default function ExpenseHeadsPage() {
                                     <td className="px-8 py-6 font-black text-slate-800">
                                         {head.head_name}
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <td className="px-2 py-6 text-right">
+                                        <div className="flex items-center justify-end gap-1 transition-opacity">
                                             {canEdit && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600"
+                                                    className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary"
                                                     onClick={() => handleEdit(head)}
                                                 >
                                                     <Edit className="w-4 h-4" />

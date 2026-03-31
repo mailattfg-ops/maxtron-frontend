@@ -1,5 +1,7 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export const exportToExcel = async ({
   headers,
@@ -67,3 +69,65 @@ export const exportToExcel = async ({
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`);
 };
+
+export const exportToCSV = async ({
+  headers,
+  rows,
+  filename
+}: {
+  headers: string[];
+  rows: (any)[][];
+  filename: string;
+}) => {
+  const content = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => {
+      const str = String(cell || '');
+      return str.includes(',') ? `"${str.replace(/"/g, '""')}"` : str;
+    }).join(','))
+  ].join('\n');
+
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  saveAs(blob, filename.endsWith('.csv') ? filename : `${filename}.csv`);
+};
+
+export const exportToPDF = async ({
+  headers,
+  rows,
+  filename,
+  title = 'Report',
+  subtitle = ''
+}: {
+  headers: string[];
+  rows: any[][];
+  filename: string;
+  title?: string;
+  subtitle?: string;
+}) => {
+  const doc = new jsPDF();
+  
+  // Add title
+  doc.setFontSize(18);
+  doc.text(title, 14, 22);
+  
+  // Add subtitle if provided
+  if (subtitle) {
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(subtitle, 14, 30);
+  }
+  
+  // Add the table
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: subtitle ? 35 : 25,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [30, 64, 175], textColor: 255 }, // matches blue-800
+    alternateRowStyles: { fillColor: [249, 250, 251] } // slate-50
+  });
+  
+  // Save the PDF
+  doc.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+};
+

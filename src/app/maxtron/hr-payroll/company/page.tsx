@@ -22,6 +22,11 @@ export default function CompanyInformationPage() {
   const { success, error } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [licenseError, setLicenseError] = useState('');
+  const [pcbError, setPcbError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  
+  const licenseRegex = /^[A-Z0-9\-/]+$/;
 
 
   const emptyFormData = {
@@ -97,6 +102,33 @@ export default function CompanyInformationPage() {
         value = String(Math.max(0, Number(value) || 0));
     }
 
+    if (name === 'license_no') {
+        value = value.toUpperCase();
+        if (value && !licenseRegex.test(value)) {
+            setLicenseError('Invalid characters (Use A-Z, 0-9, -, /)');
+        } else {
+            setLicenseError('');
+        }
+    }
+
+    if (name === 'pcb_authorization_no') {
+        value = value.toUpperCase();
+        if (value && !licenseRegex.test(value)) {
+            setPcbError('Invalid characters (Use A-Z, 0-9, -, /)');
+        } else {
+            setPcbError('');
+        }
+    }
+
+    if (name === 'phone') {
+        const cleaned = value.replace(/\D/g, '');
+        if (cleaned && cleaned.length !== 10) {
+            setPhoneError('Mobile number must be exactly 10 digits');
+        } else {
+            setPhoneError('');
+        }
+    }
+
     setFormData({ ...formData, [name]: value });
   };
 
@@ -113,13 +145,18 @@ export default function CompanyInformationPage() {
       error('Please enter a valid email address.');
       return false;
     }
-    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
-      error('Phone number should be at least 10 digits.');
+    if (formData.phone && formData.phone.replace(/\D/g, '').length !== 10) {
+      error('Phone number must be exactly 10 digits.');
       return false;
     }
     if (formData.gst_no && formData.gst_no.length !== 15) {
       error('GST Number must be exactly 15 characters.');
       return false;
+    }
+
+    if (licenseError || pcbError) {
+        error('Please correct errors in Licensing section before saving.');
+        return false;
     }
 
     // Address Validations (Street is marked with * in UI)
@@ -229,6 +266,9 @@ export default function CompanyInformationPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setFormData({ ...emptyFormData });
+    setLicenseError('');
+    setPcbError('');
+    setPhoneError('');
   };
 
   const renderForm = () => (
@@ -236,7 +276,7 @@ export default function CompanyInformationPage() {
       <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="text-lg md:text-xl text-primary flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-secondary" />
+            <Building2 className="w-5 h-5 text-primary" />
             Edit Company Information
           </CardTitle>
           <CardDescription className="text-xs md:text-sm">Enter legal and structural details below.</CardDescription>
@@ -270,7 +310,15 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone</label>
-                    <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" className="h-11" />
+                    <Input 
+                        name="phone" 
+                        value={formData.phone} 
+                        onChange={handleInputChange} 
+                        maxLength={10}
+                        placeholder="10-digit mobile number" 
+                        className={`h-11 ${phoneError ? 'border-destructive bg-rose-50' : ''}`} 
+                    />
+                    {phoneError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{phoneError}</p>}
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">No. of Employees</label>
@@ -287,7 +335,7 @@ export default function CompanyInformationPage() {
                 
                 {/* Office */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Office Location
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -312,7 +360,7 @@ export default function CompanyInformationPage() {
 
                 {/* Manufacturing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Manufacturing Unit
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,7 +385,7 @@ export default function CompanyInformationPage() {
 
                 {/* Billing */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-green-600 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                         <MapPin className="h-4 w-4" /> Billing Address
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -369,7 +417,13 @@ export default function CompanyInformationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">License No</label>
-                    <Input name="license_no" value={formData.license_no} onChange={handleInputChange} />
+                    <Input 
+                        name="license_no" 
+                        value={formData.license_no} 
+                        onChange={handleInputChange} 
+                        className={`font-mono text-xs uppercase ${licenseError ? 'border-destructive bg-rose-50' : ''}`}
+                    />
+                    {licenseError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{licenseError}</p>}
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                     <label className="text-sm font-medium text-slate-700">License Details</label>
@@ -382,7 +436,13 @@ export default function CompanyInformationPage() {
 
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">PCB Authorization No</label>
-                    <Input name="pcb_authorization_no" value={formData.pcb_authorization_no} onChange={handleInputChange} />
+                    <Input 
+                        name="pcb_authorization_no" 
+                        value={formData.pcb_authorization_no} 
+                        onChange={handleInputChange} 
+                        className={`font-mono text-xs uppercase ${pcbError ? 'border-destructive bg-rose-50' : ''}`}
+                    />
+                    {pcbError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{pcbError}</p>}
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                     <label className="text-sm font-medium text-slate-700">PCB Details</label>
@@ -398,7 +458,7 @@ export default function CompanyInformationPage() {
       </CardContent>
       <CardFooter className="flex justify-end gap-3 border-t bg-slate-50/50 pt-4 mt-8">
         <Button variant="outline" onClick={cancelEdit}>Cancel</Button>
-        <Button onClick={saveCompany} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={saveCompany} className="bg-primary hover:bg-primary/95">
           <Save className="mr-2 h-4 w-4" />
           Save Changes
         </Button>
@@ -429,7 +489,7 @@ export default function CompanyInformationPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-slate-50/30 min-h-screen animate-in fade-in duration-500">
+    <div className="md:p-8 space-y-6 bg-slate-50/30 min-h-screen animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-primary/10 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Company Information</h1>
@@ -450,7 +510,7 @@ export default function CompanyInformationPage() {
                             <Card className="border-slate-200 overflow-hidden">
                                 <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row justify-between items-start py-5">
                                     <div className="flex items-center gap-4">
-                                        <div className="bg-blue-100 text-blue-700 p-3 rounded-xl border border-blue-200">
+                                        <div className="bg-primary/5 text-primary p-3 rounded-xl border border-primary/10 font-bold">
                                             <Building2 className="h-8 w-8" />
                                         </div>
                                         <div>
@@ -460,8 +520,8 @@ export default function CompanyInformationPage() {
                                     </div>
                                     <div className="flex gap-2">
                                         {canEdit && (
-                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
-                                                <Edit className="h-4 w-4 mr-2" /> <span className="hidden md:block">Edit Details</span>
+                                            <Button variant="outline" size="sm" onClick={() => startEdit(company)} className="text-primary hover:text-primary/95 border-primary/10 hover:bg-primary/5 font-bold">
+                                                <Edit className="h-4 w-4 md:mr-2" /> <span className="hidden md:block">Edit Details</span>
                                             </Button>
                                         )}
                                     </div>
@@ -496,15 +556,15 @@ export default function CompanyInformationPage() {
                                             <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2"><MapPin className="h-4 w-4" /> Locations</h4>
                                             
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">OFFICE</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">OFFICE</span>
                                                 {renderAddressDisplay(company, 'OFFICE')}
                                             </div>
                                             <div className="text-sm border-b pb-3 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">MANUFACTURING UNIT</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">MANUFACTURING UNIT</span>
                                                 {renderAddressDisplay(company, 'MANUFACTURING_UNIT')}
                                             </div>
                                             <div className="text-sm pb-1 relative">
-                                                <span className="text-xs text-blue-600 font-medium absolute -top-1 bg-blue-50 px-1 rounded">BILLING</span>
+                                                <span className="text-xs text-primary font-bold absolute -top-1 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">BILLING</span>
                                                 {renderAddressDisplay(company, 'BILLING')}
                                             </div>
                                         </div>

@@ -12,6 +12,7 @@ import {
     Filter
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { Input } from '@/components/ui/input';
 
 export default function ScorecardPage() {
     const [data, setData] = useState<any>(null);
@@ -66,27 +67,27 @@ export default function ScorecardPage() {
                 </div>
                 
                 <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-                    <div className="flex items-center gap-2 px-3">
+                    <div className="flex items-center gap-2 md:px-3">
                         <Calendar className="w-4 h-4 text-slate-400" />
-                        <input 
+                        <Input 
                             type="date" 
-                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0"
+                            className="w-fit bg-transparent border-none text-sm font-semibold outline-none focus:ring-0 h-auto p-0"
                             value={dateRange.start}
                             onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
                         />
                     </div>
                     <div className="text-slate-300">|</div>
-                    <div className="flex items-center gap-2 px-3">
-                        <input 
+                    <div className="flex items-center gap-2 md:px-3">
+                        <Input 
                             type="date" 
-                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0"
+                            className="bg-transparent border-none text-sm font-semibold outline-none focus:ring-0 h-auto p-0"
                             value={dateRange.end}
                             onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
                         />
                     </div>
                     <button 
                         onClick={fetchScorecard}
-                        className="bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                        className="hidden md:block bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                     >
                         <Filter className="w-5 h-5" />
                     </button>
@@ -119,16 +120,16 @@ export default function ScorecardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px]">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[350px] flex flex-col">
                     <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                         <PieChart className="w-5 h-5 text-secondary" />
                         Income vs Expenditure
                     </h3>
-                    <div className="h-full flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-10">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic">Visualization Matrix Interface Coming Soon</p>
+                    <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 px-10">
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic text-center">Visualization Matrix Interface Coming Soon</p>
                     </div>
                 </div>
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-indigo-900 overflow-hidden relative">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-primary overflow-hidden relative">
                     <DollarSign className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
                     <h3 className="text-xl font-black mb-6 relative tracking-tight">Executive Summary</h3>
                     <ul className="space-y-4 relative">

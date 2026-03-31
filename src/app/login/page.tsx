@@ -41,10 +41,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoFill = () => {
-    setEmail('admin@maxtron.com');
-    setPassword('password');
-  };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 relative overflow-hidden">
@@ -155,12 +152,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Fill - Remove in production */}
-          <div className="mt-8 text-center border-t border-border pt-6">
-             <button onClick={handleDemoFill} className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-4 py-2 bg-muted/30 rounded-full border border-border">
-               Auto-fill Admin Credentials for Demo
-             </button>
-          </div>
+
 
         </div>
       </div>

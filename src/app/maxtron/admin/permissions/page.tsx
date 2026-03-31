@@ -10,6 +10,13 @@ import { useToast } from '@/components/ui/toast';
 import { maxtronSidebarMenu } from '@/config/navigation/maxtron';
 import { keilSidebarMenu } from '@/config/navigation/keil';
 import { usePermission } from '@/hooks/usePermission';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 export default function PermissionConsolePage() {
   const { hasPermission: globalHasPermission } = usePermission();
@@ -179,28 +186,28 @@ export default function PermissionConsolePage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-card p-6 rounded-2xl shadow-sm border border-border/40 sticky top-0 z-10 backdrop-blur-md">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
-            <ShieldCheck className="w-8 h-8 mr-3 text-secondary" /> 
-            {activeEntity.toUpperCase()} Permission Console
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-primary/10 sticky top-0 z-10 backdrop-blur-md">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-secondary/10 text-secondary rounded-lg shrink-0" /> 
+            <span className="truncate">{activeEntity.toUpperCase()} Permission Console</span>
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">Configure access based on Sidebar Menu structure.</p>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Configure access based on Sidebar Menu structure.</p>
         </div>
         <div className="w-64 mt-4 md:mt-0">
            <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Active Role</label>
-           <select 
-             value={selectedRoleId}
-             onChange={(e) => setSelectedRoleId(e.target.value)}
-             className="w-full h-11 px-4 rounded-xl border border-border bg-muted/20 text-sm focus:ring-2 focus:ring-secondary/20 outline-none transition-all font-bold text-primary"
-           >
-             <option value="">-- Choose Role --</option>
-             {roles
-               .filter(r => r.name.toLowerCase() !== 'admin')
-               .map(r => (
-                 <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
-               ))}
-           </select>
+           <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+             <SelectTrigger className="w-full h-11 border-border bg-muted/20 text-sm font-bold text-primary rounded-xl">
+               <SelectValue placeholder="-- Choose Role --" />
+             </SelectTrigger>
+             <SelectContent className="bg-white border-slate-200">
+               {roles
+                 .filter(r => r.name.toLowerCase() !== 'admin')
+                 .map(r => (
+                   <SelectItem key={r.id} value={r.id}>{r.name.toUpperCase()}</SelectItem>
+                 ))}
+             </SelectContent>
+           </Select>
         </div>
       </div>
 
@@ -232,7 +239,7 @@ export default function PermissionConsolePage() {
                         <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
                      </div>
                      {parentKey && (
-                        <div className="flex space-x-6 bg-black/20 p-3 rounded-2xl border border-white/5 self-end md:self-auto">
+                        <div className="flex space-x-3 md:space-x-6 bg-black/20 p-2 md:p-3 rounded-xl md:rounded-2xl border border-white/5 self-stretch md:self-auto justify-center md:justify-end">
                             {(item.children ? ['can_view'] : ['can_view', 'can_create', 'can_edit', 'can_delete']).map(field => (
                                 <div key={field} className="flex flex-col items-center px-1">
                                     <span className="text-[8px] text-white/50 font-black uppercase mb-1">{field.replace('can_', '')}</span>
@@ -252,8 +259,8 @@ export default function PermissionConsolePage() {
                   </div>
                   
                   {item.children && (
-                    <CardContent className="p-0">
-                       <table className="w-full">
+                    <CardContent className="p-0 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+                       <table className="w-full min-w-[600px] md:min-w-full">
                           <tbody className="divide-y divide-primary/5">
                              {item.children.map((child) => {
                                const childKey = child.permissionKey || findPermissionKey(child.title, item.title);
@@ -269,8 +276,8 @@ export default function PermissionConsolePage() {
                                           </div>
                                        </div>
                                     </td>
-                                    <td className="p-6">
-                                       <div className="flex justify-end space-x-12 px-4">
+                                    <td className="p-4 md:p-6">
+                                       <div className="flex justify-end space-x-6 md:space-x-12 px-2 md:px-4">
                                           {childKey ? (
                                              ['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => (
                                                 <div key={field} className="flex flex-col items-center group/check">

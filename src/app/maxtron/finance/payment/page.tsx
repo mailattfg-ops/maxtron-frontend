@@ -1,23 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TableView } from '@/components/ui/table-view';
 import { 
     Plus, 
     Calendar, 
-    DollarSign, 
+    IndianRupee, 
     Truck, 
     CreditCard,
     ArrowUpRight,
     Trash2,
+    Edit,
     FileText,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 
 export default function SupplierPaymentPage() {
     const [payments, setPayments] = useState<any[]>([]);
@@ -26,6 +35,9 @@ export default function SupplierPaymentPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [showScrollArrow, setShowScrollArrow] = useState(true);
+    const scrollRef = useRef<HTMLDivElement>(null);
     
     const [formData, setFormData] = useState({
         payment_date: new Date().toISOString().split('T')[0],
@@ -47,21 +59,23 @@ export default function SupplierPaymentPage() {
     }, []);
 
     const fetchData = async () => {
+        setLoading(true);
+        const token = localStorage.getItem('token');
         try {
-            const [payRes, supRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?companyId=${companyId}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            const [paymentRes, supplierRes] = await Promise.all([
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?company_id=${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/suppliers?companyId=${companyId}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/suppliers?company_id=${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
-            const payData = await payRes.json();
-            const supData = await supRes.json();
+            const paymentData = await paymentRes.json();
+            const supplierData = await supplierRes.json();
 
-            if (payData.success) setPayments(payData.data);
-            if (supData.success) setSuppliers(supData.data);
+            if (paymentData.success) setPayments(paymentData.data);
+            if (supplierData.success) setSuppliers(supplierData.data);
         } catch (error) {
             toastError('Failed to fetch data');
         } finally {
@@ -75,7 +89,7 @@ export default function SupplierPaymentPage() {
             return;
         }
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/pending-bills?supplierId=${supplierId}&companyId=${companyId}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/pending-bills?supplier_id=${supplierId}&company_id=${companyId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
@@ -96,26 +110,48 @@ export default function SupplierPaymentPage() {
         fetchSupplierBalance(id);
     };
 
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+            if (scrollTop + clientHeight >= scrollHeight - 30) {
+                setShowScrollArrow(false);
+            } else {
+                setShowScrollArrow(true);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (isModalOpen) {
+            setTimeout(handleScroll, 200);
+        }
+    }, [isModalOpen, pendingBills]);
+
     const [supplierBalance, setSupplierBalance] = useState<number | null>(null);
 
     const fetchSupplierBalance = async (supplierId: string) => {
         if (!supplierId) return;
         try {
             const [purRes, payRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/purchase-entries?companyId=${companyId}`, {
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/purchase-entries?company_id=${companyId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 }),
-                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?companyId=${companyId}`, {
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments?company_id=${companyId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 })
             ]);
             const purData = await purRes.json();
             const payData = await payRes.json();
             
-            const totalPurchases = (purData.data || []).filter((p: any) => p.supplier_id === supplierId).reduce((sum: number, p: any) => sum + Number(p.total_amount), 0);
-            const totalPayments = (payData.data || []).filter((pm: any) => pm.supplier_id === supplierId).reduce((sum: number, pm: any) => sum + Number(pm.amount), 0);
+            // Strictly filter by company and supplier, ensuring numbers are valid
+            const activePurchases = (purData.data || []).filter((p: any) => p.supplier_id === supplierId && p.company_id === companyId);
+            const activePayments = (payData.data || []).filter((pm: any) => pm.supplier_id === supplierId && pm.company_id === companyId);
+
+            const totalPurchases = activePurchases.reduce((sum: number, p: any) => sum + Number(p.total_amount || 0), 0);
+            const totalPayments = activePayments.reduce((sum: number, pm: any) => sum + Number(pm.amount || 0), 0);
             
-            setSupplierBalance(totalPurchases - totalPayments);
+            const bal = (totalPurchases - totalPayments);
+            setSupplierBalance(Number(bal.toFixed(2)));
         } catch (error) {
             console.error('Balance fetch failed');
         }
@@ -131,8 +167,12 @@ export default function SupplierPaymentPage() {
         for (const bill of sortedBills) {
             if (remaining <= 0) break;
             const canPay = Math.min(Number(bill.pending_amount), remaining);
-            newAllocations[bill.id] = canPay;
-            remaining -= canPay;
+            if (canPay > 0) {
+                newAllocations[bill.id] = String(canPay); // Store as string for input consistency
+                remaining -= canPay;
+            } else {
+                newAllocations[bill.id] = '';
+            }
         }
         setAllocations(newAllocations);
     };
@@ -144,8 +184,12 @@ export default function SupplierPaymentPage() {
     }, [formData.amount, pendingBills]);
 
     const handleAllocationChange = (billId: string, amount: string, max: number) => {
-        const val = Math.max(0, Math.min(Number(amount), max));
-        setAllocations({ ...allocations, [billId]: val });
+        const numVal = Number(amount);
+        if (numVal > max) {
+            setAllocations({ ...allocations, [billId]: String(max) });
+        } else {
+            setAllocations({ ...allocations, [billId]: amount });
+        }
     };
 
     const totalAllocated = Object.values(allocations).reduce((sum: number, val: any) => sum + Number(val || 0), 0);
@@ -170,8 +214,12 @@ export default function SupplierPaymentPage() {
                     allocated_amount: amt
                 }));
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments`, {
-                method: 'POST',
+            const url = editingId 
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments/${editingId}`
+                : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments`;
+
+            const res = await fetch(url, {
+                method: editingId ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -185,8 +233,9 @@ export default function SupplierPaymentPage() {
 
             const data = await res.json();
             if (data.success) {
-                toastSuccess('Payment recorded successfully');
+                toastSuccess(editingId ? 'Payment updated successfully' : 'Payment recorded successfully');
                 setIsModalOpen(false);
+                setEditingId(null);
                 setFormData({
                     payment_date: new Date().toISOString().split('T')[0],
                     supplier_id: '',
@@ -201,9 +250,27 @@ export default function SupplierPaymentPage() {
             } else {
                 toastError(data.message);
             }
+        } catch (error) {
+            toastError(editingId ? 'Failed to update payment' : 'Failed to record payment');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleEdit = (row: any) => {
+        setFormData({
+            payment_date: row.payment_date.split('T')[0],
+            supplier_id: row.supplier_id,
+            amount: String(row.amount),
+            payment_mode: row.payment_mode,
+            reference_no: row.reference_no || '',
+            remarks: row.remarks || ''
+        });
+        setEditingId(row.id);
+        setAllocations({}); // Reset allocations on edit for re-entry
+        setIsModalOpen(true);
+        fetchSupplierBalance(row.supplier_id);
+        fetchPendingBills(row.supplier_id);
     };
 
     const handleDelete = async (id: string) => {
@@ -230,19 +297,19 @@ export default function SupplierPaymentPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <ArrowUpRight className="text-destructive w-8 h-8 p-1.5 bg-destructive/10 rounded-lg" />
-                        Supplier Payments
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
+                <div className="space-y-1">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <ArrowUpRight className="text-destructive w-8 h-8 md:w-10 md:h-10 p-1.5 bg-destructive/10 rounded-lg shrink-0" />
+                        <span className="truncate">Supplier Payments</span>
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage disbursements and bill allocations</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">Manage disbursements and bill allocations</p>
                 </div>
                 <Button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20"
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-5 h-5 mr-2" />
                     New Bill Payment
                 </Button>
             </div>
@@ -264,7 +331,10 @@ export default function SupplierPaymentPage() {
                                 <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase">{row.payment_mode}</span>
                             </td>
                             <td className="px-6 py-4 font-black text-red-600">₹{Number(row.amount).toLocaleString()}</td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(row)} className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold">
+                                    <Edit className="w-4 h-4" />
+                                </Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)} className="text-red-500 hover:bg-red-50 rounded-full h-8 w-8">
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -281,14 +351,23 @@ export default function SupplierPaymentPage() {
                             <div>
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <ArrowUpRight className="w-6 h-6" />
-                                    Post Supplier Payment
+                                    {editingId ? 'Edit Supplier Payment' : 'Post Supplier Payment'}
                                 </h2>
                                 <p className="text-white/60 text-xs">Record payment and allocate against pending invoices</p>
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white font-black p-2">✕</button>
                         </div>
                         
-                        <div className="overflow-y-auto p-8 custom-scrollbar">
+                        <div 
+                            ref={scrollRef}
+                            onScroll={handleScroll}
+                            className="overflow-y-auto p-8 custom-scrollbar relative"
+                        >
+                            {showScrollArrow && (
+                                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 animate-bounce md:hidden z-[60] bg-primary text-white p-2 rounded-full shadow-lg">
+                                    <ChevronDown className="w-6 h-6" />
+                                </div>
+                            )}
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 {/* Basic Info Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -296,12 +375,12 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Date</label>
                                         <div className="relative">
                                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <Input
                                                 type="date"
                                                 required
                                                 value={formData.payment_date}
                                                 onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                                                className="pl-10 h-11 bg-slate-50 border border-slate-200 rounded-xl"
                                             />
                                         </div>
                                     </div>
@@ -310,39 +389,51 @@ export default function SupplierPaymentPage() {
                                         <div className="flex items-center justify-between">
                                             <label className="text-sm font-bold text-slate-700">Select Supplier</label>
                                             {supplierBalance !== null && (
-                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                    {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Advance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
-                                                </span>
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${supplierBalance > 0 ? 'bg-primary/10 text-primary' : 'bg-slate-50 text-slate-500'}`}>
+                                                     {supplierBalance > 0 ? `To Pay: ₹${supplierBalance.toLocaleString()}` : `Prepaid Balance: ₹${Math.abs(supplierBalance).toLocaleString()}`}
+                                                 </span>
                                             )}
                                         </div>
                                         <div className="relative">
-                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <select
+                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                            <Select
                                                 required
                                                 value={formData.supplier_id}
-                                                onChange={handleSupplierChange}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                                                onValueChange={(val) => {
+                                                    setFormData({ ...formData, supplier_id: val });
+                                                    fetchPendingBills(val);
+                                                    fetchSupplierBalance(val);
+                                                }}
                                             >
-                                                <option value="">Choose Supplier</option>
-                                                {suppliers.map((s: any) => (
-                                                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm h-11">
+                                                    <SelectValue placeholder="Choose Supplier" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white border-slate-200">
+                                                    {suppliers.map((s: any) => (
+                                                        <SelectItem key={s.id} value={s.id}>{s.supplier_name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-700">Payment Amount (₹)</label>
                                         <div className="relative">
-                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                            <input
+                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <Input
                                                 type="number"
                                                 min="0"
                                                 required
                                                 placeholder="0.00"
                                                 value={formData.amount}
-                                                onChange={(e) => setFormData({ ...formData, amount: String(Math.max(0, Number(e.target.value))) })}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-primary/20 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none text-lg font-black"
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                                                        setFormData({ ...formData, amount: val });
+                                                    }
+                                                }}
+                                                className="pl-10 h-14 bg-white border-2 border-primary/20 rounded-xl text-lg font-black"
                                             />
                                         </div>
                                     </div>
@@ -356,13 +447,13 @@ export default function SupplierPaymentPage() {
                                                 <FileText className="w-4 h-4 text-primary" />
                                                 Pending Invoices
                                             </h3>
-                                            <div className="text-[10px] font-black bg-amber-50 text-amber-600 px-3 py-1 rounded-full border border-amber-100 uppercase tracking-widest">
+                                            <div className="text-[10px] font-black bg-slate-50 text-slate-600 px-3 py-1 rounded-full border border-slate-100 uppercase tracking-widest">
                                                 Total Outstanding: ₹{pendingBills.reduce((s, b) => s + Number(b.pending_amount), 0).toLocaleString()}
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
-                                            <table className="w-full text-left text-sm">
+                                        <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-x-auto">
+                                            <table className="w-full min-w-[700px] text-left text-sm">
                                                 <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                                     <tr>
                                                         <th className="px-6 py-3">Bill Details</th>
@@ -389,17 +480,22 @@ export default function SupplierPaymentPage() {
                                                                 <td className="px-6 py-4">{new Date(bill.entry_date).toLocaleDateString()}</td>
                                                                 <td className="px-6 py-4 text-right font-medium">₹{Number(bill.bill_amount).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-right">
-                                                                    <span className="text-amber-600 font-black">₹{Number(bill.pending_amount).toLocaleString()}</span>
+                                                                    <span className="text-primary font-black">₹{Number(bill.pending_amount).toLocaleString()}</span>
                                                                 </td>
                                                                 <td className="px-6 py-4 w-48">
                                                                     <div className="relative">
-                                                                        <input 
+                                                                        <Input 
                                                                             type="number"
                                                                             min="0"
                                                                             placeholder="Amount"
                                                                             value={allocations[bill.id] || ''}
-                                                                            onChange={(e) => handleAllocationChange(bill.id, e.target.value, bill.pending_amount)}
-                                                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold outline-none focus:border-primary"
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                                                                                    handleAllocationChange(bill.id, val, bill.pending_amount)
+                                                                                }
+                                                                            }}
+                                                                            className="w-full h-8 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold"
                                                                         />
                                                                     </div>
                                                                 </td>
@@ -414,19 +510,19 @@ export default function SupplierPaymentPage() {
 
                                 {/* Summary Bar */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                                    <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                            <span className="text-xs font-bold text-emerald-800 uppercase tracking-tight">Allocated against Bills</span>
+                                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-bold text-primary uppercase tracking-tight">Allocated against Bills</span>
                                         </div>
-                                        <span className="font-black text-emerald-600">₹{totalAllocated.toLocaleString()}</span>
+                                        <span className="font-black text-primary">₹{totalAllocated.toLocaleString()}</span>
                                     </div>
-                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4 text-blue-600" />
-                                            <span className="text-xs font-bold text-blue-800 uppercase tracking-tight">Advance Payment</span>
+                                            <AlertCircle className="w-4 h-4 text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-800 uppercase tracking-tight">Advance Payment</span>
                                         </div>
-                                        <span className="font-black text-blue-600">₹{advanceAmount.toLocaleString()}</span>
+                                        <span className="font-black text-slate-600">₹{advanceAmount.toLocaleString()}</span>
                                     </div>
                                     <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between">
                                         <span className="text-xs font-black uppercase tracking-widest text-white/60">Total Payment</span>
@@ -440,17 +536,21 @@ export default function SupplierPaymentPage() {
                                         <label className="text-sm font-bold text-slate-700">Payment Configuration</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="relative">
-                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                <select
+                                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                                                <Select
                                                     value={formData.payment_mode}
-                                                    onChange={(e) => setFormData({ ...formData, payment_mode: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl appearance-none outline-none text-sm"
+                                                    onValueChange={(val) => setFormData({ ...formData, payment_mode: val })}
                                                 >
-                                                    <option value="CASH">Cash</option>
-                                                    <option value="BANK">Bank Transfer</option>
-                                                    <option value="UPI">UPI / Digital</option>
-                                                    <option value="CHECK">Check / DD</option>
-                                                </select>
+                                                    <SelectTrigger className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm h-full">
+                                                        <SelectValue placeholder="Mode" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white border-slate-200">
+                                                        <SelectItem value="CASH">Cash</SelectItem>
+                                                        <SelectItem value="BANK">Bank Transfer</SelectItem>
+                                                        <SelectItem value="UPI">UPI / Digital</SelectItem>
+                                                        <SelectItem value="CHECK">Check / DD</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                             <Input
                                                 placeholder="Ref / UTR No"
@@ -473,21 +573,21 @@ export default function SupplierPaymentPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
+                                <div className="flex flex-col md:flex-row items-center gap-3 sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100">
                                     <Button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
                                         variant="outline"
-                                        className="flex-1 py-7 rounded-2xl font-black text-slate-500 hover:bg-slate-50"
+                                        className="w-full md:flex-1 h-12 md:h-14 rounded-full font-black text-slate-500 hover:bg-slate-50 order-2 md:order-1"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
                                         loading={submitting}
-                                        className="flex-1 py-7 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black shadow-2xl shadow-primary/20 transition-all uppercase tracking-widest"
+                                        className="w-full md:flex-1 h-12 md:h-14 bg-primary hover:bg-primary/95 text-white rounded-full font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-widest order-1 md:order-2 hover:scale-105 active:scale-95"
                                     >
-                                        Confirm & Post Entry
+                                        {editingId ? 'Update Payment' : 'Confirm & Post Entry'}
                                     </Button>
                                 </div>
                             </form>

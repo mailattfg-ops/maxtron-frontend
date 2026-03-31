@@ -229,7 +229,7 @@ export default function PurchaseReportPage() {
                   ₹ {(p.purchase_entry_items || []).reduce((a: number, i: any) => a + Number(i.amount || 0), 0).toLocaleString()}
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-3 flex justify-end py-4">
                 <Button
                   variant="ghost"
                   size="sm"

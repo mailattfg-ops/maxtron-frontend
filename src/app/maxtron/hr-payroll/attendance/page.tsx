@@ -5,8 +5,15 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Plus, Search, Edit, Trash2, X, Save, Download, FileSpreadsheet, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -159,6 +166,7 @@ export default function AttendancePage() {
     }));
     setBulkData(initialBulk);
     setShowBulkForm(true);
+    setShowForm(false);
   };
 
   const handleBulkDateChange = (newDate: string) => {
@@ -181,6 +189,15 @@ export default function AttendancePage() {
 
       // Time validation check
       for (const item of bulkData) {
+        if (item.date) {
+            const date = new Date(item.date);
+            const year = date.getFullYear();
+            if (year < 2020 || year > 2099) {
+                error(`Invalid year in bulk entry for ${item.employee_name}. Please enter a valid date.`);
+                setSubmitting(false);
+                return;
+            }
+        }
         if (item.status !== 'ABSENT') {
           if (item.clock_out <= item.clock_in) {
             error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
@@ -225,6 +242,14 @@ export default function AttendancePage() {
         error('Clock-out time must be later than Clock-in time.');
         return;
       }
+    }
+
+    if (formData.date) {
+        const year = new Date(formData.date).getFullYear();
+        if (year < 2020 || year > 2099) {
+            error("Invalid date selected. Year must be between 2020 and 2099.");
+            return;
+        }
     }
 
     // Client-side duplicate check
@@ -409,33 +434,34 @@ export default function AttendancePage() {
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 mb-2">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading">Attendance Details</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <UserCheck className="w-8 h-8 md:w-10 md:h-10 p-1.5 bg-primary/10 text-primary rounded-lg shrink-0" />
+            <span className="truncate">Attendance Details</span>
+          </h1>
+          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Daily shift-wise logging for {activeTenant} staff.</p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           <Button 
             onClick={downloadAttendance}
             variant="outline"
-            className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 font-bold"
+            className="border-secondary/20 text-secondary hover:bg-secondary/5 rounded-full px-5 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
           >
-            <Download className="w-4 h-4 md:mr-2" /> 
-            <span className="hidden md:inline">Download Logs</span>
-            <span className="md:hidden">Export</span>
+            <Download className="w-4 h-4 mr-2" /> Download Logs
           </Button>
           {canCreate && (
             <Button 
               onClick={prepareBulkData}
               variant="outline"
-              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4 mr-2" /> Bulk Entry
             </Button>
           )}
           {canCreate && (
             <Button 
-              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/90 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold"
+              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null);setShowBulkForm(false); }}
+              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider text-xs flex-1 sm:flex-none"
             >
               {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {showForm ? 'Cancel' : 'Log Entry'}
@@ -447,106 +473,122 @@ export default function AttendancePage() {
 
       {showForm && (
         <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl">
-            <CardTitle className="text-lg font-semibold text-primary">{editingId ? 'Edit Attendance' : 'Mark Daily Attendance'}</CardTitle>
-            <CardDescription>Input shift details and timing for employees.</CardDescription>
+          <CardHeader className="bg-primary/5 border-b border-primary/10 rounded-t-xl py-4">
+            <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                {editingId ? 'Edit Attendance' : 'Mark Daily Attendance'}
+            </CardTitle>
+            <CardDescription className="text-xs font-medium">Input shift details and timing for employees.</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 md:p-6">
+          <CardContent className="p-4 md:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <UserCheck className="w-4 h-4 mr-2 text-primary" /> Select Employee
-                </label>
-                <select 
-                  name="employee_id"
-                  value={formData.employee_id}
-                  onChange={(e) => setFormData({...formData, employee_id: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
-                >
-                  <option value="">Choose employee...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</option>
-                  ))}
-                </select>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <UserCheck className="w-3 h-3 mr-2 text-primary" /> Staff Member
+                  </label>
+                  <Select value={formData.employee_id} onValueChange={(val) => setFormData({...formData, employee_id: val})}>
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-bold text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Choose employee..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.employee_code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-primary" /> Date
-                </label>
-                <Input 
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="shadow-sm focus:ring-primary/20"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Calendar className="w-3 h-3 mr-2 text-primary" /> Mark Date
+                  </label>
+                  <Input 
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-primary" /> Shift
-                </label>
-                <select 
-                  value={formData.shift}
-                  onChange={(e) => setFormData({...formData, shift: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
-                >
-                  {/* <option value="GENERAL">General Shift</option> */}
-                  <option value="DAY">Day Shift</option>
-                  <option value="NIGHT">Night Shift</option>
-                </select>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <ChevronRight className="w-3 h-3 mr-2 text-primary" /> Assigned Shift
+                  </label>
+                  <Select value={formData.shift} onValueChange={(val) => setFormData({...formData, shift: val})}>
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-bold text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Select Shift" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      <SelectItem value="GENERAL">General Shift</SelectItem>
+                      <SelectItem value="DAY">Day Shift</SelectItem>
+                      <SelectItem value="NIGHT">Night Shift</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                   Status
-                </label>
-                <select 
-                  value={formData.status}
-                  onChange={(e) => {
-                    const status = e.target.value;
-                    const updates: any = { status };
-                    if (status === 'ABSENT') {
-                      updates.clock_in = '00:00';
-                      updates.clock_out = '00:00';
-                    }
-                    setFormData({...formData, ...updates});
-                  }}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-sm"
-                >
-                  <option value="PRESENT">Present</option>
-                  <option value="ABSENT">Absent</option>
-                  <option value="LATE">Late</option>
-                  <option value="HALF_DAY">Half Day</option>
-                </select>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <CheckCircle2 className="w-3 h-3 mr-2 text-primary" /> Status
+                  </label>
+                  <Select 
+                    value={formData.status} 
+                    onValueChange={(val) => {
+                      const status = val;
+                      const updates: any = { status };
+                      if (status === 'ABSENT') {
+                        updates.clock_in = '00:00';
+                        updates.clock_out = '00:00';
+                      }
+                      setFormData({...formData, ...updates});
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-11 border-slate-200 bg-white font-black text-sm shadow-sm rounded-xl focus:ring-primary/20">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                      <SelectItem value="PRESENT">Present</SelectItem>
+                      <SelectItem value="ABSENT">Absent</SelectItem>
+                      <SelectItem value="LATE">Late</SelectItem>
+                      <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Clock In Time</label>
-                <Input 
-                  type="time"
-                  value={formData.clock_in}
-                  onChange={(e) => setFormData({...formData, clock_in: e.target.value})}
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Clock className="w-3 h-3 mr-2 text-primary" /> Clock In Time
+                  </label>
+                  <Input 
+                    type="time"
+                    value={formData.clock_in}
+                    onChange={(e) => setFormData({...formData, clock_in: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Clock Out Time</label>
-                <Input 
-                  type="time"
-                  value={formData.clock_out}
-                  onChange={(e) => setFormData({...formData, clock_out: e.target.value})}
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    <Clock className="w-3 h-3 mr-2 text-primary" /> Clock Out Time
+                  </label>
+                  <Input 
+                    type="time"
+                    value={formData.clock_out}
+                    onChange={(e) => setFormData({...formData, clock_out: e.target.value})}
+                    className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
+                  />
+                </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Remarks (Optional)</label>
-                <Input 
-                  placeholder="Notes about attendance..."
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({...formData, remarks: e.target.value})}
-                />
-              </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                    Edit Remarks (Optional)
+                  </label>
+                  <Input 
+                    placeholder="Provide additional details..."
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                    className="h-11 border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 italic"
+                  />
+                </div>
             </div>
 
             <div className="mt-8 flex justify-end">
@@ -565,7 +607,7 @@ export default function AttendancePage() {
       
       {showBulkForm && (
         <Card className="border-secondary/20 shadow-xl animate-in slide-in-from-top duration-300">
-          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardHeader className="bg-secondary/5 border-b border-secondary/10 rounded-t-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-6">
             <div>
               <CardTitle className="text-lg font-semibold text-secondary">Bulk Attendance Mark</CardTitle>
               <CardDescription>Register attendance for multiple staff members in one go.</CardDescription>
@@ -573,43 +615,43 @@ export default function AttendancePage() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-secondary/20 shadow-sm">
                   <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Mark Date:</span>
-                  <input 
+                  <Input 
                     type="date" 
                     value={bulkDate} 
                     onChange={(e) => handleBulkDateChange(e.target.value)}
-                    className="text-xs font-bold outline-none bg-transparent"
+                    className="text-xs font-bold outline-none bg-transparent h-7 border-none shadow-none p-0 w-fit"
                   />
                </div>
-               <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
+               {/* <Button size="sm" variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive shrink-0">
                  <X className="w-4 h-4" />
-               </Button>
+               </Button> */}
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+              <table className="w-full text-sm text-left min-w-[1000px]">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Employee</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-center">Shift</th>
-                    <th className="px-4 py-3">Clock In / Out</th>
-                    <th className="px-4 py-3">Remarks</th>
-                    <th className="px-4 py-3 text-right">Action</th>
+                    <th className="px-4 py-4 font-black">Staff Member</th>
+                    <th className="px-4 py-4 text-center">Attendance Status</th>
+                    <th className="px-4 py-4 text-center">Assigned Shift</th>
+                    <th className="px-4 py-4">Timing (In - Out)</th>
+                    <th className="px-4 py-4">Notes / Remarks</th>
+                    <th className="px-4 py-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic font-medium">
                   {bulkData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                         <div className="font-bold text-slate-800">{row.employee_name}</div>
-                         <div className="text-[10px] text-slate-400">{row.employee_code}</div>
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-4 py-4">
+                         <div className="font-bold text-slate-900 group-hover:text-primary transition-colors">{row.employee_name}</div>
+                         <div className="text-[10px] text-slate-500 font-bold">{row.employee_code}</div>
                       </td>
-                      <td className="px-4 py-3">
-                         <select 
+                      <td className="px-4 py-4 text-center border-x border-slate-100/50">
+                         <Select 
                            value={row.status}
-                           onChange={(e) => {
-                             const status = e.target.value;
+                           onValueChange={(val) => {
+                             const status = val;
                              const nd = [...bulkData];
                              nd[idx].status = status;
                              if (status === 'ABSENT') {
@@ -618,42 +660,73 @@ export default function AttendancePage() {
                              }
                              setBulkData(nd);
                            }}
-                           className="h-8 rounded border bg-white px-2 text-xs"
                          >
-                           <option value="PRESENT">Present</option>
-                           <option value="ABSENT">Absent</option>
-                           <option value="LATE">Late</option>
-                           <option value="HALF_DAY">Half Day</option>
-                         </select>
+                           <SelectTrigger className="h-9 w-32 border-slate-200 bg-white px-3 text-xs mx-auto rounded-xl shadow-sm focus:ring-primary/20">
+                             <SelectValue placeholder="Status" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                             <SelectItem value="PRESENT">Present</SelectItem>
+                             <SelectItem value="ABSENT">Absent</SelectItem>
+                             <SelectItem value="LATE">Late</SelectItem>
+                             <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                           </SelectContent>
+                         </Select>
                       </td>
-                      <td className="px-4 py-3">
-                         <select 
+                      <td className="px-4 py-4 text-center border-r border-slate-100/50">
+                         <Select 
                            value={row.shift}
-                           onChange={(e) => {
+                           onValueChange={(val) => {
                              const nd = [...bulkData];
-                             nd[idx].shift = e.target.value;
+                             nd[idx].shift = val;
                              setBulkData(nd);
                            }}
-                           className="h-8 rounded border bg-white px-2 text-xs"
                          >
-                           {/* <option value="GENERAL">General</option> */}
-                           <option value="DAY">Day</option>
-                           <option value="NIGHT">Night</option>
-                         </select>
+                           <SelectTrigger className="h-9 w-24 border-slate-200 bg-white px-3 text-xs mx-auto rounded-xl shadow-sm focus:ring-primary/20">
+                             <SelectValue placeholder="Shift" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+                             <SelectItem value="DAY">Day</SelectItem>
+                             <SelectItem value="NIGHT">Night</SelectItem>
+                           </SelectContent>
+                         </Select>
                       </td>
-                      <td className="px-4 py-3 flex items-center gap-1">
-                         <Input type="time" value={row.clock_in} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
-                         <Input type="time" value={row.clock_out} onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} className="h-8 w-24 text-xs" />
+                      <td className="px-4 py-4 border-r border-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <div className="relative group/time">
+                            <Input 
+                              type="time" 
+                              value={row.clock_in} 
+                              onChange={(e)=> { let d=[...bulkData]; d[idx].clock_in=e.target.value; setBulkData(d); }} 
+                              className="h-9 w-28 text-xs border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 pr-7 font-bold italic" 
+                            />
+                            <Clock className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover/time:text-primary transition-colors" />
+                          </div>
+                          <span className="text-slate-300 font-bold">-</span>
+                          <div className="relative group/time">
+                            <Input 
+                              type="time" 
+                              value={row.clock_out} 
+                              onChange={(e)=> { let d=[...bulkData]; d[idx].clock_out=e.target.value; setBulkData(d); }} 
+                              className="h-9 w-28 text-xs border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 pr-7 font-bold italic" 
+                            />
+                            <Clock className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-hover/time:text-primary transition-colors" />
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
-                         <Input value={row.remarks} onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} placeholder="Notes..." className="h-8 text-xs min-w-[150px]" />
+                      <td className="px-4 py-4 border-r border-slate-100/50">
+                         <Input 
+                           value={row.remarks} 
+                           onChange={(e)=> { let d=[...bulkData]; d[idx].remarks=e.target.value; setBulkData(d); }} 
+                           placeholder="Notes about staff attendance..." 
+                           className="h-9 text-xs min-w-[200px] border-slate-200 rounded-xl shadow-sm focus:ring-primary/20 font-medium italic" 
+                         />
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-4 text-right">
                          <Button 
                            variant="ghost" 
                            size="icon" 
                            onClick={() => removeEmployeeFromBulk(row.employee_id)}
-                           className="h-8 w-8 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/5"
+                           className="h-9 w-9 rounded-full text-slate-400 hover:text-destructive hover:bg-destructive/10 transition-all active:scale-95"
                          >
                            <X className="w-4 h-4" />
                          </Button>
@@ -663,17 +736,25 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
-            <div className="p-4 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
-               <div className="text-xs text-slate-500 font-bold">Total: {bulkData.length} records ready.</div>
-               <div className="flex gap-3">
-                 <Button variant="ghost" onClick={() => setShowBulkForm(false)} className="rounded-full h-10 px-6">Discard</Button>
-                  <Button 
-                    onClick={saveBulkAttendance} 
-                    loading={submitting}
-                    className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-10 px-8 shadow-lg shadow-secondary/10"
-                  >
-                    <Save className="w-4 h-4 mr-2" /> Mark Attendance
-                  </Button>
+            <div className="p-4 md:p-6 border-t bg-slate-50/50 rounded-b-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+               <div className="text-xs text-slate-500 font-bold uppercase tracking-wider bg-slate-100/50 px-4 py-2 rounded-full border border-slate-200">
+                 Summary: <span className="text-secondary">{bulkData.length}</span> staff records to process
+               </div>
+               <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto">
+                 <Button 
+                   variant="ghost" 
+                   onClick={() => setShowBulkForm(false)} 
+                   className="h-11 px-8 rounded-full font-bold hover:bg-destructive/5 hover:text-destructive transition-all active:scale-95"
+                 >
+                   Cancel / Discard
+                 </Button>
+                 <Button 
+                   onClick={saveBulkAttendance} 
+                   loading={submitting}
+                   className="bg-secondary hover:bg-secondary/90 text-white rounded-full h-11 px-10 shadow-lg shadow-secondary/20 flex items-center justify-center font-bold active:scale-95 tracking-wide"
+                 >
+                   <Save className="w-4 h-4 mr-2" /> Mark Attendance
+                 </Button>
                </div>
             </div>
           </CardContent>
@@ -681,80 +762,84 @@ export default function AttendancePage() {
       )}
 
       {!showForm && !showBulkForm && (
-        <TableView
-          title="Attendance Logs"
-          description={`Daily shift-wise logging for ${activeTenant} staff.`}
-          headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
-          data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
-          loading={loading}
-          searchFields={['users.name', 'users.employee_code', 'remarks']}
-          searchPlaceholder="Search staff or notes..."
-          actions={
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
-              <div className="flex gap-1">
-                <Input 
-                  type="date"
-                  className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                />
-                {dateFilter && (
-                  <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          }
-          renderRow={(rec: any) => (
-            <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
-              <td className="px-6 py-4">
-                <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {rec.users?.name}
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+          <div className="min-w-[1000px] md:min-w-full">
+            <TableView
+              title="Attendance Logs"
+              description={`Daily shift-wise logging for ${activeTenant} staff.`}
+              headers={['Employee', 'Date', 'Shift', 'In / Out', 'Status', 'Remarks', 'Actions']}
+              data={attendanceRecords.filter(rec => rec && rec.date && rec.date.startsWith(dateFilter))}
+              loading={loading}
+              searchFields={['users.name', 'users.employee_code', 'remarks']}
+              searchPlaceholder="Search staff or notes..."
+              actions={
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Filter Date:</span>
+                  <div className="flex gap-1">
+                    <Input 
+                      type="date"
+                      className="w-40 rounded-full border-primary/20 shadow-none h-9 text-xs"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                    />
+                    {dateFilter && (
+                      <Button size="sm" variant="ghost" onClick={() => setDateFilter('')} className="h-9 px-2 text-[10px] font-bold text-primary">
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
-              </td>
-              <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
-              <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded text-[11px] font-bold ${
-                  rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
-                  rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {rec.shift}
-                </span>
-              </td>
-              <td className="px-6 py-4 font-mono text-xs">
-                {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
-              </td>
-              <td className="px-6 py-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                  rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
-                  rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
-                  'bg-amber-100 text-amber-700'
-                }`}>
-                  {rec.status}
-                </span>
-              </td>
-              <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
-                {rec.remarks || '-'}
-              </td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </td>
-            </tr>
-          )}
-        />
+              }
+              renderRow={(rec: any) => (
+                <tr key={rec.id} className="hover:bg-primary/5 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {rec.users?.name}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{rec.users?.employee_code}</div>
+                  </td>
+                  <td className="px-6 py-4 font-medium">{new Date(rec.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded text-[11px] font-bold ${
+                      rec.shift === 'DAY' ? 'bg-orange-100 text-orange-700' : 
+                      rec.shift === 'NIGHT' ? 'bg-slate-800 text-white' : 
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {rec.shift}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs">
+                    {rec.clock_in?.substring(0, 5) || '--:--'} - {rec.clock_out?.substring(0, 5) || '--:--'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 
+                      rec.status === 'ABSENT' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {rec.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground italic text-xs truncate max-w-[150px]">
+                    {rec.remarks || '-'}
+                  </td>
+                  <td className="md:px-6 py-4 text-right space-x-2">
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary hover:bg-primary/10 rounded-full h-8 w-8">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              )}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
