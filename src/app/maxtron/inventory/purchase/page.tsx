@@ -52,7 +52,7 @@ export default function PurchaseEntryPage() {
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
   const [formData, setFormData] = useState({
-    entry_number: `GRN-${Date.now().toString().slice(-6)}`,
+    entry_number: 'GENERATING...',
     entry_date: new Date().toISOString().split('T')[0],
     order_id: '',
     supplier_id: '',
@@ -69,6 +69,11 @@ export default function PurchaseEntryPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!showForm || editingId) return;
+    resetForm();
+  }, [entries, showForm]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -262,9 +267,24 @@ export default function PurchaseEntryPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestEntries: any[] = entries) => {
+    let nextNo = 'GRN-000001';
+    if (latestEntries && latestEntries.length > 0) {
+      let max = 0;
+      latestEntries.forEach(e => {
+        if (e.entry_number && e.entry_number.startsWith('GRN-')) {
+          const numStr = e.entry_number.substring(4);
+          const num = parseInt(numStr, 10);
+          if (!isNaN(num) && num > max) {
+            max = num;
+          }
+        }
+      });
+      nextNo = `GRN-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      entry_number: `GRN-${Date.now().toString().slice(-6)}`,
+      entry_number: nextNo,
       entry_date: new Date().toISOString().split('T')[0],
       order_id: '',
       supplier_id: '',

@@ -470,7 +470,7 @@ export default function PurchaseReturnPage() {
                 className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/10 flex items-center font-bold"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {editingId ? 'Update Debit Note' : 'Generate Debit Note'}
+                {editingId ? 'Update' : 'Generate'}
               </Button>
             </div>
           </CardContent>

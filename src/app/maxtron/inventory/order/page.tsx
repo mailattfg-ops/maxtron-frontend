@@ -48,7 +48,7 @@ export default function RMOrderPage() {
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
   const [formData, setFormData] = useState({
-    order_number: `PO-${Date.now().toString().slice(-6)}`,
+    order_number: 'GENERATING...',
     order_date: new Date().toISOString().split('T')[0],
     supplier_id: '',
     expected_delivery_date: '',
@@ -62,6 +62,11 @@ export default function RMOrderPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!showForm || editingId) return;
+    resetForm();
+  }, [orders, showForm]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -186,9 +191,24 @@ export default function RMOrderPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestOrders: any[] = orders) => {
+    let nextNo = 'PO-000001';
+    if (latestOrders && latestOrders.length > 0) {
+      let max = 0;
+      latestOrders.forEach(o => {
+        if (o.order_number && o.order_number.startsWith('PO-')) {
+          const numStr = o.order_number.substring(3);
+          const num = parseInt(numStr, 10);
+          if (!isNaN(num) && num > max) {
+            max = num;
+          }
+        }
+      });
+      nextNo = `PO-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      order_number: `PO-${Date.now().toString().slice(-6)}`,
+      order_number: nextNo,
       order_date: new Date().toISOString().split('T')[0],
       supplier_id: '',
       expected_delivery_date: '',

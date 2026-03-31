@@ -96,6 +96,16 @@ export default function RawMaterialPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if materials list updates while form is open (and not editing)
+    if (showForm && !editingId && materials.length > 0) {
+       const currentCode = formData.rm_code;
+       if (!currentCode || currentCode === 'RM-000001' || currentCode === 'GENERATING...') {
+          resetForm(materials);
+       }
+    }
+  }, [materials, showForm, editingId]);
+
   const fetchMaterials = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -105,7 +115,11 @@ export default function RawMaterialPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMaterials(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setMaterials(sorted);
       }
     } catch (err) {
       console.error('Error fetching materials:', err);
@@ -194,9 +208,28 @@ export default function RawMaterialPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestMaterials: any[] = materials) => {
+    if (loading && latestMaterials.length === 0) {
+      setFormData(prev => ({ ...prev, rm_code: 'GENERATING...' }));
+      return;
+    }
+
+    let nextCode = 'RM-000001';
+    const validCodes = latestMaterials
+      .filter(m => m.rm_code && /^RM-\d+$/i.test(m.rm_code))
+      .map(m => {
+        const parts = m.rm_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `RM-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      rm_code: '',
+      rm_code: nextCode,
       rm_name: '',
       rm_description: '',
       rate_per_unit: 0,
@@ -381,18 +414,10 @@ export default function RawMaterialPage() {
                   <Tag className="w-3 h-3 mr-2 text-primary" /> Material Code
                 </label>
                 <Input 
-                  placeholder="e.g. RM-LDPE-001"
+                  placeholder="e.g. RM-001"
                   value={formData.rm_code}
-                  onChange={(e) => {
-                    const val = e.target.value.toUpperCase();
-                    setFormData({...formData, rm_code: val});
-                    if (val && !codeRegex.test(val)) {
-                      setCodeError('Invalid Format (A-Z, 0-9, -)');
-                    } else {
-                      setCodeError('');
-                    }
-                  }} 
-                  className={`h-11 font-bold ${codeError ? 'border-destructive bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  readOnly
+                  className="h-11 font-bold bg-slate-50 cursor-not-allowed" 
                 />
                 {codeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
               </div>

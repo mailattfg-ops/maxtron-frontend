@@ -88,6 +88,16 @@ export default function CustomersPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if customers list updates while form is open (and not editing)
+    if (showForm && !editingId && customers.length > 0) {
+       const currentCode = formData.customer_code;
+       if (!currentCode || currentCode === 'CUST-000001' || currentCode === 'GENERATING...') {
+          resetForm(customers);
+       }
+    }
+  }, [customers, showForm, editingId]);
+
   const fetchCustomers = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -97,7 +107,11 @@ export default function CustomersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setCustomers(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setCustomers(sorted);
       }
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -180,10 +194,29 @@ export default function CustomersPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestCustomers: any[] = customers) => {
+    if (loading && latestCustomers.length === 0) {
+        setFormData(prev => ({ ...prev, customer_code: 'GENERATING...' }));
+        return;
+    }
+
+    let nextCode = 'CUST-000001';
+    const validCodes = latestCustomers
+      .filter(c => c.customer_code && /^CUST-\d+$/i.test(c.customer_code))
+      .map(c => {
+        const parts = c.customer_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `CUST-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
       customer_name: '',
-      customer_code: '',
+      customer_code: nextCode,
       gst_no: '',
       credit_period: 0,
       credit_limit: 0,
@@ -302,9 +335,15 @@ export default function CustomersPage() {
                   <label className="text-sm font-semibold">Customer Name *</label>
                   <Input name="customer_name" value={formData.customer_name} onChange={handleInputChange} placeholder="Legal Company Name" />
                 </div>
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Customer Code *</label>
-                  <Input name="customer_code" value={formData.customer_code} onChange={handleInputChange} placeholder="UNIQUE-CODE-01" />
+                  <Input 
+                    name="customer_code" 
+                    value={formData.customer_code} 
+                    readOnly
+                    className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                    placeholder="e.g. CUST-001" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>

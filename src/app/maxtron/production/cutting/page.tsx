@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ export default function CuttingSealingPage() {
   const [loading, setLoading] = useState(true);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -219,12 +220,12 @@ export default function CuttingSealingPage() {
         return;
     }
 
-    const wastage = formData.input_qty - totalOutput;
-
+    const totalWastage = formData.input_qty - totalOutput;
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${CONVERSION_API}/${editingId}` : CONVERSION_API;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -235,7 +236,7 @@ export default function CuttingSealingPage() {
         body: JSON.stringify({
            ...formData,
            output_qty: totalOutput,
-           wastage_qty: wastage
+           wastage_qty: totalWastage
         })
       });
       const data = await res.json();
@@ -250,6 +251,8 @@ export default function CuttingSealingPage() {
       }
     } catch (err) {
       error('Error saving conversion');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -270,6 +273,15 @@ export default function CuttingSealingPage() {
     c.conversion_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.production_batches?.batch_number?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const availableBatches = useMemo(() => {
+    // Collect all batch_ids already used in conversions
+    const usedBatchIds = conversions.map(c => c.batch_id);
+    // Filter batches: unused OR explicitly selected in the current editing state
+    return batches.filter(b => 
+        !usedBatchIds.includes(b.id) || b.id === formData.batch_id
+    );
+  }, [batches, conversions, formData.batch_id]);
 
   const totalOutput = formData.items.reduce((sum, it) => sum + it.quantity, 0);
 
@@ -363,7 +375,7 @@ export default function CuttingSealingPage() {
                     <SelectValue placeholder="Select Base Batch" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
-                    {batches.map(b => (
+                    {availableBatches.map(b => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.batch_number} - {b.finished_products?.product_name || 'N/A'} ({b.extrusion_output_qty} Kg)
                       </SelectItem>
@@ -469,7 +481,8 @@ export default function CuttingSealingPage() {
               </Button>
               <Button 
                 onClick={saveConversion} 
-                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+                loading={submitting}
+                className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2 font-bold"
               >
                 <Save className="w-4 h-4 mr-2" /> Save Cutting Entry
               </Button>

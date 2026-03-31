@@ -265,7 +265,7 @@ export default function DamagesWastagePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" />Damages Qty (Kg)</label>
-                <Input type="number" min={0} step="0.001" placeholder="0.000" value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" min={0} step="0.001" placeholder="0" value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} onChange={e => setFormData({ ...formData, wastage_qty: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><AlertTriangle className="w-4 h-4 text-primary" /> Reason Code</label>

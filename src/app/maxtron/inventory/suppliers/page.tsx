@@ -53,10 +53,14 @@ export default function SupplierPage() {
   const [gstError, setGstError] = useState('');
   const [nameError, setNameError] = useState('');
   const [codeError, setCodeError] = useState('');
+  const [deliveryPeriodError, setDeliveryPeriodError] = useState('');
+  const [zipError, setZipError] = useState('');
+  const [billingZipError, setBillingZipError] = useState('');
   
   const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   const nameRegex = /^[a-zA-Z0-9\s.\-&',]+$/;
   const codeRegex = /^[A-Z0-9\-]+$/;
+  const deliveryPeriodRegex = /^[a-zA-Z0-9\s-]+$/;
   
   const [searchQuery, setSearchQuery] = useState('');
   const { success, error, info } = useToast();
@@ -115,6 +119,16 @@ export default function SupplierPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if suppliers list updates while form is open (and not editing)
+    if (showForm && !editingId && suppliers.length > 0) {
+       const currentCode = formData.supplier_code;
+       if (!currentCode || currentCode === 'VEN-000001' || currentCode === 'GENERATING...') {
+          resetForm(suppliers);
+       }
+    }
+  }, [suppliers, showForm, editingId]);
+
   const checkGstExistence = (gst: string) => {
     if (!gst || gst.trim() === '') {
       setGstExists(false);
@@ -140,7 +154,11 @@ export default function SupplierPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSuppliers(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setSuppliers(sorted);
       }
     } catch (err) {
       console.error('Error fetching suppliers:', err);
@@ -165,6 +183,16 @@ export default function SupplierPage() {
 
     if (codeError) {
       error('Please provide a valid supplier code without spaces or special characters.');
+      return;
+    }
+
+    if (deliveryPeriodError) {
+      error('Delivery Period contains invalid characters.');
+      return;
+    }
+
+    if (zipError || billingZipError) {
+      error('Please provide valid 6-digit zip codes.');
       return;
     }
 
@@ -224,9 +252,28 @@ export default function SupplierPage() {
     success('Address copied successfully!');
   };
 
-  const resetForm = () => {
+  const resetForm = (latestSuppliers: any[] = suppliers) => {
+    if (loading && latestSuppliers.length === 0) {
+      setFormData(prev => ({ ...prev, supplier_code: 'GENERATING...' }));
+      return;
+    }
+
+    let nextCode = 'VEN-000001';
+    const validCodes = latestSuppliers
+      .filter(s => s.supplier_code && /^VEN-\d+$/i.test(s.supplier_code))
+      .map(s => {
+        const parts = s.supplier_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `VEN-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      supplier_code: '',
+      supplier_code: nextCode,
       supplier_name: '',
       supplier_address: { ...defaultAddress },
       billing_address: { ...defaultAddress },
@@ -244,6 +291,9 @@ export default function SupplierPage() {
     setGstExists(false);
     setNameError('');
     setCodeError('');
+    setDeliveryPeriodError('');
+    setZipError('');
+    setBillingZipError('');
   };
 
   const handleEdit = (s: any) => {
@@ -411,16 +461,8 @@ export default function SupplierPage() {
                 </label>
                 <Input 
                   value={formData.supplier_code} 
-                  onChange={(e) => {
-                    const val = e.target.value.toUpperCase();
-                    setFormData({...formData, supplier_code: val});
-                    if (val && !codeRegex.test(val)) {
-                      setCodeError('Invalid Format (A-Z, 0-9, -)');
-                    } else {
-                      setCodeError('');
-                    }
-                  }} 
-                  className={`h-11 font-mono uppercase font-bold ${codeError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  readOnly
+                  className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
                   placeholder="e.g. VEN-001" 
                 />
                 {codeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{codeError}</p>}
@@ -490,7 +532,19 @@ export default function SupplierPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
-                    <Input value={formData.supplier_address.zip_code} onChange={(e) => setFormData({...formData, supplier_address: {...formData.supplier_address, zip_code: e.target.value}})} placeholder="XXXXXX" />
+                    <Input 
+                        value={formData.supplier_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setFormData({...formData, supplier_address: {...formData.supplier_address, zip_code: val}});
+                            if (val && val.length !== 6) setZipError('Must be 6 digits');
+                            else setZipError('');
+                        }} 
+                        className={zipError ? 'border-amber-400 bg-amber-50' : ''}
+                        placeholder="XXXXXX" 
+                    />
+                    {zipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{zipError}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
@@ -533,7 +587,18 @@ export default function SupplierPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
-                    <Input value={formData.billing_address.zip_code} onChange={(e) => setFormData({...formData, billing_address: {...formData.billing_address, zip_code: e.target.value}})} />
+                    <Input 
+                        value={formData.billing_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setFormData({...formData, billing_address: {...formData.billing_address, zip_code: val}});
+                            if (val && val.length !== 6) setBillingZipError('Must be 6 digits');
+                            else setBillingZipError('');
+                        }} 
+                        className={billingZipError ? 'border-amber-400 bg-amber-50' : ''}
+                    />
+                    {billingZipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{billingZipError}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
@@ -590,7 +655,21 @@ export default function SupplierPage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Delivery Period</label>
-                <Input value={formData.delivery_period} onChange={(e) => setFormData({...formData, delivery_period: e.target.value})} className="h-11" placeholder="e.g. 2-4 Days" />
+                <Input 
+                  value={formData.delivery_period} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({...formData, delivery_period: val});
+                    if (val && !deliveryPeriodRegex.test(val)) {
+                      setDeliveryPeriodError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    } else {
+                      setDeliveryPeriodError('');
+                    }
+                  }} 
+                  className={`h-11 ${deliveryPeriodError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  placeholder="e.g. 2-4 Days" 
+                />
+                {deliveryPeriodError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{deliveryPeriodError}</p>}
               </div>
 
               <div className="space-y-2">

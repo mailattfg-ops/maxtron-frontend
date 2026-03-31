@@ -85,6 +85,16 @@ export default function FinishedProductPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync code if products list updates while form is open (and not editing)
+    if (showForm && !editingId && products.length > 0) {
+       const currentCode = formData.product_code;
+       if (!currentCode || currentCode === 'FP-000001' || currentCode === 'GENERATING...') {
+          resetForm(products);
+       }
+    }
+  }, [products, showForm, editingId]);
+
   const fetchProducts = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -94,7 +104,11 @@ export default function FinishedProductPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setProducts(data.data);
+        // Sort by created_at descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        setProducts(sorted);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -182,9 +196,28 @@ export default function FinishedProductPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (latestProducts: any[] = products) => {
+    if (loading && latestProducts.length === 0) {
+      setFormData(prev => ({ ...prev, product_code: 'GENERATING...' }));
+      return;
+    }
+
+    let nextCode = 'FP-000001';
+    const validCodes = latestProducts
+      .filter(p => p.product_code && /^FP-\d+$/i.test(p.product_code))
+      .map(p => {
+        const parts = p.product_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `FP-${String(max + 1).padStart(6, '0')}`;
+    }
+
     setFormData({
-      product_code: '',
+      product_code: nextCode,
       product_name: '',
       color: '',
       thickness_microns: 0,
@@ -251,15 +284,10 @@ export default function FinishedProductPage() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Hash className="w-4 h-4 text-primary" /> Product Code</label>
                 <Input 
-                  placeholder="e.g. PP-001" 
+                  placeholder="e.g. FP-001" 
                   value={formData.product_code} 
-                  onChange={e => {
-                    const val = e.target.value.toUpperCase();
-                    setFormData({ ...formData, product_code: val });
-                    if (val && !codeRegex.test(val)) setCodeError('Invalid Format (A-Z, 0-9, -)');
-                    else setCodeError('');
-                  }} 
-                  className={`h-11 font-mono uppercase ${codeError ? 'border-destructive bg-rose-50' : ''}`} 
+                  readOnly
+                  className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
                 />
                 {codeError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{codeError}</p>}
               </div>

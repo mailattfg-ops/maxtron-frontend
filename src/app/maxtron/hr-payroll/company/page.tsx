@@ -24,6 +24,7 @@ export default function CompanyInformationPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [licenseError, setLicenseError] = useState('');
   const [pcbError, setPcbError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   
   const licenseRegex = /^[A-Z0-9\-/]+$/;
 
@@ -119,6 +120,15 @@ export default function CompanyInformationPage() {
         }
     }
 
+    if (name === 'phone') {
+        const cleaned = value.replace(/\D/g, '');
+        if (cleaned && cleaned.length !== 10) {
+            setPhoneError('Mobile number must be exactly 10 digits');
+        } else {
+            setPhoneError('');
+        }
+    }
+
     setFormData({ ...formData, [name]: value });
   };
 
@@ -135,8 +145,8 @@ export default function CompanyInformationPage() {
       error('Please enter a valid email address.');
       return false;
     }
-    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
-      error('Phone number should be at least 10 digits.');
+    if (formData.phone && formData.phone.replace(/\D/g, '').length !== 10) {
+      error('Phone number must be exactly 10 digits.');
       return false;
     }
     if (formData.gst_no && formData.gst_no.length !== 15) {
@@ -258,6 +268,7 @@ export default function CompanyInformationPage() {
     setFormData({ ...emptyFormData });
     setLicenseError('');
     setPcbError('');
+    setPhoneError('');
   };
 
   const renderForm = () => (
@@ -299,7 +310,15 @@ export default function CompanyInformationPage() {
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone</label>
-                    <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX" className="h-11" />
+                    <Input 
+                        name="phone" 
+                        value={formData.phone} 
+                        onChange={handleInputChange} 
+                        maxLength={10}
+                        placeholder="10-digit mobile number" 
+                        className={`h-11 ${phoneError ? 'border-destructive bg-rose-50' : ''}`} 
+                    />
+                    {phoneError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{phoneError}</p>}
                 </div>
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">No. of Employees</label>

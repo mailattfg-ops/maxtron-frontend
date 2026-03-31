@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,6 +125,16 @@ export default function ExtrusionPage() {
     }
   };
 
+  useEffect(() => {
+    // Sync batch number if batches list updates while form is open (and not editing)
+    if (showForm && !editingId && batches.length > 0) {
+       const currentNo = formData.batch_number;
+       if (!currentNo || currentNo.includes('BAT-') && currentNo.length < 10 || currentNo === 'GENERATING...') {
+          resetForm(batches);
+       }
+    }
+  }, [batches, showForm, editingId]);
+
   const handleConsumptionSelect = (id: string) => {
     const consumption = consumptions.find(c => c.id === id);
     if (consumption) {
@@ -157,13 +167,52 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setBatches(data.data || []);
+        // Sort by date descending
+        const sorted = (data.data || []).sort((a: any, b: any) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setBatches(sorted);
       }
     } catch (err) {
       console.error('Error fetching batches:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = (latestBatches: any[] = batches) => {
+    if (loading && latestBatches.length === 0) {
+        setFormData((prev: any) => ({ ...prev, batch_number: 'GENERATING...' }));
+        return;
+    }
+
+    let nextBatchNo = 'BAT-000001';
+    const validBatches = latestBatches
+      .filter(b => b.batch_number && /^BAT-\d+$/i.test(b.batch_number))
+      .map(b => {
+        const parts = b.batch_number.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validBatches.length > 0) {
+      const max = Math.max(...validBatches);
+      nextBatchNo = `BAT-${String(max + 1).padStart(6, '0')}`;
+    }
+
+    setFormData({
+      batch_number: nextBatchNo,
+      product_id: '',
+      shift: 'Morning',
+      operator_id: '',
+      supervisor_id: '',
+      machine_no: '',
+      raw_material_consumed_qty: 0,
+      extrusion_output_qty: 0,
+      date: new Date().toISOString().split('T')[0],
+      company_id: currentCompanyId,
+      consumption_id: ''
+    });
   };
 
   const handleEdit = (b: any) => {
@@ -263,14 +312,8 @@ export default function ExtrusionPage() {
         success(editingId ? 'Production batch updated' : 'Production batch recorded');
         setShowForm(false);
         setEditingId(null);
-        setFormData({
-            ...formData,
-            batch_number: `BAT-${Date.now().toString().slice(-6)}`,
-            raw_material_consumed_qty: 0,
-            extrusion_output_qty: 0,
-            consumption_id: ''
-        });
         fetchBatches();
+        resetForm();
       } else {
         error(data.message);
       }
@@ -278,6 +321,15 @@ export default function ExtrusionPage() {
       error('Error saving batch');
     }
   };
+
+  const availableConsumptions = useMemo(() => {
+    // Collect all consumption_ids already used in batches
+    const usedConsumptionIds = batches.map(b => b.consumption_id).filter(id => !!id);
+    // Filter consumptions: unused OR explicitly selected in the current editing state
+    return consumptions.filter(c => 
+        !usedConsumptionIds.includes(c.id) || c.id === formData.consumption_id
+    );
+  }, [consumptions, batches, formData.consumption_id]);
 
   const filteredBatches = batches.filter(b => 
     b.batch_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,14 +350,7 @@ export default function ExtrusionPage() {
             <Button 
               onClick={() => {
                 setEditingId(null);
-                setFormData({
-                  ...formData,
-                  batch_number: `BAT-${Date.now().toString().slice(-6)}`,
-                  raw_material_consumed_qty: 0,
-                  extrusion_output_qty: 0,
-                  consumption_id: '',
-                  date: new Date().toISOString().split('T')[0]
-                });
+                resetForm();
                 setShowForm(true);
               }} 
               className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
@@ -418,7 +463,7 @@ export default function ExtrusionPage() {
                     <SelectValue placeholder="Select Consumption Record" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
-                    {consumptions.map(c => (
+                    {availableConsumptions.map(c => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
                       </SelectItem>
@@ -531,7 +576,7 @@ export default function ExtrusionPage() {
                       <span className="text-xs font-medium">{operator?.name || 'Unknown'}</span>
                     </div>
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-3 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     {canEdit && (
                       <Button 

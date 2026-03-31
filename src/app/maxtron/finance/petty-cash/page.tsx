@@ -35,12 +35,23 @@ export default function PettyCashPage() {
     const scrollRef = useRef<HTMLDivElement>(null);
     
     const [formData, setFormData] = useState({
+        voucher_no: '',
         date: new Date().toISOString().split('T')[0],
         category: 'Tea/Snacks',
         paid_to: '',
         amount: '',
         remarks: ''
     });
+
+    useEffect(() => {
+        // Sync voucher number if records update while modal is open (and not editing)
+        if (isModalOpen && !editingId && records.length > 0) {
+            const currentNo = formData.voucher_no;
+            if (!currentNo || currentNo === 'PCV-000001' || currentNo === 'GENERATING...') {
+                resetForm(records);
+            }
+        }
+    }, [records, isModalOpen, editingId]);
 
     const handleScroll = () => {
         if (scrollRef.current) {
@@ -73,12 +84,48 @@ export default function PettyCashPage() {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
-            if (data.success) setRecords(data.data);
+            if (data.success) {
+                // Sort by date/id descending
+                const sorted = (data.data || []).sort((a: any, b: any) => 
+                    new Date(b.date).getTime() - new Date(a.date).getTime()
+                );
+                setRecords(sorted);
+            }
         } catch (error) {
             toastError('Failed to fetch data');
         } finally {
             setLoading(false);
         }
+    };
+
+    const resetForm = (latestRecords: any[] = records) => {
+        if (loading && latestRecords.length === 0) {
+            setFormData(prev => ({ ...prev, voucher_no: 'GENERATING...' }));
+            return;
+        }
+
+        let nextNo = 'PCV-000001';
+        const validNos = latestRecords
+            .filter(r => r.voucher_no && /^PCV-\d+$/i.test(r.voucher_no))
+            .map(r => {
+                const parts = r.voucher_no.split('-');
+                return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+            })
+            .filter(n => !isNaN(n));
+
+        if (validNos.length > 0) {
+            const max = Math.max(...validNos);
+            nextNo = `PCV-${String(max + 1).padStart(6, '0')}`;
+        }
+
+        setFormData({
+            voucher_no: nextNo,
+            date: new Date().toISOString().split('T')[0],
+            category: 'Tea/Snacks',
+            paid_to: '',
+            amount: '',
+            remarks: ''
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -103,14 +150,8 @@ export default function PettyCashPage() {
                 toastSuccess(editingId ? 'Record updated' : 'Expense recorded');
                 setIsModalOpen(false);
                 setEditingId(null);
-                setFormData({
-                    date: new Date().toISOString().split('T')[0],
-                    category: 'Tea/Snacks',
-                    paid_to: '',
-                    amount: '',
-                    remarks: ''
-                });
                 fetchData();
+                resetForm();
             } else {
                 toastError(data.message);
             }
@@ -145,6 +186,7 @@ export default function PettyCashPage() {
 
     const handleEdit = (row: any) => {
         setFormData({
+            voucher_no: row.voucher_no,
             date: new Date(row.date).toISOString().split('T')[0],
             category: row.category,
             paid_to: row.paid_to,
@@ -158,13 +200,7 @@ export default function PettyCashPage() {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({
-            date: new Date().toISOString().split('T')[0],
-            category: 'Tea/Snacks',
-            paid_to: '',
-            amount: '',
-            remarks: ''
-        });
+        resetForm();
     };
 
     return (
@@ -241,6 +277,14 @@ export default function PettyCashPage() {
                                 </div>
                             )}
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">Voucher No</label>
+                                    <Input
+                                        value={formData.voucher_no}
+                                        readOnly
+                                        className="h-10 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold cursor-not-allowed"
+                                    />
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-700">Date</label>

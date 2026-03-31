@@ -87,7 +87,8 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Customer Ledger", path: "/maxtron/finance/reports/customer-ledger", permissionKey: "fin_collection_view" },
             { title: "Supplier Ledger", path: "/maxtron/finance/reports/supplier-ledger", permissionKey: "fin_payment_view" },
             { title: "Financial Summary", path: "/maxtron/finance/reports/summary", permissionKey: "fin_petty_cash_view" },
-            { title: "Period Wise Scorecard", path: "/maxtron/finance/reports/scorecard", permissionKey: "fin_collection_view" }
+            { title: "Period Wise Scorecard", path: "/maxtron/finance/reports/scorecard", permissionKey: "fin_collection_view" },
+            { title: "Miscellaneous Expenses", path: "/maxtron/finance/reports/miscellaneous-expenses", permissionKey: "fin_petty_cash_view" }
         ]
     },
     {
