@@ -105,6 +105,7 @@ export default function EmployeeInformationPage() {
     company_id: '',
     has_license: false,
     has_passport: false,
+    has_insurance: false,
     phone: '',
     aadhaar: '',
     type: '',
@@ -113,10 +114,12 @@ export default function EmployeeInformationPage() {
     family_details: '',
     category_id: '',
     basic_salary: 0,
+    branch_id: '',
     employee_qualifications: [] as any[],
     employee_experiences: [] as any[],
     employee_certificates: [] as any[],
     employee_licenses: [] as any[],
+    employee_insurances: [] as any[],
     employee_passports: [] as any[],
     employee_loans: [] as any[],
     employee_targets: [] as any[],
@@ -125,6 +128,7 @@ export default function EmployeeInformationPage() {
   });
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
 
   const fetchCategories = async (coId?: string) => {
     try {
@@ -164,6 +168,27 @@ export default function EmployeeInformationPage() {
     }
   };
 
+  const fetchBranches = async (coId?: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      // Hardcoding 'keil' here to ensure it uses the correct operations module
+      const url = coId
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/keil/operations/branches?company_id=${coId}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/keil/operations/branches`;
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBranches(Array.isArray(data.data) ? data.data : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch branches', error);
+      setBranches([]);
+    }
+  };
+
   const fetchCompanies = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -183,10 +208,12 @@ export default function EmployeeInformationPage() {
           if (activeCo) {
             fetchCategories(activeCo.id);
             fetchUserTypes(activeCo.id);
+            fetchBranches(activeCo.id);
             fetchEmployees(activeCo.id);
           } else {
             fetchCategories();
             fetchUserTypes();
+            fetchBranches();
             fetchEmployees();
           }
       }
@@ -334,6 +361,28 @@ export default function EmployeeInformationPage() {
       if (field === 'issue_date' && list[index].expiry_date && value > list[index].expiry_date) {
         error("Issue date cannot be after expiry date.");
         return;
+      }
+    }
+
+    // Driver License Validations (Keil-Specific Kerala Formats)
+    if (collection === 'employee_licenses') {
+      if (field === 'license_number') {
+        // Enforce Uppercase and sanitize special characters, allow hyphens and parentheses
+        value = value.toUpperCase().replace(/[^A-Z0-9 /()-]/g, '').slice(0, 25);
+      }
+      if (field === 'class_of_vehicle') {
+        // Enforce Uppercase (e.g. LMV, MCWG) and allow hyphens and parentheses
+        value = value.toUpperCase().replace(/[^A-Z, ()-]/g, '').slice(0, 30);
+      }
+      if (field === 'expiry_date' && value) {
+        const selectedDate = new Date(value);
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+        
+        if (selectedDate < todayDate) {
+          error("Driver License/Permit has already expired. Please enter a valid future expiry date.");
+          // We don't return here to allow them to correct it, but we show error
+        }
       }
     }
 
@@ -528,9 +577,10 @@ export default function EmployeeInformationPage() {
             { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
           ],
-          company_id: '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '',
+          company_id: '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '',
           guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
-          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
+          branch_id: '',
+          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
         setActiveTab('personal');
         setErrors({});
@@ -546,6 +596,18 @@ export default function EmployeeInformationPage() {
 
   const editEmployee = (emp: any) => {
     setEditingId(emp.id);
+    
+    // Ensure we have at least one license entry if the employee is marked as a holder
+    const hasLicense = !!emp.has_license;
+    const hasInsurance = !!emp.has_insurance;
+    const licenses = (emp.employee_licenses && emp.employee_licenses.length > 0) 
+      ? emp.employee_licenses 
+      : (hasLicense ? [{ license_number: '', expiry_date: '', class_of_vehicle: '' }] : []);
+
+    const insurances = (emp.employee_insurances && emp.employee_insurances.length > 0) 
+      ? emp.employee_insurances 
+      : (hasInsurance ? [{ policy_number: '', provider: '', insurance_type: '', expiry_date: '', premium_amount: 0, pdf_url: '' }] : []);
+
     setFormData({
       employee_code: emp.employee_code || '',
       name: emp.name || '',
@@ -557,25 +619,28 @@ export default function EmployeeInformationPage() {
         emp.addresses?.find((a: any) => a.address_type === 'Permanent') || { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
       ],
       company_id: emp.company_id || '',
-      has_license: emp.has_license || false,
-      has_passport: emp.has_passport || false,
+      has_license: hasLicense,
+      has_passport: !!emp.has_passport,
+      has_insurance: hasInsurance,
       phone: emp.phone || '',
       aadhaar: emp.aadhaar || '',
       type: emp.type || '',
       guarantor_name: emp.guarantor_name || '',
-      is_married: emp.is_married || false,
+      is_married: !!emp.is_married,
       family_details: emp.family_details || '',
       category_id: emp.category_id || '',
       basic_salary: Number(emp.basic_salary) || 0,
       employee_qualifications: emp.employee_qualifications || [],
       employee_experiences: emp.employee_experiences || [],
       employee_certificates: emp.employee_certificates || [],
-      employee_licenses: emp.employee_licenses || [],
+      employee_licenses: licenses,
+      employee_insurances: insurances,
       employee_passports: emp.employee_passports || [],
       employee_loans: emp.employee_loans || [],
       employee_targets: emp.employee_targets || [],
       employee_suspenses: emp.employee_suspenses || [],
-      employee_incentive_slabs: emp.employee_incentive_slabs || []
+      employee_incentive_slabs: emp.employee_incentive_slabs || [],
+      branch_id: emp.branch_id || ''
     });
     setIsViewMode(false);
     setActiveTab('personal');
@@ -753,7 +818,7 @@ export default function EmployeeInformationPage() {
                         { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                         { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                       ],
-                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, branch_id: '', employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                     });
                     setIsViewMode(false);
                     setErrors({});
@@ -1087,6 +1152,36 @@ export default function EmployeeInformationPage() {
                   </Select>
                   {errors.type && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.type}</p>}
                 </div>
+                
+                <div className="space-y-4 pt-6 border-t border-slate-100">
+                  <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center">
+                    <TrendingUp className="w-4 h-4 mr-2" /> Branch & Location Assignment
+                  </h3>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Assigned Branch (Operational)</label>
+                    <Select 
+                      value={formData.branch_id} 
+                      onValueChange={(val) => updateFormData('branch_id', val)}
+                      disabled={isViewMode}
+                    >
+                      <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
+                        <SelectValue placeholder={branches.length === 0 ? "No Branches Found (Setup Registry)" : "Select Operational Branch"} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200">
+                        {branches.length > 0 ? (
+                           branches.map((b) => (
+                             <SelectItem key={b.id} value={b.id}>{b.branch_name} ({b.branch_code})</SelectItem>
+                           ))
+                        ) : (
+                           <div className="p-4 text-center space-y-2">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase">Registry Empty</p>
+                              <p className="text-[9px] text-muted-foreground italic">Please register branches in <br/> Operations &gt; Branch Registry first.</p>
+                           </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
             </CardContent>
           </Card>
         </div>
@@ -1232,22 +1327,218 @@ export default function EmployeeInformationPage() {
                   
                   {/* Licenses & Passports */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <Checkbox checked={formData.has_license} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_license: !!checked})} disabled={isViewMode} />
-                            <span>License Holder (YES/NO)</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <label className="flex items-center space-x-3 font-bold text-slate-700 cursor-pointer">
+                            <Checkbox 
+                              checked={formData.has_license} 
+                              onCheckedChange={(checked) => {
+                                if (!isViewMode) {
+                                  const isChecked = !!checked;
+                                  const updates: any = { has_license: isChecked };
+                                  if (isChecked && (!formData.employee_licenses || formData.employee_licenses.length === 0)) {
+                                    updates.employee_licenses = [{ license_number: '', expiry_date: '', class_of_vehicle: '' }];
+                                  }
+                                  setFormData({...formData, ...updates});
+                                }
+                              }} 
+                              disabled={isViewMode} 
+                            />
+                            <span className="uppercase tracking-widest text-xs">License Holder (YES/NO)</span>
                         </label>
                       </div>
+
+                      {formData.has_license && (
+                        <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
+                           <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1">Driver License / Kerala Permit Details</h4>
+                           
+                           {/* Show exactly one license record */}
+                           <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-4 shadow-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">License Number</label>
+                                    <Input 
+                                      placeholder="KL-40-202X-XXXX..." 
+                                      className="h-10 text-sm font-mono font-bold"
+                                      value={formData.employee_licenses[0]?.license_number || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'license_number', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Expiry Date</label>
+                                    <Input 
+                                      type="date"
+                                      className="h-10 text-sm font-bold"
+                                      value={formData.employee_licenses[0]?.expiry_date?.split('T')[0] || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'expiry_date', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase">Vehicle Class (e.g. MCWG, LMV, HPMV, HGMV)</label>
+                                <Input 
+                                  placeholder="e.g. MCWG, LMV, HPMV" 
+                                  className="h-10 text-sm font-bold"
+                                  value={formData.employee_licenses[0]?.class_of_vehicle || ''}
+                                  onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'class_of_vehicle', e.target.value)}
+                                  disabled={isViewMode}
+                                />
+                              </div>
+                           </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <label className="flex items-center space-x-3 font-bold text-slate-700 cursor-pointer">
                             <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
-                            <span>Passport Holder (YES/NO)</span>
+                            <span className="uppercase tracking-widest text-xs">Passport Holder (YES/NO)</span>
                         </label>
                       </div>
+
+                      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <label className="flex items-center space-x-3 font-bold text-slate-700 cursor-pointer">
+                            <Checkbox 
+                               checked={formData.has_insurance} 
+                               onCheckedChange={(checked) => {
+                                 if (!isViewMode) {
+                                   const isChecked = !!checked;
+                                   const updates: any = { has_insurance: isChecked };
+                                   if (isChecked && (!formData.employee_insurances || formData.employee_insurances.length === 0)) {
+                                     updates.employee_insurances = [{ policy_number: '', provider: '', insurance_type: '', expiry_date: '', premium_amount: 0, pdf_url: '' }];
+                                   }
+                                   setFormData({...formData, ...updates});
+                                 }
+                               }} 
+                               disabled={isViewMode} 
+                            />
+                            <span className="uppercase tracking-widest text-xs">Insurance Coverage (YES/NO)</span>
+                        </label>
+                      </div>
+
+                      {formData.has_insurance && (
+                        <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
+                           <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-widest ml-1">Insurance Policy Details</h4>
+                           <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-4 shadow-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Policy Number</label>
+                                    <Input 
+                                      placeholder="POL-XXXXX" 
+                                      className="h-10 text-sm font-bold"
+                                      value={formData.employee_insurances[0]?.policy_number || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'policy_number', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Provider / Company</label>
+                                    <Input 
+                                      placeholder="e.g. LIC, Star Health" 
+                                      className="h-10 text-sm font-bold"
+                                      value={formData.employee_insurances[0]?.provider || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'provider', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Insurance Type</label>
+                                    <Select 
+                                      value={formData.employee_insurances[0]?.insurance_type || ''} 
+                                      onValueChange={(val) => handleNestedRowChange('employee_insurances', 0, 'insurance_type', val)}
+                                      disabled={isViewMode}
+                                    >
+                                      <SelectTrigger className="h-10 text-xs font-bold">
+                                        <SelectValue placeholder="Select Type" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white">
+                                        <SelectItem value="MEDICAL">Medical / Health</SelectItem>
+                                        <SelectItem value="ACCIDENT">Accident Coverage</SelectItem>
+                                        <SelectItem value="LIFE">Life Insurance</SelectItem>
+                                        <SelectItem value="ESI">ESI Coverage</SelectItem>
+                                        <SelectItem value="OTHER">Other / Misc</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Renewal / Expiry Date</label>
+                                    <Input 
+                                      type="date"
+                                      className="h-10 text-sm font-bold"
+                                      value={formData.employee_insurances[0]?.expiry_date?.split('T')[0] || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'expiry_date', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Premium Amount (₹)</label>
+                                    <Input 
+                                      type="number"
+                                      placeholder="0.00"
+                                      className="h-10 text-sm font-bold"
+                                      value={formData.employee_insurances[0]?.premium_amount || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'premium_amount', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase">Insurance Document (PDF)</label>
+                                    <div className="flex gap-2">
+                                      <div className="relative flex-1">
+                                        <Input 
+                                          type="file"
+                                          accept="application/pdf"
+                                          className="h-10 text-[10px] pr-20 pt-2 pb-2"
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              if (file.size > 2 * 1024 * 1024) {
+                                                alert("File size exceeds 2MB limit.");
+                                                return;
+                                              }
+                                              const reader = new FileReader();
+                                              reader.onloadend = () => {
+                                                handleNestedRowChange('employee_insurances', 0, 'pdf_url', reader.result as string);
+                                              };
+                                              reader.readAsDataURL(file);
+                                            }
+                                          }}
+                                          disabled={isViewMode}
+                                        />
+                                        {formData.employee_insurances[0]?.pdf_url && (
+                                          <div className="absolute right-2 top-2">
+                                            <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">UPLOADED</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {formData.employee_insurances[0]?.pdf_url && (
+                                        <Button 
+                                          type="button"
+                                          variant="outline" 
+                                          className="h-10 px-3 border-rose-100 text-rose-600 hover:bg-rose-50"
+                                          onClick={() => {
+                                            const win = window.open();
+                                            if (win) {
+                                              win.document.write(`<iframe src="${formData.employee_insurances[0].pdf_url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                                            }
+                                          }}
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

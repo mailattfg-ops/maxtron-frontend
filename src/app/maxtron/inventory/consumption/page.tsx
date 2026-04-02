@@ -462,10 +462,10 @@ export default function ConsumptionPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="Extrusion">Extrusion</SelectItem>
-                    <SelectItem value="Printing">Printing</SelectItem>
+                    {/* <SelectItem value="Printing">Printing</SelectItem>
                     <SelectItem value="Cutting">Cutting</SelectItem>
                     <SelectItem value="Slitting">Slitting</SelectItem>
-                    <SelectItem value="Sealing">Sealing</SelectItem>
+                    <SelectItem value="Sealing">Sealing</SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>

@@ -63,6 +63,7 @@ export default function CustomerOrderEntry() {
     order_date: new Date().toISOString().split('T')[0],
     remarks: '',
     company_id: '',
+    section_type: 'customer order',
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }
     ]
@@ -193,6 +194,7 @@ export default function CustomerOrderEntry() {
       order_date: order.order_date.split('T')[0],
       remarks: order.remarks || '',
       company_id: order.company_id,
+      section_type: order.section_type || 'customer order',
       items: order.items.map((i: any) => ({
         product_id: i.product_id,
         quantity: i.quantity,
@@ -307,6 +309,7 @@ export default function CustomerOrderEntry() {
             order_date: new Date().toISOString().split('T')[0],
             remarks: '',
             company_id: currentCompanyId,
+            section_type: 'customer order',
             items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
         });
         fetchOrders();
@@ -429,7 +432,7 @@ export default function CustomerOrderEntry() {
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Calendar className="w-3 h-3" /> Order Date
@@ -440,6 +443,21 @@ export default function CustomerOrderEntry() {
                     onChange={e => setFormData({...formData, order_date: e.target.value})}
                     className="focus:ring-2 focus:ring-primary/20 border-slate-200"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1 text-primary">
+                    <Info className="w-3 h-3" /> Section Type
+                  </label>
+                  <Select value={formData.section_type} onValueChange={(val) => setFormData({...formData, section_type: val})}>
+                    <SelectTrigger className="w-full border-primary/20 bg-primary/5 shadow-sm font-bold text-primary">
+                      <SelectValue placeholder="Choose Type..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="customer sample">Customer Sample</SelectItem>
+                      <SelectItem value="customer order">Customer Order</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
@@ -633,7 +651,7 @@ export default function CustomerOrderEntry() {
         <TableView
           title="Recent Orders"
           description="Log of latest customer orders and their status."
-          headers={['Order No', 'Date', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
+          headers={['Order No', 'Date', 'Type', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
           data={orders}
           loading={loading}
           searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
@@ -641,6 +659,13 @@ export default function CustomerOrderEntry() {
             <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">
               <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
               <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
+              <td className="px-6 py-4">
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                    o.section_type === 'customer sample' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
+                    {o.section_type || 'Standard'}
+                  </span>
+              </td>
               <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-800">{o.customers?.customer_name}</span>

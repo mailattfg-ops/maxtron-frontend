@@ -60,7 +60,7 @@ export default function CuttingSealingPage() {
     date: new Date().toISOString().split('T')[0],
     remarks: '',
     company_id: '',
-    items: [] as { product_id: string; quantity: number }[]
+    items: [] as { product_id: string; quantity: number; bags_per_kg: number; micron_size: string }[]
   });
 
   useEffect(() => {
@@ -145,7 +145,9 @@ export default function CuttingSealingPage() {
       company_id: c.company_id,
       items: c.items?.map((it: any) => ({
           product_id: it.product_id,
-          quantity: parseFloat(it.quantity) || 0
+          quantity: parseFloat(it.quantity) || 0,
+          bags_per_kg: parseFloat(it.bags_per_kg) || 0,
+          micron_size: it.micron_size || ''
       })) || []
     });
     setShowForm(true);
@@ -180,7 +182,7 @@ export default function CuttingSealingPage() {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product_id: '', quantity: 0 }]
+      items: [...formData.items, { product_id: '', quantity: 0, bags_per_kg: 0, micron_size: '' }]
     });
   };
 
@@ -292,7 +294,8 @@ export default function CuttingSealingPage() {
         if (usedBatchIds.includes(b.id) && b.id !== formData.batch_id) return false;
 
         const color = (b.finished_products?.color || '').toUpperCase();
-        const requiresPrinting = printingRequiredColors.includes(color);
+        // Use the new requires_printing field, with a fallback to the old color-based logic for historical data
+        const requiresPrinting = b.requires_printing ?? ['BLUE', 'RED', 'YELLOW'].includes(color);
         
         if (requiresPrinting) {
             // Must have a printing record
@@ -442,16 +445,40 @@ export default function CuttingSealingPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="w-full md:w-48 space-y-1">
+                        
+                        <div className="w-full md:w-40 space-y-1">
                             <label className="text-[10px] font-bold text-slate-500 uppercase">Qty Sealed (Kg)</label>
                             <Input 
                                 type="number" 
                                 min={0}
-                                className="h-9"
+                                className="h-9 font-bold"
                                 value={item.quantity === 0 ? '' : item.quantity} 
                                 onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} 
                             />
                         </div>
+
+                        <div className="w-full md:w-32 space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Bags/Kg</label>
+                            <Input 
+                                type="number" 
+                                min={0}
+                                className="h-9"
+                                placeholder="0.0"
+                                value={item.bags_per_kg === 0 ? '' : item.bags_per_kg} 
+                                onChange={e => handleItemChange(idx, 'bags_per_kg', parseFloat(e.target.value) || 0)} 
+                            />
+                        </div>
+
+                        <div className="w-full md:w-32 space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Micron</label>
+                            <Input 
+                                className="h-9"
+                                placeholder="Size"
+                                value={item.micron_size} 
+                                onChange={e => handleItemChange(idx, 'micron_size', e.target.value)} 
+                            />
+                        </div>
+
                         <div className="flex items-end pb-1">
                             <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="text-rose-500 hover:bg-rose-50">
                                 <Trash className="w-4 h-4" />
@@ -531,9 +558,12 @@ export default function CuttingSealingPage() {
               <td className="px-6 py-4 font-mono text-xs min-w-[120px]">{c.production_batches?.batch_number}</td>
               <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-1">
-                      {c.items?.map((it: any, i: number) => (
-                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
-                              {it.finished_products?.product_name}: {it.quantity}Kg
+                       {c.items?.map((it: any, i: number) => (
+                          <span key={i} className="inline-flex flex-col px-2 py-1 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                              <span className="font-bold">{it.finished_products?.product_name}</span>
+                              <span className="text-[8px] opacity-70">
+                                {it.quantity}Kg · {it.bags_per_kg} B/Kg · {it.micron_size || 'N/A'} Mic
+                              </span>
                           </span>
                       )) || <span className="text-slate-300 text-xs">No items</span>}
                   </div>

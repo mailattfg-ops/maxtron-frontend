@@ -75,13 +75,13 @@ export default function VehicleDailyLogPage() {
         log_date: new Date().toISOString().split('T')[0],
         start_km: '',
         end_km: '',
-        fuel_qty: '0',
+        fuel_qty: '',
         route_id: '',
         has_complaint: false,
         complaint_type: '',
         workshop_in_time: '',
         workshop_out_time: '',
-        bill_amount: '0',
+        bill_amount: '',
         remarks: '',
         company_id: ''
     });
@@ -183,12 +183,12 @@ export default function VehicleDailyLogPage() {
             return;
         }
 
-        if (parseFloat(formData.fuel_qty) < 0) {
+        if (formData.fuel_qty !== '' && parseFloat(formData.fuel_qty) < 0) {
             error("Fuel quantity cannot be negative.");
             return;
         }
 
-        if (formData.has_complaint && parseFloat(formData.bill_amount) < 0) {
+        if (formData.has_complaint && formData.bill_amount !== '' && parseFloat(formData.bill_amount) < 0) {
             error("Workshop Bill Amount cannot be negative.");
             return;
         }
@@ -210,6 +210,8 @@ export default function VehicleDailyLogPage() {
 
         const payload = {
             ...formData,
+            fuel_qty: formData.fuel_qty || 0,
+            bill_amount: formData.bill_amount || 0,
             workshop_in_time: formData.workshop_in_time || null,
             workshop_out_time: formData.workshop_out_time || null,
             complaint_type: formData.complaint_type || null
@@ -275,7 +277,7 @@ export default function VehicleDailyLogPage() {
             complaint_type: l.complaint_type || '',
             workshop_in_time: l.workshop_in_time ? new Date(l.workshop_in_time).toISOString().slice(0, 16) : '',
             workshop_out_time: l.workshop_out_time ? new Date(l.workshop_out_time).toISOString().slice(0, 16) : '',
-            bill_amount: l.bill_amount ? l.bill_amount.toString() : '0',
+            bill_amount: l.bill_amount ? l.bill_amount.toString() : '',
             remarks: l.remarks || '',
             company_id: l.company_id
         });
@@ -288,13 +290,13 @@ export default function VehicleDailyLogPage() {
             log_date: new Date().toISOString().split('T')[0],
             start_km: '',
             end_km: '',
-            fuel_qty: '0',
+            fuel_qty: '',
             route_id: '',
             has_complaint: false,
             complaint_type: '',
             workshop_in_time: '',
             workshop_out_time: '',
-            bill_amount: '0',
+            bill_amount: '',
             remarks: '',
             company_id: currentCompanyId
         });

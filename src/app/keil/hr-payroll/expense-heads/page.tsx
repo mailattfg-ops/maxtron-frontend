@@ -40,12 +40,25 @@ export default function ExpenseHeadsPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         head_code: '',
         head_name: '',
         company_id: ''
     });
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, value } = e.target;
+        if (name === 'head_code') {
+            // Uppercase, Alphanumeric + Hyphen/Underscore, Max 15
+            value = value.toUpperCase().replace(/[^A-Z0-9-_]/g, '').slice(0, 15);
+        } else if (name === 'head_name') {
+            // Letters, Numbers, Space, Hyphen, Ampersand, Max 50
+            value = value.replace(/[^a-zA-Z0-9\s&\-]/g, '').slice(0, 50);
+        }
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -105,12 +118,25 @@ export default function ExpenseHeadsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.head_name) {
-            error("Please enter the name of the Expense Taxonomy Head.");
+        if (!formData.head_code || formData.head_code.length < 2) {
+            error("Head Code is required and should be at least 2 characters.");
+            return;
+        }
+
+        if (!formData.head_name || formData.head_name.length < 3) {
+            error("Head Name is required and should be at least 3 characters.");
+            return;
+        }
+
+        // Additional regex validation for extra safety
+        const codeRegex = /^[A-Z0-9-_]+$/;
+        if (!codeRegex.test(formData.head_code)) {
+            error("Head Code can only contain Uppercase Letters, Numbers, Hyphens, and Underscores.");
             return;
         }
 
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         
         try {
             const url = editingId ? `${HEADS_API}/${editingId}` : HEADS_API;
@@ -151,6 +177,8 @@ export default function ExpenseHeadsPage() {
             }
         } catch (err: any) {
             error(err.message || 'An error occurred');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -219,22 +247,22 @@ export default function ExpenseHeadsPage() {
     );
 
     return (
-        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 min-h-screen">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-primary/5">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-2 md:gap-3">
-                        <Coins className="w-8 h-8 md:w-10 md:h-10 text-rose-600" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight flex items-center gap-2 md:gap-3 font-heading">
+                        <Coins className="w-8 h-8 md:w-10 md:h-10 text-primary" />
                         Classifications
                     </h1>
-                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium italic">
                         Financial Administration
                     </p>
                 </div>
                 {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)}
-                        className="w-full md:w-auto bg-rose-600 hover:bg-rose-700 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-10 md:h-12 px-6 md:px-8 shadow-lg shadow-rose-100"
+                        className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs h-10 md:h-11 px-6 md:px-8 shadow-lg shadow-primary/20 transition-all active:scale-95"
                     >
                         <Plus className="w-4 h-4 mr-2" /> Define Head
                     </Button>
@@ -243,13 +271,13 @@ export default function ExpenseHeadsPage() {
 
             {/* Content Area */}
              {isFormOpen ? (
-                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white animate-in slide-in-from-bottom-8 duration-500">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 flex flex-row items-center justify-between">
+                <Card className="border-primary/20 shadow-xl rounded-xl overflow-hidden bg-white animate-in slide-in-from-bottom-4 duration-500">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg md:text-xl font-black uppercase tracking-tighter text-slate-800 italic">
+                            <CardTitle className="text-lg md:text-xl font-bold text-primary">
                                 {editingId ? 'Modify Head' : 'New Head'}
                             </CardTitle>
-                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            <CardDescription className="text-xs md:text-sm font-medium text-muted-foreground mt-1">
                                 Category definition
                             </CardDescription>
                         </div>
@@ -260,7 +288,7 @@ export default function ExpenseHeadsPage() {
                                 setIsFormOpen(false);
                                 resetForm();
                             }}
-                            className="rounded-xl hover:bg-rose-50 hover:text-rose-600"
+                            className="rounded-full hover:bg-primary/10 hover:text-primary"
                         >
                             <X className="w-5 h-5" />
                         </Button>
@@ -269,50 +297,70 @@ export default function ExpenseHeadsPage() {
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Hash className="w-4 h-4 text-emerald-500" /> Identifier Code
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Hash className="w-4 h-4 text-primary" /> Identifier Code
                                     </label>
                                     <Input 
+                                        name="head_code"
                                         value={formData.head_code}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, head_code: e.target.value }))}
-                                        className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-rose-500"
+                                        onChange={handleInputChange}
+                                        className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 focus:ring-primary/20"
                                         placeholder="e.g. TRV-01"
+                                        maxLength={15}
                                         required
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Coins className="w-4 h-4 text-primary/80" /> Category Name
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Coins className="w-4 h-4 text-primary" /> Category Name
                                     </label>
                                     <Input 
+                                        name="head_name"
                                         value={formData.head_name}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, head_name: e.target.value }))}
-                                        className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-rose-500"
+                                        onChange={handleInputChange}
+                                        className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 focus:ring-primary/20"
                                         placeholder="e.g. Travel & Logistics"
+                                        maxLength={50}
                                         required
                                     />
                                 </div>
                             </div>
                             
-                             <div className="flex justify-end pt-6 border-t border-slate-100">
-                                <Button type="submit" className="w-full md:w-auto bg-slate-900 hover:bg-rose-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-12 md:h-14 px-10 shadow-xl transition-colors duration-300">
-                                    <Save className="w-4 h-4 mr-3" />
-                                    {editingId ? 'Update Configuration' : 'Commit Configuration'}
+                             <div className="flex justify-end pt-6 border-t border-slate-100 gap-3">
+                                <Button 
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setIsFormOpen(false);
+                                        resetForm();
+                                    }}
+                                    className="h-11 px-8 rounded-full font-bold uppercase tracking-wider text-xs hover:bg-rose-50 hover:text-rose-600"
+                                >
+                                    Discard
+                                </Button>
+                                 <Button 
+                                    type="submit" 
+                                    disabled={submitting}
+                                    className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white rounded-full font-bold uppercase tracking-wider text-xs h-11 px-10 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                                            SAVING...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-3" />
+                                            {editingId ? 'Update Configuration' : 'Commit Configuration'}
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Taxonomies</CardTitle>
-                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Currently active expense categories.
-                            </CardDescription>
-                        </div>
-                    </CardHeader> */}
+                <Card className="border-primary/20 shadow-xl rounded-xl overflow-hidden bg-white">
                     <CardContent className="p-0">
                         <TableView 
                             title="Currently active expense categories."
@@ -322,8 +370,8 @@ export default function ExpenseHeadsPage() {
                             loading={loading}
                             renderRow={(head: any) => (
                                 <tr key={head.id} className="group hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0">
-                                    <td className="px-8 py-6 font-black text-slate-600 text-sm">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs uppercase tracking-widest border border-emerald-100">
+                                    <td className="px-8 py-6 font-bold text-slate-600 text-sm">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-bold text-xs uppercase tracking-widest border border-primary/10">
                                             {head.head_code}
                                         </div>
                                     </td>

@@ -51,6 +51,24 @@ export default function RouteRegistryPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, value } = e.target;
+        
+        if (name === 'route_name') {
+            // Letters, Numbers, Spaces, Hyphen (Max 50)
+            value = value.replace(/[^a-zA-Z0-9\s-]/g, '').slice(0, 50);
+        } else if (name === 'route_code') {
+            // Uppercase Alphanumeric, Hyphen (Max 10)
+            value = value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 10);
+        } else if (name === 'route_type') {
+            // Letters, Spaces (Max 50)
+            value = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 50);
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     const [formData, setFormData] = useState({
         route_name: '',
@@ -128,23 +146,23 @@ export default function RouteRegistryPage() {
             return;
         }
 
-        if (routeCode.length < 2 || routeCode.length > 10) {
-            error("Route Code must be 2-10 characters.");
+        if (routeCode.length < 2) {
+            error("Route Code must be at least 2 characters.");
             return;
         }
 
-        const nameRegex = /^[a-zA-Z0-9\s-]+$/;
-        if (!nameRegex.test(routeName) || !nameRegex.test(routeCode)) {
-            error("Only letters, numbers, spaces, and hyphens are allowed in names/codes.");
+        if (routeName.length < 3) {
+            error("Route Name must be at least 3 characters.");
             return;
         }
 
         if (!formData.branch_id) {
-            error("Please select an organizational Branch for this logistical route.");
+            error("Please select an organization Branch for this logistical route.");
             return;
         }
 
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         
         try {
             const url = editingId ? `${ROUTE_API}/${editingId}` : ROUTE_API;
@@ -175,6 +193,8 @@ export default function RouteRegistryPage() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -271,15 +291,38 @@ export default function RouteRegistryPage() {
                         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Code className="w-4 h-4 text-primary" /> Route Code</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="RT-A1" value={formData.route_code} onChange={e => setFormData({ ...formData, route_code: e.target.value })} />
+                                <Input 
+                                    name="route_code"
+                                    required 
+                                    className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                    placeholder="RT-A1" 
+                                    maxLength={10}
+                                    value={formData.route_code} 
+                                    onChange={handleInputChange} 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapIcon className="w-4 h-4 text-primary" /> Route Name</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Main Highway Route" value={formData.route_name} onChange={e => setFormData({ ...formData, route_name: e.target.value })} />
+                                <Input 
+                                    name="route_name"
+                                    required 
+                                    className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                    placeholder="Main Highway Route" 
+                                    maxLength={50}
+                                    value={formData.route_name} 
+                                    onChange={handleInputChange} 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Route Type</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Urban / Rural / Industrial" value={formData.route_type} onChange={e => setFormData({ ...formData, route_type: e.target.value })} />
+                                <Input 
+                                    name="route_type"
+                                    className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                    placeholder="Urban / Rural / Industrial" 
+                                    maxLength={50}
+                                    value={formData.route_type} 
+                                    onChange={handleInputChange} 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
@@ -296,7 +339,19 @@ export default function RouteRegistryPage() {
                             </div>
                             <div className="col-span-full pt-4 flex justify-end gap-3 border-t border-primary/10">
                                 <Button type="button" variant="outline" className="rounded-full px-6" onClick={() => { setIsFormOpen(false); resetForm(); }}>Cancel</Button>
-                                <Button type="submit" className="px-8 bg-primary hover:bg-primary/90 text-white rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Route' : 'Create Route'}</Button>
+                                <Button type="submit" disabled={submitting} className="px-8 bg-primary hover:bg-primary/90 text-white rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider">
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            SAVING...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-2" /> 
+                                            {editingId ? 'Update Route' : 'Create Route'}
+                                        </>
+                                    )}
+                                </Button>
                             </div>
                         </form>
                     </CardContent>

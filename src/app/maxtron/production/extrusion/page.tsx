@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
   Plus, Search, Edit, Trash2, X, Save, 
   Settings, Calendar, Hash, User, 
-  Zap, Box, Layers, Activity, Clock
+  Zap, Box, Layers, Activity, Clock, SquareCheck
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
@@ -58,7 +58,8 @@ export default function ExtrusionPage() {
     extrusion_output_qty: 0,
     date: new Date().toISOString().split('T')[0],
     company_id: '',
-    consumption_id: ''
+    consumption_id: '',
+    requires_printing: true
   });
 
   const [consumptions, setConsumptions] = useState<any[]>([]);
@@ -211,7 +212,8 @@ export default function ExtrusionPage() {
       extrusion_output_qty: 0,
       date: new Date().toISOString().split('T')[0],
       company_id: currentCompanyId,
-      consumption_id: ''
+      consumption_id: '',
+      requires_printing: true
     });
   };
 
@@ -228,7 +230,8 @@ export default function ExtrusionPage() {
       extrusion_output_qty: b.extrusion_output_qty,
       date: b.date.split('T')[0],
       company_id: b.company_id,
-      consumption_id: b.consumption_id
+      consumption_id: b.consumption_id,
+      requires_printing: b.requires_printing ?? true
     });
     setShowForm(true);
   };
@@ -385,7 +388,15 @@ export default function ExtrusionPage() {
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                    <Box className="w-4 h-4 text-primary" /> Finished Product <span className="text-rose-500">*</span>
                 </label>
-                <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
+                <Select 
+                  value={formData.product_id} 
+                  onValueChange={(val) => {
+                    const product = products.find(p => p.id === val);
+                    const color = (product?.color || '').toUpperCase();
+                    const requiresPrinting = !(color === 'BLACK' || color === 'GREEN');
+                    setFormData({ ...formData, product_id: val, requires_printing: requiresPrinting });
+                  }}
+                >
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select Finished Product" />
                   </SelectTrigger>
@@ -395,6 +406,23 @@ export default function ExtrusionPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-4 grid items-end mb-0 gap-2 pb-0">
+                <label htmlFor="requires_printing" className="text-sm font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0">
+                    <SquareCheck className="w-4 h-4 text-primary" /> Printing
+                </label>
+                <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 h-10 w-full">
+                  <input 
+                    type="checkbox" 
+                    id="requires_printing"
+                    className="w-4 h-4 accent-primary"
+                    checked={formData.requires_printing}
+                    onChange={e => setFormData({ ...formData, requires_printing: e.target.checked })}
+                  />
+                  <label htmlFor="requires_printing" className="text-sm font-bold text-slate-700 cursor-pointer flex-1">
+                    Requires Printing Process?
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">

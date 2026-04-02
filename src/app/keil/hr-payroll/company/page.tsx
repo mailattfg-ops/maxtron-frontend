@@ -84,14 +84,23 @@ export default function CompanyInformationPage() {
     let { name, value, type } = e.target as HTMLInputElement;
 
     // Auto-capitalize certain fields
-    if (name === 'company_code' || name === 'gst_no') {
+    if (name === 'company_code' || name === 'gst_no' || name === 'license_no' || name === 'pcb_authorization_no') {
       value = value.toUpperCase();
     }
 
     // Restricted numeric validation for specific fields
-    if (name === 'phone' || name.endsWith('_zip')) {
-        // Allow only digits
-        value = value.replace(/\D/g, '');
+    if (name.endsWith('_zip')) {
+        // Allow only 6 digits max for ZIP
+        value = value.replace(/\D/g, '').slice(0, 6);
+    }
+    if (name === 'phone') {
+        // Allow ONLY 10 digits
+        value = value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    // License and PCB No validations (Alphanumeric + basic symbols)
+    if (name === 'license_no' || name === 'pcb_authorization_no') {
+        value = value.replace(/[^A-Z0-9\/\-\s]/g, '');
     }
 
     if (name === 'no_of_employees' || type === 'number') {
@@ -114,13 +123,34 @@ export default function CompanyInformationPage() {
       error('Please enter a valid email address.');
       return false;
     }
-    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
-      error('Phone number should be at least 10 digits.');
+    if (formData.phone && formData.phone.length !== 10) {
+      error('Phone number must be exactly 10 digits.');
       return false;
     }
-    if (formData.gst_no && formData.gst_no.length !== 15) {
-      error('GST Number must be exactly 15 characters.');
-      return false;
+    if (formData.gst_no) {
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstRegex.test(formData.gst_no)) {
+        error('Invalid GST Number format (e.g. 22AAAAA0000A1Z5).');
+        return false;
+      }
+    }
+
+    // Licensing Validations
+    if (formData.license_no && formData.license_no.length < 5) {
+        error('License No seems too short (min 5 chars).');
+        return false;
+    }
+    if (formData.pcb_authorization_no && formData.pcb_authorization_no.length < 5) {
+        error('PCB Authorization No seems too short (min 5 chars).');
+        return false;
+    }
+    if (formData.license_details && formData.license_details.length < 5) {
+        error('Please provide more descriptive License Details.');
+        return false;
+    }
+    if (formData.pcb_details && formData.pcb_details.length < 5) {
+        error('Please provide more descriptive PCB Details.');
+        return false;
     }
 
     // Address Validations (Street is marked with * in UI)
@@ -128,13 +158,27 @@ export default function CompanyInformationPage() {
       error('Office Street Address is required.');
       return false;
     }
+    if (formData.office_zip && formData.office_zip.length !== 6) {
+        error('Office ZIP Code must be exactly 6 digits.');
+        return false;
+    }
+
     if (!formData.manufacturing_street?.trim()) {
       error('Manufacturing Unit Street Address is required.');
       return false;
     }
+    if (formData.manufacturing_zip && formData.manufacturing_zip.length !== 6) {
+        error('Manufacturing ZIP Code must be exactly 6 digits.');
+        return false;
+    }
+
     if (!formData.billing_street?.trim()) {
       error('Billing Street Address is required.');
       return false;
+    }
+    if (formData.billing_zip && formData.billing_zip.length !== 6) {
+        error('Billing ZIP Code must be exactly 6 digits.');
+        return false;
     }
 
     return true;

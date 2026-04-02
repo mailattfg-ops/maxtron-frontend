@@ -229,7 +229,7 @@ export default function SupplierLedgerPage() {
                                 <td className="px-6 py-4 text-xs font-mono">{item.ref}</td>
                                 <td className="px-6 py-4 text-blue-600 font-bold">{item.credit > 0 ? `₹${item.credit.toLocaleString()}` : '-'}</td>
                                 <td className="px-6 py-4 text-orange-600 font-bold">{item.debit > 0 ? `₹${item.debit.toLocaleString()}` : '-'}</td>
-                                <td className="px-6 py-4 font-black">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Cr' : 'Dr'}</td>
+                                <td className="px-6 py-4 font-black text-right">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Cr' : 'Dr'}</td>
                             </tr>
                         )}
                     />

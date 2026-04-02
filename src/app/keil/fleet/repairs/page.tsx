@@ -69,7 +69,7 @@ export default function VehicleRepairLogPage() {
         entry_date: new Date().toISOString().substring(0, 16),
         exit_date: '',
         repair_description: '',
-        cost: '0',
+        cost: '',
         status: 'Pending',
         remarks: '',
         workshop_name: '',
@@ -159,7 +159,7 @@ export default function VehicleRepairLogPage() {
             error("Please specify the Workshop Name / Service Center.");
             return;
         }
-        if (parseFloat(formData.cost) < 0) {
+        if (formData.cost !== '' && parseFloat(formData.cost) < 0) {
             error("Repair cost cannot be negative.");
             return;
         }
@@ -197,7 +197,10 @@ export default function VehicleRepairLogPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    cost: formData.cost || 0
+                })
             });
             const data = await res.json();
             if (data.success) {
@@ -254,7 +257,7 @@ export default function VehicleRepairLogPage() {
             entry_date: new Date().toISOString().substring(0, 16),
             exit_date: '',
             repair_description: '',
-            cost: '0',
+            cost: '',
             status: 'Pending',
             remarks: '',
             workshop_name: '',

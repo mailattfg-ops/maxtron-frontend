@@ -60,6 +60,7 @@ function RouteAssignmentsContent() {
     const [loading, setLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState(false);
     const [editingAssignment, setEditingAssignment] = useState<any>(null);
+    const [submitting, setSubmitting] = useState(false);
 
     const [assignmentForm, setAssignmentForm] = useState({
         hce_id: '',
@@ -144,6 +145,7 @@ function RouteAssignmentsContent() {
     const handleAssign = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         try {
             const payload = {
                 ...assignmentForm,
@@ -170,11 +172,14 @@ function RouteAssignmentsContent() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleUpdate = async () => {
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         try {
             const res = await fetch(`${ASSIGN_API}/${editingAssignment.id}`, {
                 method: 'PUT',
@@ -190,6 +195,8 @@ function RouteAssignmentsContent() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -405,10 +412,20 @@ function RouteAssignmentsContent() {
                                 <div className="flex gap-3">
                                     <Button 
                                         type="submit" 
-                                        disabled={loading}
+                                        disabled={submitting}
                                         className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider w-full"
                                     >
-                                        <Save className="w-4 h-4 mr-2" /> {loading ? 'Syncing...' : (editingAssignment ? 'Update Link' : 'Confirm Link')}
+                                        {submitting ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                SAVING...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="w-4 h-4 mr-2" /> 
+                                                {editingAssignment ? 'Update Link' : 'Confirm Link'}
+                                            </>
+                                        )}
                                     </Button>
                                 </div>
                             </div>
