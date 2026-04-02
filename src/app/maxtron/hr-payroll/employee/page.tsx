@@ -104,6 +104,7 @@ export default function EmployeeInformationPage() {
     company_id: '',
     has_license: false,
     has_passport: false,
+    has_insurance: false,
     phone: '',
     aadhaar: '',
     type: '',
@@ -116,6 +117,7 @@ export default function EmployeeInformationPage() {
     employee_experiences: [] as any[],
     employee_certificates: [] as any[],
     employee_licenses: [] as any[],
+    employee_insurances: [] as any[],
     employee_passports: [] as any[],
     employee_loans: [] as any[],
     employee_targets: [] as any[],
@@ -336,6 +338,32 @@ export default function EmployeeInformationPage() {
       }
     }
 
+    // Driver License Validations (Specific Formats)
+    if (collection === 'employee_licenses') {
+      if (field === 'license_number') {
+        // Enforce Uppercase and sanitize special characters, allow hyphens and parentheses
+        value = value.toUpperCase().replace(/[^A-Z0-9 /()-]/g, '').slice(0, 25);
+      }
+      if (field === 'class_of_vehicle') {
+        // Enforce Uppercase (e.g. LMV, MCWG) and allow hyphens and parentheses
+        value = value.toUpperCase().replace(/[^A-Z, ()-]/g, '').slice(0, 30);
+      }
+      if (field === 'expiry_date' && value) {
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+        if (new Date(value) < todayDate) {
+          error("Driver License/Permit has already expired. Please enter a valid future expiry date.");
+        }
+      }
+    }
+
+    // Insurance Validations
+    if (collection === 'employee_insurances') {
+      if (field === 'policy_number') {
+        value = value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 30);
+      }
+    }
+
     list[index][field] = value;
     setFormData({ ...formData, [collection]: list });
   };
@@ -539,9 +567,9 @@ export default function EmployeeInformationPage() {
             { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
           ],
-          company_id: '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '',
+          company_id: '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '',
           guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
-          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
+          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
         });
         setErrors({});
         setActiveTab('personal');
@@ -557,6 +585,18 @@ export default function EmployeeInformationPage() {
 
   const editEmployee = (emp: any) => {
     setEditingId(emp.id);
+    
+    // Ensure we have at least one license/insurance entry if marked as a holder
+    const hasLicense = !!emp.has_license;
+    const hasInsurance = !!emp.has_insurance;
+    const licenses = (emp.employee_licenses && emp.employee_licenses.length > 0) 
+      ? emp.employee_licenses 
+      : (hasLicense ? [{ license_number: '', expiry_date: '', class_of_vehicle: '' }] : []);
+
+    const insurances = (emp.employee_insurances && emp.employee_insurances.length > 0) 
+      ? emp.employee_insurances 
+      : (hasInsurance ? [{ policy_number: '', provider: '', insurance_type: '', expiry_date: '', premium_amount: 0, pdf_url: '' }] : []);
+
     setFormData({
       employee_code: emp.employee_code || '',
       name: emp.name || '',
@@ -568,26 +608,29 @@ export default function EmployeeInformationPage() {
         emp.addresses?.find((a: any) => a.address_type === 'Permanent') || { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
       ],
       company_id: emp.company_id || '',
-      has_license: emp.has_license || false,
-      has_passport: emp.has_passport || false,
+      has_license: hasLicense,
+      has_passport: !!emp.has_passport,
+      has_insurance: hasInsurance,
       phone: emp.phone || '',
       aadhaar: emp.aadhaar || '',
       type: emp.type || '',
       guarantor_name: emp.guarantor_name || '',
-      is_married: emp.is_married || false,
+      is_married: !!emp.is_married,
       family_details: emp.family_details || '',
       category_id: emp.category_id || '',
       basic_salary: Number(emp.basic_salary) || 0,
       employee_qualifications: emp.employee_qualifications || [],
       employee_experiences: emp.employee_experiences || [],
       employee_certificates: emp.employee_certificates || [],
-      employee_licenses: emp.employee_licenses || [],
+      employee_licenses: licenses,
+      employee_insurances: insurances,
       employee_passports: emp.employee_passports || [],
       employee_loans: emp.employee_loans || [],
       employee_targets: emp.employee_targets || [],
       employee_suspenses: emp.employee_suspenses || [],
       employee_incentive_slabs: emp.employee_incentive_slabs || []
     });
+    setErrors({});
     setIsViewMode(false);
     setActiveTab('personal');
     setShowForm(true);
@@ -744,7 +787,7 @@ export default function EmployeeInformationPage() {
                       { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                       { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                     ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
                   });
                   setIsViewMode(false);
                   setShowForm(true);
@@ -1197,21 +1240,212 @@ export default function EmployeeInformationPage() {
                   {/* Licenses & Passports */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div>
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border mb-4">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <Checkbox checked={formData.has_license} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_license: !!checked})} disabled={isViewMode} />
+                            <Checkbox 
+                               checked={formData.has_license} 
+                               onCheckedChange={(checked) => {
+                                 if (!isViewMode) {
+                                   const isChecked = !!checked;
+                                   const updates: any = { has_license: isChecked };
+                                   if (isChecked && (!formData.employee_licenses || formData.employee_licenses.length === 0)) {
+                                     updates.employee_licenses = [{ license_number: '', expiry_date: '', class_of_vehicle: '' }];
+                                   }
+                                   setFormData({...formData, ...updates});
+                                 }
+                               }} 
+                               disabled={isViewMode} 
+                            />
                             <span>License Holder (YES/NO)</span>
                         </label>
                       </div>
+
+                      {formData.has_license && (
+                        <div className="animate-in slide-in-from-top-2 duration-300 space-y-3 mb-6 bg-muted/20 p-4 border border-border rounded-xl shadow-sm">
+                           <h4 className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Driver License / Kerala Permit Details</h4>
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold text-muted-foreground uppercase">License Number</label>
+                                 <Input 
+                                   placeholder="e.g. KL-XXXX-XXXXXXX" 
+                                   className="h-10 text-sm font-bold bg-white"
+                                   value={formData.employee_licenses[0]?.license_number || ''}
+                                   onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'license_number', e.target.value)}
+                                   disabled={isViewMode}
+                                 />
+                              </div>
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold text-muted-foreground uppercase">Expiry Date</label>
+                                 <Input 
+                                   type="date"
+                                   className="h-10 text-sm font-bold bg-white"
+                                   value={formData.employee_licenses[0]?.expiry_date?.split('T')[0] || ''}
+                                   onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'expiry_date', e.target.value)}
+                                   disabled={isViewMode}
+                                 />
+                              </div>
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Vehicle Class (e.g. MCWG, LMV, HPMV, HGMV)</label>
+                                 <Input 
+                                   placeholder="e.g. MCWG, LMV, HPMV" 
+                                   className="h-10 text-sm font-bold bg-white"
+                                   value={formData.employee_licenses[0]?.class_of_vehicle || ''}
+                                   onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'class_of_vehicle', e.target.value)}
+                                   disabled={isViewMode}
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
                             <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
                       </div>
+
+                      <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border">
+                          <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
+                              <Checkbox 
+                                 checked={formData.has_insurance} 
+                                 onCheckedChange={(checked) => {
+                                   if (!isViewMode) {
+                                     const isChecked = !!checked;
+                                     const updates: any = { has_insurance: isChecked };
+                                     if (isChecked && (!formData.employee_insurances || formData.employee_insurances.length === 0)) {
+                                       updates.employee_insurances = [{ policy_number: '', provider: '', insurance_type: '', expiry_date: '', premium_amount: 0, pdf_url: '' }];
+                                     }
+                                     setFormData({...formData, ...updates});
+                                   }
+                                 }} 
+                                 disabled={isViewMode} 
+                              />
+                              <span>Insurance Coverage (YES/NO)</span>
+                          </label>
+                      </div>
+
+                      {formData.has_insurance && (
+                        <div className="animate-in slide-in-from-top-2 duration-300 space-y-3 mb-6">
+                           <div className="p-4 bg-white border border-border rounded-xl space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Policy Number</label>
+                                    <Input 
+                                      placeholder="POL-XXXXX" 
+                                      className="h-9 text-sm"
+                                      value={formData.employee_insurances[0]?.policy_number || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'policy_number', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Provider / Company</label>
+                                    <Input 
+                                      placeholder="e.g. LIC, Star Health" 
+                                      className="h-9 text-sm"
+                                      value={formData.employee_insurances[0]?.provider || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'provider', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Insurance Type</label>
+                                    <Select 
+                                      value={formData.employee_insurances[0]?.insurance_type || ''} 
+                                      onValueChange={(val) => handleNestedRowChange('employee_insurances', 0, 'insurance_type', val)}
+                                      disabled={isViewMode}
+                                    >
+                                      <SelectTrigger className="h-9 text-sm">
+                                        <SelectValue placeholder="Select Type" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white">
+                                        <SelectItem value="MEDICAL">Medical / Health</SelectItem>
+                                        <SelectItem value="ACCIDENT">Accident Coverage</SelectItem>
+                                        <SelectItem value="LIFE">Life Insurance</SelectItem>
+                                        <SelectItem value="ESI">ESI Coverage</SelectItem>
+                                        <SelectItem value="OTHER">Other / Misc</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Renewal / Expiry Date</label>
+                                    <Input 
+                                      type="date"
+                                      className="h-9 text-sm"
+                                      value={formData.employee_insurances[0]?.expiry_date?.split('T')[0] || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'expiry_date', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Premium Amount (₹)</label>
+                                    <Input 
+                                      type="number"
+                                      placeholder="0.00"
+                                      className="h-9 text-sm"
+                                      value={formData.employee_insurances[0]?.premium_amount || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_insurances', 0, 'premium_amount', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Insurance Document (PDF)</label>
+                                    <div className="flex gap-2">
+                                       <div className="relative flex-1">
+                                          <Input 
+                                            type="file"
+                                            accept="application/pdf"
+                                            className="h-9 text-xs"
+                                            onChange={async (e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                if (file.size > 1.5 * 1024 * 1024) {
+                                                  alert("File size exceeds 1.5MB limit for Base64 storage.");
+                                                  return;
+                                                }
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                  handleNestedRowChange('employee_insurances', 0, 'pdf_url', reader.result as string);
+                                                };
+                                                reader.readAsDataURL(file);
+                                              }
+                                            }}
+                                            disabled={isViewMode}
+                                          />
+                                          {formData.employee_insurances[0]?.pdf_url && (
+                                             <div className="absolute right-2 top-2">
+                                                <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 border border-emerald-100 rounded">ATTACHED</span>
+                                             </div>
+                                          )}
+                                       </div>
+                                       {formData.employee_insurances[0]?.pdf_url && (
+                                          <Button 
+                                            type="button"
+                                            variant="outline" 
+                                            className="h-9 px-2 border-primary/20 text-primary hover:bg-primary/5"
+                                            onClick={() => {
+                                               const win = window.open();
+                                               if (win) {
+                                                 win.document.write(`<iframe src="${formData.employee_insurances[0].pdf_url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                                               }
+                                            }}
+                                          >
+                                            <Eye className="w-4 h-4" />
+                                          </Button>
+                                       )}
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

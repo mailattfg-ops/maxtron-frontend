@@ -407,13 +407,13 @@ export default function AttendancePage() {
           <p className="text-muted-foreground text-xs md:text-sm font-medium mt-1 italic">Track and manage daily staff presence and work hours across HR & Payroll.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
-          <Button 
+          {/* <Button 
             onClick={downloadAttendance}
             variant="outline"
             className="flex-1 md:flex-none h-11 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 font-bold active:scale-95 transition-all text-sm"
           >
             <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Download Logs</span><span className="sm:hidden">Export</span>
-          </Button>
+          </Button> */}
           {canCreate && (
             <Button 
               onClick={prepareBulkData}

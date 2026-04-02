@@ -37,6 +37,7 @@ export default function BranchRegistryPage() {
     
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
@@ -47,6 +48,23 @@ export default function BranchRegistryPage() {
         district_name: '',
         company_id: ''
     });
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, value } = e.target;
+        
+        if (name === 'branch_code') {
+            // Uppercase, Alphanumeric + Hyphen/Underscore, Max 20
+            value = value.toUpperCase().replace(/[^A-Z0-9-_]/g, '').slice(0, 20);
+        } else if (name === 'branch_name') {
+            // Alphanumeric + Space/Ampersand/Hyphen, Max 50
+            value = value.replace(/[^a-zA-Z0-9\s&\-]/g, '').slice(0, 50);
+        } else if (name === 'district_name') {
+            // Alphanumeric + Space, Max 40
+            value = value.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 40);
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -101,16 +119,21 @@ export default function BranchRegistryPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.branch_code) {
-            error("Please enter a unique Branch Identification Code.");
+        if (!formData.branch_code || formData.branch_code.length < 2) {
+            error("Branch Code is required (at least 2 characters).");
             return;
         }
-        if (!formData.branch_name) {
-            error("Please enter the official Branch/Office Name.");
+        if (!formData.branch_name || formData.branch_name.length < 3) {
+            error("Branch Name is required (at least 3 characters).");
+            return;
+        }
+        if (formData.district_name && formData.district_name.length < 3) {
+            error("District Name should be at least 3 characters if provided.");
             return;
         }
 
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         
         try {
             const url = editingId ? `${BRANCH_API}/${editingId}` : BRANCH_API;
@@ -136,6 +159,8 @@ export default function BranchRegistryPage() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -212,7 +237,7 @@ export default function BranchRegistryPage() {
 
             {isFormOpen ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300 overflow-hidden rounded-xl">
-                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
                                 {editingId ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -228,19 +253,22 @@ export default function BranchRegistryPage() {
                         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Branch Code</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="BR-001" value={formData.branch_code} onChange={e => setFormData({ ...formData, branch_code: e.target.value })} />
+                                <Input required name="branch_code" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="BR-001" value={formData.branch_code} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> Branch Name</label>
-                                <Input required className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="Main Branch" value={formData.branch_name} onChange={e => setFormData({ ...formData, branch_name: e.target.value })} />
+                                <Input required name="branch_name" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="Main Branch" value={formData.branch_name} onChange={handleInputChange} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> District Name</label>
-                                <Input className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="Central District" value={formData.district_name} onChange={e => setFormData({ ...formData, district_name: e.target.value })} />
+                                <Input name="district_name" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" placeholder="Central District" value={formData.district_name} onChange={handleInputChange} />
                             </div>
                             <div className="col-span-full pt-4 flex justify-end gap-3 border-t border-primary/10">
                                 <Button type="button" variant="outline" className="rounded-full px-6" onClick={() => { setIsFormOpen(false); resetForm(); }}>Cancel</Button>
-                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider"><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Branch' : 'Register Branch'}</Button>
+                                <Button type="submit" disabled={submitting} className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 font-bold uppercase tracking-wider">
+                                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                                    {editingId ? (submitting ? 'Updating...' : 'Update Branch') : (submitting ? 'Registering...' : 'Register Branch')}
+                                </Button>
                             </div>
                         </form>
                     </CardContent>

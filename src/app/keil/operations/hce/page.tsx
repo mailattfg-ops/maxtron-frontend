@@ -54,6 +54,30 @@ export default function HCERegistryPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
     const [activeTab, setActiveTab] = useState('basic');
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, value } = e.target;
+        
+        if (name === 'hce_name') {
+            // Letters, Numbers, Spaces, Ampersand, Hyphen, Dot (Max 100)
+            value = value.replace(/[^a-zA-Z0-9\s&\-\.]/g, '').slice(0, 100);
+        } else if (name === 'hce_code') {
+            // Uppercase Alphanumeric, Hyphen, Underscore (Max 15)
+            value = value.toUpperCase().replace(/[^A-Z0-9-_]/g, '').slice(0, 15);
+        } else if (name === 'contact_mobile') {
+            // Numbers only (Max 10)
+            value = value.replace(/[^0-9]/g, '').slice(0, 10);
+        } else if (name === 'contact_person') {
+            // Letters, Spaces, Dots (Max 50)
+            value = value.replace(/[^a-zA-Z\s\.]/g, '').slice(0, 50);
+        } else if (name === 'hce_place') {
+            // Letters, Spaces (Max 50)
+            value = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 50);
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     const [formData, setFormData] = useState({
         hce_name: '',
@@ -129,7 +153,44 @@ export default function HCERegistryPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Validation Module
+        if (!formData.hce_code || formData.hce_code.length < 2) {
+            error("HCE Code is required (min 2 chars).");
+            return;
+        }
+        if (!formData.hce_name || formData.hce_name.length < 3) {
+            error("Facility Name is required (min 3 chars).");
+            return;
+        }
+        if (!formData.branch_id) {
+            error("Please select an organization Branch.");
+            return;
+        }
+
+        // Contact Validations
+        if (formData.contact_mobile && formData.contact_mobile.length !== 10) {
+            error("Contact Mobile must be exactly 10 digits.");
+            return;
+        }
+
+        if (formData.email_id) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email_id)) {
+                error("Please enter a valid Email ID.");
+                return;
+            }
+        }
+
+        // Time Range Validation
+        if (formData.open_from && formData.open_to) {
+            if (formData.open_to <= formData.open_from) {
+                error("Facility Closing Time ('Open To') must be strictly later than Opening Time ('Open From').");
+                return;
+            }
+        }
+
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         
         try {
             const url = editingId ? `${HCE_API}/${editingId}` : HCE_API;
@@ -155,6 +216,8 @@ export default function HCERegistryPage() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -286,11 +349,27 @@ export default function HCERegistryPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> HCE Code</label>
-                                        <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="HCE-001" value={formData.hce_code} onChange={e => setFormData({ ...formData, hce_code: e.target.value })} />
+                                        <Input 
+                                            name="hce_code"
+                                            required 
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="HCE-001" 
+                                            maxLength={15}
+                                            value={formData.hce_code} 
+                                            onChange={handleInputChange} 
+                                        />
                                     </div>
                                     <div className="space-y-2 lg:col-span-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Building2 className="w-4 h-4 text-primary" /> HCE Name</label>
-                                        <Input required className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="City General Hospital" value={formData.hce_name} onChange={e => setFormData({ ...formData, hce_name: e.target.value })} />
+                                        <Input 
+                                            name="hce_name"
+                                            required 
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="City General Hospital" 
+                                            maxLength={100}
+                                            value={formData.hce_name} 
+                                            onChange={handleInputChange} 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Branch Name</label>
@@ -307,11 +386,24 @@ export default function HCERegistryPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> HCE Place</label>
-                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Downtown" value={formData.hce_place} onChange={e => setFormData({ ...formData, hce_place: e.target.value })} />
+                                        <Input 
+                                            name="hce_place"
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="Downtown" 
+                                            maxLength={50}
+                                            value={formData.hce_place} 
+                                            onChange={handleInputChange} 
+                                        />
                                     </div>
                                     <div className="space-y-2 lg:col-span-3">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><MapPin className="w-4 h-4 text-primary" /> Full Address</label>
-                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="123 Medical Road, Area Code" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                                        <Input 
+                                            name="address"
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="123 Medical Road, Area Code" 
+                                            value={formData.address} 
+                                            onChange={(e) => setFormData({...formData, address: e.target.value})} 
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -320,15 +412,36 @@ export default function HCERegistryPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-right duration-500">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><User className="w-4 h-4 text-primary" /> Contact Person</label>
-                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="Admin Head" value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} />
+                                        <Input 
+                                            name="contact_person"
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="Admin Head" 
+                                            maxLength={50}
+                                            value={formData.contact_person} 
+                                            onChange={handleInputChange} 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Phone className="w-4 h-4 text-primary" /> Contact Mobile</label>
-                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" placeholder="+123 456 7890" value={formData.contact_mobile} onChange={e => setFormData({ ...formData, contact_mobile: e.target.value })} />
+                                        <Input 
+                                            name="contact_mobile"
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            placeholder="10-digit Mobile No" 
+                                            maxLength={10}
+                                            value={formData.contact_mobile} 
+                                            onChange={handleInputChange} 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Mail className="w-4 h-4 text-primary" /> Email ID</label>
-                                        <Input className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" type="email" placeholder="contact@hce.com" value={formData.email_id} onChange={e => setFormData({ ...formData, email_id: e.target.value })} />
+                                        <Input 
+                                            name="email_id"
+                                            className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
+                                            type="email" 
+                                            placeholder="contact@hce.com" 
+                                            value={formData.email_id} 
+                                            onChange={(e) => setFormData({...formData, email_id: e.target.value})} 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Clock className="w-4 h-4 text-primary" /> Collection Type</label>
@@ -400,10 +513,20 @@ export default function HCERegistryPage() {
                                     ) : (
                                         <Button 
                                             onClick={handleSubmit} 
+                                            disabled={submitting}
                                             className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-10 h-11 shadow-lg shadow-emerald-100 font-bold flex items-center transition-all hover:scale-105"
                                         >
-                                            <Save className="w-4 h-4 mr-2" />
-                                            {editingId ? 'Update' : 'Register'}
+                                            {submitting ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    SAVING...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="w-4 h-4 mr-2" />
+                                                    {editingId ? 'Update' : 'Register'}
+                                                </>
+                                            )}
                                         </Button>
                                     )}
                                 </div>

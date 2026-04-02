@@ -61,11 +61,11 @@ export default function KeilPayrollPage() {
         employee_id: '',
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
-        basic_salary: 0,
-        allowances: 0,
-        deductions: 0,
-        incentives: 0,
-        net_salary: 0,
+        basic_salary: '' as any,
+        allowances: '' as any,
+        deductions: '' as any,
+        incentives: '' as any,
+        net_salary: '' as any,
         payment_status: 'PENDING',
         payment_date: '',
         payment_mode: 'BANK',
@@ -157,12 +157,13 @@ export default function KeilPayrollPage() {
         }
 
         if (['basic_salary', 'allowances', 'deductions', 'incentives'].includes(name) || name === 'employee_id') {
-            newFormData.net_salary = calculateNetSalary(
-                Number(newFormData.basic_salary),
-                Number(newFormData.allowances),
-                Number(newFormData.deductions),
-                Number(newFormData.incentives)
+            const net = calculateNetSalary(
+                Number(newFormData.basic_salary || 0),
+                Number(newFormData.allowances || 0),
+                Number(newFormData.deductions || 0),
+                Number(newFormData.incentives || 0)
             );
+            newFormData.net_salary = net === 0 ? '' : net;
         }
 
         setFormData(newFormData);
@@ -173,11 +174,11 @@ export default function KeilPayrollPage() {
             employee_id: '',
             month: filterMonth,
             year: filterYear,
-            basic_salary: 0,
-            allowances: 0,
-            deductions: 0,
-            incentives: 0,
-            net_salary: 0,
+            basic_salary: '' as any,
+            allowances: '' as any,
+            deductions: '' as any,
+            incentives: '' as any,
+            net_salary: '' as any,
             payment_status: 'PENDING',
             payment_date: '',
             payment_mode: 'BANK',
@@ -209,6 +210,18 @@ export default function KeilPayrollPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate primary fields
+        if (!formData.employee_id) {
+            error("Please select an Employee first.");
+            return;
+        }
+
+        // Validate basic salary
+        if (!formData.basic_salary || Number(formData.basic_salary) <= 0) {
+            error("Basic Salary is required and must be greater than zero.");
+            return;
+        }
 
         // Validate payment_date range
         if (formData.payment_date) {
@@ -433,7 +446,8 @@ export default function KeilPayrollPage() {
                                                 value={formData.basic_salary} 
                                                 onChange={handleInputChange} 
                                                 className="h-11 font-bold"
-                                                min="0"
+                                                min="1"
+                                                required
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -489,7 +503,7 @@ export default function KeilPayrollPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-6 items-end border-t border-slate-100">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-6 items-end border-t border-slate-100">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Status</label>
                                     <Select value={formData.payment_status} onValueChange={(val) => updateFormData('payment_status', val)}>
@@ -531,19 +545,19 @@ export default function KeilPayrollPage() {
                                     />
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 sm:mt-0">
                                     <Button
                                         type="button"
                                         onClick={() => { setShowForm(false); resetForm(); }}
                                         variant="outline"
-                                        className="flex-1 md:flex-none h-12 rounded-xl font-bold border-slate-200 hover:bg-slate-50 active:scale-95 px-8"
+                                        className="flex-1 md:flex-none h-12 rounded-xl font-bold border-slate-200 hover:bg-slate-50 active:scale-95 px-4"
                                     >
                                         DISCARD
                                     </Button>
                                     <Button
                                         type="submit"
                                         disabled={submitting}
-                                        className="flex-1 md:flex-none h-12 bg-primary hover:bg-primary/95 text-white rounded-xl font-black shadow-xl shadow-primary/20 active:scale-95 px-10"
+                                        className="flex-1 md:flex-none h-12 bg-primary hover:bg-primary/95 text-white rounded-xl font-black shadow-xl shadow-primary/20 active:scale-95 px-4"
                                     >
                                         {submitting ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'POST ENTRY')}
                                     </Button>

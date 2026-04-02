@@ -57,6 +57,7 @@ export default function ExpendituresPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         expense_head_id: '',
@@ -185,6 +186,7 @@ export default function ExpendituresPage() {
         }
 
         const token = localStorage.getItem('token');
+        setSubmitting(true);
         
         try {
             const url = editingId ? `${EXPENDITURES_API}/${editingId}` : EXPENDITURES_API;
@@ -235,6 +237,8 @@ export default function ExpendituresPage() {
             }
         } catch (err: any) {
             error(err.message || 'An error occurred');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -315,21 +319,21 @@ export default function ExpendituresPage() {
     );
 
     return (
-        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 bg-slate-50/50 min-h-screen">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-primary/5">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700 min-h-screen">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
                 <div className="space-y-1">
-                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-2 md:gap-3">
-                        <Wallet className="w-8 h-8 md:w-10 md:h-10 text-emerald-600" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight flex items-center gap-2 md:gap-3 font-heading">
+                        <Wallet className="w-8 h-8 md:w-10 md:h-10 text-primary" />
                         Expenditures
                     </h1>
-                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <p className="text-muted-foreground text-xs md:text-sm font-medium italic">
                         Financial Operations Register
                     </p>
                 </div>
                 {!isFormOpen && canCreate && (
                     <Button 
                         onClick={() => setIsFormOpen(true)}
-                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-10 md:h-12 px-6 md:px-8 shadow-lg shadow-emerald-100"
+                        className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs h-10 md:h-11 px-6 md:px-8 shadow-lg shadow-primary/20 transition-all active:scale-95"
                     >
                         <Plus className="w-4 h-4 mr-2" /> Log Expense
                     </Button>
@@ -337,13 +341,13 @@ export default function ExpendituresPage() {
             </div>
 
             {isFormOpen ? (
-                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white animate-in slide-in-from-bottom-8 duration-500">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 flex flex-row items-center justify-between">
+                <Card className="border-primary/20 shadow-xl rounded-xl overflow-hidden bg-white animate-in slide-in-from-bottom-4 duration-500">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg md:text-xl font-black uppercase tracking-tighter text-slate-800 italic">
+                            <CardTitle className="text-lg md:text-xl font-bold text-primary">
                                 {editingId ? 'Modify Record' : 'Log Expense'}
                             </CardTitle>
-                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            <CardDescription className="text-xs md:text-sm font-medium text-muted-foreground mt-1">
                                 Financial outflow registration
                             </CardDescription>
                         </div>
@@ -354,7 +358,7 @@ export default function ExpendituresPage() {
                                 setIsFormOpen(false);
                                 resetForm();
                             }}
-                            className="rounded-xl hover:bg-emerald-50 hover:text-emerald-600"
+                            className="rounded-full hover:bg-primary/10 hover:text-primary"
                         >
                             <X className="w-5 h-5" />
                         </Button>
@@ -363,30 +367,30 @@ export default function ExpendituresPage() {
                         <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-primary/80" /> Execution Date
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-primary" /> Execution Date
                                     </label>
                                     <Input 
                                         type="date"
                                         value={formData.expenditure_date}
                                         onChange={(e) => setFormData(prev => ({ ...prev, expenditure_date: e.target.value }))}
-                                        className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                        className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 focus:ring-primary/20"
                                         required
                                     />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Coins className="w-4 h-4 text-rose-500" /> Expense Taxonomy
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Coins className="w-4 h-4 text-primary" /> Expense Taxonomy
                                     </label>
                                     <Select 
                                         value={formData.expense_head_id}
                                         onValueChange={(val) => setFormData(prev => ({ ...prev, expense_head_id: val }))}
                                         required
                                     >
-                                        <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                        <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 shadow-sm focus:ring-primary/20">
                                             <SelectValue placeholder="Select Configuration Head" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white border-slate-200">
+                                        <SelectContent className="bg-white border-slate-200 rounded-xl">
                                             {expenseHeads.map((h: any) => (
                                                 <SelectItem key={h.id} value={h.id}>{h.head_name}</SelectItem>
                                             ))}
@@ -394,10 +398,10 @@ export default function ExpendituresPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-3 md:col-span-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Users className="w-4 h-4 text-orange-500" /> Payee Type
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-primary" /> Payee Type
                                     </label>
-                                    <div className="grid md:flex items-center gap-6 h-auto md:h-14 py-6 md:py-0 px-6 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <div className="grid md:flex items-center gap-6 h-auto md:h-11 py-6 md:py-0 px-6 rounded-xl bg-slate-50 border border-slate-200">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input 
                                                 type="radio" 
@@ -405,9 +409,9 @@ export default function ExpendituresPage() {
                                                 value="employee" 
                                                 checked={formData.payee_type === 'employee'}
                                                 onChange={(e) => setFormData(p => ({ ...p, payee_type: 'employee' }))}
-                                                className="w-5 h-5 accent-emerald-600"
+                                                className="w-4 h-4 accent-primary"
                                             />
-                                            <span className="font-bold text-slate-700">Internal Employee</span>
+                                            <span className="font-bold text-slate-700 text-sm">Internal Employee</span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input 
@@ -416,26 +420,26 @@ export default function ExpendituresPage() {
                                                 value="other" 
                                                 checked={formData.payee_type === 'other'}
                                                 onChange={(e) => setFormData(p => ({ ...p, payee_type: 'other' }))}
-                                                className="w-5 h-5 accent-emerald-600"
+                                                className="w-4 h-4 accent-primary"
                                             />
-                                            <span className="font-bold text-slate-700">Other (Person/Company)</span>
+                                            <span className="font-bold text-slate-700 text-sm">Other (Person/Company)</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 {formData.payee_type === 'employee' ? (
                                     <div className="space-y-3">
-                                        <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-emerald-500" /> Employee
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-primary" /> Employee
                                         </label>
                                         <Select 
                                             value={formData.employee_id}
                                             onValueChange={(val) => setFormData(prev => ({ ...prev, employee_id: val }))}
                                         >
-                                            <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 shadow-sm">
+                                            <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 shadow-sm focus:ring-primary/20">
                                                 <SelectValue placeholder="Select Employee..." />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-white border-slate-200">
+                                            <SelectContent className="bg-white border-slate-200 rounded-xl">
                                                 {employees.map((emp: any) => (
                                                     <SelectItem key={emp.id} value={emp.id}>{emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}</SelectItem>
                                                 ))}
@@ -445,19 +449,19 @@ export default function ExpendituresPage() {
                                 ) : (
                                     <>
                                         <div className="space-y-3">
-                                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                                <Building2 className="w-4 h-4 text-amber-500" /> Payee Name
+                                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                <Building2 className="w-4 h-4 text-primary" /> Payee Name
                                             </label>
                                             <Input 
                                                 value={formData.other_name}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, other_name: e.target.value }))}
-                                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                                className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 focus:ring-primary/20"
                                                 placeholder="Person or Company name"
                                             />
                                         </div>
                                         <div className="space-y-3">
-                                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                                <Phone className="w-4 h-4 text-blue-500" /> Mobile Number
+                                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                                <Phone className="w-4 h-4 text-primary" /> Mobile Number
                                             </label>
                                             <Input 
                                                 value={formData.other_mobile}
@@ -465,7 +469,7 @@ export default function ExpendituresPage() {
                                                     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                     setFormData(prev => ({ ...prev, other_mobile: val }));
                                                 }}
-                                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-6 focus:ring-emerald-500"
+                                                className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-800 px-4 focus:ring-primary/20"
                                                 placeholder="Mobile Number (10 digits)"
                                                 maxLength={10}
                                             />
@@ -474,8 +478,8 @@ export default function ExpendituresPage() {
                                 )}
 
                                 <div className="space-y-3">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Wallet className="w-4 h-4 text-emerald-500" /> Amount
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <Wallet className="w-4 h-4 text-primary" /> Amount
                                     </label>
                                     <Input 
                                         type="number"
@@ -483,66 +487,71 @@ export default function ExpendituresPage() {
                                         min="0"
                                         value={formData.amount}
                                         onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                                        className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-black text-rose-600 px-6 focus:ring-emerald-500 text-lg"
+                                        className="h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-rose-600 px-4 focus:ring-primary/20 text-lg shadow-inner"
                                         placeholder="0.00"
                                         required
                                     />
                                 </div>
                                 <div className="space-y-3 md:col-span-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-slate-400" /> Remarks
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-muted-foreground" /> Remarks
                                     </label>
                                     <Input 
                                         value={formData.remarks}
                                         onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
-                                        className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-slate-600 px-6 focus:ring-emerald-500"
+                                        className="h-11 rounded-xl bg-slate-50 border-slate-200 font-medium text-slate-600 px-4 focus:ring-primary/20 italic"
                                         placeholder="Detailed remarks..."
                                     />
                                 </div>
                             </div>
                             
                              <div className="flex justify-end items-center gap-3 pt-6 border-t border-slate-100">
-                                <Button 
+                                 <Button 
                                     type="button"
                                     variant="ghost"
                                     onClick={() => {
                                         setIsFormOpen(false);
                                         resetForm();
                                     }}
-                                    className="h-12 md:h-14 px-8 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs"
+                                    className="h-11 px-8 rounded-full font-bold uppercase tracking-wider text-xs hover:bg-rose-50 hover:text-rose-600"
                                 >
                                     Discard
                                 </Button>
-                                <Button type="submit" className="w-full md:w-auto bg-slate-900 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs h-12 md:h-14 px-10 shadow-xl transition-colors duration-300">
-                                    <Save className="w-4 h-4 mr-3" />
-                                    {editingId ? 'Update Ledger' : 'Commit Ledger'}
+                                <Button 
+                                    type="submit" 
+                                    disabled={submitting}
+                                    className="w-full md:w-auto bg-primary hover:bg-primary/95 text-white rounded-full font-bold uppercase tracking-wider text-xs h-11 px-10 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                                            SAVING...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-3" />
+                                            {editingId ? 'Update Ledger' : 'Commit Ledger'}
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="border-none shadow-2xl rounded-2xl md:rounded-[3rem] overflow-hidden bg-white border border-primary/5">
-                    {/* <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 md:p-8 rounded-2xl">
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tighter italic text-slate-800">Expenditure Ledger</CardTitle>
-                            <CardDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Complete audit trail of documented expenses.
-                            </CardDescription>
-                        </div>
-                    </CardHeader> */}
+                <Card className="border-primary/20 shadow-xl rounded-xl overflow-hidden bg-white">
                     <CardContent className="p-0">
                         <TableView 
                             title="Complete audit trail of documented expenses."
                             searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
-                            headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', '']}
+                            headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', 'Action']}
                             data={expenditures}
                             loading={loading}
                             renderRow={(ex: any) => (
                                 <tr key={ex.id} className="group hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0">
-                                    <td className="px-8 py-6 font-black text-slate-600 text-sm">
+                                    <td className="px-8 py-6 font-bold text-slate-600 text-sm">
                                         <div className="inline-flex items-center gap-2">
-                                            <Calendar className="w-3 h-3 text-emerald-500" />
+                                            <Calendar className="w-3.5 h-3.5 text-primary" />
                                             {typeof ex.expenditure_date === 'string' ? ex.expenditure_date.slice(0, 10) : ex.expenditure_date}
                                         </div>
                                     </td>
@@ -560,12 +569,12 @@ export default function ExpendituresPage() {
                                             : `Other: ${ex.other_name || 'N/A'} - (${ex.other_mobile || ''})`
                                         }
                                     </td>
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="px-8 py-6">
                                         <span className="text-lg font-black text-rose-600 italic">
                                             ₹{parseFloat(ex.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </span>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="px-2 py-6 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             {canEdit && (
                                                 <Button
@@ -574,7 +583,7 @@ export default function ExpendituresPage() {
                                                     className="text-blue-600 hover:bg-blue-50 rounded-lg font-bold"
                                                     onClick={() => handleEdit(ex)}
                                                 >
-                                                    Edit
+                                                    <Edit className="w-3.5 h-3.5" />
                                                 </Button>
                                             )}
                                             {canDelete && (
@@ -584,7 +593,7 @@ export default function ExpendituresPage() {
                                                     className="text-rose-600 hover:bg-rose-50 rounded-lg font-bold"
                                                     onClick={() => handleDelete(ex.id)}
                                                 >
-                                                    Delete
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </Button>
                                             )}
                                         </div>

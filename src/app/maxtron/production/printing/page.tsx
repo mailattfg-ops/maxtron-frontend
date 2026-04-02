@@ -93,10 +93,10 @@ export default function PrintingSectionPage() {
       
       if (batchData.success) {
         // Filter batches that require printing based on color
-        const printingRequiredColors = ['BLUE', 'RED', 'YELLOW'];
         const printableBatches = batchData.data.filter((b: any) => {
            const color = (b.finished_products?.color || '').toUpperCase();
-           return printingRequiredColors.includes(color);
+           // Respect manual override from extrusion, otherwise fallback to old behavior
+           return b.requires_printing ?? ['BLUE', 'RED', 'YELLOW'].includes(color);
         });
         setBatches(printableBatches);
       }

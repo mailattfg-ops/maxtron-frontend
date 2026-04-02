@@ -146,10 +146,64 @@ export default function VehicleMasterPage() {
     };
 
     const handleSave = async () => {
-        const { registration_number, make, model, vehicle_type, year } = formData;
+        // STRICT DATA VALIDATION LAYER
+        const { registration_number, make, model, vehicle_type, year, chassis_no, engine_no, tank_capacity, seating_capacity } = formData;
+        
         if (!registration_number || !make || !model || !vehicle_type || !year) {
             error("Major Fields Missing: Registration, Make, Model, Type, and Year are mandatory.");
             return;
+        }
+
+        // VALIDATION: Strict Sanitization (Catching bypasses or pastes)
+        const alphaNumSpaceRegex = /^[a-zA-Z0-9 ]*$/;
+        const alphaNumRegex = /^[a-zA-Z0-9-]*$/; // Allow hyphens for plate/identifiers
+        const currentYear = new Date().getFullYear();
+
+        if (year < 1980 || year > currentYear + 1) {
+            error(`Invalid Asset Year: Range 1980 - ${currentYear + 1} allowed.`);
+            return;
+        }
+
+        if (!alphaNumSpaceRegex.test(make) || !alphaNumSpaceRegex.test(model) || (formData.body_type && !alphaNumSpaceRegex.test(formData.body_type))) {
+            error("Invalid Characters identified in Brand, Model or Body Type. Use Alpha-Numeric characters only.");
+            return;
+        }
+
+        // Validation 1: Plate Number Protocol (e.g. KL-01-AB-1234)
+        const plateRegex = /^[a-zA-Z]{2}[ -]?\d{1,2}[ -]?[a-zA-Z]{1,2}[ -]?\d{1,4}$/;
+        if (!plateRegex.test(registration_number)) {
+            error("Invalid Registration Number. Standard format: 'KL-01-AB-1234' required.");
+            return;
+        }
+
+        // Validation 2: Technical Identifiers (Chassis / Engine must be pure Alphanumeric)
+        if (!chassis_no || chassis_no.trim().length < 5 || !alphaNumRegex.test(chassis_no)) {
+            error("Chassis Number: Minimum 5 Alpha-Numeric characters required (no symbols).");
+            return;
+        }
+        if (!engine_no || engine_no.trim().length < 5 || !alphaNumRegex.test(engine_no)) {
+            error("Engine Number: Minimum 5 Alpha-Numeric characters required (no symbols).");
+            return;
+        }
+
+        // Validation 3: Logical Value Integrity
+        if (tank_capacity && parseFloat(tank_capacity) <= 0) {
+            error("Tank Capacity must be a real volume greater than zero.");
+            return;
+        }
+        if (seating_capacity && parseInt(seating_capacity) <= 0) {
+            error("Seating Capacity must be at least 1.");
+            return;
+        }
+
+        // Compliance Date Protocol (Renewal Dates shouldn't be in the absolute past if being added now)
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        if (!editingId) { // Only for new entries, ensure we aren't adding expired documents
+           if (formData.insurance_expiry && new Date(formData.insurance_expiry) < today) {
+               error("Renewal Alert: You are attempting to register an asset with an EXPIRED insurance policy.");
+           }
         }
 
         // Clean data: Convert empty strings to null for consistent backend ingestion
@@ -327,10 +381,46 @@ export default function VehicleMasterPage() {
     };
 
     const handleInputChange = (e: any) => {
-        const { name, value, type, checked } = e.target;
+        let { name, value, type, checked } = e.target;
+        
+        if (type === 'checkbox') {
+            setFormData((prev: any) => ({ ...prev, [name]: checked }));
+            return;
+        }
+
+        // --- STRICT FLEET MASTER SANITIZATION PROTOCOL ---
+        
+        // 1. Technical Identifiers (Strict Alphanumeric, NO SPACES)
+        if (name === 'registration_number') {
+            value = value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 15);
+        }
+        if (name === 'chassis_no' || name === 'engine_no') {
+            value = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+        }
+
+        // 2. Metadata: Brand/Type/Provider (Alphanumeric + Limited Spaces)
+        if (['make', 'model', 'body_type', 'gps_company'].includes(name)) {
+            value = value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/  +/g, ' ').slice(0, 50);
+        }
+
+        // 3. Ownership Profile (Max 100 Name, Max 250 Address)
+        if (name === 'owner_name') {
+            value = value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/  +/g, ' ').slice(0, 100);
+        }
+        if (name === 'owner_address') {
+            value = value.slice(0, 250);
+        }
+
+        // 4. Temporal Data (Mfg Year Guard)
+        if (name === 'year') {
+            const currentYear = new Date().getFullYear();
+            if (value > currentYear + 1) value = currentYear;
+            if (value < 1980 && value.toString().length === 4) value = 1980;
+        }
+
         setFormData((prev: any) => ({ 
             ...prev, 
-            [name]: type === 'checkbox' ? checked : value 
+            [name]: value 
         }));
     };
 
@@ -412,7 +502,7 @@ export default function VehicleMasterPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Registration Number *</label>
-                                    <Input required name="registration_number" value={formData.registration_number} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold uppercase" placeholder="KL 01 AB 1234" />
+                                    <Input required name="registration_number" value={formData.registration_number} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold" placeholder="KL 01 AB 1234" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Make / Brand *</label>
@@ -494,11 +584,11 @@ export default function VehicleMasterPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Engine Number</label>
-                                    <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold uppercase font-mono" />
+                                    <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold font-mono" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">Chassis Number</label>
-                                    <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold uppercase font-mono" />
+                                    <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="h-10 md:h-11 rounded-md border-primary/20 bg-background text-xs md:text-sm font-bold font-mono" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] md:text-xs font-semibold text-foreground/80 pl-1 uppercase tracking-wider">KM on Day 1</label>
