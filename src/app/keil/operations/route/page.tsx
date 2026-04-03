@@ -308,7 +308,7 @@ export default function RouteRegistryPage() {
                                     required 
                                     className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
                                     placeholder="Main Highway Route" 
-                                    maxLength={50}
+                                    maxLength={30}
                                     value={formData.route_name} 
                                     onChange={handleInputChange} 
                                 />

@@ -20,7 +20,9 @@ import {
     ArrowRight,
     Edit,
     Lock,
-    Loader2
+    Loader2,
+    Download,
+    Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,11 @@ export default function VehicleRepairLogPage() {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [filters, setFilters] = useState({
+        vehicle_id: '',
+        from: '',
+        to: ''
+    });
 
     const [formData, setFormData] = useState({
         vehicle_id: '',
@@ -73,6 +80,10 @@ export default function VehicleRepairLogPage() {
         status: 'Pending',
         remarks: '',
         workshop_name: '',
+        districts: '',
+        starting_km: '',
+        closing_km: '',
+        supervisor_name: '',
         company_id: ''
     });
 
@@ -101,29 +112,49 @@ export default function VehicleRepairLogPage() {
                 }
             }
 
+            // Fetch Vehicles
+            const vehicleUrl = coId ? `${VEHICLE_API}?company_id=${coId}` : VEHICLE_API;
+            const vRes = await fetch(vehicleUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const vData = await vRes.json();
+            if (vData.success) setVehicles(vData.data || []);
+
+            // Fetch Employees
+            const employeeUrl = `${API_BASE}/api/keil/employees`;
+            const eRes = await fetch(employeeUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const eData = await eRes.json();
+            console.log("eData.data ",eData.data,eData.success );
+            if (eData.success) {
+                setEmployees(eData.data || []);
+            } else {
+                // Final fallback: try maxtron endpoint just in case staff are shared
+                const mERes = await fetch(`${API_BASE}/api/maxtron/employees`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const mEData = await mERes.json();
+                if (mEData.success) setEmployees(mEData.data || []);
+            }
+
+            // Fetch Routes
+            const routeUrl = coId ? `${API_BASE}/api/keil/operations/routes?company_id=${coId}` : `${API_BASE}/api/keil/operations/routes`;
+            const rRes = await fetch(routeUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const rData = await rRes.json();
+            if (rData.success) setRoutes(rData.data || []);
+
             if (coId) {
-                // Fetch Vehicles
-                const vRes = await fetch(`${VEHICLE_API}?company_id=${coId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const vData = await vRes.json();
-                if (vData.success) setVehicles(vData.data);
-
-                // Fetch Employees
-                const eRes = await fetch(`${API_BASE}/api/maxtron/employees?company_id=${coId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const eData = await eRes.json();
-                if (eData.success) setEmployees(eData.data);
-
-                // Fetch Routes
-                const rRes = await fetch(`${API_BASE}/api/keil/operations/routes?company_id=${coId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const rData = await rRes.json();
-                if (rData.success) setRoutes(rData.data);
-
                 fetchRepairs(coId);
+            } else {
+                // Fetch all repairs if no specific company found
+                const res = await fetch(`${REPAIRS_API}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) setRepairs(data.data || []);
             }
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -132,10 +163,14 @@ export default function VehicleRepairLogPage() {
         }
     };
 
-    const fetchRepairs = async (coId: string) => {
+    const fetchRepairs = async (coId: string, f?: any) => {
         const token = localStorage.getItem('token');
+        const filterParams = new URLSearchParams({
+            company_id: coId,
+            ...(f || filters)
+        }).toString();
         try {
-            const res = await fetch(`${REPAIRS_API}?company_id=${coId}`, {
+            const res = await fetch(`${REPAIRS_API}?${filterParams}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -144,6 +179,12 @@ export default function VehicleRepairLogPage() {
             console.error('Error fetching repairs:', err);
         }
     };
+
+    useEffect(() => {
+        if (currentCompanyId) {
+            fetchRepairs(currentCompanyId);
+        }
+    }, [filters, currentCompanyId]);
 
     const handleSave = async () => {
         // Validation Suite
@@ -159,8 +200,8 @@ export default function VehicleRepairLogPage() {
             error("Please specify the Workshop Name / Service Center.");
             return;
         }
-        if (formData.cost !== '' && parseFloat(formData.cost) < 0) {
-            error("Repair cost cannot be negative.");
+        if (formData.cost === '' || parseFloat(formData.cost) < 0) {
+            error("Repair Amount (Cost) is required.");
             return;
         }
         if (!formData.log_date) {
@@ -181,14 +222,23 @@ export default function VehicleRepairLogPage() {
         }
 
         // Logical checks
-        if (formData.exit_date && new Date(formData.exit_date) < new Date(formData.entry_date)) {
-            error("Repair 'To' Date cannot be earlier than 'From' Date.");
+        if (formData.exit_date && new Date(formData.exit_date) <= new Date(formData.entry_date)) {
+            error("Repair 'To' Date must be later than 'From' Date.");
             return;
         }
 
         const token = localStorage.getItem('token');
         const method = editingId ? 'PUT' : 'POST';
         const url = editingId ? `${REPAIRS_API}/${editingId}` : REPAIRS_API;
+
+        const { 
+            vehicle, 
+            driver, 
+            route, 
+            mechanic, 
+            id, 
+            ...payload 
+        } = formData as any;
 
         try {
             const res = await fetch(url, {
@@ -198,8 +248,10 @@ export default function VehicleRepairLogPage() {
                     'Authorization': `Bearer ${token}` 
                 },
                 body: JSON.stringify({
-                    ...formData,
-                    cost: formData.cost || 0
+                    ...payload,
+                    cost: formData.cost || 0,
+                    starting_km: formData.starting_km || 0,
+                    closing_km: formData.closing_km || 0
                 })
             });
             const data = await res.json();
@@ -217,6 +269,77 @@ export default function VehicleRepairLogPage() {
         }
     };
 
+    const handleExport = async () => {
+        if (repairs.length === 0) {
+            error("No maintenance data found to export.");
+            return;
+        }
+
+        const ExcelJS = (await import('exceljs')).default;
+        const saveAs = (await import('file-saver')).saveAs;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Maintenance Protocol');
+
+        // Headers
+        const headerRow = worksheet.addRow([
+            'LOG DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'DISTRICTS', 'ROUTE', 'WORKSHOP', 
+            'START KM', 'END KM', 'TOTAL KM', 'REPAIR DESCRIPTION', 'REPAIR START', 'REPAIR END', 
+            'STATUS', 'COST (₹)', 'REMARKS'
+        ]);
+
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // slate-800
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        // Add Data
+        repairs.forEach(r => {
+            const rowData = [
+                new Date(r.log_date).toLocaleDateString(),
+                r.vehicle?.registration_number || 'N/A',
+                r.driver?.name || 'N/A',
+                r.supervisor_name || '-',
+                r.districts || '-',
+                r.route?.route_name || 'N/A',
+                r.workshop_name || '-',
+                r.starting_km || 0,
+                r.closing_km || 0,
+                (r.closing_km - r.starting_km) || 0,
+                r.repair_description || '',
+                r.entry_date ? new Date(r.entry_date).toLocaleString() : '-',
+                r.exit_date ? new Date(r.exit_date).toLocaleString() : '-',
+                r.status || 'Pending',
+                r.cost || 0,
+                r.remarks || ''
+            ];
+            const row = worksheet.addRow(rowData);
+            row.eachCell(cell => {
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+        });
+
+        // Column widths
+        worksheet.columns.forEach(col => { col.width = 20; });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `keil_maintenance_protocol_${new Date().toISOString().split('T')[0]}.xlsx`);
+        success("Maintenance protocol exported.");
+    };
+
     const handleEdit = (r: any) => {
         setEditingId(r.id);
         setFormData({
@@ -224,6 +347,10 @@ export default function VehicleRepairLogPage() {
             log_date: r.log_date || new Date().toISOString().split('T')[0],
             entry_date: r.entry_date ? new Date(r.entry_date).toISOString().substring(0, 16) : '',
             exit_date: r.exit_date ? new Date(r.exit_date).toISOString().substring(0, 16) : '',
+            districts: r.districts || '',
+            starting_km: r.starting_km || '',
+            closing_km: r.closing_km || '',
+            supervisor_name: r.supervisor_name || '',
             company_id: currentCompanyId
         });
         setShowForm(true);
@@ -261,6 +388,10 @@ export default function VehicleRepairLogPage() {
             status: 'Pending',
             remarks: '',
             workshop_name: '',
+            districts: '',
+            starting_km: '',
+            closing_km: '',
+            supervisor_name: '',
             company_id: currentCompanyId
         });
     };
@@ -297,8 +428,64 @@ export default function VehicleRepairLogPage() {
                             {showForm ? 'Cancel Operation' : <><span className="hidden sm:inline">Log Workshop Visit</span><span className="sm:hidden">Log Visit</span></>}
                         </Button>
                     )}
+                    <Button 
+                        variant="outline"
+                        onClick={handleExport}
+                        disabled={repairs.length === 0}
+                        className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 rounded-full px-8 h-11 font-black uppercase tracking-widest active:scale-95 transition-all text-sm"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export Protocol
+                    </Button>
                 </div>
             </div>
+
+            {!showForm && (
+                <div className="bg-white p-4 rounded-[2rem] border border-primary/10 shadow-xl flex flex-col md:flex-row items-end gap-4 animate-in slide-in-from-top-2 duration-500">
+                    <div className="flex-1 w-full space-y-1.5 flex flex-col">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Filter by Vehicle</label>
+                        <Select 
+                            value={filters.vehicle_id || 'all'} 
+                            onValueChange={val => setFilters(prev => ({ ...prev, vehicle_id: val }))}
+                        >
+                            <SelectTrigger className="w-full h-11 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
+                                <SelectValue placeholder="All Assets" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-primary/10">
+                                <SelectItem value="all">All Fleet Assets</SelectItem>
+                                {vehicles.map(v => (
+                                    <SelectItem key={v.id} value={v.id}>{v.registration_number}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex-1 w-full space-y-1.5 flex flex-col">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Maintenance From</label>
+                        <Input 
+                            type="date" 
+                            className="h-11 rounded-xl border-slate-100 bg-slate-50/50 font-black text-xs uppercase" 
+                            value={filters.from} 
+                            onChange={e => setFilters(prev => ({ ...prev, from: e.target.value }))} 
+                        />
+                    </div>
+                    <div className="flex-1 w-full space-y-1.5 flex flex-col">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Maintenance To</label>
+                        <Input 
+                            type="date" 
+                            className="h-11 rounded-xl border-slate-100 bg-slate-50/50 font-black text-xs uppercase" 
+                            value={filters.to} 
+                            onChange={e => setFilters(prev => ({ ...prev, to: e.target.value }))} 
+                        />
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => setFilters({ vehicle_id: 'all', from: '', to: '' })}
+                        className="text-slate-400 hover:text-primary font-black text-[10px] uppercase h-11 px-6 rounded-xl border border-dashed border-slate-200"
+                    >
+                        <X className="w-4 h-4 mr-2" /> Reset Protocol Filters
+                    </Button>
+                </div>
+            )}
 
 
             {showForm ? (
@@ -342,12 +529,18 @@ export default function VehicleRepairLogPage() {
                                     <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
                                         <SelectValue placeholder="Select Driver" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white border-primary/10">
-                                        {employees.map(m => (
-                                            <SelectItem key={m.id} value={m.id}>
-                                                {m.name}
-                                            </SelectItem>
-                                        ))}
+                                    <SelectContent className="bg-white border-primary/20 max-h-[300px]">
+                                        {employees.length === 0 ? (
+                                            <div className="p-4 text-xs text-center text-muted-foreground font-bold uppercase italic">
+                                                No Drivers Found
+                                            </div>
+                                        ) : (
+                                            employees.map(m => (
+                                                <SelectItem key={m.id} value={m.id}>
+                                                    {m.name || 'Unknown Staff'}
+                                                </SelectItem>
+                                            ))
+                                        )}
                                     </SelectContent>
                                 </Select>
 
@@ -364,7 +557,7 @@ export default function VehicleRepairLogPage() {
                                     <SelectContent className="bg-white border-primary/10">
                                         {routes.map(r => (
                                             <SelectItem key={r.id} value={r.id}>
-                                                {r.route_name} ({r.company?.company_name})
+                                                {r.route_name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -380,6 +573,37 @@ export default function VehicleRepairLogPage() {
                                     value={formData.workshop_name} 
                                     onChange={e => setFormData({ ...formData, workshop_name: e.target.value })} 
                                 />
+                            </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Supervisor Name</label>
+                                <Input 
+                                    placeholder="Enter supervisor name..." 
+                                    className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" 
+                                    value={formData.supervisor_name} 
+                                    onChange={e => setFormData({ ...formData, supervisor_name: e.target.value })} 
+                                />
+                            </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Districts</label>
+                                <Input 
+                                    placeholder="Coverage areas..." 
+                                    className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" 
+                                    value={formData.districts} 
+                                    onChange={e => setFormData({ ...formData, districts: e.target.value })} 
+                                />
+                            </div>
+
+                            <div className="space-y-1.5 bg-secondary/5 p-4 rounded-2xl border border-secondary/10">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                                    <MapPin className="w-3 h-3" /> Starting KM
+                                </label>
+                                <Input type="number" min={0} className="h-10 rounded-xl font-black text-lg border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/40 focus:outline-none" value={formData.starting_km} onChange={e => setFormData({ ...formData, starting_km: e.target.value })} />
+                            </div>
+                            <div className="space-y-1.5 bg-secondary/5 p-4 rounded-2xl border border-secondary/10">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                                    <MapPin className="w-3 h-3" /> Closing KM
+                                </label>
+                                <Input type="number" min={0} className="h-10 rounded-xl font-black text-lg border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/40 focus:outline-none" value={formData.closing_km} onChange={e => setFormData({ ...formData, closing_km: e.target.value })} />
                             </div>
                              <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary/80 pl-1">Repair From Date *</label>
@@ -406,11 +630,11 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
-                             <div className="space-y-1.5 bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-primary/80 flex items-center gap-2">
-                                    <CreditCard className="w-3 h-3" /> Amount (₹)
+                            <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
+                                <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
+                                    <Activity className="w-3 h-3" /> Amount (₹) <span className="text-rose-500">*</span>
                                 </label>
-                                <Input type="number" min={0} className="h-12 rounded-xl font-black text-xl border-none bg-white shadow-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
                             </div>
 
                              <div className="lg:col-span-2 space-y-1.5">
@@ -465,6 +689,12 @@ export default function VehicleRepairLogPage() {
                                                 </span>
                                             </div>
                                         )}
+                                        {r.supervisor_name && (
+                                            <div className="flex items-center gap-2 pl-1 italic">
+                                                <User className="w-3 h-3 text-primary/40" />
+                                                <span className="text-[10px] font-bold text-slate-400 capitalize">Supervisor: {r.supervisor_name}</span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-2 pl-1 opacity-50">
                                             <Calendar className="w-3 h-3 text-slate-400" />
                                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{new Date(r.log_date || r.entry_date).toLocaleDateString()}</span>
@@ -508,9 +738,29 @@ export default function VehicleRepairLogPage() {
                                 </td>
                                 <td className="px-6 py-6">
                                     <div className="max-w-[250px] space-y-2">
+                                        {r.districts && (
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/5 rounded-lg border border-amber-500/10 w-fit">
+                                                <MapPin className="w-3 h-3 text-amber-500/40" />
+                                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">{r.districts}</span>
+                                            </div>
+                                        )}
                                         <p className="text-[11px] font-bold text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 italic">
                                             "{r.repair_description}"
                                         </p>
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <div className="flex flex-col bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                                                <span className="text-[8px] font-black uppercase text-slate-400 leading-none">Starting KM</span>
+                                                <span className="text-[10px] font-bold text-slate-600 leading-tight">{parseFloat(r.starting_km || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex flex-col bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                                                <span className="text-[8px] font-black uppercase text-slate-400 leading-none">Closing KM</span>
+                                                <span className="text-[10px] font-bold text-slate-600 leading-tight">{parseFloat(r.closing_km || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex flex-col bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10">
+                                                <span className="text-[8px] font-black uppercase text-primary/60 leading-none">Total KM</span>
+                                                <span className="text-[10px] font-black text-primary leading-tight">{(r.closing_km - r.starting_km).toLocaleString()} KM</span>
+                                            </div>
+                                        </div>
                                         {r.remarks && (
                                             <div className="flex items-start gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-widest opacity-60 pl-1">
                                                 <Save className="w-2.5 h-2.5 rotate-180" /> 

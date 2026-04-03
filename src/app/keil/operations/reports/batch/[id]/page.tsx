@@ -149,7 +149,7 @@ export default function BatchDetailsPage() {
                         </div>
                     </CardContent>
                  </Card>
-                 <Card className="border-none shadow-lg bg-white rounded-xl overflow-hidden group hover:shadow-xl transition-shadow duration-300">
+                  <Card className="border-none shadow-lg bg-white rounded-xl overflow-hidden group hover:shadow-xl transition-shadow duration-300">
                     <div className="bg-secondary/60 h-1 w-full" />
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
@@ -158,25 +158,31 @@ export default function BatchDetailsPage() {
                                     <User className="w-5 h-5" />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employee Assignment</p>
-                                    <p className="text-lg font-bold text-foreground truncate">{batch.driver_name}</p>
-                                    <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">Sup: {batch.supervisor_name}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Performance</p>
+                                    <p className="text-lg font-bold text-foreground truncate">{batch.start_time || '--'} - {batch.end_time || '--'}</p>
+                                    <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">{batch.km_run || 0} KM Traversed</p>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
-                 </Card>
+                  </Card>
             </div>
 
             {/* Waste Summary Counters */}
             <div className="bg-foreground rounded-2xl p-10 text-background shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -mr-48 -mt-48 transition-transform group-hover:scale-110 duration-700" />
-                <div className="relative z-10 grid grid-cols-2 lg:grid-cols-5 gap-10">
+                <div className="relative z-10 grid grid-cols-2 lg:grid-cols-6 gap-10">
                     <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Coverage Yield</p>
-                        <div className="flex items-baseline gap-2">
-                            <p className="text-4xl font-bold tracking-tight">{batch.total_visited} / {batch.total_hce_assigned}</p>
-                            <span className="text-sm font-bold text-secondary">{Math.round((batch.total_visited / batch.total_hce_assigned) * 100)}%</span>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Coverage Loop</p>
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-4xl font-bold tracking-tight">{batch.total_visited} / {batch.total_hce_assigned}</p>
+                                <span className="text-sm font-bold text-secondary">{Math.round((batch.total_visited / (batch.total_hce_assigned || 1)) * 100)}%</span>
+                            </div>
+                            <div className="flex gap-2 text-[9px] font-bold uppercase text-muted-foreground">
+                                <span>B: {batch.visited_bedded || 0}/{batch.assigned_bedded || 0}</span>
+                                <span>O: {batch.visited_others || 0}/{batch.assigned_others || 0}</span>
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -192,8 +198,25 @@ export default function BatchDetailsPage() {
                         <p className="text-4xl font-bold tracking-tight">{totals.white} <span className="text-xs font-medium text-muted-foreground/60">Units</span></p>
                     </div>
                     <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary/60">Bottle Vol.</p>
-                        <p className="text-4xl font-bold tracking-tight">{totals.bottle} <span className="text-xs font-medium text-muted-foreground/60">Units</span></p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary/60">Operational Metric</p>
+                        <div className="flex gap-4">
+                            <div>
+                                <p className="text-[9px] font-bold uppercase text-primary/60">DC</p>
+                                <p className="text-2xl font-bold text-white">{batch.dc_qty || 0}</p>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-bold uppercase text-primary/60">NW</p>
+                                <p className="text-2xl font-bold text-white">{batch.nw_qty || 0}</p>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-bold uppercase text-secondary/60">RD</p>
+                                <p className="text-2xl font-bold text-white">{batch.rd_qty || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Collection Qty</p>
+                        <p className="text-4xl font-bold tracking-tight text-white">{batch.collection_qty || 0}</p>
                     </div>
                 </div>
             </div>
@@ -223,7 +246,18 @@ export default function BatchDetailsPage() {
                                 <tr key={entry.id} className="border-b last:border-0 border-slate-50 hover:bg-white transition-all group">
                                     <td className="px-10 py-7">
                                         <div className="flex flex-col gap-1">
-                                            <span className="font-bold text-foreground text-base group-hover:text-primary transition-colors">{entry.hce?.hce_name}</span>
+                                            <span className="font-bold text-foreground text-base group-hover:text-primary transition-colors flex items-center gap-2">
+                                                {entry.hce?.hce_name}
+                                                {entry.hce?.hce_category && (
+                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                                                        entry.hce.hce_category?.toUpperCase() === 'BEDDED' 
+                                                            ? 'bg-amber-100 text-amber-700 border border-amber-200' 
+                                                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                    }`}>
+                                                        {entry.hce.hce_category}
+                                                    </span>
+                                                )}
+                                            </span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded uppercase">{entry.hce?.hce_code}</span>
                                                 <span className="w-px h-3 bg-primary/20" />

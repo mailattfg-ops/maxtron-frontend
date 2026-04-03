@@ -22,7 +22,9 @@ import {
     Wrench,
     Check,
     Lock,
-    Loader2
+    Loader2,
+    Activity,
+    Download
 } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,6 +65,7 @@ export default function VehicleDailyLogPage() {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const [filters, setFilters] = useState({
         vehicle_id: '',
@@ -83,12 +86,21 @@ export default function VehicleDailyLogPage() {
         workshop_out_time: '',
         bill_amount: '',
         remarks: '',
-        company_id: ''
+        company_id: '',
+        schedule_time: '',
+        start_time: '',
+        is_running: true
     });
 
     useEffect(() => {
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        if (currentCompanyId) {
+            fetchLogs(currentCompanyId);
+        }
+    }, [filters, currentCompanyId]);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -168,11 +180,11 @@ export default function VehicleDailyLogPage() {
             return;
         }
         if (formData.start_km === '' || parseFloat(formData.start_km) < 0) {
-            error("Valid Start Odometer reading is required (cannot be negative).");
+            error("Target Asset's Start Odometer is required.");
             return;
         }
         if (formData.end_km === '' || parseFloat(formData.end_km) < 0) {
-            error("Valid End Odometer reading is required (cannot be negative).");
+            error("Target Asset's End Odometer is required.");
             return;
         }
         
@@ -183,19 +195,18 @@ export default function VehicleDailyLogPage() {
             return;
         }
 
-        if (formData.fuel_qty !== '' && parseFloat(formData.fuel_qty) < 0) {
-            error("Fuel quantity cannot be negative.");
-            return;
-        }
-
-        if (formData.has_complaint && formData.bill_amount !== '' && parseFloat(formData.bill_amount) < 0) {
-            error("Workshop Bill Amount cannot be negative.");
+        if (formData.fuel_qty === '' || parseFloat(formData.fuel_qty) < 0) {
+            error("Diesel quantity is required (can be 0 if not filled).");
             return;
         }
 
         if (formData.has_complaint) {
             if (!formData.complaint_type) {
                 error("Type of Complaint is required.");
+                return;
+            }
+            if (formData.bill_amount === '' || parseFloat(formData.bill_amount) < 0) {
+                error("Workshop Bill Amount is required (can be 0 if zero-cost repair).");
                 return;
             }
             if (!formData.workshop_in_time) {
@@ -206,6 +217,11 @@ export default function VehicleDailyLogPage() {
                 error("Workshop OUT Time is required.");
                 return;
             }
+
+            if (new Date(formData.workshop_out_time) <= new Date(formData.workshop_in_time)) {
+                error("Workshop OUT Time must be later than IN Time.");
+                return;
+            }
         }
 
         const payload = {
@@ -214,13 +230,17 @@ export default function VehicleDailyLogPage() {
             bill_amount: formData.bill_amount || 0,
             workshop_in_time: formData.workshop_in_time || null,
             workshop_out_time: formData.workshop_out_time || null,
-            complaint_type: formData.complaint_type || null
+            complaint_type: formData.complaint_type || null,
+            schedule_time: formData.schedule_time || null,
+            start_time: formData.start_time || null,
+            is_running: formData.is_running
         };
 
         const token = localStorage.getItem('token');
         const method = editingId ? 'PUT' : 'POST';
         const url = editingId ? `${LOGS_API}/${editingId}` : LOGS_API;
 
+        setSaving(true);
         try {
             const res = await fetch(url, {
                 method,
@@ -242,7 +262,80 @@ export default function VehicleDailyLogPage() {
             }
         } catch (err: any) {
             error(err.message);
+        } finally {
+            setSaving(false);
         }
+    };
+
+    const handleExport = async () => {
+        if (logs.length === 0) {
+            error("No data available to export.");
+            return;
+        }
+
+        const ExcelJS = (await import('exceljs')).default;
+        const saveAs = (await import('file-saver')).saveAs;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Vehicle Daily Logs');
+
+        // Headers
+        const headerRow = worksheet.addRow([
+            'DATE', 'VEHICLE', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
+            'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
+            'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
+        ]);
+
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // slate-800
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        // Add Data
+        logs.forEach(l => {
+            const rowData = [
+                new Date(l.log_date).toLocaleDateString(),
+                l.vehicle?.registration_number || 'N/A',
+                l.route?.route_name || 'N/A',
+                l.schedule_time || '-',
+                l.start_time || '-',
+                l.is_running ? 'YES' : 'NO',
+                l.start_km,
+                l.end_km || '-',
+                l.end_km ? (l.end_km - l.start_km).toFixed(2) : '0',
+                l.fuel_qty || 0,
+                l.has_complaint ? 'YES' : 'NO',
+                l.complaint_type || '-',
+                l.workshop_in_time ? new Date(l.workshop_in_time).toLocaleString() : '-',
+                l.workshop_out_time ? new Date(l.workshop_out_time).toLocaleString() : '-',
+                l.bill_amount || 0,
+                l.remarks || ''
+            ];
+            const r = worksheet.addRow(rowData);
+            r.eachCell(cell => {
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+        });
+
+        // Column widths
+        worksheet.columns.forEach(col => { col.width = 18; });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `keil_fleet_telemetry_${new Date().toISOString().split('T')[0]}.xlsx`);
+        success("Telemetry report exported successfully.");
     };
 
     const handleDelete = async (id: string) => {
@@ -279,7 +372,10 @@ export default function VehicleDailyLogPage() {
             workshop_out_time: l.workshop_out_time ? new Date(l.workshop_out_time).toISOString().slice(0, 16) : '',
             bill_amount: l.bill_amount ? l.bill_amount.toString() : '',
             remarks: l.remarks || '',
-            company_id: l.company_id
+            company_id: l.company_id,
+            schedule_time: l.schedule_time || '',
+            start_time: l.start_time || '',
+            is_running: l.is_running ?? true
         });
         setShowForm(true);
     };
@@ -298,7 +394,10 @@ export default function VehicleDailyLogPage() {
             workshop_out_time: '',
             bill_amount: '',
             remarks: '',
-            company_id: currentCompanyId
+            company_id: currentCompanyId,
+            schedule_time: '',
+            start_time: '',
+            is_running: true
         });
         setEditingId(null);
     };
@@ -348,9 +447,64 @@ export default function VehicleDailyLogPage() {
                             {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
                         </Button>
                     )}
+                    <Button 
+                        variant="outline"
+                        onClick={handleExport}
+                        disabled={logs.length === 0}
+                        className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 px-8 rounded-full h-11 font-bold uppercase tracking-wider active:scale-95"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export Data
+                    </Button>
                 </div>
             </div>
 
+            {!showForm && (
+                <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col md:flex-row items-end gap-4 animate-in slide-in-from-top-2 duration-500">
+                    <div className="flex-1 w-full space-y-1.5 flex flex-col">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">Filter by Vehicle</label>
+                        <Select 
+                            value={filters.vehicle_id || 'all'} 
+                            onValueChange={val => setFilters(prev => ({ ...prev, vehicle_id: val }))}
+                        >
+                            <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                <SelectValue placeholder="All Assets" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-primary/20">
+                                <SelectItem value="all">All Fleet Assets</SelectItem>
+                                {vehicles.map(v => (
+                                    <SelectItem key={v.id} value={v.id}>{v.registration_number}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex-1 w-full space-y-1.5">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">From Date</label>
+                        <Input 
+                            type="date" 
+                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs" 
+                            value={filters.from} 
+                            onChange={e => setFilters(prev => ({ ...prev, from: e.target.value }))} 
+                        />
+                    </div>
+                    <div className="flex-1 w-full space-y-1.5">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">To Date</label>
+                        <Input 
+                            type="date" 
+                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs" 
+                            value={filters.to} 
+                            onChange={e => setFilters(prev => ({ ...prev, to: e.target.value }))} 
+                        />
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => setFilters({ vehicle_id: 'all', from: '', to: '' })}
+                        className="text-muted-foreground hover:text-primary font-bold text-xs uppercase h-10 px-6 rounded-full border border-dashed border-primary/10"
+                    >
+                        <X className="w-4 h-4 mr-2" /> Reset
+                    </Button>
+                </div>
+            )}
 
             {showForm ? (
                 <Card className="border-primary/20 shadow-xl animate-in slide-in-from-top duration-300">
@@ -409,21 +563,53 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> Start Odometer *
+                                    <MapPin className="w-3 h-3" /> Start Odometer <span className="text-rose-500">*</span>
                                 </label>
                                 <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" value={formData.start_km} onChange={e => setFormData({ ...formData, start_km: e.target.value })} />
                             </div>
 
                             <div className="space-y-1.5 bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                                 <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
-                                    <MapPin className="w-3 h-3" /> End Odometer *
+                                    <MapPin className="w-3 h-3" /> End Odometer <span className="text-rose-500">*</span>
                                 </label>
-                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" placeholder="Current Reading" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
+                                <Input required type="number" min={0} step="0.01" className="h-10 rounded-md border-secondary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-secondary/20 focus:outline-none" value={formData.end_km} onChange={e => setFormData({ ...formData, end_km: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                    <Clock className="w-3 h-3" /> Schedule Time
+                                </label>
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.schedule_time} onChange={e => setFormData({ ...formData, schedule_time: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                    <Clock className="w-3 h-3" /> Starting Time
+                                </label>
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.start_time} onChange={e => setFormData({ ...formData, start_time: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                    <Activity className="w-3 h-3" /> Running Status *
+                                </label>
+                                <Select 
+                                    value={formData.is_running ? 'yes' : 'no'} 
+                                    onValueChange={val => setFormData({ ...formData, is_running: val === 'yes' })}
+                                >
+                                    <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        <SelectItem value="yes">YES (Active)</SelectItem>
+                                        <SelectItem value="no">NO (Down)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                                 <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
-                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr)
+                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr) <span className="text-rose-500">*</span>
                                 </label>
                                 <Input type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
                             </div>
@@ -449,8 +635,8 @@ export default function VehicleDailyLogPage() {
                                                 <Input required placeholder="Engine, Suspension, etc." className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.complaint_type} onChange={e => setFormData({ ...formData, complaint_type: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Workshop Bill Amt (₹)</label>
-                                                <Input type="number" min={0} className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-rose-600">Workshop Bill Amt (₹) <span className="text-rose-500 text-[10px]">*</span></label>
+                                                <Input required type="number" min={0} className="bg-white border-rose-100 h-10 rounded-xl font-bold focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-200 focus:outline-none" value={formData.bill_amount} onChange={e => setFormData({ ...formData, bill_amount: e.target.value })} />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Workshop IN Time *</label>
@@ -472,9 +658,18 @@ export default function VehicleDailyLogPage() {
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end">
-                            <Button onClick={handleSave} className="w-full bg-primary hover:bg-primary/90 text-white rounded-full px-10 h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider">
-                                <Save className="w-4 h-4 mr-3" />
-                                Synchronize Field Log
+                            <Button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-white rounded-full px-10 h-11 shadow-lg shadow-primary/20 font-bold uppercase tracking-wider disabled:opacity-70 disabled:cursor-not-allowed">
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                                        Synchronizing Data...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="w-4 h-4 mr-3" />
+                                        Synchronize Field Log
+                                      </>
+                                )}
                               </Button>
                         </div>
                     </CardContent>
@@ -484,18 +679,21 @@ export default function VehicleDailyLogPage() {
                     title="Logitudinal Protocol"
                     description="Daily performance and resource consumption logs for the transport fleet."
                     searchFields={['vehicle.registration_number', 'remarks']}
-                    headers={['Vehicle / Route / Date', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
+                    headers={['Vehicle / Route / Date', 'Operational Timing', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
                     data={logs}
                     loading={loading}
                     renderRow={(l: any) => (
                         <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
                             <td className="px-6 py-6 font-bold">
                                 <div className="flex flex-col gap-1.5">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
                                             <Truck className="w-4 h-4" />
                                         </div>
                                         <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number}</span>
+                                        <div className={`ml-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${l.is_running ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
+                                            {l.is_running ? 'Running' : 'Not Running'}
+                                        </div>
                                     </div>
                                     {l.route?.route_name && (
                                         <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">
@@ -511,6 +709,24 @@ export default function VehicleDailyLogPage() {
                                     <div className="flex items-center gap-2 pl-1 opacity-70">
                                         <Calendar className="w-3 h-3 text-muted-foreground" />
                                         <span className="text-[11px] font-bold text-muted-foreground uppercase">{new Date(l.log_date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-6 py-6">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                        <Clock className="w-3.5 h-3.5 text-primary/60" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-primary/40 uppercase tracking-widest leading-none">Schedule Time</span>
+                                            <span className="text-xs font-bold text-primary leading-tight">{l.schedule_time ? l.schedule_time.slice(0, 5) : '--:--'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-secondary/5 px-3 py-1.5 rounded-lg border border-secondary/10 w-fit">
+                                        <Clock className="w-3.5 h-3.5 text-secondary/60" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Starting Time</span>
+                                            <span className="text-xs font-bold text-secondary leading-tight">{l.start_time ? l.start_time.slice(0, 5) : '--:--'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>

@@ -42,6 +42,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 const ROUTE_API = `${API_BASE}/api/keil/operations/routes`;
 const ASSIGN_API = `${API_BASE}/api/keil/operations/assignments`;
 const COLLECTION_API = `${API_BASE}/api/keil/operations/collections`;
+const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
 
 export default function DailyCollectionEntryPage() {
     const { success, error } = useToast();
@@ -56,6 +57,7 @@ export default function DailyCollectionEntryPage() {
     const [selectedRouteId, setSelectedRouteId] = useState('');
     const [assignedHces, setAssignedHces] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
+    const [vehicles, setVehicles] = useState<any[]>([]);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
 
     // Header Data
@@ -65,7 +67,14 @@ export default function DailyCollectionEntryPage() {
         registration_number: '',
         driver_name: '',
         supervisor_name: '',
-        remarks: ''
+        remarks: '',
+        start_time: '',
+        end_time: '',
+        km_run: 0,
+        collection_qty: 0,
+        dc_qty: 0,
+        nw_qty: 0,
+        rd_qty: 0
     });
 
     // Entries state: Map of HCE ID -> Entry Details
@@ -94,20 +103,38 @@ export default function DailyCollectionEntryPage() {
                 }
             }
 
-            if (coId) {
-                const [rRes, eRes] = await Promise.all([
-                    fetch(`${ROUTE_API}?company_id=${coId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }),
-                    fetch(`${API_BASE}/api/maxtron/employees?company_id=${coId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    })
-                ]);
-                const rData = await rRes.json();
-                const eData = await eRes.json();
-                if (rData.success) setRoutes(rData.data);
-                if (eData.success) setEmployees(eData.data);
+            // Fetch Routes
+            const routeUrl = coId ? `${ROUTE_API}?company_id=${coId}` : ROUTE_API;
+            const rRes = await fetch(routeUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const rData = await rRes.json();
+            if (rData.success) setRoutes(rData.data || []);
+
+            // Fetch Employees
+            const employeeUrl = coId ? `${API_BASE}/api/keil/employees?company_id=${coId}` : `${API_BASE}/api/keil/employees`;
+            const eRes = await fetch(employeeUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const eData = await eRes.json();
+            if (eData.success && eData.data?.length > 0) {
+                setEmployees(eData.data || []);
+            } else {
+                // Fallback to maxtron pool
+                const mERes = await fetch(`${API_BASE}/api/maxtron/employees`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const mEData = await mERes.json();
+                if (mEData.success) setEmployees(mEData.data || []);
             }
+
+            // Fetch Vehicles
+            const vehicleUrl = coId ? `${VEHICLE_API}?company_id=${coId}` : VEHICLE_API;
+            const vRes = await fetch(vehicleUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const vData = await vRes.json();
+            if (vData.success) setVehicles(vData.data || []);
         } catch (err) {
             console.error('Error fetching initial data:', err);
         }
@@ -167,6 +194,7 @@ export default function DailyCollectionEntryPage() {
 
     const calculateTotals = () => {
         const visitedList = Object.values(entries).filter(e => e.is_visited);
+        
         let yellow = 0, red = 0, white = 0, bottle = 0;
         visitedList.forEach(e => {
             yellow += (e.yellow_bags || 0);
@@ -174,9 +202,32 @@ export default function DailyCollectionEntryPage() {
             white += (e.white_containers || 0);
             bottle += (e.bottle_containers || 0);
         });
+
+        const total_assigned = assignedHces.length;
+        const total_visited = visitedList.length;
+
+        // Breakdown
+        const assigned_bedded = assignedHces.filter(a => a.keil_hces?.hce_category === 'Bedded').length;
+        const assigned_others = total_assigned - assigned_bedded;
+
+        const visited_bedded = visitedList.filter(e => {
+            const h = assignedHces.find(a => a.hce_id === e.hce_id);
+            return h?.keil_hces?.hce_category === 'Bedded';
+        }).length;
+        const visited_others = total_visited - visited_bedded;
+
+        const missed_bedded = assigned_bedded - visited_bedded;
+        const missed_others = assigned_others - visited_others;
+
         return {
-            total_assigned: assignedHces.length,
-            total_visited: visitedList.length,
+            total_assigned,
+            total_visited,
+            assigned_bedded,
+            assigned_others,
+            visited_bedded,
+            visited_others,
+            missed_bedded,
+            missed_others,
             yellow, red, white, bottle
         };
     };
@@ -191,20 +242,34 @@ export default function DailyCollectionEntryPage() {
             return;
         }
 
-        const { total_assigned, total_visited } = calculateTotals();
-        if (total_visited === 0) {
+        // Session Duration Validation
+        if (headerData.start_time && headerData.end_time) {
+            if (headerData.end_time <= headerData.start_time) {
+                error("Overall Session 'End Time' must be later than its 'Start Time'.");
+                return;
+            }
+        }
+
+        const stats = calculateTotals();
+        if (stats.total_visited === 0) {
             error("Please mark at least one HCE as visited.");
             return;
         }
 
         // Detailed Validation for visited HCEs
         const visitedEntries = Object.values(entries).filter(e => e.is_visited);
+
         for (const entry of visitedEntries) {
             const hce = assignedHces.find(a => a.hce_id === entry.hce_id);
             const name = hce?.keil_hces?.hce_name || "Facility";
 
             if (!entry.start_time || !entry.end_time) {
                 error(`Timestamps (In/Out) required for ${name}.`);
+                return;
+            }
+
+            if (entry.end_time <= entry.start_time) {
+                error(`Facility visit 'Time Out' must be later than 'Time In' for ${name}.`);
                 return;
             }
 
@@ -221,8 +286,15 @@ export default function DailyCollectionEntryPage() {
                 const payload = {
                     header: {
                         ...headerData,
-                        total_hce_assigned: total_assigned,
-                        total_visited: total_visited,
+                        total_hce_assigned: stats.total_assigned,
+                        total_visited: stats.total_visited,
+                        assigned_bedded: stats.assigned_bedded,
+                        assigned_others: stats.assigned_others,
+                        visited_bedded: stats.visited_bedded,
+                        visited_others: stats.visited_others,
+                        missed_bedded: stats.missed_bedded,
+                        missed_others: stats.missed_others,
+                        collection_qty: (stats.total_visited / (stats.total_assigned || 1)) * 100,
                         company_id: currentCompanyId
                     },
                     entries: Object.values(entries)
@@ -375,9 +447,18 @@ export default function DailyCollectionEntryPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
-                                <Truck className="w-3 h-3 text-primary" /> Vehicle Reference
+                                <Truck className="w-3 h-3 text-primary" /> Vehicle Registry
                             </label>
-                            <Input placeholder="Registration Code" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.registration_number} onChange={e => setHeaderData({ ...headerData, registration_number: e.target.value })} />
+                            <Select value={headerData.registration_number} onValueChange={(val) => setHeaderData({ ...headerData, registration_number: val })}>
+                                <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                    <SelectValue placeholder="Select Vehicle" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-primary/20">
+                                    {vehicles.map(v => (
+                                        <SelectItem key={v.id} value={v.registration_number}>{v.registration_number}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
@@ -398,13 +479,59 @@ export default function DailyCollectionEntryPage() {
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
                                 <User className="w-3 h-3 text-primary" /> Field Supervisor
                             </label>
-                            <Input placeholder="Enter supervisor" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.supervisor_name} onChange={e => setHeaderData({ ...headerData, supervisor_name: e.target.value })} />
+                            <Select value={headerData.supervisor_name} onValueChange={(val) => setHeaderData({ ...headerData, supervisor_name: val })}>
+                                <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                    <SelectValue placeholder="Select Supervisor" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-primary/20">
+                                    {employees.map(emp => (
+                                        <SelectItem key={`sup-${emp.id}`} value={emp.name}>{emp.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
                                 <Dna className="w-3 h-3 text-primary" /> Execution Remarks
                             </label>
                             <Input placeholder="Notes regarding session" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.remarks} onChange={e => setHeaderData({ ...headerData, remarks: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <Clock className="w-3 h-3 text-primary" /> Session Duration (Start - End)
+                            </label>
+                            <div className="flex gap-2">
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.start_time} onChange={e => setHeaderData({ ...headerData, start_time: e.target.value })} />
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.end_time} onChange={e => setHeaderData({ ...headerData, end_time: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <Navigation className="w-3 h-3 text-primary" /> Distance (KM Run)
+                            </label>
+                            <Input type="number" placeholder="KM" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.km_run || ''} onChange={e => setHeaderData({ ...headerData, km_run: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <Activity className="w-3 h-3 text-primary" /> Coverage / Completion
+                            </label>
+                            <div className="h-10 rounded-md border border-primary/20 bg-primary/5 flex items-center px-3 font-black text-primary text-sm">
+                                {Math.round((totals.total_visited / (totals.total_assigned || 1)) * 100)}% Verified
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 lg:col-span-1">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">DC</label>
+                                <Input type="number" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm text-center" value={headerData.dc_qty || ''} onChange={e => setHeaderData({ ...headerData, dc_qty: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">NW</label>
+                                <Input type="number" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm text-center" value={headerData.nw_qty || ''} onChange={e => setHeaderData({ ...headerData, nw_qty: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">RD</label>
+                                <Input type="number" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm text-center" value={headerData.rd_qty || ''} onChange={e => setHeaderData({ ...headerData, rd_qty: parseInt(e.target.value) || 0 })} />
+                            </div>
                         </div>
                     </div>
                 </CardContent>
@@ -488,19 +615,19 @@ export default function DailyCollectionEntryPage() {
                                                     <div className="flex items-center justify-center gap-2">
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-yellow-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-yellow-400" value={entries[a.hce_id]?.yellow_bags} onChange={e => updateEntry(a.hce_id, 'yellow_bags', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-yellow-400" value={entries[a.hce_id]?.yellow_bags || ''} onChange={e => updateEntry(a.hce_id, 'yellow_bags', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-rose-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-rose-400" value={entries[a.hce_id]?.red_bags} onChange={e => updateEntry(a.hce_id, 'red_bags', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-rose-400" value={entries[a.hce_id]?.red_bags || ''} onChange={e => updateEntry(a.hce_id, 'red_bags', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-slate-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-slate-400" value={entries[a.hce_id]?.white_containers} onChange={e => updateEntry(a.hce_id, 'white_containers', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-slate-400" value={entries[a.hce_id]?.white_containers || ''} onChange={e => updateEntry(a.hce_id, 'white_containers', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1">
                                                             <div className="w-8 h-1 bg-primary/40 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-primary" value={entries[a.hce_id]?.bottle_containers} onChange={e => updateEntry(a.hce_id, 'bottle_containers', parseInt(e.target.value) || 0)} />
+                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-primary" value={entries[a.hce_id]?.bottle_containers || ''} onChange={e => updateEntry(a.hce_id, 'bottle_containers', parseInt(e.target.value) || 0)} />
                                                         </div>
                                                     </div>
                                                 </td>

@@ -13,7 +13,9 @@ import {
     Download,
     X,
     Lock,
-    Loader2
+    Loader2,
+    Clock,
+    Navigation
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -122,37 +124,139 @@ export default function RouteCollectionReportPage() {
             return;
         }
 
-        const headers = [
-            'Route Name', 
-            'Route Code', 
-            'Vehicle No', 
-            'Driver Name', 
-            'Supervisor', 
-            'Assigned HCEs', 
-            'Visited', 
-            'Coverage %', 
-            'Remarks'
+        const ExcelJS = (await import('exceljs')).default;
+        const saveAs = (await import('file-saver')).saveAs;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Collection Summary');
+
+        // Main Headers (Row 1)
+        const mainHeader = [
+            'ROUTE NAME', 'VEHICLE NUMBER', 'DRIVER NAME', 'SUPERVISOR NAME', 
+            'STARTING TIME', 'ENDING TIME', 'KM RUN', 
+            'TOTAL HCE', '', '', // 8, 9, 10
+            'VISITED HCE', '', '', // 11, 12, 13
+            'COLLECTION', 'DC', 'NW', 'RD',
+            'MISSED', '', '' // 18, 19, 20
         ];
+        const headerRow1 = worksheet.addRow(mainHeader);
+        
+        // Sub Headers (Row 2)
+        const subHeader = [
+            '', '', '', '', '', '', '',
+            'BEDDED', 'OTHERS', 'TOTAL',
+            'BEDDED', 'OTHERS', 'TOTAL',
+            '', '', '', '',
+            'BEDDED', 'OTHERS', 'TOTAL'
+        ];
+        const headerRow2 = worksheet.addRow(subHeader);
 
-        const rows = batches.map(batch => [
-            batch.route?.route_name || 'N/A',
-            batch.route?.route_code || 'N/A',
-            batch.registration_number || 'N/A',
-            batch.driver_name || 'N/A',
-            batch.supervisor_name || 'N/A',
-            batch.total_hce_assigned || 0,
-            batch.total_visited || 0,
-            `${((batch.total_visited / (batch.total_hce_assigned || 1)) * 100).toFixed(1)}%`,
-            batch.remarks || '-'
-        ]);
-
-        await exportToExcel({
-            headers,
-            rows,
-            filename: `route_collection_summary_${filters.date}.xlsx`,
-            sheetName: 'Collection Summary'
+        // Styling Headers
+        [headerRow1, headerRow2].forEach((row, idx) => {
+            row.eachCell((cell, colNumber) => {
+                cell.font = { bold: true, size: 9 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // Color for COLLECTION (Col 14)
+                if (colNumber === 14) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Yellow
+                } else if (idx === 0) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+                }
+            });
         });
-        success("Report exported to Excel.");
+
+        // Merging Cells for Row 1
+        worksheet.mergeCells('H1:J1'); // TOTAL HCE
+        worksheet.mergeCells('K1:M1'); // VISITED HCE
+        worksheet.mergeCells('R1:T1'); // MISSED
+        
+        // Vertical Merge for fixed headers
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'N', 'O', 'P', 'Q'].forEach(col => {
+            worksheet.mergeCells(`${col}1:${col}2`);
+        });
+
+        // Add Data Rows
+        for (const summaryBatch of batches) {
+            // Fetch full details for each batch to get accurate entries for old data
+            const detailRes = await fetch(`${COLLECTION_API}/${summaryBatch.id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const detailData = await detailRes.json();
+            const batch = detailData.success ? detailData.data : summaryBatch;
+
+            // Recalculate breakdown using the provided logic to ensure "correct data"
+            const visitedList = (batch.entries || []).filter((e: any) => e.is_visited);
+            
+            // To get accurate "assigned_bedded" and "others", we need the assignments or use the category from entries
+            // Since batch.entries includes all assigned HCEs (even non-visited ones), we can use them
+            const entries = batch.entries || [];
+            
+            const total_assigned = entries.length;
+            const total_visited = visitedList.length;
+
+            const assigned_bedded = entries.filter((e: any) => e.hce?.hce_category === 'Bedded').length;
+            const assigned_others = total_assigned - assigned_bedded;
+
+            const visited_bedded = visitedList.filter((e: any) => e.hce?.hce_category === 'Bedded').length;
+            const visited_others = total_visited - visited_bedded;
+
+            const missed_bedded = assigned_bedded - visited_bedded;
+            const missed_others = assigned_others - visited_others;
+
+            const rowData = [
+                batch.route?.route_name || 'N/A',
+                batch.registration_number || 'N/A',
+                batch.driver_name || 'N/A',
+                batch.supervisor_name || 'N/A',
+                batch.start_time || '-',
+                batch.end_time || '-',
+                batch.km_run || 0,
+                // TOTAL HCE
+                assigned_bedded,
+                assigned_others,
+                total_assigned,
+                // VISITED HCE
+                visited_bedded,
+                visited_others,
+                total_visited,
+                // METRICS
+                batch.collection_qty || 0,
+                batch.dc_qty || 0,
+                batch.nw_qty || 0,
+                batch.rd_qty || 0,
+                // MISSED
+                missed_bedded,
+                missed_others,
+                (total_assigned - total_visited)
+            ];
+            const r = worksheet.addRow(rowData);
+            r.eachCell(cell => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                cell.font = { size: 9 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            });
+        }
+
+        // Auto-fit
+        worksheet.columns.forEach(column => {
+            column.width = 15;
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `route_collection_detailed_${filters.date}.xlsx`);
+        success("Detailed report exported to Excel.");
     };
 
     const totalAssigned = batches.reduce((acc, curr) => acc + (curr.total_hce_assigned || 0), 0);
@@ -225,7 +329,7 @@ export default function RouteCollectionReportPage() {
                     <CardContent className="pt-8 relative">
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Completion rate</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Coverage rate</p>
                                 <p className="text-3xl md:text-4xl font-bold text-primary tracking-tight">{coverage.toFixed(1)}%</p>
                                 <p className="text-[10px] text-muted-foreground font-medium">Yield of planned vs actual</p>
                             </div>
@@ -280,7 +384,7 @@ export default function RouteCollectionReportPage() {
                 <CardContent className="p-0">
                     <TableView
                         title=""
-                        headers={['Route / Branch', 'Vehicle & Personnel', 'Coverage', 'Remarks', 'Manage']}
+                        headers={['Route / Branch', 'Vehicle & Personnel', 'Duration & KM', 'Coverage', 'Remarks', 'Manage']}
                         data={batches}
                         loading={loading}
                         searchFields={['route.route_name', 'registration_number', 'driver_name']}
@@ -301,6 +405,16 @@ export default function RouteCollectionReportPage() {
                                         <div className="flex items-center gap-2">
                                             <User className="w-3 h-3 text-slate-400" />
                                             <span className="text-[10px] font-medium text-slate-500">{batch.driver_name} (D) | {batch.supervisor_name} (S)</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500">
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/5 text-primary rounded-md border border-primary/10 w-fit">
+                                            <Clock className="w-3 h-3" /> {batch.start_time || '--:--'} - {batch.end_time || '--:--'}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 w-fit">
+                                            <Navigation className="w-3 h-3" /> {batch.km_run || 0} KM Run
                                         </div>
                                     </div>
                                 </td>
