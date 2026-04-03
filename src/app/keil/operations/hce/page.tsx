@@ -91,6 +91,7 @@ export default function HCERegistryPage() {
         collection_type: 'Daily',
         open_from: '09:00',
         open_to: '18:00',
+        hce_category: 'Others',
         company_id: ''
     });
 
@@ -235,6 +236,7 @@ export default function HCERegistryPage() {
             collection_type: hce.collection_type || 'Daily',
             open_from: hce.open_from || '09:00',
             open_to: hce.open_to || '18:00',
+            hce_category: hce.hce_category || 'Others',
             company_id: hce.company_id
         });
         setIsFormOpen(true);
@@ -275,6 +277,7 @@ export default function HCERegistryPage() {
             collection_type: 'Daily',
             open_from: '09:00',
             open_to: '18:00',
+            hce_category: 'Others',
             company_id: currentCompanyId
         });
     };
@@ -404,6 +407,18 @@ export default function HCERegistryPage() {
                                             value={formData.address} 
                                             onChange={(e) => setFormData({...formData, address: e.target.value})} 
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Facility Category</label>
+                                        <Select value={formData.hce_category} onValueChange={(val) => setFormData({ ...formData, hce_category: val })}>
+                                            <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
+                                                <SelectValue placeholder="Select Category" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white border-primary/20">
+                                                <SelectItem value="Bedded">Bedded</SelectItem>
+                                                <SelectItem value="Others">Others / Non-Bedded</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                             )}
@@ -538,7 +553,7 @@ export default function HCERegistryPage() {
                 <TableView
                     title="Enrolled Facilities"
                     description="Comprehensive directory of health care units and diagnostic centers."
-                    headers={['HCE Code', 'Name', 'Branch', 'Place', 'Collection', 'Hours', 'Actions']}
+                    headers={['HCE Code', 'Name', 'Category', 'Branch', 'Place', 'Collection', 'Hours', 'Actions']}
                     data={hces}
                     loading={loading}
                     searchFields={['hce_name', 'hce_code', 'hce_place', 'branch_name']}
@@ -550,8 +565,12 @@ export default function HCERegistryPage() {
                             <td className="px-6 py-6 min-w-[250px]">
                                 <div className="flex flex-col gap-1">
                                     <span className="font-bold text-foreground text-sm truncate max-w-[240px]" title={h.hce_name}>{h.hce_name}</span>
-                                    <span className="text-[10px] text-muted-foreground/70 truncate max-w-[240px] font-medium italic" title={h.address}>{h.address}</span>
                                 </div>
+                            </td>
+                            <td className="px-6 py-6 min-w-[120px]">
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${h.hce_category === 'Bedded' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                    {h.hce_category || 'Others'}
+                                </span>
                             </td>
                             <td className="px-6 py-6 text-sm font-bold text-secondary min-w-[150px]">{h.branch_name}</td>
                             <td className="px-6 py-6 text-sm font-bold text-secondary min-w-[150px]">{h.hce_place}</td>

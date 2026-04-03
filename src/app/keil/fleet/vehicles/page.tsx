@@ -652,7 +652,7 @@ export default function VehicleMasterPage() {
                                     </h3>
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-medium text-foreground/70 uppercase">Owner Name</label>
-                                        <Input name="owner_name" value={formData.owner_name} onChange={handleInputChange} className="h-10 md:h-11 rounded-md bg-white border-primary/20 shadow-sm font-bold" />
+                                        <Input name="owner_name" maxLength={30} value={formData.owner_name} onChange={handleInputChange} className="h-10 md:h-11 rounded-md bg-white border-primary/20 shadow-sm font-bold" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-medium text-foreground/70 uppercase">Owner Address</label>

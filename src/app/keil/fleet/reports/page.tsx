@@ -99,14 +99,14 @@ export default function FleetReportsPage() {
                         <TrendingUp className="w-3 h-3 text-emerald-500" /> Predictive Analytics & Resource Utilization
                     </p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                {/* <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
                     <Button variant="outline" className="flex-1 md:flex-none rounded-full border-slate-200 font-bold uppercase tracking-widest text-xs h-11 px-6 active:scale-95 transition-all">
                         <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">PDF Protocol</span><span className="sm:hidden">PDF</span>
                     </Button>
                     <Button className="flex-1 md:flex-none bg-primary hover:bg-primary text-white rounded-full font-black uppercase tracking-widest text-xs h-11 px-8 shadow-lg shadow-primary/15 active:scale-95 transition-all">
                         <span className="hidden sm:inline">Export Dataset</span><span className="sm:hidden">Export</span>
                     </Button>
-                </div>
+                </div> */}
             </div>
 
 

@@ -11,7 +11,8 @@ import {
     TrendingUp,
     Users,
     Lock,
-    Loader2
+    Loader2,
+    Fuel
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -210,16 +211,19 @@ export default function KeilDashboard() {
                             <ArrowUpRight className="w-5 h-5 text-slate-300" />
                         </div>
                     </Card>
-                    <Card className="border-none shadow-xl bg-white p-6">
+                    <Card 
+                        className="border-none shadow-xl bg-white p-6 cursor-pointer hover:bg-slate-50 transition-colors group"
+                        onClick={() => window.location.href='/keil/fleet/fuel'}
+                    >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                                <Truck className="w-6 h-6" />
+                                <Fuel className="w-6 h-6" />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-black text-slate-800">Fleet Monitoring</h4>
-                                <p className="text-xs text-slate-500">Track vehicle assignments and fuel efficiency.</p>
+                                <h4 className="font-black text-slate-800">Fleet Data Center</h4>
+                                <p className="text-xs text-slate-500">Fuel Telemetry, efficiency reports & consumption logs.</p>
                             </div>
-                            <ArrowUpRight className="w-5 h-5 text-slate-300" />
+                            <ArrowUpRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
                         </div>
                     </Card>
                     <Card className="border-none shadow-xl bg-white p-6">

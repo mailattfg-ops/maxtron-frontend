@@ -436,7 +436,7 @@ export default function VehiclesPage() {
                     </h3>
                     <div className="space-y-2">
                       <label className="text-xs font-medium">Owner Name</label>
-                      <Input name="owner_name" value={formData.owner_name} onChange={handleInputChange} />
+                      <Input name="owner_name" maxLength={30} value={formData.owner_name} onChange={handleInputChange} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-medium">Owner Address</label>

@@ -3,7 +3,8 @@ import {
     Settings,
     TrendingUp,
     Truck,
-    DollarSign
+    DollarSign,
+    Fuel
 } from 'lucide-react';
 import { NavItem } from './types';
 
@@ -57,7 +58,8 @@ export const keilSidebarMenu: NavItem[] = [
             { title: "Vehicle Master", path: "/keil/fleet/vehicles", permissionKey: "fleet_vehicle_view" },
             { title: "Vehicle Daily Logs", path: "/keil/fleet/logs", permissionKey: "fleet_log_view" },
             { title: "Repair & Workshop", path: "/keil/fleet/repairs", permissionKey: "fleet_repair_view" },
-            { title: "Fleet Intelligence", path: "/keil/fleet/reports", permissionKey: "fleet_report_view" }
+            { title: "Fleet Intelligence", path: "/keil/fleet/reports", permissionKey: "fleet_report_view" },
+            { title: "Fuel Filling", path: "/keil/fleet/fuel", permissionKey: "fleet_log_view" }
         ]
     },
     {
