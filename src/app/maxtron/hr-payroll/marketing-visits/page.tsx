@@ -655,7 +655,6 @@ export default function MarketingVisitsPage() {
                                    <p className="text-xs font-bold text-slate-800">Visit Analytics</p>
                                    <p className="text-[10px] text-slate-400 font-medium">Tracking {visitRecords.length} activities</p>
                                </div>
-                               <ChevronRight className="w-4 h-4 text-slate-300 ml-auto" />
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3">
