@@ -38,6 +38,7 @@ import {
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
 const OFFERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-offers`;
+const ORDERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/orders`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
 
 export default function MarketingVisitsPage() {
@@ -331,6 +332,18 @@ export default function MarketingVisitsPage() {
       }
     }
 
+    if (formData.is_quotation && formData.quotation_status === 'Approved') {
+      const lowStockItems = formData.quotation_items.filter(item => {
+        const prod = products.find(p => p.id === item.product_id);
+        return prod && Number(item.quantity) > Number(prod.balance);
+      });
+      
+      if (lowStockItems.length > 0) {
+        const itemNames = lowStockItems.map(i => i.product_name || 'Selected Product').join(', ');
+        return error(`Inventory Alert: Cannot save as Approved. Low stock for ${itemNames}.`);
+      }
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${MARKETING_API}/${editingId}` : MARKETING_API;
@@ -361,6 +374,16 @@ export default function MarketingVisitsPage() {
       const data = await res.json();
       if (data.success) {
         success(editingId ? 'Visit updated!' : 'Visit saved!');
+        
+        // Automated Order Generation
+        if (dataToSave.is_quotation && dataToSave.quotation_status === 'Approved') {
+           if (dataToSave.customer_id) {
+              generateOrderFromQuotation(dataToSave);
+           } else {
+              info('Quotation approved but no order created (Customer not linked).');
+           }
+        }
+
         setShowForm(false);
         setEditingId(null);
         fetchVisits();
@@ -373,6 +396,60 @@ export default function MarketingVisitsPage() {
       error('An error occurred while saving the visit.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+
+  const generateOrderFromQuotation = async (qData: any) => {
+    const token = localStorage.getItem('token');
+    try {
+        const taxableTotal = qData.quotation_items.reduce((sum: number, i: any) => sum + (Number(i.quantity) * Number(i.amount)), 0);
+        const taxTotal = qData.quotation_items.reduce((sum: number, i: any) => {
+           const taxable = Number(i.quantity) * Number(i.amount);
+           const gst = Number(i.gst_percent) || 0;
+           return sum + (taxable * gst / 100);
+        }, 0);
+
+        const orderPayload = {
+            company_id: qData.company_id,
+            customer_id: qData.customer_id,
+            executive_id: qData.employee_id,
+            order_date: new Date().toISOString().split('T')[0],
+            total_value: taxableTotal,
+            tax_amount: taxTotal,
+            net_amount: taxableTotal + taxTotal,
+            remarks: `Auto-generated from Approved Quotation (${qData.customer_name})`,
+            items: qData.quotation_items.map((item: any) => {
+                const taxable = Number(item.quantity) * Number(item.amount);
+                const gstRate = Number(item.gst_percent) || 0;
+                const gstAmt = (taxable * gstRate / 100);
+                return {
+                    product_id: item.product_id,
+                    quantity: Number(item.quantity),
+                    rate: Number(item.amount),
+                    gst_percent: gstRate,
+                    gst_amount: gstAmt,
+                    total_value: taxable
+                };
+            })
+        };
+
+        const res = await fetch(ORDERS_API, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(orderPayload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            success('Sales Order created automatically!');
+        } else {
+            error('Quotation approved but Order creation failed: ' + data.message);
+        }
+    } catch (err) {
+        console.error('Auto-order failed:', err);
     }
   };
 
@@ -500,7 +577,7 @@ export default function MarketingVisitsPage() {
       <div className="space-y-6">
         {/* Dynamic Offer Announcements Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className={`col-span-1 lg:col-span-8 ${offers.filter(o => o.is_active).length === 0 ? 'hidden' : ''}`}>
+            <div className={`col-span-1 lg:col-span-8 ${(offers.filter(o => o.is_active).length === 0 || showOfferAdmin) ? 'hidden' : ''}`}>
                 <Card className="border-none shadow-2xl bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white overflow-hidden relative group">
                     <div className="absolute -right-20 -top-20 w-80 h-80 bg-primary/20 rounded-full blur-[100px] group-hover:bg-primary/30 transition-all duration-1000" />
                     <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]" />
@@ -513,9 +590,9 @@ export default function MarketingVisitsPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                           {offers.filter(o => o.is_active).map((offer, idx) => (
-                               <div key={idx} className="min-w-[300px] bg-white/10 backdrop-blur-2xl rounded-2xl p-5 border border-white/20 hover:bg-white/20 transition-all cursor-default">
+                        <div className="grid md:flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                           {offers.filter(o => o.is_active).slice(0, 2).map((offer, idx) => (
+                               <div key={idx} className="min-w-[270px] bg-white/10 backdrop-blur-2xl rounded-2xl p-5 border border-white/20 hover:bg-white/20 transition-all cursor-default">
                                    <div className="flex items-start justify-between mb-3">
                                        <div className="p-2 bg-white/20 rounded-lg">
                                            <Tag className="w-5 h-5 text-white" />
@@ -541,7 +618,7 @@ export default function MarketingVisitsPage() {
                 </Card>
             </div>
 
-            <Card className={`col-span-1 lg:col-span-4 border-none shadow-xl bg-white overflow-hidden relative ${offers.filter(o => o.is_active).length === 0 ? 'lg:col-span-12' : ''}`}>
+            <Card className={`col-span-1 lg:col-span-4 border-none shadow-xl bg-white overflow-hidden relative ${(offers.filter(o => o.is_active).length === 0 || showOfferAdmin) ? 'lg:col-span-12' : ''}`}>
                <div className="absolute top-0 right-0 p-4">
                   <Bell className="w-12 h-12 text-slate-50 opacity-10 rotate-12" />
                </div>
@@ -556,9 +633,13 @@ export default function MarketingVisitsPage() {
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => setShowOfferAdmin(!showOfferAdmin)}
-                                className={`h-8 rounded-lg font-black text-[10px] uppercase border transition-all ${showOfferAdmin ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-primary/5 text-primary border-primary/10'}`}
+                                className={`h-8 rounded-lg font-black text-[10px] uppercase border transition-all gap-1.5 ${showOfferAdmin ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-primary/5 text-primary border-primary/10'}`}
                             >
-                                {showOfferAdmin ? 'Close Panel' : 'Offer Admin'}
+                                {showOfferAdmin ? (
+                                    <> <X className="w-3.5 h-3.5" /> Close Panel </>
+                                ) : (
+                                    <> <Plus className="w-3.5 h-3.5" /> Add Offer </>
+                                )}
                             </Button>
                         )}
                    </div>
@@ -1007,17 +1088,28 @@ export default function MarketingVisitsPage() {
                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Quote Status</label>
                         <Select 
                           value={formData.quotation_status}
-                          onValueChange={(val) => setFormData({...formData, quotation_status: val})}
+                          onValueChange={(val) => {
+                            if (val === 'Approved') {
+                              const lowStockItems = formData.quotation_items.filter(item => {
+                                const prod = products.find(p => p.id === item.product_id);
+                                return prod && Number(item.quantity) > Number(prod.balance);
+                              });
+                              
+                              if (lowStockItems.length > 0) {
+                                const itemNames = lowStockItems.map(i => i.product_name || 'Selected Product').join(', ');
+                                error(`Inventory Alert: Cannot approve quote. Low stock for ${itemNames}.`);
+                                return;
+                              }
+                            }
+                            setFormData({...formData, quotation_status: val});
+                          }}
                         >
                           <SelectTrigger className="h-10 bg-white border-slate-200">
                             <SelectValue placeholder="Pending" />
                           </SelectTrigger>
                           <SelectContent className="bg-white">
                             <SelectItem value="Pending">Pending</SelectItem>
-                            <SelectItem value="Under Review">Under Review</SelectItem>
                             <SelectItem value="Approved">Approved</SelectItem>
-                            <SelectItem value="Negotiation">Negotiation</SelectItem>
-                            <SelectItem value="Order Closed">Order Closed</SelectItem>
                             <SelectItem value="Rejected">Rejected</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1206,8 +1298,8 @@ export default function MarketingVisitsPage() {
 
       {/* Offer Detail Modal */}
       <Dialog open={!!selectedOffer} onOpenChange={() => setSelectedOffer(null)}>
-        <DialogContent className="sm:max-w-xl bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-8 text-white relative">
+        <DialogContent className="w-[92%] sm:max-w-lg bg-white rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl [&>button]:text-white mx-auto">
+          <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-6 sm:p-8 text-white relative">
              <div className="absolute right-0 top-0 p-8 opacity-10">
                 <Megaphone className="w-32 h-32 rotate-12 text-white" />
              </div>
