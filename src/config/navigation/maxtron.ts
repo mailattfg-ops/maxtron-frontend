@@ -4,7 +4,8 @@ import {
     Package,
     Truck,
     DollarSign,
-    TrendingUp
+    TrendingUp,
+    Briefcase
 } from 'lucide-react';
 import { NavItem } from './types';
 
@@ -23,8 +24,16 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Employee Management", path: "/maxtron/hr-payroll/employee", permissionKey: "hr_employee_view" },
             { title: "Company Information", path: "/maxtron/hr-payroll/company", permissionKey: "hr_company_view" },
             { title: "Attendance Details", path: "/maxtron/hr-payroll/attendance", permissionKey: "hr_attendance_view" },
-            { title: "Marketing Operations", path: "/maxtron/hr-payroll/marketing-visits", permissionKey: "hr_marketing_view" },
             { title: "Attendance Summary", path: "/maxtron/hr-payroll/reports/attendance", permissionKey: "hr_attendance_view" },
+        ]
+    },
+    {
+        title: "Marketing Management",
+        icon: Briefcase,
+        permissionKey: "marketing_view",
+        children: [
+            { title: "Marketing Operations", path: "/maxtron/hr-payroll/marketing-visits", permissionKey: "marketing_view" },
+            { title: "Visit & Quotation Reports", path: "/maxtron/marketing/reports", permissionKey: "marketing_view" },
         ]
     },
     {
