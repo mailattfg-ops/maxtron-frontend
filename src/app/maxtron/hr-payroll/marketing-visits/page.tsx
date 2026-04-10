@@ -344,6 +344,26 @@ export default function MarketingVisitsPage() {
       }
     }
 
+    if (formData.is_quotation) {
+      if (formData.quotation_items.length === 0) {
+        return error('Please add at least one item to the quotation.');
+      }
+      for (const item of formData.quotation_items) {
+        if (!item.product_id) {
+          return error('Product selection is required for all items.');
+        }
+        if (!item.quantity || Number(item.quantity) <= 0) {
+          return error(`Invalid Quantity: Must be greater than 0 for ${item.product_name || 'Item'}`);
+        }
+        if (!item.amount || Number(item.amount) <= 0) {
+          return error(`Invalid Price: Must be greater than 0 for ${item.product_name || 'Item'}`);
+        }
+        if (!item.gst_percent || Number(item.gst_percent) <= 0) {
+          return error(`Invalid GST: Must be greater than 0 for ${item.product_name || 'Item'}`);
+        }
+      }
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${MARKETING_API}/${editingId}` : MARKETING_API;

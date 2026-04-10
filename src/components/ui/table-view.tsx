@@ -19,6 +19,7 @@ interface TableViewProps<T> {
   actions?: React.ReactNode;
   rowsPerPageOptions?: number[];
   initialRowsPerPage?: number;
+  rightAlignedColumns?: number[];
 }
 
 export function TableView<T>({
@@ -33,6 +34,7 @@ export function TableView<T>({
   actions,
   rowsPerPageOptions = [10, 20, 50, 100],
   initialRowsPerPage = 10,
+  rightAlignedColumns = []
 }: TableViewProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
@@ -87,8 +89,7 @@ export function TableView<T>({
             <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
               <tr>
                 {headers.map((header, i) => (
-                  <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? 'text-right' : ''}`}>
-                  {/* <th key={i} className={`px-6 py-4 ${i === headers.length - 1 ? '' : ''}`}> */}
+                  <th key={i} className={`px-6 py-4 ${rightAlignedColumns.includes(i) || i === headers.length - 1 ? 'text-right' : ''}`}>
                     {header}
                   </th>
                 ))}

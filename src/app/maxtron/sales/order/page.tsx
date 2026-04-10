@@ -689,8 +689,8 @@ export default function CustomerOrderEntry() {
                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">Products</span>
                   </div>
               </td>
-              <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 transition-opacity">
+              <td className="px-1 py-4">
+                  <div className="flex items-center justify-end gap-2 transition-opacity">
                     <Button 
                         variant="ghost" 
                         size="sm" 

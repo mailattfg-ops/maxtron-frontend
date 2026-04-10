@@ -157,6 +157,24 @@ export default function CustomersPage() {
       return false;
     }
 
+    if (formData.delivery_period && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(formData.delivery_period)) {
+        error('Delivery Period contains invalid special characters. Use alphanumeric, space, hyphens or slashes.');
+        return false;
+    }
+
+    if (formData.delivery_mode && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(formData.delivery_mode)) {
+        error('Delivery Mode contains invalid characters.');
+        return false;
+    }
+
+    // Zip Code validation for all addresses
+    for (const addr of formData.addresses) {
+      if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+        error(`Invalid Zip code for ${addr.address_type} address. Please enter exactly 6 digits.`);
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -506,7 +524,15 @@ export default function CustomersPage() {
                         if (!validateForm()) return;
                         setActiveTab('address');
                       }
-                      else if (activeTab === 'address') setActiveTab('financial');
+                      else if (activeTab === 'address') {
+                        // Strict Zip check when moving from Address to Financials
+                        for (const addr of formData.addresses) {
+                          if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+                             return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
+                          }
+                        }
+                        setActiveTab('financial');
+                      }
                     }}
                     className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
                   >

@@ -158,6 +158,7 @@ export default function BillingSummary() {
         headers={['Inv No', 'Date', 'Customer', 'Taxable Amt', 'GST', 'Total Amt']}
         data={filteredData}
         loading={loading}
+        rightAlignedColumns={[3, 4, 5]}
         searchFields={['invoice_number', 'customers.customer_name']}
         renderRow={(row: any) => (
           <tr key={row.id} className="hover:bg-primary/5 border-b last:border-0 transition-colors group">
