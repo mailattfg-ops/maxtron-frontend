@@ -46,7 +46,7 @@ export default function CustomersPage() {
     delivery_mode: '',
     mobile_no: '',
     email_id: '',
-    department: '',
+    contact_person: '',
     custom_label1: '',
     custom_value1: '',
     custom_label2: '',
@@ -152,8 +152,8 @@ export default function CustomersPage() {
       return false;
     }
 
-    if (formData.department && formData.department.length < 2) {
-      error('Department name should be at least 2 characters.');
+    if (formData.contact_person && formData.contact_person.length < 2) {
+      error('Contact person name should be at least 2 characters.');
       return false;
     }
 
@@ -243,7 +243,7 @@ export default function CustomersPage() {
       opening_balance: 0,
       mobile_no: '',
       email_id: '',
-      department: '',
+      contact_person: '',
       custom_label1: '',
       custom_value1: '',
       custom_label2: '',
@@ -376,8 +376,8 @@ export default function CustomersPage() {
                   <Input name="email_id" value={formData.email_id} onChange={handleInputChange} placeholder="contact@company.com" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">Department</label>
-                  <Input name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g. Purchase, Finance" />
+                  <label className="text-sm font-semibold">Contact Person</label>
+                  <Input name="contact_person" value={formData.contact_person} onChange={handleInputChange} placeholder="e.g. John Doe" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Period</label>

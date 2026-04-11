@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -90,7 +90,8 @@ export default function MarketingVisitsPage() {
     is_quotation: false,
     quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
     quotation_delivery_date: '',
-    quotation_status: 'Pending'
+    quotation_status: 'Pending',
+    probability: ''
   });
 
   useEffect(() => {
@@ -490,7 +491,8 @@ export default function MarketingVisitsPage() {
       is_quotation: false,
       quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
       quotation_delivery_date: '',
-      quotation_status: 'Pending'
+      quotation_status: 'Pending',
+      probability: ''
     });
   };
 
@@ -519,7 +521,8 @@ export default function MarketingVisitsPage() {
           })) 
         : [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
-      quotation_status: rec.quotation_status || 'Pending'
+      quotation_status: rec.quotation_status || 'Pending',
+      probability: rec.probability || ''
     });
     setShowForm(true);
   };
@@ -531,7 +534,7 @@ export default function MarketingVisitsPage() {
       return;
     }
 
-    const headers = ['Staff', 'Client', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
+    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Probability', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
     const rows = activeRecords.map(rec => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -545,6 +548,9 @@ export default function MarketingVisitsPage() {
       return [
         rec.users?.name || 'N/A',
         rec.customer_name || 'N/A',
+        rec.customers?.contact_person || 'N/A',
+        rec.customers?.mobile_no || 'N/A',
+        rec.probability || 'N/A',
         rec.location || 'N/A',
         formatDate(rec.visit_date),
         rec.time_in || 'N/A',
@@ -747,572 +753,608 @@ export default function MarketingVisitsPage() {
             </Card>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 relative overflow-hidden">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading" id="page-title">Marketing Operations</h1>
-          <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          {/* {!showForm && (
-            <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95">
-               <Download className="w-4 h-4 mr-2" /> Download Visit List
-            </Button>
-          )} */}
-          {canCreate && (
-            <Button 
-              onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-              className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full md:w-auto flex-1 md:flex-none"
-            >
-              {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {showForm ? 'Cancel Entry' : 'New Field Visit'}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {!showForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6 md:my-10 animate-in slide-in-from-bottom-4 duration-500">
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Visits</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
-                </div>
-                <div className="bg-primary/10 p-3 rounded-2xl">
-                  <MapPin className="w-6 h-6 text-primary" />
-                </div>
+        {!showOfferAdmin &&  
+          <>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10 relative overflow-hidden">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading" id="page-title">Marketing Operations</h1>
+                <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
               </div>
-              <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
-                <TrendingUp className="w-3 h-3 mr-1" /> <span>Activity tracked successfully</span>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                {/* {!showForm && (
+                  <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95">
+                    <Download className="w-4 h-4 mr-2" /> Download Visit List
+                  </Button>
+                )} */}
+                {canCreate && (
+                  <Button 
+                    onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+                  >
+                    {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    {showForm ? 'Cancel Entry' : 'New Field Visit'}
+                  </Button>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Clients</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
-                    {new Set(visitRecords.map(r => r.customer_name)).size}
-                  </h3>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-2xl">
-                  <Users className="w-6 h-6 text-blue-500" />
-                </div>
-              </div>
-              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active pipeline outreach</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Top Performer</p>
-                  <h3 className="text-lg font-black text-emerald-600 mt-1 truncate max-w-[150px]">
-                    {(() => {
-                      if (visitRecords.length === 0) return 'N/A';
-                      const weights: Record<string, number> = {
-                        'Order Received': 10,
-                        'Payment Collected': 10,
-                        'Proposal Sent': 5,
-                        'Negotiation': 3,
-                        'Product Demo': 2,
-                        'Follow-up Scheduled': 1,
-                        'Initial Contact': 1,
-                        'Not Interested': 0
-                      };
-                      const scores = visitRecords.reduce((acc: any, curr) => {
-                        const name = curr.users?.name || 'Unknown';
-                        const score = weights[curr.outcome] || 0;
-                        acc[name] = (acc[name] || 0) + score;
-                        return acc;
-                      }, {});
-                      const top = Object.entries(scores).sort((a: any, b: any) => b[1] - a[1])[0];
-                      return top ? top[0] : 'N/A';
-                    })()}
-                  </h3>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-2xl">
-                  <CheckCircle className="w-6 h-6 text-emerald-500" />
-                </div>
-              </div>
-              <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Based on conversion & success rate</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {showForm && (
-        <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500 !mt-6 ">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 pt-6 rounded-2xl">
-            <CardTitle>{editingId ? 'Edit Visit Details' : 'Record Field Visit'}</CardTitle>
-            <CardDescription>Log time of entry, exit, and visit outcome.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                   Field Staff
-                </label>
-                <Select 
-                  value={formData.employee_id}
-                  onValueChange={(val) => setFormData({...formData, employee_id: val})}
-                >
-                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
-                    <SelectValue placeholder="Select staff..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Building2 className="w-4 h-4 mr-2 text-primary" /> Customer / Company
-                </label>
-                <Select 
-                  value={formData.customer_name}
-                  onValueChange={(val) => {
-                    const selectedCust = customers.find(c => c.customer_name === val);
-                    setFormData({
-                      ...formData, 
-                      customer_name: val,
-                      customer_id: selectedCust?.id || ''
-                    });
-                  }}
-                >
-                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
-                    <SelectValue placeholder="Select customer..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {customers.map(cust => (
-                      <SelectItem key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                   Location
-                </label>
-                <Input 
-                  placeholder="Area / GPS Location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-primary" /> Date
-                </label>
-                <Input 
-                  type="date"
-                  value={formData.visit_date}
-                  onChange={(e) => setFormData({...formData, visit_date: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-primary" /> Time In
-                </label>
-                <Input 
-                  type="time"
-                  value={formData.time_in}
-                  onChange={(e) => setFormData({...formData, time_in: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                  <Clock className="w-4 h-4 mr-2 text-primary" /> Time Out
-                </label>
-                <Input 
-                  type="time"
-                  value={formData.time_out}
-                  onChange={(e) => setFormData({...formData, time_out: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-1 lg:col-span-1">
-                <label className="text-sm font-semibold text-foreground/80">Purpose of Visit</label>
-                <textarea 
-                  className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
-                  placeholder="Sales pitch, follow-up, payment collection..."
-                  value={formData.purpose}
-                  maxLength={50}
-                  onChange={(e) => setFormData({...formData, purpose: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
-                <Select 
-                  value={formData.outcome}
-                  onValueChange={(val) => setFormData({...formData, outcome: val})}
-                >
-                  <SelectTrigger className="w-full h-10 bg-white border-slate-200">
-                    <SelectValue placeholder="Select outcome..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="Initial Contact">Initial Contact</SelectItem>
-                    <SelectItem value="Product Demo">Product Demo</SelectItem>
-                    <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
-                    <SelectItem value="Negotiation">Negotiation</SelectItem>
-                    <SelectItem value="Order Received">Order Received</SelectItem>
-                    <SelectItem value="Follow-up Scheduled">Follow-up Scheduled</SelectItem>
-                    <SelectItem value="Payment Collected">Payment Collected</SelectItem>
-                    <SelectItem value="Not Interested">Not Interested</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-semibold text-foreground/80">Customer Feedback</label>
-                <textarea 
-                  className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
-                  placeholder="Notes on client requirements or feedback..."
-                  value={formData.feedback}
-                  maxLength={100}
-                  onChange={(e) => setFormData({...formData, feedback: e.target.value})}
-                />
-              </div>
-              <div className="space-y-4 lg:col-span-3 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
-                <div className="flex items-center gap-3">
-                   <label htmlFor="is_quotation" className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        id="is_quotation" 
-                        className="sr-only peer"
-                        checked={formData.is_quotation}
-                        onChange={(e) => setFormData({...formData, is_quotation: e.target.checked})}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      <span className="ms-3 text-sm font-bold text-slate-700">Add Quotation Details?</span>
-                   </label>
-                </div>
-
-                {formData.is_quotation && (
-                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+            {!showForm && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6 md:my-10 animate-in slide-in-from-bottom-4 duration-500">
+                <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                       <h4 className="text-sm font-bold text-primary flex items-center">
-                         <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
-                       </h4>
-                       <Button 
-                         type="button" 
-                         variant="outline" 
-                         size="sm" 
-                         onClick={addQuotationItem}
-                         className="h-8 rounded-full border-primary/30 text-primary hover:bg-primary/5 px-4"
-                       >
-                         <Plus className="w-3.5 h-3.5 mr-1" /> <span className='hidden md:block'>Add Product</span>
-                       </Button>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Visits</p>
+                        <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">{visitRecords.length}</h3>
+                      </div>
+                      <div className="bg-primary/10 p-3 rounded-2xl">
+                        <MapPin className="w-6 h-6 text-primary" />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center text-[10px] font-bold text-emerald-600">
+                      <TrendingUp className="w-3 h-3 mr-1" /> <span>Activity tracked successfully</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Unique Clients</p>
+                        <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">
+                          {new Set(visitRecords.map(r => r.customer_name)).size}
+                        </h3>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-2xl">
+                        <Users className="w-6 h-6 text-blue-500" />
+                      </div>
+                    </div>
+                    <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Active pipeline outreach</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Top Performer</p>
+                        <h3 className="text-lg font-black text-emerald-600 mt-1 truncate max-w-[150px]">
+                          {(() => {
+                            if (visitRecords.length === 0) return 'N/A';
+                            const weights: Record<string, number> = {
+                              'Order Received': 10,
+                              'Payment Collected': 10,
+                              'Proposal Sent': 5,
+                              'Negotiation': 3,
+                              'Product Demo': 2,
+                              'Follow-up Scheduled': 1,
+                              'Initial Contact': 1,
+                              'Not Interested': 0
+                            };
+                            const scores = visitRecords.reduce((acc: any, curr) => {
+                              const name = curr.users?.name || 'Unknown';
+                              const score = weights[curr.outcome] || 0;
+                              acc[name] = (acc[name] || 0) + score;
+                              return acc;
+                            }, {});
+                            const top = Object.entries(scores).sort((a: any, b: any) => b[1] - a[1])[0];
+                            return top ? top[0] : 'N/A';
+                          })()}
+                        </h3>
+                      </div>
+                      <div className="bg-emerald-50 p-3 rounded-2xl">
+                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                      </div>
+                    </div>
+                    <p className="mt-4 text-[10px] text-muted-foreground font-medium italic">Based on conversion & success rate</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {showForm && (
+              <Card className="border-primary/20 shadow-xl animate-in slide-in-from-right duration-500 !mt-6 ">
+                <CardHeader className="bg-primary/5 border-b border-primary/10 pt-6 rounded-2xl">
+                  <CardTitle>{editingId ? 'Edit Visit Details' : 'Record Field Visit'}</CardTitle>
+                  <CardDescription>Log time of entry, exit, and visit outcome.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        Field Staff
+                      </label>
+                      <Select 
+                        value={formData.employee_id}
+                        onValueChange={(val) => setFormData({...formData, employee_id: val})}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                          <SelectValue placeholder="Select staff..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {employees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <div className="space-y-3">
-                      {formData.quotation_items.map((item, idx) => (
-                        <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white p-3 rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
-                          <div className="md:col-span-4 space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Product Name</label>
-                            <Select 
-                              value={item.product_id}
-                              onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
-                            >
-                              <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-sm">
-                                <SelectValue placeholder="Select Product..." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white">
-                                {products.map(p => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {p.product_name} ({p.balance} Kg Available)
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="md:col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Quantity</label>
-                            <Input 
-                              type="number"
-                              placeholder="0"
-                              value={item.quantity}
-                              onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
-                              className="h-9 text-sm text-center font-mono"
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Building2 className="w-4 h-4 mr-2 text-primary" /> Customer / Company
+                      </label>
+                      <Select 
+                        value={formData.customer_name}
+                        onValueChange={(val) => {
+                          const selectedCust = customers.find(c => c.customer_name === val);
+                          setFormData({
+                            ...formData, 
+                            customer_name: val,
+                            customer_id: selectedCust?.id || ''
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                          <SelectValue placeholder="Select customer..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {customers.map(cust => (
+                            <SelectItem key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        Location
+                      </label>
+                      <Input 
+                        placeholder="Area / GPS Location"
+                        value={formData.location}
+                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Calendar className="w-4 h-4 mr-2 text-primary" /> Date
+                      </label>
+                      <Input 
+                        type="date"
+                        value={formData.visit_date}
+                        onChange={(e) => setFormData({...formData, visit_date: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Clock className="w-4 h-4 mr-2 text-primary" /> Time In
+                      </label>
+                      <Input 
+                        type="time"
+                        value={formData.time_in}
+                        onChange={(e) => setFormData({...formData, time_in: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Clock className="w-4 h-4 mr-2 text-primary" /> Time Out
+                      </label>
+                      <Input 
+                        type="time"
+                        value={formData.time_out}
+                        onChange={(e) => setFormData({...formData, time_out: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-1 lg:col-span-1">
+                      <label className="text-sm font-semibold text-foreground/80">Purpose of Visit</label>
+                      <textarea 
+                        className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
+                        placeholder="Sales pitch, follow-up, payment collection..."
+                        value={formData.purpose}
+                        maxLength={50}
+                        onChange={(e) => setFormData({...formData, purpose: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                      <Select 
+                        value={formData.outcome}
+                        onValueChange={(val) => setFormData({...formData, outcome: val})}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                          <SelectValue placeholder="Select outcome..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="Initial Contact">Initial Contact</SelectItem>
+                          <SelectItem value="Product Demo">Product Demo</SelectItem>
+                          <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
+                          <SelectItem value="Negotiation">Negotiation</SelectItem>
+                          <SelectItem value="Order Received">Order Received</SelectItem>
+                          <SelectItem value="Follow-up Scheduled">Follow-up Scheduled</SelectItem>
+                          <SelectItem value="Payment Collected">Payment Collected</SelectItem>
+                          <SelectItem value="Not Interested">Not Interested</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80">Probability</label>
+                      <Select 
+                        value={formData.probability}
+                        onValueChange={(val) => setFormData({...formData, probability: val})}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                          <SelectValue placeholder="Select probability..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="High">High</SelectItem>
+                          <SelectItem value="Moderate">Moderate</SelectItem>
+                          <SelectItem value="Low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-sm font-semibold text-foreground/80">Customer Feedback</label>
+                      <textarea 
+                        className="w-full h-24 p-2.5 rounded-md border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
+                        placeholder="Notes on client requirements or feedback..."
+                        value={formData.feedback}
+                        maxLength={100}
+                        onChange={(e) => setFormData({...formData, feedback: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-4 lg:col-span-3 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
+                      <div className="flex items-center gap-3">
+                        <label htmlFor="is_quotation" className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              id="is_quotation" 
+                              className="sr-only peer"
+                              checked={formData.is_quotation}
+                              onChange={(e) => setFormData({...formData, is_quotation: e.target.checked})}
                             />
-                          </div>
-                          <div className="md:col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Unit Price</label>
-                            <Input 
-                              type="number"
-                              placeholder="0.00"
-                              value={item.amount}
-                              onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
-                              className="h-9 text-sm text-right font-mono text-slate-700"
-                            />
-                          </div>
-                          <div className="md:col-span-1 space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">GST %</label>
-                            <Select 
-                              value={String(item.gst_percent)}
-                              onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
-                            >
-                              <SelectTrigger className="h-9 bg-white border-slate-200">
-                                <SelectValue placeholder="0" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white">
-                                <SelectItem value="0">0%</SelectItem>
-                                <SelectItem value="5">5%</SelectItem>
-                                <SelectItem value="12">12%</SelectItem>
-                                <SelectItem value="18">18%</SelectItem>
-                                <SelectItem value="28">28%</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="md:col-span-3 flex justify-end gap-2 pl-4 pb-0.5">
-                            <div className="w-fulltext-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 whitespace-nowrap">
-                              Sum: ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </div>
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            <span className="ms-3 text-sm font-bold text-slate-700">Add Quotation Details?</span>
+                        </label>
+                      </div>
+
+                      {formData.is_quotation && (
+                        <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-primary flex items-center">
+                              <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
+                            </h4>
                             <Button 
                               type="button" 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => removeQuotationItem(idx)}
-                              disabled={formData.quotation_items.length <= 1}
-                              className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full"
+                              variant="outline" 
+                              size="sm" 
+                              onClick={addQuotationItem}
+                              className="h-8 rounded-full border-primary/30 text-primary hover:bg-primary/5 px-4"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Plus className="w-3.5 h-3.5 mr-1" /> <span className='hidden md:block'>Add Product</span>
                             </Button>
                           </div>
+
+                          <div className="space-y-3">
+                            {formData.quotation_items.map((item, idx) => (
+                              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white p-3 rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
+                                <div className="md:col-span-4 space-y-1.5">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Product Name</label>
+                                  <Select 
+                                    value={item.product_id}
+                                    onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
+                                  >
+                                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-sm">
+                                      <SelectValue placeholder="Select Product..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white">
+                                      {products.map(p => (
+                                        <SelectItem key={p.id} value={p.id}>
+                                          {p.product_name} ({p.balance} Kg Available)
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="md:col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Quantity</label>
+                                  <Input 
+                                    type="number"
+                                    placeholder="0"
+                                    value={item.quantity}
+                                    onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
+                                    className="h-9 text-sm text-center font-mono"
+                                  />
+                                </div>
+                                <div className="md:col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Unit Price</label>
+                                  <Input 
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={item.amount}
+                                    onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
+                                    className="h-9 text-sm text-right font-mono text-slate-700"
+                                  />
+                                </div>
+                                <div className="md:col-span-1 space-y-1.5">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">GST %</label>
+                                  <Select 
+                                    value={String(item.gst_percent)}
+                                    onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
+                                  >
+                                    <SelectTrigger className="h-9 bg-white border-slate-200">
+                                      <SelectValue placeholder="0" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white">
+                                      <SelectItem value="0">0%</SelectItem>
+                                      <SelectItem value="5">5%</SelectItem>
+                                      <SelectItem value="12">12%</SelectItem>
+                                      <SelectItem value="18">18%</SelectItem>
+                                      <SelectItem value="28">28%</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="md:col-span-3 flex justify-end gap-2 pl-4 pb-0.5">
+                                  <div className="w-fulltext-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 whitespace-nowrap">
+                                    Sum: ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </div>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => removeQuotationItem(idx)}
+                                    disabled={formData.quotation_items.length <= 1}
+                                    className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end pt-4 border-t border-slate-200/50">
+                            <div className="md:col-span-2 space-y-2">
+                              <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 w-fit">
+                                  <CheckCircle className="w-3.5 h-3.5" /> Total Inclusive Value: ₹{formData.quotation_items.reduce((sum, item) => 
+                                    sum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0
+                                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Quote Status</label>
+                              <Select 
+                                value={formData.quotation_status}
+                                onValueChange={(val) => {
+                                  if (val === 'Approved') {
+                                    const lowStockItems = formData.quotation_items.filter(item => {
+                                      const prod = products.find(p => p.id === item.product_id);
+                                      return prod && Number(item.quantity) > Number(prod.balance);
+                                    });
+                                    
+                                    if (lowStockItems.length > 0) {
+                                      const itemNames = lowStockItems.map(i => i.product_name || 'Selected Product').join(', ');
+                                      error(`Inventory Alert: Cannot approve quote. Low stock for ${itemNames}.`);
+                                      return;
+                                    }
+                                  }
+                                  setFormData({...formData, quotation_status: val});
+                                }}
+                              >
+                                <SelectTrigger className="h-10 bg-white border-slate-200">
+                                  <SelectValue placeholder="Pending" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                  <SelectItem value="Approved">Approved</SelectItem>
+                                  <SelectItem value="Rejected">Rejected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="lg:col-start-4 space-y-2">
+                              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Expected Delivery</label>
+                              <Input 
+                                type="date"
+                                value={formData.quotation_delivery_date}
+                                onChange={(e) => setFormData({...formData, quotation_delivery_date: e.target.value})}
+                                className="bg-white h-10"
+                              />
+                            </div>
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end pt-4 border-t border-slate-200/50">
-                      <div className="md:col-span-2 space-y-2">
-                         <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 w-fit">
-                            <CheckCircle className="w-3.5 h-3.5" /> Total Inclusive Value: ₹{formData.quotation_items.reduce((sum, item) => 
-                              sum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0
-                            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Quote Status</label>
-                        <Select 
-                          value={formData.quotation_status}
-                          onValueChange={(val) => {
-                            if (val === 'Approved') {
-                              const lowStockItems = formData.quotation_items.filter(item => {
-                                const prod = products.find(p => p.id === item.product_id);
-                                return prod && Number(item.quantity) > Number(prod.balance);
-                              });
-                              
-                              if (lowStockItems.length > 0) {
-                                const itemNames = lowStockItems.map(i => i.product_name || 'Selected Product').join(', ');
-                                error(`Inventory Alert: Cannot approve quote. Low stock for ${itemNames}.`);
-                                return;
-                              }
-                            }
-                            setFormData({...formData, quotation_status: val});
-                          }}
+                  <div className="mt-6 flex justify-end">
+                    <Button 
+                      onClick={saveVisit} 
+                      loading={submitting}
+                      disabled={submitting}
+                      className="bg-primary hover:bg-primary/95 text-white px-8 h-12 rounded-full shadow-lg shadow-primary/20 flex items-center transition-all hover:scale-105 active:scale-95 w-full md:w-auto"
+                    >
+                      {!submitting && <Save className="w-4 h-4 mr-2" />}
+                      {editingId ? (submitting ? 'Updating...' : 'Update Report') : (submitting ? 'Saving...' : 'Save Visit Report')}
+                    </Button>
+                  </div>
+
+                </CardContent>
+              </Card>
+            )}
+
+            {!showForm && (
+              <TableView
+                title="Field Visit Logs"
+                description="Punching details for field staff tracking."
+                headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Outcome / Feedback', 'Action']}
+                data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
+                loading={loading}
+                searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
+                searchPlaceholder="Search staff name/ID, client name/ID..."
+                actions={
+                  <div className="flex gap-3">
+                    <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="date"
+                        className="w-40 rounded-full border-primary/20 h-9 text-xs"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                      />
+                      {dateFilter && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setDateFilter('')}
+                          className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
                         >
-                          <SelectTrigger className="h-10 bg-white border-slate-200">
-                            <SelectValue placeholder="Pending" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white">
-                            <SelectItem value="Pending">Pending</SelectItem>
-                            <SelectItem value="Approved">Approved</SelectItem>
-                            <SelectItem value="Rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="lg:col-start-4 space-y-2">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Expected Delivery</label>
-                        <Input 
-                          type="date"
-                          value={formData.quotation_delivery_date}
-                          onChange={(e) => setFormData({...formData, quotation_delivery_date: e.target.value})}
-                          className="bg-white h-10"
-                        />
-                      </div>
+                          Clear
+                        </Button>
+                      )}
                     </div>
                   </div>
+                }
+                renderRow={(rec: any) => (
+                  <tr key={rec.id} className="hover:bg-primary/5 transition-all group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs">
+                          {rec.users?.name?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{rec.users?.name || 'Unknown Staff'}</div>
+                          <div className="text-[10px] text-muted-foreground">{rec.users?.employee_code || '#---'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-foreground text-sm md:text-base">{rec.customer_name}</div>
+                      {rec.customers && (
+                        <div className="flex flex-col gap-0.5 mt-1 text-[10px] text-muted-foreground font-medium">
+                          {rec.customers.contact_person && <span className="flex items-center text-primary/80"><Briefcase className="w-2.5 h-2.5 mr-1" /> {rec.customers.contact_person}</span>}
+                          {rec.customers.mobile_no && <span className="flex items-center"><Phone className="w-2.5 h-2.5 mr-1" /> {rec.customers.mobile_no}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-muted-foreground">
+                      <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 font-mono text-[11px] text-primary">
+                      {rec.time_in?.substring(0,5) || '--:--'} - {rec.time_out?.substring(0,5) || '--:--'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              rec.outcome === 'Order Received' ? 'bg-emerald-100 text-emerald-700' :
+                              rec.outcome === 'Proposal Sent' ? 'bg-blue-100 text-blue-700' :
+                              rec.outcome === 'Not Interested' ? 'bg-rose-100 text-rose-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {rec.outcome || 'N/A'}
+                            </span>
+                            {rec.probability && (
+                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  rec.probability === 'High' ? 'bg-rose-100 text-rose-700' :
+                                  rec.probability === 'Moderate' ? 'bg-amber-100 text-amber-700' :
+                                  'bg-slate-100 text-slate-600'
+                               }`}>
+                                 P: {rec.probability}
+                               </span>
+                            )}
+                          </div>
+                        <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]" title={rec.feedback}>
+                          {rec.feedback || 'No feedback recorded'}
+                        </div>
+                        {rec.is_quotation && (
+                          <div className="mt-3 overflow-hidden">
+                            <div className="flex items-center justify-between px-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase border shadow-sm ${
+                                    rec.quotation_status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    rec.quotation_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                    'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>
+                                  {rec.quotation_status || 'Pending'}
+                                </span>
+                                <span className="text-[10px] font-black text-emerald-700">
+                                  ₹{rec.quotation_items?.reduce((sum: number, item: any) => 
+                                    sum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => toggleQuoteExpand(rec.id)}
+                                className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/5 gap-1"
+                              >
+                                {expandedQuotes.includes(rec.id) ? (
+                                  <><ChevronUp className="w-3 h-3" /> Hide</>
+                                ) : (
+                                  <><ChevronDown className="w-3 h-3" /> {rec.quotation_items?.length || 0} Items</>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {expandedQuotes.includes(rec.id) && (
+                              <div className="mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 animate-in slide-in-from-top-1 duration-200">
+                                <div className="space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
+                                  {rec.quotation_items?.map((item: any, i: number) => (
+                                    <div key={i} className="text-[9px] flex items-center justify-between bg-white/60 px-2 py-1.5 rounded border border-slate-100/50">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Package className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-bold text-slate-700 truncate">{item.product_name || item.product}</span>
+                                          <span className="text-[7px] text-muted-foreground uppercase">Qty: {item.quantity} | GST: {item.gst_percent}%</span>
+                                        </div>
+                                      </div>
+                                      <div className="text-right flex flex-col">
+                                        <span className="font-black text-primary whitespace-nowrap">₹{(Number(item.amount) || 0).toLocaleString()}</span>
+                                        <span className="text-[7px] font-bold text-emerald-600 italic">Inc. Tax</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {rec.quotation_delivery_date && (
+                                  <div className="mt-1.5 flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter px-1 border-t border-slate-100 pt-1">
+                                    <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="md:px-6 py-4 text-right space-x-2">
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button 
-                onClick={saveVisit} 
-                loading={submitting}
-                disabled={submitting}
-                className="bg-primary hover:bg-primary/95 text-white px-8 h-12 rounded-full shadow-lg shadow-primary/20 flex items-center transition-all hover:scale-105 active:scale-95 w-full md:w-auto"
-              >
-                {!submitting && <Save className="w-4 h-4 mr-2" />}
-                {editingId ? (submitting ? 'Updating...' : 'Update Report') : (submitting ? 'Saving...' : 'Save Visit Report')}
-              </Button>
-            </div>
-
-          </CardContent>
-        </Card>
-      )}
-
-      {!showForm && (
-        <TableView
-          title="Field Visit Logs"
-          description="Punching details for field staff tracking."
-          headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Outcome / Feedback', 'Action']}
-          data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
-          loading={loading}
-          searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
-          searchPlaceholder="Search staff name/ID, client name/ID..."
-          actions={
-            <div className="flex gap-3">
-              <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
-              <div className="flex items-center gap-2">
-                <Input 
-                  type="date"
-                  className="w-40 rounded-full border-primary/20 h-9 text-xs"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                />
-                {dateFilter && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setDateFilter('')}
-                    className="h-9 px-3 rounded-full text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          }
-          renderRow={(rec: any) => (
-            <tr key={rec.id} className="hover:bg-primary/5 transition-all group">
-              <td className="px-6 py-4">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs">
-                    {rec.users?.name?.charAt(0) || 'U'}
-                  </div>
-                  <div>
-                    <div className="font-semibold">{rec.users?.name || 'Unknown Staff'}</div>
-                    <div className="text-[10px] text-muted-foreground">{rec.users?.employee_code || '#---'}</div>
-                  </div>
-                </div>
-              </td>
-              <td className="px-6 py-4 font-medium text-foreground">
-                {rec.customer_name}
-              </td>
-              <td className="px-6 py-4 text-xs text-muted-foreground">
-                 <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
-              </td>
-              <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-mono text-[11px] text-primary">
-                {rec.time_in?.substring(0,5) || '--:--'} - {rec.time_out?.substring(0,5) || '--:--'}
-              </td>
-               <td className="px-6 py-4">
-                 <div className="flex flex-col gap-1">
-                   <div className="flex items-center gap-2">
-                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                       rec.outcome === 'Order Received' ? 'bg-emerald-100 text-emerald-700' :
-                       rec.outcome === 'Proposal Sent' ? 'bg-blue-100 text-blue-700' :
-                       rec.outcome === 'Not Interested' ? 'bg-rose-100 text-rose-700' :
-                       'bg-slate-100 text-slate-700'
-                     }`}>
-                       {rec.outcome || 'N/A'}
-                     </span>
-                   </div>
-                   <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]" title={rec.feedback}>
-                     {rec.feedback || 'No feedback recorded'}
-                   </div>
-                   {rec.is_quotation && (
-                     <div className="mt-3 overflow-hidden">
-                       <div className="flex items-center justify-between px-1">
-                         <div className="flex items-center gap-2">
-                           <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase border shadow-sm ${
-                              rec.quotation_status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              rec.quotation_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
-                           }`}>
-                             {rec.quotation_status || 'Pending'}
-                           </span>
-                           <span className="text-[10px] font-black text-emerald-700">
-                             ₹{rec.quotation_items?.reduce((sum: number, item: any) => 
-                               sum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0
-                             ).toLocaleString()}
-                           </span>
-                         </div>
-                         
-                         <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           onClick={() => toggleQuoteExpand(rec.id)}
-                           className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/5 gap-1"
-                         >
-                           {expandedQuotes.includes(rec.id) ? (
-                             <><ChevronUp className="w-3 h-3" /> Hide</>
-                           ) : (
-                             <><ChevronDown className="w-3 h-3" /> {rec.quotation_items?.length || 0} Items</>
-                           )}
-                         </Button>
-                       </div>
-                       
-                       {expandedQuotes.includes(rec.id) && (
-                         <div className="mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 animate-in slide-in-from-top-1 duration-200">
-                           <div className="space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
-                             {rec.quotation_items?.map((item: any, i: number) => (
-                               <div key={i} className="text-[9px] flex items-center justify-between bg-white/60 px-2 py-1.5 rounded border border-slate-100/50">
-                                 <div className="flex items-center gap-2 min-w-0">
-                                   <Package className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                                   <div className="flex flex-col min-w-0">
-                                     <span className="font-bold text-slate-700 truncate">{item.product_name || item.product}</span>
-                                     <span className="text-[7px] text-muted-foreground uppercase">Qty: {item.quantity} | GST: {item.gst_percent}%</span>
-                                   </div>
-                                 </div>
-                                 <div className="text-right flex flex-col">
-                                   <span className="font-black text-primary whitespace-nowrap">₹{(Number(item.amount) || 0).toLocaleString()}</span>
-                                   <span className="text-[7px] font-bold text-emerald-600 italic">Inc. Tax</span>
-                                 </div>
-                               </div>
-                             ))}
-                           </div>
-                           
-                           {rec.quotation_delivery_date && (
-                             <div className="mt-1.5 flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter px-1 border-t border-slate-100 pt-1">
-                               <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
-                             </div>
-                           )}
-                         </div>
-                       )}
-                     </div>
-                   )}
-                 </div>
-              </td>
-              <td className="md:px-6 py-4 text-right space-x-2">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)} className="hover:text-primary rounded-full">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)} className="hover:text-destructive rounded-full">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </td>
-            </tr>
-          )}
-        />
-      )}
+              />
+            )}
+          </>
+        }
       </div>
 
       {/* Offer Detail Modal */}

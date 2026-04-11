@@ -75,6 +75,8 @@ export default function MarketingReportsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        console.log("data.data sj ",data.data);
+        
         setVisits(data.data);
       }
     } catch (err) {
@@ -94,7 +96,7 @@ export default function MarketingReportsPage() {
                        (filters.type === 'visit' && !v.is_quotation);
       const searchMatch = !filters.search || 
                         v.customer_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-                        v.employee_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+                        v.users?.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
                         v.location?.toLowerCase().includes(filters.search.toLowerCase());
       
       return dateMatch && statusMatch && typeMatch && searchMatch;
@@ -118,8 +120,11 @@ export default function MarketingReportsPage() {
   const downloadReport = () => {
     const reportData = filteredVisits.map(v => ({
       'Date': new Date(v.visit_date).toLocaleDateString(),
-      'Staff': v.employee_name,
+      'Staff': v.users?.name || 'N/A',
       'Client': v.customer_name,
+      'Contact Person': v.customers?.contact_person || 'N/A',
+      'Contact Number': v.customers?.mobile_no || 'N/A',
+      'Probability': v.probability || 'N/A',
       'Location': v.location,
       'Type': v.is_quotation ? 'Quotation' : 'Visit Only',
       'Status': v.quotation_status || 'N/A',
@@ -146,7 +151,7 @@ export default function MarketingReportsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-primary/10 shadow-sm overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16" />
+        {/* <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16" /> */}
         <div className="relative z-10">
           <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
             <BarChart3 className="w-10 h-10 p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20" />
@@ -240,7 +245,7 @@ export default function MarketingReportsPage() {
           data={filteredVisits}
           loading={loading}
           headers={['Staff & Date', 'Client & Location', 'Visit Details', 'Quoted Amount', 'Items & Status']}
-          searchFields={['employee_name', 'customer_name', 'location', 'purpose']}
+          searchFields={['users.name', 'customer_name', 'location', 'purpose']}
           renderRow={(rec: any) => {
             const totalInclusive = rec.is_quotation ? rec.quotation_items?.reduce((s: number, i: any) => 
                s + ((Number(i.amount) || 0) * (Number(i.quantity) || 1) * (1 + (Number(i.gst_percent) || 0) / 100)), 0
@@ -250,7 +255,7 @@ export default function MarketingReportsPage() {
               <tr key={rec.id} className="hover:bg-slate-50 transition-all border-b last:border-none">
                 <td className="p-4">
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-900">{rec.employee_name}</span>
+                    <span className="font-bold text-slate-900">{rec.users?.name || 'Unknown'}</span>
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
                       <Calendar className="w-3 h-3 text-primary" />
                       {new Date(rec.visit_date).toLocaleDateString()}
@@ -260,9 +265,21 @@ export default function MarketingReportsPage() {
                 <td className="p-4">
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-800">{rec.customer_name}</span>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5 truncate max-w-[150px]" title={rec.location}>
-                      <MapPin className="w-3 h-3 text-rose-500" />
-                      {rec.location}
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      {rec.customers?.contact_person && (
+                        <div className="text-[10px] font-bold text-primary flex items-center gap-1">
+                          <User className="w-2.5 h-2.5" /> {rec.customers.contact_person}
+                        </div>
+                      )}
+                      {rec.customers?.mobile_no && (
+                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                          <span className="text-secondary font-bold">M:</span> {rec.customers.mobile_no}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-0.5 truncate max-w-[150px]" title={rec.location}>
+                        <MapPin className="w-2.5 h-2.5 text-rose-400" />
+                        {rec.location}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -277,6 +294,15 @@ export default function MarketingReportsPage() {
                       }`}>
                         {rec.outcome || 'N/A'}
                       </span>
+                      {rec.probability && (
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border shrink-0 ${
+                          rec.probability === 'High' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                          rec.probability === 'Moderate' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}>
+                          {rec.probability}
+                        </span>
+                      )}
                       <p className="text-xs font-bold text-primary truncate" title={rec.purpose}>{rec.purpose}</p>
                     </div>
                     <p className="text-[10px] text-slate-500 line-clamp-1" title={rec.feedback}>{rec.feedback || 'No feedback'}</p>
