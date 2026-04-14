@@ -394,7 +394,7 @@ export default function CustomersPage() {
                     Custom Information (Optional)
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 1</label>
                         <Input 
@@ -417,7 +417,7 @@ export default function CustomersPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 2</label>
                         <Input 
