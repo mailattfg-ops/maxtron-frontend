@@ -94,6 +94,14 @@ export default function VehiclesPage() {
       }
       
       if (!formData.model.trim()) newErrors.model = 'Required';
+      else if (!/^[a-zA-Z0-9\s\-\.]+$/.test(formData.model)) {
+        newErrors.model = 'Invalid characters used';
+      }
+
+      if (formData.body_type && !/^[a-zA-Z0-9\s\-\.]+$/.test(formData.body_type)) {
+        newErrors.body_type = 'Invalid characters';
+      }
+
       if (!formData.vehicle_type) newErrors.vehicle_type = 'Required';
       if (!formData.purpose) newErrors.purpose = 'Required';
       
@@ -101,9 +109,15 @@ export default function VehiclesPage() {
     }
 
     if (tab === 'tech') {
+      if (formData.engine_no && !/^[a-zA-Z0-9\s\-]+$/.test(formData.engine_no)) {
+        newErrors.engine_no = 'Invalid characters';
+      }
+      if (formData.chassis_no && !/^[a-zA-Z0-9\s\-]+$/.test(formData.chassis_no)) {
+        newErrors.chassis_no = 'Invalid characters';
+      }
       if (formData.fitness_date && formData.fitness_renewal_date) {
         if (new Date(formData.fitness_renewal_date) <= new Date(formData.fitness_date)) {
-          newErrors.fitness_renewal_date = 'Must be after Fitness Date';
+          newErrors.fitness_renewal_date = 'Must be strictly later than Fitness Date';
         }
       }
       if (Number(formData.km_on_day_1) < 0) newErrors.km_on_day_1 = 'Cannot be negative';
@@ -355,7 +369,14 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Body Type</label>
-                  <Input name="body_type" value={formData.body_type} onChange={handleInputChange} placeholder="e.g. Open Box, Container" />
+                  <Input 
+                    name="body_type" 
+                    value={formData.body_type} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. Open Box, Container" 
+                    className={errors.body_type ? 'border-rose-500 focus-visible:ring-rose-500' : ''}
+                  />
+                  {errors.body_type && <p className="text-[10px] text-rose-600 font-bold">{errors.body_type}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seating Capacity *</label>
@@ -391,11 +412,23 @@ export default function VehiclesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in slide-in-from-right duration-500 px-6 md:px-0">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Engine No</label>
-                  <Input name="engine_no" value={formData.engine_no} onChange={handleInputChange} className="font-mono" />
+                  <Input 
+                    name="engine_no" 
+                    value={formData.engine_no} 
+                    onChange={handleInputChange} 
+                    className={`font-mono ${errors.engine_no ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`} 
+                  />
+                  {errors.engine_no && <p className="text-[10px] text-rose-600 font-bold">{errors.engine_no}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Chassis No</label>
-                  <Input name="chassis_no" value={formData.chassis_no} onChange={handleInputChange} className="font-mono" />
+                  <Input 
+                    name="chassis_no" 
+                    value={formData.chassis_no} 
+                    onChange={handleInputChange} 
+                    className={`font-mono ${errors.chassis_no ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`} 
+                  />
+                  {errors.chassis_no && <p className="text-[10px] text-rose-600 font-bold">{errors.chassis_no}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">KM on Day 1</label>

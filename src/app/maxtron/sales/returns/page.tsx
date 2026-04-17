@@ -36,6 +36,7 @@ export default function SalesReturns() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   const [alert, setAlert] = useState<{
     show: boolean, 
@@ -163,6 +164,26 @@ export default function SalesReturns() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    const newErrors: Record<string, string> = {};
+    if (!formData.customer_id) newErrors.customer_id = 'Required';
+    if (formData.return_through === 'DIRECT' && !formData.return_employee_id) newErrors.return_employee_id = 'Required';
+    if (formData.return_through === 'COURIER' && !formData.courier_name.trim()) newErrors.courier_name = 'Required';
+    if (!formData.reason.trim()) newErrors.reason = 'Reason required';
+    
+    if (formData.items.length === 0 || formData.items.some(i => !i.product_id || (i.quantity || 0) <= 0 || (i.rate || 0) <= 0)) {
+       setAlert({ show: true, type: 'error', title: 'Line Items Invalid', message: 'All items must have a valid Quantity and Rate greater than 0.' });
+       return;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        setAlert({ show: true, type: 'error', title: 'Validation Failed', message: 'Please check and fill mandatory fields highlighted in red.' });
+        return;
+    }
+
+    setErrors({});
     try {
       const url = editingId ? `${RETURNS_API}/${editingId}` : RETURNS_API;
       const method = editingId ? 'PUT' : 'POST';
@@ -297,70 +318,77 @@ export default function SalesReturns() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8 px-6 md:px-0">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Date</label>
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Date *</label>
                   <Input type="date" value={formData.return_date} onChange={e => setFormData({...formData, return_date: e.target.value})} />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice</label>
-                  <Select value={formData.invoice_id} onValueChange={(val) => handleInvoiceSelect(val)}>
-                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
-                      <SelectValue placeholder="Manual Entry..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200">
-                      {invoices.map(i => (
-                        <SelectItem key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice / Customer *</label>
+                  <select 
+                    value={formData.invoice_id} 
+                    onChange={e => { handleInvoiceSelect(e.target.value); if(errors.customer_id) setErrors(prev => { const {[ 'customer_id']: _, ...r} = prev; return r; }); }}
+                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.customer_id ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-50' : 'border-slate-200'}`}
+                  >
+                    <option value="">Select Invoice...</option>
+                    {invoices.map(i => (
+                      <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>
+                    ))}
+                  </select>
+                  {errors.customer_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">{errors.customer_id}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Through</label>
-                  <Select 
+                  <select 
                     value={formData.return_through} 
-                    onValueChange={(val) => setFormData({...formData, return_through: val, return_employee_id: '', courier_name: ''})}
+                    onChange={(e) => { setFormData({...formData, return_through: e.target.value, return_employee_id: '', courier_name: ''}); setErrors({}); }}
+                    className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
                   >
-                    <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
-                      <SelectValue placeholder="Select Return Mode" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200">
-                      <SelectItem value="DIRECT">Direct (via Marketing/Delivery Employee)</SelectItem>
-                      <SelectItem value="COURIER">Courier / Transport</SelectItem>
-                    </SelectContent>
-                  </Select>
+                     <option value="DIRECT">Direct (via Marketing/Delivery Employee)</option>
+                     <option value="COURIER">Courier / Transport</option>
+                  </select>
                 </div>
 
                 {formData.return_through === 'DIRECT' ? (
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Employee Name</label>
-                      <Select 
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Employee Name *</label>
+                      <select 
                         value={formData.return_employee_id} 
-                        onValueChange={(val) => setFormData({...formData, return_employee_id: val})}
+                        onChange={(e) => { setFormData({...formData, return_employee_id: e.target.value}); if(errors.return_employee_id) setErrors(prev => { const {return_employee_id: _, ...r} = prev; return r; }); }}
+                        className={`w-full h-10 rounded-md border text-sm shadow-sm ${errors.return_employee_id ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-50' : 'border-slate-200'}`}
                       >
-                        <SelectTrigger className="w-full h-10 border border-slate-200 text-sm shadow-sm font-medium">
-                          <SelectValue placeholder="Select Employee..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-slate-200">
-                          {employees.map(emp => (
-                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <option value="">Select Employee...</option>
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name}</option>
+                        ))}
+                      </select>
+                      {errors.return_employee_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">{errors.return_employee_id}</p>}
                   </div>
                 ) : (
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Courier / Transport Name</label>
-                    <Input placeholder="E.g. DTDC, Hand carry..." value={formData.courier_name} onChange={e => setFormData({...formData, courier_name: e.target.value})} />
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Courier / Transport Name *</label>
+                    <Input 
+                      placeholder="E.g. DTDC, Hand carry..." 
+                      value={formData.courier_name} 
+                      onChange={e => { setFormData({...formData, courier_name: e.target.value}); if(errors.courier_name) setErrors(prev => {const {courier_name: _, ...r} = prev; return r; }); }} 
+                      className={errors.courier_name ? 'border-rose-500 bg-rose-50/50' : ''}
+                    />
+                    {errors.courier_name && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">{errors.courier_name}</p>}
                   </div>
                 )}
                 
                 <div className="space-y-1.5 md:col-span-4">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Remarks (Reason)</label>
-                  <Input placeholder="E.g. Damaged during transit, incorrect size..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} />
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Remarks (Reason) *</label>
+                  <Input 
+                    placeholder="E.g. Damaged during transit, incorrect size..." 
+                    value={formData.reason} 
+                    onChange={e => { setFormData({...formData, reason: e.target.value}); if(errors.reason) setErrors(prev => {const {reason: _, ...r} = prev; return r; }); }} 
+                    className={errors.reason ? 'border-rose-500 bg-rose-50/50' : ''}
+                  />
+                  {errors.reason && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">{errors.reason}</p>}
                 </div>
               </div>
 
@@ -395,9 +423,9 @@ export default function SalesReturns() {
                     <table className="w-full text-sm">
                         <thead className="bg-rose-100/50 border-b border-rose-100">
                             <tr>
-                                <th className="px-4 py-3 text-left">Returned Item</th>
-                                <th className="px-4 py-3 text-center w-32">Quantity</th>
-                                <th className="px-4 py-3 text-center w-32">Rate (₹)</th>
+                                <th className="px-4 py-3 text-left">Returned Item *</th>
+                                <th className="px-4 py-3 text-center w-32">Quantity *</th>
+                                <th className="px-4 py-3 text-center w-32">Rate (₹) *</th>
                                 <th className="px-4 py-3 text-right w-40">Value (₹)</th>
                             </tr>
                         </thead>
@@ -405,19 +433,16 @@ export default function SalesReturns() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-rose-50">
                                     <td className="p-4">
-                                        <Select 
+                                        <select 
                                           value={item.product_id} 
-                                          onValueChange={(val) => handleItemChange(index, 'product_id', val)}
+                                          onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
+                                          className="w-full h-9 bg-transparent border-none text-sm focus:ring-0 cursor-pointer"
                                         >
-                                          <SelectTrigger className="w-full h-9 border-none bg-transparent hover:bg-slate-50 text-sm">
-                                            <SelectValue placeholder="Choose Product..." />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white border-slate-200">
-                                            {products.map(p => (
-                                              <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                          <option value="">Choose Product...</option>
+                                          {products.map(p => (
+                                            <option key={p.id} value={p.id}>{p.product_name}</option>
+                                          ))}
+                                        </select>
                                     </td>
                                     <td className="p-4"><Input type="number" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="border-none text-center" /></td>
                                     <td className="p-4"><Input type="number" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="border-none text-center" /></td>
@@ -467,8 +492,8 @@ export default function SalesReturns() {
                 <div className="text-[10px] text-slate-500 uppercase">{ret.return_through === 'DIRECT' ? ret.return_employee?.name || 'Unassigned' : ret.courier_name || 'N/A'}</div>
               </td>
               <td className="px-6 py-4 font-black">₹ {ret.total_return_value?.toLocaleString()}</td>
-              <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
+              <td className="px-2 py-4">
+                  <div className="flex justify-end items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(ret)} className="h-8 w-8 p-0 text-primary border"><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(ret.id)} className="h-8 w-8 p-0 text-rose-600 border"><Trash2 className="w-4 h-4" /></Button>
                   </div>

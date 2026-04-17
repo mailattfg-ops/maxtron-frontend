@@ -191,11 +191,13 @@ export default function DeliveryDetails() {
     if (!formData.delivery_person_id) newErrors.delivery_person_id = true;
     if (!formData.receiver_name) newErrors.receiver_name = true;
     if (!formData.receiver_section) newErrors.receiver_section = true;
-    if (!formData.contact_number || !/^[0-9]{10}$/.test(formData.contact_number.replace(/\s/g, ''))) {
+    if (!formData.contact_number || !/^[0-9]{10,12}$/.test(formData.contact_number)) {
         newErrors.contact_number = true;
     }
     if (!formData.delivery_time) newErrors.delivery_time = true;
-    if (!formData.dc_no) newErrors.dc_no = true;
+    if (!formData.dc_no || !/^[a-zA-Z0-9\s\-\/\.]+$/.test(formData.dc_no)) {
+        newErrors.dc_no = true;
+    }
     
     if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
@@ -550,12 +552,17 @@ export default function DeliveryDetails() {
                         <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Contact Number <span className="text-rose-500">*</span></label>
                         <Input 
                             type="tel" 
-                            placeholder="Phone number" 
-                            className={`bg-white ${errors.contact_number ? "border-rose-400 focus:ring-rose-200" : ""}`}
+                            placeholder="10-12 digit phone number" 
+                            className={`bg-white ${errors.contact_number ? "border-rose-400 focus:ring-rose-200 shadow-[0_0_10px_rgba(225,29,72,0.1)]" : ""}`}
                             value={formData.contact_number} 
-                            onChange={e => setFormData({...formData, contact_number: e.target.value})} 
+                            onChange={e => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                if (val.length <= 12) {
+                                    setFormData({...formData, contact_number: val});
+                                }
+                            }} 
                         />
-                        {errors.contact_number && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Contact number is required</p>}
+                        {errors.contact_number && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5 animate-pulse">Invalid contact number (10-12 digits required)</p>}
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Time of Delivery <span className="text-rose-500">*</span></label>
@@ -570,12 +577,12 @@ export default function DeliveryDetails() {
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">DC No. (Delivery Challan) <span className="text-rose-500">*</span></label>
                         <Input 
-                            placeholder="Enter DC No." 
+                            placeholder="e.g. DC-1001" 
                             className={`bg-white ${errors.dc_no ? "border-rose-400 focus:ring-rose-200" : ""}`}
                             value={formData.dc_no} 
-                            onChange={e => setFormData({...formData, dc_no: e.target.value})} 
+                            onChange={e => setFormData({...formData, dc_no: e.target.value.toUpperCase()})} 
                         />
-                        {errors.dc_no && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">DC Number is required</p>}
+                        {errors.dc_no && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Invalid DC No. (Use alphanumeric)</p>}
                     </div>
                 </div>
               </div>
@@ -668,6 +675,7 @@ export default function DeliveryDetails() {
                     <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Delivery Person</th>
                     <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Receiver</th>
                     <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">DC No</th>
+                    <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Dispatch Items</th>
                     <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px]">Status</th>
                     <th className="px-6 py-4 font-black uppercase tracking-wider text-[10px] text-right">Actions</th>
                   </tr>
@@ -695,6 +703,15 @@ export default function DeliveryDetails() {
                           </td>
                           <td className="px-6 py-4 text-xs font-black text-slate-500 bg-slate-50/50">{del.dc_no || 'N/A'}</td>
                           <td className="px-6 py-4">
+                            <div className="max-w-[250px] overflow-hidden text-[11px] font-bold text-slate-600">
+                                {del.items?.map((i: any, idx: number) => (
+                                    <span key={idx} className="inline-block bg-slate-100 px-1.5 py-0.5 rounded mr-1 mb-1">
+                                        {i.products?.product_name || 'Product'} ({i.quantity})
+                                    </span>
+                                )) || <span className="text-slate-300 italic">No Items recorded</span>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                                 del.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
                                 del.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
@@ -702,7 +719,7 @@ export default function DeliveryDetails() {
                                 {del.status.replace(/_/g, ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-2 py-4 text-right">
                              <div className="flex items-center justify-end gap-2">
                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(del)} className="h-8 w-8 text-primary hover:bg-primary/10 border border-slate-100 rounded-full"><Edit2 className="w-4 h-4" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(del.id)} className="h-8 w-8 text-rose-600 hover:bg-rose-50 border border-slate-100 rounded-full"><Trash2 className="w-4 h-4" /></Button>

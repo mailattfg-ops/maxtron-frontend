@@ -46,7 +46,7 @@ export default function CustomersPage() {
     delivery_mode: '',
     mobile_no: '',
     email_id: '',
-    department: '',
+    contact_person: '',
     custom_label1: '',
     custom_value1: '',
     custom_label2: '',
@@ -152,9 +152,27 @@ export default function CustomersPage() {
       return false;
     }
 
-    if (formData.department && formData.department.length < 2) {
-      error('Department name should be at least 2 characters.');
+    if (formData.contact_person && formData.contact_person.length < 2) {
+      error('Contact person name should be at least 2 characters.');
       return false;
+    }
+
+    if (formData.delivery_period && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(formData.delivery_period)) {
+        error('Delivery Period contains invalid special characters. Use alphanumeric, space, hyphens or slashes.');
+        return false;
+    }
+
+    if (formData.delivery_mode && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(formData.delivery_mode)) {
+        error('Delivery Mode contains invalid characters.');
+        return false;
+    }
+
+    // Zip Code validation for all addresses
+    for (const addr of formData.addresses) {
+      if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+        error(`Invalid Zip code for ${addr.address_type} address. Please enter exactly 6 digits.`);
+        return false;
+      }
     }
 
     return true;
@@ -225,7 +243,7 @@ export default function CustomersPage() {
       opening_balance: 0,
       mobile_no: '',
       email_id: '',
-      department: '',
+      contact_person: '',
       custom_label1: '',
       custom_value1: '',
       custom_label2: '',
@@ -358,8 +376,8 @@ export default function CustomersPage() {
                   <Input name="email_id" value={formData.email_id} onChange={handleInputChange} placeholder="contact@company.com" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">Department</label>
-                  <Input name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g. Purchase, Finance" />
+                  <label className="text-sm font-semibold">Contact Person</label>
+                  <Input name="contact_person" value={formData.contact_person} onChange={handleInputChange} placeholder="e.g. John Doe" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Delivery Period</label>
@@ -376,7 +394,7 @@ export default function CustomersPage() {
                     Custom Information (Optional)
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 1</label>
                         <Input 
@@ -399,7 +417,7 @@ export default function CustomersPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 2</label>
                         <Input 
@@ -506,7 +524,15 @@ export default function CustomersPage() {
                         if (!validateForm()) return;
                         setActiveTab('address');
                       }
-                      else if (activeTab === 'address') setActiveTab('financial');
+                      else if (activeTab === 'address') {
+                        // Strict Zip check when moving from Address to Financials
+                        for (const addr of formData.addresses) {
+                          if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+                             return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
+                          }
+                        }
+                        setActiveTab('financial');
+                      }
                     }}
                     className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
                   >

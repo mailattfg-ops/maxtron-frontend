@@ -160,12 +160,12 @@ export default function DeliveryReport() {
                     {row.status.replace(/_/g, ' ')}
                 </span>
             </td>
-            <td className="px-6 py-5 text-center">
-                <div className="flex flex-wrap gap-1 justify-center">
+            <td className="px-2 py-5 text-center">
+                <div className="flex flex-wrap gap-1 justify-end">
                   {row.items?.slice(0, 2).map((item: any, idx: number) => (
-                      <span key={idx} className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-bold text-slate-50">{item.finished_products?.product_code} ({item.quantity})</span>
+                      <span key={idx} className="bg-slate-100 px-2 !text-black py-0.5 rounded text-[10px] font-bold text-slate-50">{item.finished_products?.product_code} ({item.quantity})</span>
                   ))}
-                  {row.items?.length > 2 && <span className="text-[10px] font-bold text-slate-300">+{row.items.length - 2} more</span>}
+                  {row.items?.length > 2 && <span className="text-[10px] text-black font-bold text-slate-300">+{row.items.length - 2} more</span>}
                 </div>
             </td>
           </tr>
