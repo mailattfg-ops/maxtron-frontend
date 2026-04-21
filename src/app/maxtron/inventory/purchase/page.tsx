@@ -141,13 +141,20 @@ export default function PurchaseEntryPage() {
         ...formData,
         order_id: orderId,
         supplier_id: selectedOrder.supplier_id,
-        items: selectedOrder.rm_order_items.map((i: any) => ({
-            rm_id: i.rm_id,
-            ordered_quantity: Number(i.quantity),
-            received_quantity: Number(i.quantity), // Default to full receipt
-            rate: Number(i.rate),
-            amount: Number(i.amount)
-        }))
+        items: selectedOrder.rm_order_items.map((i: any) => {
+            const baseAmount = Number(i.quantity) * Number(i.rate);
+            const gstPercent = 18; // Defaulting to 18% or you can default to 0
+            const gstAmount = (baseAmount * gstPercent) / 100;
+            return {
+                rm_id: i.rm_id,
+                ordered_quantity: Number(i.quantity),
+                received_quantity: Number(i.quantity),
+                rate: Number(i.rate),
+                gst_percent: gstPercent,
+                gst_amount: gstAmount,
+                amount: baseAmount + gstAmount
+            };
+        })
       });
     } else {
         setFormData({ ...formData, order_id: '', reorder_missing: false, items: [] });
@@ -157,7 +164,15 @@ export default function PurchaseEntryPage() {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { rm_id: '', ordered_quantity: 0, received_quantity: 0, rate: 0, amount: 0 }]
+      items: [...formData.items, { 
+        rm_id: '', 
+        ordered_quantity: 0, 
+        received_quantity: 0, 
+        rate: 0, 
+        gst_percent: 18, 
+        gst_amount: 0, 
+        amount: 0 
+      }]
     });
   };
 
@@ -178,7 +193,18 @@ export default function PurchaseEntryPage() {
         }
     }
     
-    newItems[index].amount = newItems[index].received_quantity * newItems[index].rate;
+    if (field !== 'amount') {
+        const qty = Number(newItems[index].received_quantity || 0);
+        const rate = Number(newItems[index].rate || 0);
+        const gstPerc = Number(newItems[index].gst_percent || 0);
+        
+        const baseAmount = qty * rate;
+        const gstAmount = (baseAmount * gstPerc) / 100;
+        
+        newItems[index].gst_amount = gstAmount;
+        newItems[index].amount = baseAmount + gstAmount;
+    }
+    
     setFormData({ ...formData, items: newItems });
   };
 
@@ -314,13 +340,22 @@ export default function PurchaseEntryPage() {
       unloading_charges: Number(rec.unloading_charges || 0),
       company_id: rec.company_id || '',
       reorder_missing: false,
-      items: (rec.purchase_entry_items || []).map((i: any) => ({
-        rm_id: i.rm_id || '',
-        ordered_quantity: Number(i.ordered_quantity || 0),
-        received_quantity: Number(i.received_quantity || 0),
-        rate: Number(i.rate || 0),
-        amount: Number(i.amount || 0)
-      }))
+      items: (rec.purchase_entry_items || []).map((i: any) => {
+        const qty = Number(i.received_quantity || 0);
+        const rate = Number(i.rate || 0);
+        const gstPerc = Number(i.gst_percent || 0);
+        const base = qty * rate;
+        const gstAmt = Number(i.gst_amount || (base * gstPerc / 100));
+        return {
+          rm_id: i.rm_id || '',
+          ordered_quantity: Number(i.ordered_quantity || 0),
+          received_quantity: qty,
+          rate: rate,
+          gst_percent: gstPerc,
+          gst_amount: gstAmt,
+          amount: base + gstAmt
+        };
+      })
     });
     setErrors({});
     setShowForm(true);
@@ -414,7 +449,7 @@ export default function PurchaseEntryPage() {
                   disabled={!!formData.order_id}
                 >
                   <SelectTrigger className={`w-full h-11 text-xs font-black bg-slate-50 border ${errors.supplier_id ? 'border-destructive bg-amber-50' : 'border-slate-200'}`}>
-                    <SelectValue placeholder="Choose Supplier..." />
+                     <SelectValue placeholder="Choose Supplier..." />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">
                     {suppliers.map(s => (
@@ -493,6 +528,8 @@ export default function PurchaseEntryPage() {
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">Material Item / Current Stock</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Qty Ordered</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Qty Delivered</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-24">Rate</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-24">GST %</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Amount</th>
                         <th className="px-4 py-3 text-center text-[10px] font-black text-slate-500 uppercase w-16"></th>
                       </tr>
@@ -519,15 +556,19 @@ export default function PurchaseEntryPage() {
                             </Select>
                           </td>
                           <td className="p-4">
-                            <div className="h-10 flex items-center justify-center font-bold text-slate-400 bg-slate-50 rounded">
-                               {item.ordered_quantity || 0}
-                            </div>
+                            <Input 
+                              type="number" 
+                              min="0"
+                              value={item.ordered_quantity === 0 ? '' : item.ordered_quantity} 
+                              onChange={(e) => updateItem(idx, 'ordered_quantity', e.target.value)}
+                              className="h-10 text-center font-bold text-slate-500 bg-slate-50"
+                            />
                           </td>
                           <td className="p-4">
                             <Input 
                               type="number" 
                               min="0"
-                              max={item.ordered_quantity}
+                              max={item.ordered_quantity || undefined}
                               value={item.received_quantity === 0 ? '' : item.received_quantity} 
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -542,9 +583,40 @@ export default function PurchaseEntryPage() {
                             />
                           </td>
                           <td className="p-4">
-                             <div className="h-10 flex items-center justify-end px-3 font-mono font-black text-slate-900 bg-slate-100 rounded">
-                               ₹{Number(item.amount).toLocaleString()}
-                             </div>
+                            <Input 
+                              type="number" 
+                              min="0"
+                              value={item.rate === 0 ? '' : item.rate} 
+                              onChange={(e) => updateItem(idx, 'rate', e.target.value)}
+                              className="h-10 text-right font-bold text-slate-600 bg-slate-50"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <Select 
+                              value={String(item.gst_percent)}
+                              onValueChange={(val) => updateItem(idx, 'gst_percent', Number(val))}
+                            >
+                              <SelectTrigger className="w-full h-10 border border-slate-200 text-xs font-bold">
+                                <SelectValue placeholder="GST" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-slate-200">
+                                {[0, 5, 12, 18, 28].map(p => (
+                                  <SelectItem key={p} value={String(p)}>{p}%</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-4">
+                            <Input 
+                              type="number" 
+                              min="0"
+                              value={item.amount === 0 ? '' : item.amount} 
+                              onChange={(e) => updateItem(idx, 'amount', e.target.value)}
+                              className="h-10 text-right font-mono font-black text-slate-900 bg-slate-100"
+                            />
+                             {item.gst_amount > 0 && (
+                               <div className="text-[10px] text-right font-bold text-slate-400 mt-1">Incl. ₹{Number(item.gst_amount).toLocaleString()} GST</div>
+                             )}
                           </td>
                           <td className="p-4 text-center">
                              {!formData.order_id && (
@@ -587,6 +659,7 @@ export default function PurchaseEntryPage() {
                    )}
                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Receipt Valuation</p>
                    <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">Includes GST & Labor charges</p>
                 </div>
             </div>
 
