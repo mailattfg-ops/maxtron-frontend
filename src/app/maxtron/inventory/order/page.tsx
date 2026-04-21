@@ -127,14 +127,21 @@ export default function RMOrderPage() {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { rm_id: '', quantity: 0, rate: 0, amount: 0 }]
+      items: [...formData.items, { 
+        rm_id: '', 
+        quantity: 0, 
+        rate: 0, 
+        gst_percent: 18, 
+        gst_amount: 0, 
+        amount: 0 
+      }]
     });
   };
 
   const removeItem = (index: number) => {
     const newItems = [...formData.items];
     newItems.splice(index, 1);
-    const total = newItems.reduce((acc, curr) => acc + curr.amount, 0);
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     setFormData({ ...formData, items: newItems, total_amount: total });
   };
 
@@ -149,14 +156,25 @@ export default function RMOrderPage() {
         }
     }
     
-    newItems[index].amount = newItems[index].quantity * newItems[index].rate;
-    const total = newItems.reduce((acc, curr) => acc + curr.amount, 0);
+    if (field !== 'amount') {
+        const qty = Number(newItems[index].quantity || 0);
+        const rate = Number(newItems[index].rate || 0);
+        const gstPerc = Number(newItems[index].gst_percent || 0);
+        
+        const baseAmount = qty * rate;
+        const gstAmount = (baseAmount * gstPerc) / 100;
+        
+        newItems[index].gst_amount = gstAmount;
+        newItems[index].amount = baseAmount + gstAmount;
+    }
+    
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     setFormData({ ...formData, items: newItems, total_amount: total });
   };
 
   const saveOrder = async () => {
-    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || i.quantity <= 0 || i.rate <= 0)) {
-      error('Please select Supplier and add items with valid quantities and rates.');
+    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || i.quantity <= 0)) {
+      error('Please select Supplier and add items with valid quantities.');
       return;
     }
 
@@ -179,7 +197,7 @@ export default function RMOrderPage() {
         success(editingId ? 'Purchase order updated!' : 'Purchase order released!');
         setShowForm(false);
         setEditingId(null);
-        fetchOrders();
+        fetchInitialData(); // Re-fetch to get new balances if needed
         resetForm();
       } else {
         error(data.message || 'Error occurred');
@@ -231,12 +249,21 @@ export default function RMOrderPage() {
       total_amount: Number(rec.total_amount),
       company_id: rec.company_id,
       status: rec.status,
-      items: rec.rm_order_items.map((i: any) => ({
-        rm_id: i.rm_id,
-        quantity: Number(i.quantity),
-        rate: Number(i.rate),
-        amount: Number(i.amount)
-      }))
+      items: rec.rm_order_items.map((i: any) => {
+        const qty = Number(i.quantity || 0);
+        const rate = Number(i.rate || 0);
+        const gstPerc = Number(i.gst_percent || 0);
+        const base = qty * rate;
+        const gstAmt = Number(i.gst_amount || (base * gstPerc / 100));
+        return {
+          rm_id: i.rm_id,
+          quantity: qty,
+          rate: rate,
+          gst_percent: gstPerc,
+          gst_amount: gstAmt,
+          amount: Number(i.amount) + gstAmt // Assuming i.amount holds base
+        };
+      })
     });
     setShowForm(true);
   };
@@ -307,7 +334,7 @@ export default function RMOrderPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200">
                     {suppliers.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.supplier_name} ({s.supplier_code})</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>{s.supplier_name.toUpperCase()} ({s.supplier_code})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -330,12 +357,13 @@ export default function RMOrderPage() {
                </div>
 
                 <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-x-auto custom-scrollbar">
-                  <table className="w-full min-w-[700px]">
+                  <table className="w-full min-w-[750px]">
                     <thead className="bg-slate-100 border-b border-slate-200">
                       <tr>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">Material (Name / Stock)</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Qty Purchased</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Rate (₹)</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-24">GST %</th>
                         <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32">Amount</th>
                         <th className="px-4 py-3 text-center text-[10px] font-black text-slate-500 uppercase w-16"></th>
                       </tr>
@@ -385,13 +413,35 @@ export default function RMOrderPage() {
                               min="0"
                               value={item.rate === 0 ? '' : item.rate} 
                               onChange={(e) => updateItem(idx, 'rate', Math.max(0, Number(e.target.value)))}
-                              className="h-10 text-right"
+                              className="h-10 text-right font-bold text-slate-600"
                             />
                           </td>
                           <td className="p-4">
-                             <div className="h-10 flex items-center justify-end px-3 font-mono font-black text-slate-900 bg-slate-50 rounded">
-                               ₹ {Number(item.amount).toLocaleString()}
-                             </div>
+                            <Select 
+                              value={String(item.gst_percent)}
+                              onValueChange={(val) => updateItem(idx, 'gst_percent', Number(val))}
+                            >
+                              <SelectTrigger className="w-full h-10 border border-slate-200 text-xs font-bold shadow-sm">
+                                <SelectValue placeholder="GST" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border-slate-200">
+                                {[0, 5, 12, 18, 28].map(p => (
+                                  <SelectItem key={p} value={String(p)}>{p}%</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-4">
+                            <Input 
+                              type="number" 
+                              min="0"
+                              value={item.amount === 0 ? '' : item.amount} 
+                              onChange={(e) => updateItem(idx, 'amount', e.target.value)}
+                              className="h-10 text-right font-mono font-black text-slate-900 bg-slate-50"
+                            />
+                            {item.gst_amount > 0 && (
+                               <div className="text-[10px] text-right font-bold text-slate-400 mt-1">Incl. ₹{Number(item.gst_amount).toLocaleString()} GST</div>
+                             )}
                           </td>
                           <td className="p-4 text-center">
                              <Button onClick={() => removeItem(idx)} variant="ghost" size="icon" className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-full">
@@ -419,17 +469,18 @@ export default function RMOrderPage() {
                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col justify-center text-center md:text-right">
                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Total Order Value</p>
                   <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {formData.total_amount.toLocaleString()}</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter font-heading">Includes GST Charges</p>
                </div>
             </div>
  
             <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 text-sm font-bold transition-all">
                 Cancel Order
               </Button>
               <Button 
                 onClick={saveOrder} 
                 loading={submitting}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold"
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold transition-all transform active:scale-95"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update PO' : 'Release PO'}
