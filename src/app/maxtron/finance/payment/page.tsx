@@ -14,7 +14,8 @@ import {
     FileText,
     CheckCircle2,
     AlertCircle,
-    ChevronDown
+    ChevronDown,
+    ClipboardList
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -353,7 +354,7 @@ export default function SupplierPaymentPage() {
                                     <ArrowUpRight className="w-6 h-6" />
                                     {editingId ? 'Edit Supplier Payment' : 'Post Supplier Payment'}
                                 </h2>
-                                <p className="text-white/60 text-xs">Record payment and allocate against pending invoices</p>
+                                <p className="text-white/60 text-xs">Record payment and allocate against pending bills from Purchase Registry</p>
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white font-black p-2">✕</button>
                         </div>
@@ -405,7 +406,7 @@ export default function SupplierPaymentPage() {
                                                     fetchSupplierBalance(val);
                                                 }}
                                             >
-                                                <SelectTrigger className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm h-11">
+                                                <SelectTrigger className="w-full h-11 pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm h-11">
                                                     <SelectValue placeholder="Choose Supplier" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white border-slate-200">
@@ -433,7 +434,7 @@ export default function SupplierPaymentPage() {
                                                         setFormData({ ...formData, amount: val });
                                                     }
                                                 }}
-                                                className="pl-10 h-14 bg-white border-2 border-primary/20 rounded-xl text-lg font-black"
+                                                className="pl-10 h-11 bg-white border-2 border-primary/20 rounded-xl text-lg font-black"
                                             />
                                         </div>
                                     </div>
@@ -444,8 +445,8 @@ export default function SupplierPaymentPage() {
                                     <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                                             <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                                <FileText className="w-4 h-4 text-primary" />
-                                                Pending Invoices
+                                                <ClipboardList className="w-4 h-4 text-primary" />
+                                                Pending Bills (Purchase Registry)
                                             </h3>
                                             <div className="text-[10px] font-black bg-slate-50 text-slate-600 px-3 py-1 rounded-full border border-slate-100 uppercase tracking-widest">
                                                 Total Outstanding: ₹{pendingBills.reduce((s, b) => s + Number(b.pending_amount), 0).toLocaleString()}
@@ -456,7 +457,7 @@ export default function SupplierPaymentPage() {
                                             <table className="w-full min-w-[700px] text-left text-sm">
                                                 <thead className="bg-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                                     <tr>
-                                                        <th className="px-6 py-3">Bill Details</th>
+                                                        <th className="px-6 py-3">GRN / Bill No</th>
                                                         <th className="px-6 py-3">Date</th>
                                                         <th className="px-6 py-3 text-right">Bill Amount</th>
                                                         <th className="px-6 py-3 text-right">Pending</th>
@@ -467,15 +468,15 @@ export default function SupplierPaymentPage() {
                                                     {pendingBills.length === 0 ? (
                                                         <tr>
                                                             <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium italic">
-                                                                No pending invoices found for this supplier.
+                                                                No pending bills found in Purchase Registry for this supplier.
                                                             </td>
                                                         </tr>
                                                     ) : (
                                                         pendingBills.map((bill) => (
                                                             <tr key={bill.id} className="border-b border-slate-100 last:border-none">
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-bold text-slate-900">{bill.invoice_number || bill.entry_number}</div>
-                                                                    <div className="text-[10px] text-slate-400 uppercase font-bold">{bill.entry_number}</div>
+                                                                    <div className="font-bold text-slate-900">{bill.invoice_number ? `Bill: ${bill.invoice_number}` : `GRN: ${bill.entry_number}`}</div>
+                                                                    <div className="text-[10px] text-slate-400 uppercase font-bold">{bill.invoice_number ? `GRN: ${bill.entry_number}` : 'No Supplier Bill'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">{new Date(bill.entry_date).toLocaleDateString()}</td>
                                                                 <td className="px-6 py-4 text-right font-medium">₹{Number(bill.bill_amount).toLocaleString()}</td>

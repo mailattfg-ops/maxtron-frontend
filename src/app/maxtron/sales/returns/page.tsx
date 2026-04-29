@@ -132,29 +132,40 @@ export default function SalesReturns() {
   const handleInvoiceSelect = (invId: string) => {
       const inv = invoices.find(i => i.id === invId);
       if (inv) {
+          // Default to the first item from the invoice if available
+          const initialItems = inv.items && inv.items.length > 0 
+            ? [{ 
+                product_id: inv.items[0].product_id, 
+                quantity: inv.items[0].quantity, 
+                rate: inv.items[0].rate, 
+                value: Number(inv.items[0].quantity) * Number(inv.items[0].rate) 
+              }]
+            : [{ product_id: '', quantity: 0, rate: 0, value: 0 }];
+
           setFormData({
               ...formData,
               invoice_id: invId,
               customer_id: inv.customer_id,
-              items: inv.items.map((i: any) => ({
-                  product_id: i.product_id,
-                  quantity: i.quantity,
-                  rate: i.rate,
-                  value: i.amount
-              }))
+              items: initialItems
           });
       }
   };
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
-    const item = { ...newItems[index], [field]: value };
+    const item = { ...newItems[index] } as any;
     
+    // Update the field
     if (field === 'quantity' || field === 'rate') {
-      const qty = field === 'quantity' ? parseFloat(value) || 0 : item.quantity;
-      const rate = field === 'rate' ? parseFloat(value) || 0 : item.rate;
-      item.value = qty * rate;
+        item[field] = value === '' ? 0 : parseFloat(value) || 0;
+    } else {
+        item[field] = value;
     }
+
+    // Recalculate value
+    const qty = Number(item.quantity || 0);
+    const rate = Number(item.rate || 0);
+    item.value = qty * rate;
 
     newItems[index] = item;
     setFormData({ ...formData, items: newItems });
@@ -328,7 +339,7 @@ export default function SalesReturns() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Link Invoice / Customer *</label>
                   <select 
-                    value={formData.invoice_id} 
+                    value={formData.invoice_id || ''} 
                     onChange={e => { handleInvoiceSelect(e.target.value); if(errors.customer_id) setErrors(prev => { const {[ 'customer_id']: _, ...r} = prev; return r; }); }}
                     className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.customer_id ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-50' : 'border-slate-200'}`}
                   >
@@ -343,7 +354,7 @@ export default function SalesReturns() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Return Through</label>
                   <select 
-                    value={formData.return_through} 
+                    value={formData.return_through || 'DIRECT'} 
                     onChange={(e) => { setFormData({...formData, return_through: e.target.value, return_employee_id: '', courier_name: ''}); setErrors({}); }}
                     className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
                   >
@@ -356,7 +367,7 @@ export default function SalesReturns() {
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Employee Name *</label>
                       <select 
-                        value={formData.return_employee_id} 
+                        value={formData.return_employee_id || ''} 
                         onChange={(e) => { setFormData({...formData, return_employee_id: e.target.value}); if(errors.return_employee_id) setErrors(prev => { const {return_employee_id: _, ...r} = prev; return r; }); }}
                         className={`w-full h-10 rounded-md border text-sm shadow-sm ${errors.return_employee_id ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-50' : 'border-slate-200'}`}
                       >
@@ -434,14 +445,24 @@ export default function SalesReturns() {
                                 <tr key={index} className="bg-white hover:bg-rose-50">
                                     <td className="p-4">
                                         <select 
-                                          value={item.product_id} 
+                                          value={item.product_id || ''} 
                                           onChange={(e) => handleItemChange(index, 'product_id', e.target.value)}
                                           className="w-full h-9 bg-transparent border-none text-sm focus:ring-0 cursor-pointer"
                                         >
                                           <option value="">Choose Product...</option>
-                                          {products.map(p => (
-                                            <option key={p.id} value={p.id}>{p.product_name}</option>
-                                          ))}
+                                          {(() => {
+                                            const selectedInvoice = invoices.find(i => i.id === formData.invoice_id);
+                                            // Filter only if we have invoice items with valid product IDs
+                                            const invoiceProductIds = selectedInvoice?.items?.map((ii: any) => ii.product_id).filter(Boolean) || [];
+                                            
+                                            const availableProducts = (invoiceProductIds.length > 0)
+                                              ? products.filter(p => invoiceProductIds.includes(p.id))
+                                              : products;
+                                            
+                                            return availableProducts.map(p => (
+                                              <option key={p.id} value={p.id}>{p.product_name}</option>
+                                            ));
+                                          })()}
                                         </select>
                                     </td>
                                     <td className="p-4"><Input type="number" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="border-none text-center" /></td>

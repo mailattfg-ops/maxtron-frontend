@@ -255,6 +255,7 @@ export default function VehiclesPage() {
   };
 
   const handleEdit = (v: any) => {
+    setEditingId(v.id);
     setFormData({ ...v });
     setErrors({});
     setShowForm(true);

@@ -222,8 +222,7 @@ export default function PurchaseEntryPage() {
     if (!formData.invoice_date) newErrors.invoice_date = 'Invoice date is required';
     else if (formData.invoice_date > today) newErrors.invoice_date = 'Invoice date cannot be in the future';
 
-    if (!formData.vehicle_number?.trim()) newErrors.vehicle_number = 'Vehicle Number is mandatory for logistics tracking';
-    else {
+    if (formData.vehicle_number?.trim()) {
       // Standard Indian Vehicle Number Format: KA 01 AB 1234
       const vehicleRegex = /^[A-Z]{2}[ -]?[0-9]{2}[ -]?[A-Z]{1,3}[ -]?[0-9]{4}$/i;
       if (!vehicleRegex.test(formData.vehicle_number.trim())) {
