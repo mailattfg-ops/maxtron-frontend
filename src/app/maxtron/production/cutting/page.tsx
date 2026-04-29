@@ -60,7 +60,7 @@ export default function CuttingSealingPage() {
     date: new Date().toISOString().split('T')[0],
     remarks: '',
     company_id: '',
-    items: [] as { product_id: string; quantity: number; bags_per_kg: number; micron_size: string }[]
+    items: [{ product_id: '', quantity: 0, bags_per_kg: 0, micron_size: '' }] as { product_id: string; quantity: number; bags_per_kg: number; micron_size: string }[]
   });
 
   useEffect(() => {
@@ -272,7 +272,7 @@ export default function CuttingSealingPage() {
       date: new Date().toISOString().split('T')[0],
       remarks: '',
       company_id: currentCompanyId,
-      items: []
+      items: [{ product_id: '', quantity: 0, bags_per_kg: 0, micron_size: '' }]
     });
   };
 
@@ -388,10 +388,19 @@ export default function CuttingSealingPage() {
                   value={formData.batch_id} 
                   onValueChange={(val) => {
                     const batch = batches.find(b => b.id === val);
+                    const prodId = batch?.finished_products?.id;
+                    
                     setFormData({ 
                         ...formData, 
                         batch_id: val,
-                        input_qty: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0 
+                        input_qty: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0,
+                        // Auto-populate item with the product from the batch
+                        items: prodId ? [{ 
+                          product_id: prodId, 
+                          quantity: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0, 
+                          bags_per_kg: 0, 
+                          micron_size: '' 
+                        }] : []
                     });
                   }}
                 >
@@ -413,82 +422,39 @@ export default function CuttingSealingPage() {
               </div>
             </div>
 
-            {/* Line Items Sections */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-                    <Box className="w-5 h-5" /> Finished Product Details
-                </h3>
-                <Button variant="outline" size="sm" onClick={addItem} className="text-primary border-primary/20 hover:bg-primary/5">
-                    <Plus className="w-4 h-4 mr-1" />  <span className="hidden md:block">Add Product</span>
-                </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Package className="w-4 h-4 text-emerald-500" /> Output Qty (Kg)</label>
+                <Input 
+                  type="number" 
+                  value={formData.items[0]?.quantity || ''} 
+                  onChange={e => handleItemChange(0, 'quantity', parseFloat(e.target.value) || 0)} 
+                  placeholder="0.00"
+                  className="h-10 font-bold text-emerald-700" 
+                />
               </div>
-
-              {formData.items.length === 0 ? (
-                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 text-slate-400">
-                    No products added. Click "Add Product" to start.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {formData.items.map((item, idx) => (
-                    <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 bg-white border rounded-lg shadow-sm animate-in fade-in slide-in-from-left duration-300">
-                        <div className="flex-1 space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Product</label>
-                            <Select value={item.product_id} onValueChange={(val) => handleItemChange(idx, 'product_id', val)}>
-                                <SelectTrigger className="h-9 w-full border-input bg-background shadow-sm">
-                                    <SelectValue placeholder="Select Product Produced" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border-input">
-                                    {finishedProducts.map(fp => (
-                                        <SelectItem key={fp.id} value={fp.id}>{fp.product_name} ({fp.size}, {fp.color})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        
-                        <div className="w-full md:w-40 space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Qty Sealed (Kg)</label>
-                            <Input 
-                                type="number" 
-                                min={0}
-                                className="h-9 font-bold"
-                                value={item.quantity === 0 ? '' : item.quantity} 
-                                onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} 
-                            />
-                        </div>
-
-                        <div className="w-full md:w-32 space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Bags/Kg</label>
-                            <Input 
-                                type="number" 
-                                min={0}
-                                className="h-9"
-                                placeholder="0.0"
-                                value={item.bags_per_kg === 0 ? '' : item.bags_per_kg} 
-                                onChange={e => handleItemChange(idx, 'bags_per_kg', parseFloat(e.target.value) || 0)} 
-                            />
-                        </div>
-
-                        <div className="w-full md:w-32 space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Micron</label>
-                            <Input 
-                                className="h-9"
-                                placeholder="Size"
-                                value={item.micron_size} 
-                                onChange={e => handleItemChange(idx, 'micron_size', e.target.value)} 
-                            />
-                        </div>
-
-                        <div className="flex items-end pb-1">
-                            <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="text-rose-500 hover:bg-rose-50">
-                                <Trash className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-amber-500" /> Bags Per Kg</label>
+                <Input 
+                  type="number" 
+                  value={formData.items[0]?.bags_per_kg || ''} 
+                  onChange={e => handleItemChange(0, 'bags_per_kg', parseFloat(e.target.value) || 0)} 
+                  placeholder="0.0"
+                  className="h-10" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Settings className="w-4 h-4 text-blue-500" /> Micron Size</label>
+                <Input 
+                  value={formData.items[0]?.micron_size || ''} 
+                  onChange={e => handleItemChange(0, 'micron_size', e.target.value)} 
+                  placeholder="Micron"
+                  className="h-10" 
+                />
+              </div>
             </div>
+
+            
 
             {/* Summary and Remarks */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t font-sans">

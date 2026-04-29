@@ -408,7 +408,7 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-4 grid items-end mb-0 gap-2 pb-0">
-                <label htmlFor="requires_printing" className="text-sm font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0">
+                <label htmlFor="requires_printing" className="text-sm flex font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0">
                     <SquareCheck className="w-4 h-4 text-primary" /> Printing
                 </label>
                 <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 h-10 w-full">
