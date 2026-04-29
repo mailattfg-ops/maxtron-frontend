@@ -153,7 +153,7 @@ export default function SalesReturns() {
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
-    const item = { ...newItems[index] };
+    const item = { ...newItems[index] } as any;
     
     // Update the field
     if (field === 'quantity' || field === 'rate') {
