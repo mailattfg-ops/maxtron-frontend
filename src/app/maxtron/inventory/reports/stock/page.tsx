@@ -11,13 +11,34 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { exportToExcel } from '@/utils/export';
+import { usePermission } from '@/hooks/usePermission';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Edit } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function StockListPage() {
   const [stock, setStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { info } = useToast();
+  const { success, error, info } = useToast();
+  const { user } = usePermission();
+  const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+
+  // Modal states
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [newOpeningStock, setNewOpeningStock] = useState<string>('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -76,6 +97,68 @@ export default function StockListPage() {
     info('Stock report exported successfully.');
   };
 
+  const handleEditClick = (s: any) => {
+    setSelectedMaterial(s);
+    setAdminPassword('');
+    setIsVerifyModalOpen(true);
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!adminPassword) return;
+    setIsVerifying(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify-admin-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: adminPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsVerifyModalOpen(false);
+        setNewOpeningStock(String(selectedMaterial?.opening_stock || 0));
+        setIsEditModalOpen(true);
+      } else {
+        error('Invalid admin password.');
+      }
+    } catch (err) {
+      error('Verification failed.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleUpdateOpeningStock = async () => {
+    if (newOpeningStock === '') return;
+    setIsUpdating(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/raw-materials/${selectedMaterial.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ opening_stock: Number(newOpeningStock) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Opening stock updated successfully.');
+        setIsEditModalOpen(false);
+        window.location.reload();
+      } else {
+        error(data.message || 'Update failed.');
+      }
+    } catch (err) {
+      error('Update failed.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
@@ -123,8 +206,8 @@ export default function StockListPage() {
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Movement</p>
-                <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">High</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Active Stock</p>
+                <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">{stock.filter(s => s.balance > 0).length}</h3>
               </div>
               <div className="bg-emerald-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
                 <ArrowRightLeft className="w-5 h-5 text-emerald-500" />
@@ -137,8 +220,8 @@ export default function StockListPage() {
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">In-Transit</p>
-                <h3 className="text-2xl md:text-3xl font-black text-blue-600 mt-1">1.2K</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Valuation</p>
+                <h3 className="text-xl md:text-2xl font-black text-blue-600 mt-1">₹ {stock.reduce((acc, s) => acc + (Number(s.balance) * Number(s.rate_per_unit || 0)), 0).toLocaleString()}</h3>
               </div>
               <div className="bg-blue-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
                 <TrendingUp className="w-5 h-5 text-blue-500" />
@@ -167,10 +250,23 @@ export default function StockListPage() {
                </div>
             </td>
             <td className="px-6 py-4">
-               <div className="flex items-center text-emerald-600 font-bold">
-                 <TrendingUp className="w-3 h-3 mr-1" /> {Number(s.purchased).toLocaleString()}
+               <div className="flex items-center justify-between group/edit">
+                 <div className="flex items-center text-emerald-600 font-bold">
+                   <TrendingUp className="w-3 h-3 mr-1" /> {Number(s.purchased).toLocaleString()}
+                 </div>
+                 {isAdmin && (
+                   <button 
+                    onClick={() => handleEditClick(s)}
+                    className="p-1.5 hover:bg-emerald-100 rounded-full text-emerald-600 transition-all shadow-sm border border-emerald-100 bg-white ml-2"
+                    title="Edit Opening Stock"
+                   >
+                     <Edit className="w-3.5 h-3.5" />
+                   </button>
+                 )}
                </div>
-               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1">TOTAL ARRIVALS</div>
+               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1">
+                 {s.opening_stock > 0 ? `Incl. ${Number(s.opening_stock).toLocaleString()} Opening` : 'TOTAL ARRIVALS'}
+               </div>
             </td>
             <td className="px-6 py-4 text-rose-500 font-bold">
                <div className="flex items-center">
@@ -202,6 +298,92 @@ export default function StockListPage() {
           </tr>
         )}
       />
+
+      {/* Password Verification Modal */}
+      <Dialog open={isVerifyModalOpen} onOpenChange={setIsVerifyModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white border-primary/20 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Security Verification
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-2 space-y-4">
+            <p className="text-sm text-muted-foreground font-medium">
+              You are attempting to modify sensitive inventory records. Please enter your administrator password to proceed.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Admin Password</label>
+              <Input 
+                type="password" 
+                value={adminPassword} 
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                placeholder="••••••••"
+                className="h-11 border-slate-200 focus:border-primary/50 transition-all"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="bg-slate-50 p-4 -m-6 mt-4 border-t border-slate-100">
+            <Button onClick={() => setIsVerifyModalOpen(false)} variant="ghost" className="rounded-full font-bold text-slate-500">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleVerifyPassword} 
+              disabled={isVerifying || !adminPassword}
+              className="bg-primary hover:bg-primary/95 text-white rounded-full px-8 font-bold shadow-lg shadow-primary/20"
+            >
+              {isVerifying ? 'Verifying...' : 'Unlock Field'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Opening Stock Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white border-primary/20 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+              <Package className="w-5 h-5 text-emerald-500" />
+              Adjust Opening Stock
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-2 space-y-4">
+            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+               <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1">Current Material</p>
+               <h4 className="text-lg font-black text-emerald-900">{selectedMaterial?.rm_name}</h4>
+               <p className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">Code: {selectedMaterial?.rm_code} | Grade: {selectedMaterial?.grade}</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">New Opening Balance ({selectedMaterial?.unit_type})</label>
+              <Input 
+                type="number" 
+                value={newOpeningStock} 
+                onChange={(e) => setNewOpeningStock(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleUpdateOpeningStock()}
+                placeholder="0.00"
+                className="h-12 text-2xl font-black text-primary border-slate-200 focus:border-emerald-500 transition-all text-right pr-4"
+              />
+              <p className="text-[10px] text-muted-foreground font-medium mt-2 italic px-1">
+                * Changing this value will recalculate the "Total Arrivals" and "Balance Stock" for this material across all reports.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="bg-slate-50 p-4 -m-6 mt-4 border-t border-slate-100">
+            <Button onClick={() => setIsEditModalOpen(false)} variant="ghost" className="rounded-full font-bold text-slate-500">
+              Discard Changes
+            </Button>
+            <Button 
+              onClick={handleUpdateOpeningStock} 
+              disabled={isUpdating || newOpeningStock === ''}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-8 font-bold shadow-lg shadow-emerald-200"
+            >
+              {isUpdating ? 'Saving...' : 'Update Balance'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

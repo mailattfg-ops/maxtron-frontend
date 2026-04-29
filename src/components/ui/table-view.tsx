@@ -74,6 +74,7 @@ export function TableView<T>({
               className="w-full pl-9 rounded-full border-primary/20 bg-white"
               placeholder={searchPlaceholder}
               value={searchQuery}
+              autoComplete="off"
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
