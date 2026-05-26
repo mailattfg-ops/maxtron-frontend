@@ -22,6 +22,7 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const RM_API = `${API_BASE}/api/maxtron/raw-materials`;
@@ -41,6 +42,10 @@ export default function RawMaterialPage() {
   const [codeError, setCodeError] = useState('');
   const [nameError, setNameError] = useState('');
   const [gradeError, setGradeError] = useState('');
+
+  const [showTypeCodeModal, setShowTypeCodeModal] = useState(false);
+  const [newTypeCode, setNewTypeCode] = useState({ code: '', name: '' });
+  const [savingTypeCode, setSavingTypeCode] = useState(false);
   
   const codeRegex = /^[A-Z0-9-]+$/;
   const nameRegex = /^[a-zA-Z0-9\s-]+$/;
@@ -243,6 +248,62 @@ export default function RawMaterialPage() {
     setCodeError('');
     setNameError('');
     setGradeError('');
+  };
+
+  const handleCreateTypeCode = async () => {
+    const normalizedCode = (newTypeCode.code || '').trim().toUpperCase();
+    const normalizedName = (newTypeCode.name || '').trim();
+
+    if (!normalizedCode || !normalizedName) {
+      error('Please fill both Code and Name.');
+      return;
+    }
+
+    if (normalizedCode.length < 2 || normalizedCode.length > 10) {
+      error('Code must be 2-10 characters long.');
+      return;
+    }
+    if (normalizedName.length < 3 || normalizedName.length > 50) {
+      error('Name must be 3-50 characters long.');
+      return;
+    }
+
+    const nameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (!nameRegex.test(normalizedCode) || !nameRegex.test(normalizedName)) {
+      error('Only letters, numbers, spaces, and hyphens are allowed.');
+      return;
+    }
+
+    setSavingTypeCode(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/rm-type-codes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code: normalizedCode,
+          name: normalizedName,
+          company_id: currentCompanyId
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('RM type code added successfully!');
+        setShowTypeCodeModal(false);
+        setNewTypeCode({ code: '', name: '' });
+        fetchTypeCodes(currentCompanyId);
+        setFormData(prev => ({ ...prev, rm_type_code: normalizedCode }));
+      } else {
+        error(data.error || data.message || 'Error occurred');
+      }
+    } catch (err: any) {
+      error(err.message || 'Network error.');
+    } finally {
+      setSavingTypeCode(false);
+    }
   };
 
   const handleEdit = (rec: any) => {
@@ -465,9 +526,18 @@ export default function RawMaterialPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
-                  <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
-                </label>
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                    <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeCodeModal(true)}
+                    className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                  >
+                    <Plus className="w-3 h-3" /> Add New
+                  </button>
+                </div>
                 <Select value={formData.rm_type_code} onValueChange={(val) => setFormData({...formData, rm_type_code: val})}>
                   <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm font-bold shadow-sm">
                     <SelectValue placeholder="Select Type Code..." />
@@ -646,6 +716,63 @@ export default function RawMaterialPage() {
           )}
         />
       )}
+
+      <Dialog open={showTypeCodeModal} onOpenChange={setShowTypeCodeModal}>
+        <DialogContent className="bg-white border-slate-200 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-secondary" /> Add RM Type Code
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Create a new Raw Material classification code.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <Tag className="w-3 h-3 text-primary" /> Type Code
+              </label>
+              <Input
+                placeholder="e.g. LDPE"
+                value={newTypeCode.code}
+                onChange={(e) => setNewTypeCode({ ...newTypeCode, code: e.target.value.toUpperCase() })}
+                className="h-10 font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <FileText className="w-3 h-3 text-primary" /> Type Name
+              </label>
+              <Input
+                placeholder="e.g. Low Density Polyethylene"
+                value={newTypeCode.name}
+                onChange={(e) => setNewTypeCode({ ...newTypeCode, name: e.target.value })}
+                className="h-10 font-medium"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowTypeCodeModal(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateTypeCode}
+              loading={savingTypeCode}
+              className="bg-primary hover:bg-primary/95 text-white font-bold px-6 rounded-full shadow-md"
+            >
+              <Save className="w-4 h-4 mr-2" /> Save Code
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
