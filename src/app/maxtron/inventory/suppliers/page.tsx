@@ -621,7 +621,7 @@ export default function SupplierPage() {
                 </label>
                 <div className="border border-slate-200 rounded-md p-3 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 bg-slate-50">
                   {materials.map(m => (
-                    <label key={m.id} className="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
+                    <label key={m.id} className="flex items-start space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
                       <Checkbox 
                         checked={formData.supplied_materials.includes(m.id)}
                         onCheckedChange={(checked: boolean) => {
@@ -631,8 +631,14 @@ export default function SupplierPage() {
                             setFormData({...formData, supplied_materials: formData.supplied_materials.filter(id => id !== m.id)});
                           }
                         }}
+                        className="mt-0.5"
                       />
-                      <span className="truncate">{m.rm_name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{m.rm_name}</span>
+                        {m.rm_type_code && (
+                          <span className="text-[10px] text-slate-400 font-medium">Type: {m.rm_type_code}</span>
+                        )}
+                      </div>
                     </label>
                   ))}
                   {materials.length === 0 && <span className="text-xs text-slate-400 font-bold col-span-full">No active materials in inventory.</span>}
