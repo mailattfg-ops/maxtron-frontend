@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
@@ -39,6 +40,7 @@ export default function SalesInvoiceEntry() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [roundOff, setRoundOff] = useState(false);
   
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -191,9 +193,11 @@ export default function SalesInvoiceEntry() {
     const subtotal = formData.items.reduce((sum, item) => sum + (item.amount || 0), 0);
     const tax = formData.tax_amount || 0;
     const discount = formData.discount_amount || 0;
-    const net = subtotal + tax - discount;
-    return { subtotal, tax, discount, net };
-  }, [formData.items, formData.tax_amount, formData.discount_amount]);
+    const netBeforeRound = subtotal + tax - discount;
+    const net = roundOff ? Math.round(netBeforeRound) : netBeforeRound;
+    const roundoffAmount = roundOff ? (net - netBeforeRound) : 0;
+    return { subtotal, tax, discount, net, roundoffAmount };
+  }, [formData.items, formData.tax_amount, formData.discount_amount, roundOff]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,6 +250,7 @@ export default function SalesInvoiceEntry() {
             company_id: currentCompanyId,
             items: [{ product_id: '', quantity: 0, rate: 0, amount: 0 }]
         });
+        setRoundOff(false);
         fetchInvoices();
       } else {
         setAlert({ show: true, type: 'error', title: 'Error', message: result.message });
@@ -276,6 +281,14 @@ export default function SalesInvoiceEntry() {
         amount: i.amount
       }))
     });
+    const subtotal = inv.items?.reduce((sum: number, item: any) => sum + (item.amount || 0), 0) || 0;
+    const tax = Number(inv.tax_amount) || 0;
+    const discount = Number(inv.discount_amount) || 0;
+    const netBeforeRound = subtotal + tax - discount;
+    const netActual = Number(inv.net_amount) || 0;
+    const isRounded = Math.abs(netActual - Math.round(netBeforeRound)) < 0.01 && Math.abs(netActual - netBeforeRound) > 0.001;
+    setRoundOff(isRounded);
+
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -303,7 +316,7 @@ export default function SalesInvoiceEntry() {
   const selectedCustomer = customers.find(c => c.id === formData.customer_id);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 min-w-0">
       {/* Custom Alert Modal */}
       {alert.show && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
@@ -354,14 +367,14 @@ export default function SalesInvoiceEntry() {
       </div>
 
       {showForm && (
-        <Card className="border-primary/20 shadow-2xl overflow-hidden bg-white animate-in slide-in-from-top duration-300">
+        <Card className="border-primary/20 shadow-2xl overflow-hidden bg-white animate-in slide-in-from-top duration-300 w-full max-w-full min-w-0">
           <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
             <CardTitle className="text-primary flex items-center gap-2">
               <Plus className="w-5 h-5" /> {editingId ? "Edit Invoice" : "Create New Invoice"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-0 md:px-6 md:p-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <CardContent className="px-0 md:px-6 md:p-8 w-full max-w-full min-w-0 overflow-hidden">
+            <form onSubmit={handleSubmit} className="space-y-8 w-full max-w-full min-w-0 overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
@@ -422,14 +435,14 @@ export default function SalesInvoiceEntry() {
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-4 w-full max-w-full min-w-0">
                 <div className="flex justify-between items-center px-1">
                     <label className="text-xs font-black uppercase text-slate-500 border-l-4 border-primary pl-3">Line Items</label>
                     <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary h-8"><Plus className="w-3 h-3 mr-1" /> Add Row</Button>
                 </div>
                 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto text-sm">
-                    <table className="w-full min-w-[800px]">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto text-sm w-full max-w-full">
+                    <table className="w-full min-w-[600px]">
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
@@ -486,6 +499,19 @@ export default function SalesInvoiceEntry() {
                         <div className="flex justify-between text-sm items-center gap-4">
                             <span className="text-slate-500">Discount (-) {!formData.discount_amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</span>
                             <Input type="number" placeholder='₹ 0' min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
+                        </div>
+                        <div className="flex justify-between text-sm items-center gap-4">
+                            <span className="text-slate-500 flex items-center gap-2 cursor-pointer select-none">
+                              <Checkbox 
+                                id="roundoff-toggle" 
+                                checked={roundOff} 
+                                onCheckedChange={(checked) => setRoundOff(!!checked)} 
+                              />
+                              <label htmlFor="roundoff-toggle" className="cursor-pointer">Round Off Fraction</label>
+                            </span>
+                            <span className="font-mono text-slate-600 font-bold">
+                              ₹ {totals.roundoffAmount.toFixed(2)}
+                            </span>
                         </div>
                         <div className="h-px bg-slate-200 my-2" />
                         <div className="flex justify-between text-xl font-black text-primary"><span>Total Value</span><span>₹ {totals.net.toLocaleString()}</span></div>
