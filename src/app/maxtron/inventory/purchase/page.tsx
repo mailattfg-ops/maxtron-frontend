@@ -63,6 +63,8 @@ export default function PurchaseEntryPage() {
     unloading_charges: 0 as number | string,
     company_id: '',
     reorder_missing: false,
+    is_round_off: false,
+    round_off: 0,
     items: [] as any[]
   });
 
@@ -152,7 +154,8 @@ export default function PurchaseEntryPage() {
             rate: Number(i.rate),
             gst_percent: gstPercent,
             gst_amount: gstAmount,
-            amount: baseAmount + gstAmount
+            amount: baseAmount + gstAmount,
+            hsn_code: ''
           };
         })
       });
@@ -171,7 +174,8 @@ export default function PurchaseEntryPage() {
         rate: 0,
         gst_percent: 18,
         gst_amount: 0,
-        amount: 0
+        amount: 0,
+        hsn_code: ''
       }]
     });
   };
@@ -262,9 +266,15 @@ export default function PurchaseEntryPage() {
 
     setSubmitting(true);
     try {
+      const unroundedTotal = formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0);
+      const isRoundOff = formData.is_round_off;
+      const roundedTotal = isRoundOff ? Math.round(unroundedTotal) : unroundedTotal;
+      const roundOffVal = isRoundOff ? (roundedTotal - unroundedTotal) : 0;
+
       const payload = {
         ...formData,
-        total_amount: formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)
+        total_amount: roundedTotal,
+        round_off: roundOffVal
       };
 
       const res = await fetch(url, {
@@ -320,6 +330,8 @@ export default function PurchaseEntryPage() {
       unloading_charges: 0 as number | string,
       company_id: currentCompanyId,
       reorder_missing: false,
+      is_round_off: false,
+      round_off: 0,
       items: []
     });
     setErrors({});
@@ -339,6 +351,8 @@ export default function PurchaseEntryPage() {
       unloading_charges: Number(rec.unloading_charges || 0),
       company_id: rec.company_id || '',
       reorder_missing: false,
+      is_round_off: !!rec.is_round_off,
+      round_off: Number(rec.round_off || 0),
       items: (rec.purchase_entry_items || []).map((i: any) => {
         const qty = Number(i.received_quantity || 0);
         const rate = Number(i.rate || 0);
@@ -352,7 +366,8 @@ export default function PurchaseEntryPage() {
           rate: rate,
           gst_percent: gstPerc,
           gst_amount: gstAmt,
-          amount: base + gstAmt
+          amount: base + gstAmt,
+          hsn_code: i.hsn_code || ''
         };
       })
     });
@@ -525,6 +540,7 @@ export default function PurchaseEntryPage() {
                   <thead className="bg-slate-100 border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase font-heading">Material Item / Current Stock</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32 font-heading">HSN Code</th>
                       <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32 font-heading">Qty Ordered</th>
                       <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-32 font-heading">Qty Delivered</th>
                       <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase w-24 font-heading">Rate</th>
@@ -556,6 +572,15 @@ export default function PurchaseEntryPage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </td>
+                          <td className="p-4">
+                            <Input
+                              type="text"
+                              value={item.hsn_code || ''}
+                              onChange={(e) => updateItem(idx, 'hsn_code', e.target.value)}
+                              className="h-10 text-left font-bold text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
+                              placeholder="HSN"
+                            />
                           </td>
                           <td className="p-4">
                             <Input
@@ -641,6 +666,7 @@ export default function PurchaseEntryPage() {
                     {formData.items.length > 0 && (
                       <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
                         <td className="p-4 text-xs font-black text-slate-700 uppercase">Total</td>
+                        <td className="p-4"></td>
                         <td className="p-4 text-center text-xs font-black text-slate-600">
                           {formData.items.reduce((acc, curr) => acc + Number(curr.ordered_quantity || 0), 0).toLocaleString()}
                         </td>
@@ -688,12 +714,40 @@ export default function PurchaseEntryPage() {
                     </label>
                   </div>
                 )}
+
+                <div className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                  <Checkbox
+                    id="round-off-checkbox"
+                    checked={formData.is_round_off}
+                    onCheckedChange={(checked: boolean) => setFormData({ ...formData, is_round_off: !!checked })}
+                    className="border-primary data-[state=checked]:bg-primary"
+                  />
+                  <label htmlFor="round-off-checkbox" className="text-[10px] font-black text-primary uppercase tracking-widest cursor-pointer select-none">
+                    Round Off Final Amount
+                  </label>
+                </div>
+
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Receipt Valuation</p>
                 <div className="text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
                   <span>Total Excl. GST:</span>
                   <span className="font-mono">₹{formData.items.reduce((acc, curr) => acc + (Number(curr.received_quantity || 0) * Number(curr.rate || 0)), 0).toLocaleString()}</span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {(formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0)).toLocaleString()}</h2>
+                {(() => {
+                  const subTotalVal = formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0);
+                  const displayTotalVal = formData.is_round_off ? Math.round(subTotalVal) : subTotalVal;
+                  const roundOffDifference = formData.is_round_off ? (Math.round(subTotalVal) - subTotalVal) : 0;
+                  return (
+                    <>
+                      {formData.is_round_off && roundOffDifference !== 0 && (
+                        <div className="text-[11px] font-bold text-emerald-600 mb-1 flex items-center gap-1">
+                          <span>Round Off:</span>
+                          <span className="font-mono">₹{roundOffDifference > 0 ? `+${roundOffDifference.toFixed(2)}` : roundOffDifference.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {displayTotalVal.toLocaleString()}</h2>
+                    </>
+                  );
+                })()}
                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">Includes GST & Labor charges</p>
               </div>
             </div>
@@ -741,6 +795,11 @@ export default function PurchaseEntryPage() {
               </td>
               <td className="px-6 py-4">
                 <div className="font-black text-slate-900 tracking-tight text-base">₹ {Number(e.total_amount || 0).toLocaleString()}</div>
+                {Number(e.round_off || 0) !== 0 && (
+                  <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">
+                    Round Off: {Number(e.round_off) > 0 ? `+₹${Number(e.round_off).toFixed(2)}` : `-₹${Math.abs(Number(e.round_off)).toFixed(2)}`}
+                  </div>
+                )}
                 {Number(e.unloading_charges || 0) > 0 && (
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Incl. ₹{e.unloading_charges} labor</div>
                 )}
