@@ -91,13 +91,14 @@ export default function PurchaseReportPage() {
         p.supplier_master?.supplier_name || '',
         p.invoice_number || '',
         item.raw_materials?.rm_name || '',
+        item.hsn_code || '',
         Number(item.ordered_quantity || 0),
         Number(item.received_quantity || 0),
         Number(item.rate || 0),
         Number(item.amount || 0)
       ]);
     });
-    const headers = ['GRN No', 'Date', 'Supplier', 'Invoice No', 'Material', 'Ordered Qty', 'Received Qty', 'Rate', 'Amount'];
+    const headers = ['GRN No', 'Date', 'Supplier', 'Invoice No', 'Material', 'HSN Code', 'Ordered Qty', 'Received Qty', 'Rate', 'Amount'];
     
     await exportToExcel({
       headers,
@@ -249,6 +250,7 @@ export default function PurchaseReportPage() {
                       <thead className="bg-slate-100">
                         <tr>
                           <th className="px-4 py-2 text-left text-[10px] font-black text-slate-500 uppercase">Material</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-black text-slate-500 uppercase">HSN Code</th>
                           <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Ordered Qty</th>
                           <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Received Qty</th>
                           <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Rate (₹)</th>
@@ -262,6 +264,7 @@ export default function PurchaseReportPage() {
                               {item.raw_materials?.rm_name}
                               <span className="ml-2 text-[10px] font-mono text-slate-400">{item.raw_materials?.rm_code}</span>
                             </td>
+                            <td className="px-4 py-2.5 text-left text-slate-600">{item.hsn_code || '—'}</td>
                             <td className="px-4 py-2.5 text-right text-slate-600">{Number(item.ordered_quantity || 0).toLocaleString()} {item.raw_materials?.unit_type}</td>
                             <td className="px-4 py-2.5 text-right font-bold text-emerald-600">{Number(item.received_quantity || 0).toLocaleString()} {item.raw_materials?.unit_type}</td>
                             <td className="px-4 py-2.5 text-right text-slate-600">₹ {Number(item.rate || 0).toLocaleString()}</td>
