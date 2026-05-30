@@ -69,7 +69,7 @@ export default function KeilUserTypesPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setUserTypes(data.data);
+        setUserTypes(data.data.filter((r: any) => r.company_id !== null));
       }
     } catch (err) {
       error('Failed to fetch user roles');
