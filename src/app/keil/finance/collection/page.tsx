@@ -506,7 +506,7 @@ export default function KeilCustomerCollectionPage() {
                                                                     <div className="font-black text-slate-800">{inv.invoice_number}</div>
                                                                     <div className="text-[10px] font-bold text-slate-400">{new Date(inv.invoice_date).toLocaleDateString()}</div>
                                                                 </td>
-                                                                <td className="px-8 py-4 text-right font-bold">₹{Number(inv.bill_amount).toLocaleString()}</td>
+                                                                <td className="px-8 py-4 text-right font-bold">₹{Number(inv.net_amount || inv.bill_amount || 0).toLocaleString()}</td>
                                                                 <td className="px-8 py-4 text-right font-black text-blue-600">₹{Number(inv.pending_amount).toLocaleString()}</td>
                                                                 <td className="px-8 py-4 w-48 text-center">
                                                                     <Input 

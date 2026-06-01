@@ -68,7 +68,8 @@ export default function RawMaterialPage() {
     rm_type_code: '',
     availability: 'Local',
     company_id: '',
-    stock_threshold: 100
+    stock_threshold: 100,
+    hsn_code: ''
   });
 
   useEffect(() => {
@@ -243,7 +244,8 @@ export default function RawMaterialPage() {
       rm_type_code: '',
       availability: 'Local',
       company_id: currentCompanyId,
-      stock_threshold: 100
+      stock_threshold: 100,
+      hsn_code: ''
     });
     setCodeError('');
     setNameError('');
@@ -318,7 +320,8 @@ export default function RawMaterialPage() {
       rm_type_code: rec.rm_type_code || '',
       availability: rec.availability || 'Local',
       company_id: rec.company_id,
-      stock_threshold: rec.stock_threshold || 100
+      stock_threshold: rec.stock_threshold || 100,
+      hsn_code: rec.hsn_code || ''
     });
     setShowForm(true);
   };
@@ -361,10 +364,11 @@ export default function RawMaterialPage() {
       info('No data for export.');
       return;
     }
-    const headers = ['Code', 'Name', 'Type Code', 'Grade', 'Rate', 'Unit', 'Availability', 'Threshold'];
+    const headers = ['Code', 'Name', 'HSN Code', 'Type Code', 'Grade', 'Rate', 'Unit', 'Availability', 'Threshold'];
     const rows = materials.map(m => [
       m.rm_code || '',
       m.rm_name || '',
+      m.hsn_code || '',
       m.rm_type_code || '',
       m.grade || '',
       Number(m.rate_per_unit || 0),
@@ -526,6 +530,18 @@ export default function RawMaterialPage() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <FileText className="w-3 h-3 mr-2 text-primary" /> HSN Code
+                </label>
+                <Input 
+                  placeholder="e.g. 39011010"
+                  value={formData.hsn_code}
+                  onChange={(e) => setFormData({...formData, hsn_code: e.target.value})}
+                  className="h-11 font-bold border-slate-200" 
+                />
+              </div>
+
+              <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center">
                     <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
@@ -653,11 +669,11 @@ export default function RawMaterialPage() {
         <TableView
           title="Raw Material Registry"
           description="Comprehensive list of production inputs and market rates."
-          headers={['Code', 'Material Name', 'Type', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
+          headers={['Code', 'Material Name', 'HSN Code', 'Type', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
           data={materials.filter(m => m.rm_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rm_code.toLowerCase().includes(searchQuery.toLowerCase()))}
           loading={loading}
-          searchFields={['rm_code', 'rm_name', 'grade']}
-          searchPlaceholder="Filter items by code or name..."
+          searchFields={['rm_code', 'rm_name', 'grade', 'hsn_code']}
+          searchPlaceholder="Filter items by code, name or HSN..."
           renderRow={(m: any) => (
             <tr key={m.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
               <td className="px-6 py-4">
@@ -666,6 +682,9 @@ export default function RawMaterialPage() {
               <td className="px-6 py-4">
                 <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
                 <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <span className="font-mono text-[11px] text-slate-600 font-bold">{m.hsn_code || '-'}</span>
               </td>
               <td className="px-6 py-4">
                 <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-slate-50 text-slate-500 border border-slate-200">

@@ -89,7 +89,9 @@ export default function VehicleDailyLogPage() {
         company_id: '',
         schedule_time: '',
         start_time: '',
-        is_running: true
+        is_running: true,
+        driver_name: '',
+        supervisor_id: ''
     });
 
     useEffect(() => {
@@ -137,6 +139,13 @@ export default function VehicleDailyLogPage() {
                 });
                 const rData = await rRes.json();
                 if (rData.success) setRoutes(rData.data);
+
+                // Fetch Employees (for supervisor list)
+                const eRes = await fetch(`${API_BASE}/api/keil/employees?company_id=${coId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const eData = await eRes.json();
+                if (eData.success) setEmployees(eData.data);
 
                 fetchLogs(coId);
             }
@@ -233,7 +242,9 @@ export default function VehicleDailyLogPage() {
             complaint_type: formData.complaint_type || null,
             schedule_time: formData.schedule_time || null,
             start_time: formData.start_time || null,
-            is_running: formData.is_running
+            is_running: formData.is_running,
+            driver_name: formData.driver_name || null,
+            supervisor_id: formData.supervisor_id || null
         };
 
         const token = localStorage.getItem('token');
@@ -280,7 +291,7 @@ export default function VehicleDailyLogPage() {
 
         // Headers
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
+            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
             'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
             'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
         ]);
@@ -302,6 +313,8 @@ export default function VehicleDailyLogPage() {
             const rowData = [
                 new Date(l.log_date).toLocaleDateString(),
                 l.vehicle?.registration_number || 'N/A',
+                l.driver_name || '-',
+                l.supervisor?.name || '-',
                 l.route?.route_name || 'N/A',
                 l.schedule_time || '-',
                 l.start_time || '-',
@@ -375,7 +388,9 @@ export default function VehicleDailyLogPage() {
             company_id: l.company_id,
             schedule_time: l.schedule_time || '',
             start_time: l.start_time || '',
-            is_running: l.is_running ?? true
+            is_running: l.is_running ?? true,
+            driver_name: l.driver_name || '',
+            supervisor_id: l.supervisor_id || ''
         });
         setShowForm(true);
     };
@@ -397,7 +412,9 @@ export default function VehicleDailyLogPage() {
             company_id: currentCompanyId,
             schedule_time: '',
             start_time: '',
-            is_running: true
+            is_running: true,
+            driver_name: '',
+            supervisor_id: ''
         });
         setEditingId(null);
     };
@@ -607,9 +624,52 @@ export default function VehicleDailyLogPage() {
                                 </Select>
                             </div>
 
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Driver Name</label>
+                                <Select 
+                                    value={formData.driver_name || 'none'} 
+                                    onValueChange={val => setFormData({ ...formData, driver_name: val === 'none' ? '' : val })}
+                                >
+                                    <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                        <SelectValue placeholder="Select Driver" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        <SelectItem value="none">No Driver Selected</SelectItem>
+                                        {employees.map(emp => {
+                                            const name = emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+                                            return (
+                                                <SelectItem key={emp.id} value={name}>
+                                                    {name}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Supervisor Option</label>
+                                <Select 
+                                    value={formData.supervisor_id || 'none'} 
+                                    onValueChange={val => setFormData({ ...formData, supervisor_id: val === 'none' ? '' : val })}
+                                >
+                                    <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
+                                        <SelectValue placeholder="Select Supervisor" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/20">
+                                        <SelectItem value="none">No Supervisor Selected</SelectItem>
+                                        {employees.map(emp => (
+                                            <SelectItem key={emp.id} value={emp.id}>
+                                                {emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                                 <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
-                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr) <span className="text-rose-500">*</span>
+                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr) *
                                 </label>
                                 <Input type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
                             </div>
@@ -694,6 +754,18 @@ export default function VehicleDailyLogPage() {
                                         <div className={`ml-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${l.is_running ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
                                             {l.is_running ? 'Running' : 'Not Running'}
                                         </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 pl-1">
+                                        {l.driver_name && (
+                                            <span className="text-xs font-semibold text-slate-700">
+                                                Driver: <span className="font-bold text-slate-900">{l.driver_name}</span>
+                                            </span>
+                                        )}
+                                        {l.supervisor?.name && (
+                                            <span className="text-xs font-semibold text-slate-600">
+                                                Supervisor: <span className="font-bold text-slate-800">{l.supervisor.name}</span>
+                                            </span>
+                                        )}
                                     </div>
                                     {l.route?.route_name && (
                                         <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">

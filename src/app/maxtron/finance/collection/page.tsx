@@ -489,7 +489,7 @@ export default function CustomerCollectionPage() {
                                                             <tr key={inv.id} className="border-b border-slate-100 last:border-none">
                                                                 <td className="px-6 py-4 font-bold text-slate-900">{inv.invoice_number}</td>
                                                                 <td className="px-6 py-4">{new Date(inv.invoice_date).toLocaleDateString()}</td>
-                                                                <td className="px-6 py-4 text-right font-medium">₹{Number(inv.bill_amount).toLocaleString()}</td>
+                                                                <td className="px-6 py-4 text-right font-medium">₹{Number(inv.net_amount || inv.bill_amount || 0).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-right">
                                                                     <span className="text-primary font-black">₹{Number(inv.pending_amount).toLocaleString()}</span>
                                                                 </td>

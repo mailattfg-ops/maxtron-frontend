@@ -64,6 +64,8 @@ export default function CustomerOrderEntry() {
     remarks: '',
     company_id: '',
     section_type: 'customer order',
+    is_round_off: false,
+    round_off: 0,
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }
     ]
@@ -195,6 +197,8 @@ export default function CustomerOrderEntry() {
       remarks: order.remarks || '',
       company_id: order.company_id,
       section_type: order.section_type || 'customer order',
+      is_round_off: !!order.is_round_off,
+      round_off: Number(order.round_off || 0),
       items: order.items.map((i: any) => ({
         product_id: i.product_id,
         quantity: i.quantity,
@@ -245,7 +249,7 @@ export default function CustomerOrderEntry() {
   };
 
   const orderCalculations = useMemo(() => {
-    return formData.items.reduce((acc, item) => {
+    const calcs = formData.items.reduce((acc, item) => {
         const taxable = (item.quantity * item.rate) || 0;
         const gst = item.gst_amount || 0;
         return {
@@ -254,7 +258,21 @@ export default function CustomerOrderEntry() {
             netAmount: acc.netAmount + taxable + gst
         };
     }, { taxableValue: 0, taxAmount: 0, netAmount: 0 });
-  }, [formData.items]);
+
+    if (formData.is_round_off) {
+      const rounded = Math.round(calcs.netAmount);
+      const diff = rounded - calcs.netAmount;
+      return {
+        ...calcs,
+        netAmount: rounded,
+        roundOffDiff: diff
+      };
+    }
+    return {
+      ...calcs,
+      roundOffDiff: 0
+    };
+  }, [formData.items, formData.is_round_off]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,7 +307,8 @@ export default function CustomerOrderEntry() {
           ...formData,
           total_value: orderCalculations.taxableValue,
           tax_amount: orderCalculations.taxAmount,
-          net_amount: orderCalculations.netAmount
+          net_amount: orderCalculations.netAmount,
+          round_off: orderCalculations.roundOffDiff
         })
       });
 
@@ -310,6 +329,8 @@ export default function CustomerOrderEntry() {
             remarks: '',
             company_id: currentCompanyId,
             section_type: 'customer order',
+            is_round_off: false,
+            round_off: 0,
             items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
         });
         fetchOrders();
@@ -613,8 +634,27 @@ export default function CustomerOrderEntry() {
                                 <td className="p-3 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString()}</td>
                                 <td></td>
                             </tr>
+                            <tr className="border-t border-white/10">
+                                <td colSpan={4} className="px-6 py-3 text-right">
+                                    <label className="inline-flex items-center gap-2 cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white select-none">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={formData.is_round_off} 
+                                            onChange={e => setFormData({ ...formData, is_round_off: e.target.checked })}
+                                            className="rounded border-white/20 bg-transparent text-primary focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                                        />
+                                        Round Off Final Amount
+                                    </label>
+                                </td>
+                                <td className="p-3 text-right text-sm">
+                                    ₹ {orderCalculations.roundOffDiff.toFixed(2)}
+                                </td>
+                                <td></td>
+                            </tr>
                             <tr className="border-t border-white/20">
-                                <td colSpan={4} className="px-6 py-6 text-right uppercase tracking-widest text-xs font-black">Grand Total</td>
+                                <td colSpan={4} className="px-6 py-6 text-right uppercase tracking-widest text-xs font-black">
+                                    {formData.is_round_off ? "Grand Total (Rounded)" : "Grand Total"}
+                                </td>
                                 <td className="p-3 text-right text-2xl font-black">₹ {orderCalculations.netAmount.toLocaleString()}</td>
                                 <td></td>
                             </tr>

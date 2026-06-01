@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   FileCheck, Plus, Search, Edit, Trash2, X, Save,
   Truck, Calendar, Hash, User, IndianRupee,
-  Warehouse, ClipboardList, Trash, Package, AlertCircle, Info
+  Warehouse, ClipboardList, Trash, Package, AlertCircle, Info,
+  Building2, MapPin, Copy, Layers, Briefcase, Globe2, Activity, Tag, FileText
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -44,6 +46,67 @@ export default function PurchaseEntryPage() {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [savingSupplier, setSavingSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState({
+    supplier_code: '',
+    supplier_name: '',
+    gst_no: '',
+    supplier_address: {
+      street: '',
+      city: '',
+      state: '',
+      zip_code: '',
+      country: 'India'
+    },
+    billing_address: {
+      street: '',
+      city: '',
+      state: '',
+      zip_code: '',
+      country: 'India'
+    },
+    product_supplied: '',
+    supplied_materials: [] as string[],
+    delivery_mode: '',
+    delivery_period: '',
+    credit_period: 0,
+    credit_limit: 0,
+    opening_balance: 0
+  });
+  const [vendorNameError, setVendorNameError] = useState('');
+  const [vendorGstError, setVendorGstError] = useState('');
+  const [vendorZipError, setVendorZipError] = useState('');
+  const [vendorBillingZipError, setVendorBillingZipError] = useState('');
+  const [vendorDeliveryPeriodError, setVendorDeliveryPeriodError] = useState('');
+
+  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  const nameRegex = /^[a-zA-Z0-9\s.\-&',]+$/;
+  const deliveryPeriodRegex = /^[a-zA-Z0-9\s-]+$/;
+
+  const [typeCodes, setTypeCodes] = useState<any[]>([]);
+  const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [savingMaterial, setSavingMaterial] = useState(false);
+  const [targetRowIndex, setTargetRowIndex] = useState<number | null>(null);
+  const [showTypeCodeModal, setShowTypeCodeModal] = useState(false);
+  const [savingTypeCode, setSavingTypeCode] = useState(false);
+  const [newMaterial, setNewMaterial] = useState({
+    rm_code: '',
+    rm_name: '',
+    rm_description: '',
+    rate_per_unit: 0,
+    unit_type: 'Kg',
+    grade: '',
+    rm_type_code: '',
+    availability: 'Local',
+    company_id: '',
+    stock_threshold: 100,
+    hsn_code: ''
+  });
+  const [newTypeCode, setNewTypeCode] = useState({ code: '', name: '' });
+  const [materialCodeError, setMaterialCodeError] = useState('');
+  const [materialNameError, setMaterialNameError] = useState('');
+  const [materialGradeError, setMaterialGradeError] = useState('');
 
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -111,6 +174,7 @@ export default function PurchaseEntryPage() {
       }
       if (supData.success) setSuppliers(supData.data);
       if (stockData.success) setMaterials(stockData.data);
+      fetchTypeCodes(coId);
 
       fetchEntries(coId);
     } catch (err) {
@@ -154,8 +218,7 @@ export default function PurchaseEntryPage() {
             rate: Number(i.rate),
             gst_percent: gstPercent,
             gst_amount: gstAmount,
-            amount: baseAmount + gstAmount,
-            hsn_code: ''
+            amount: baseAmount + gstAmount
           };
         })
       });
@@ -174,8 +237,7 @@ export default function PurchaseEntryPage() {
         rate: 0,
         gst_percent: 18,
         gst_amount: 0,
-        amount: 0,
-        hsn_code: ''
+        amount: 0
       }]
     });
   };
@@ -337,6 +399,368 @@ export default function PurchaseEntryPage() {
     setErrors({});
   };
 
+  const openNewSupplierModal = () => {
+    let nextCode = 'VEN-000001';
+    const validCodes = suppliers
+      .filter((s: any) => s.supplier_code && /^VEN-\d+$/i.test(s.supplier_code))
+      .map((s: any) => {
+        const parts = s.supplier_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter((n: any) => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `VEN-${String(max + 1).padStart(6, '0')}`;
+    }
+
+    setNewSupplier({
+      supplier_code: nextCode,
+      supplier_name: '',
+      gst_no: '',
+      supplier_address: {
+        street: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        country: 'India'
+      },
+      billing_address: {
+        street: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        country: 'India'
+      },
+      product_supplied: '',
+      supplied_materials: [],
+      delivery_mode: '',
+      delivery_period: '',
+      credit_period: 0,
+      credit_limit: 0,
+      opening_balance: 0
+    });
+
+    setVendorNameError('');
+    setVendorGstError('');
+    setVendorZipError('');
+    setVendorBillingZipError('');
+    setVendorDeliveryPeriodError('');
+    setShowSupplierModal(true);
+  };
+
+  const copyOfficialAddressForNewSupplier = () => {
+    const off = newSupplier.supplier_address;
+    if (!off.street && !off.city && !off.state) {
+      info('Official address is empty.');
+      return;
+    }
+    setNewSupplier(prev => ({
+      ...prev,
+      billing_address: {
+        ...prev.billing_address,
+        street: off.street,
+        city: off.city,
+        state: off.state,
+        zip_code: off.zip_code,
+        country: off.country
+      }
+    }));
+    success('Address copied successfully!');
+  };
+
+  const handleCreateSupplier = async () => {
+    const name = newSupplier.supplier_name.trim();
+    const code = newSupplier.supplier_code.trim();
+
+    if (!name || !code) {
+      error('Name and Code are required.');
+      return;
+    }
+
+    if (vendorNameError) {
+      error('Please provide a valid supplier name.');
+      return;
+    }
+
+    if (newSupplier.gst_no && !gstRegex.test(newSupplier.gst_no.toUpperCase())) {
+      error('Please provide a valid 15-digit GST number or keep it empty.');
+      return;
+    }
+
+    if (vendorZipError || vendorBillingZipError) {
+      error('Please provide valid 6-digit zip codes.');
+      return;
+    }
+
+    if (vendorDeliveryPeriodError) {
+      error('Delivery Period contains invalid characters.');
+      return;
+    }
+
+    setSavingSupplier(true);
+    const token = localStorage.getItem('token');
+    
+    const payload = {
+      supplier_code: code,
+      supplier_name: name,
+      supplier_address: {
+        street: newSupplier.supplier_address.street.trim(),
+        city: newSupplier.supplier_address.city.trim(),
+        state: newSupplier.supplier_address.state.trim(),
+        zip_code: newSupplier.supplier_address.zip_code.trim(),
+        country: newSupplier.supplier_address.country.trim()
+      },
+      billing_address: {
+        street: newSupplier.billing_address.street.trim(),
+        city: newSupplier.billing_address.city.trim(),
+        state: newSupplier.billing_address.state.trim(),
+        zip_code: newSupplier.billing_address.zip_code.trim(),
+        country: newSupplier.billing_address.country.trim()
+      },
+      gst_no: newSupplier.gst_no.toUpperCase().trim(),
+      credit_period: Number(newSupplier.credit_period) || 0,
+      credit_limit: Number(newSupplier.credit_limit) || 0,
+      product_supplied: newSupplier.product_supplied.trim(),
+      delivery_period: newSupplier.delivery_period.trim(),
+      delivery_mode: newSupplier.delivery_mode,
+      opening_balance: Number(newSupplier.opening_balance) || 0,
+      supplied_materials: newSupplier.supplied_materials,
+      company_id: currentCompanyId
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/suppliers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('New supplier registered!');
+        setShowSupplierModal(false);
+        
+        // Refresh supplier list
+        const supRes = await fetch(`${SUPPLIER_API}?company_id=${currentCompanyId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const supData = await supRes.json();
+        if (supData.success) {
+          setSuppliers(supData.data);
+        }
+        
+        setFormData(prev => ({
+          ...prev,
+          supplier_id: data.data.id
+        }));
+        if (errors.supplier_id) setErrors(prev => { const n = { ...prev }; delete n.supplier_id; return n; });
+      } else {
+        error(data.message || 'Error occurred while saving supplier');
+      }
+    } catch (err: any) {
+      error(err.message || 'Network error.');
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
+
+  const fetchTypeCodes = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/rm-type-codes?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTypeCodes(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching type codes:', err);
+    }
+  };
+
+  const openNewMaterialModal = (rowIndex: number) => {
+    setTargetRowIndex(rowIndex);
+    
+    let nextCode = 'RM-000001';
+    const validCodes = materials
+      .filter((m: any) => m.rm_code && /^RM-\d+$/i.test(m.rm_code))
+      .map((m: any) => {
+        const parts = m.rm_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter((n: any) => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `RM-${String(max + 1).padStart(6, '0')}`;
+    }
+
+    setNewMaterial({
+      rm_code: nextCode,
+      rm_name: '',
+      rm_description: '',
+      rate_per_unit: 0,
+      unit_type: 'Kg',
+      grade: '',
+      rm_type_code: '',
+      availability: 'Local',
+      company_id: currentCompanyId,
+      stock_threshold: 100,
+      hsn_code: ''
+    });
+
+    setMaterialCodeError('');
+    setMaterialNameError('');
+    setMaterialGradeError('');
+    setShowMaterialModal(true);
+  };
+
+  const handleCreateTypeCode = async () => {
+    const normalizedCode = (newTypeCode.code || '').trim().toUpperCase();
+    const normalizedName = (newTypeCode.name || '').trim();
+
+    if (!normalizedCode || !normalizedName) {
+      error('Please fill both Code and Name.');
+      return;
+    }
+
+    if (normalizedCode.length < 2 || normalizedCode.length > 10) {
+      error('Code must be 2-10 characters long.');
+      return;
+    }
+    if (normalizedName.length < 3 || normalizedName.length > 50) {
+      error('Name must be 3-50 characters long.');
+      return;
+    }
+
+    const tcNameRegex = /^[a-zA-Z0-9\s-]+$/;
+    if (!tcNameRegex.test(normalizedCode) || !tcNameRegex.test(normalizedName)) {
+      error('Only letters, numbers, spaces, and hyphens are allowed.');
+      return;
+    }
+
+    setSavingTypeCode(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/rm-type-codes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code: normalizedCode,
+          name: normalizedName,
+          company_id: currentCompanyId
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('RM type code added successfully!');
+        setShowTypeCodeModal(false);
+        setNewTypeCode({ code: '', name: '' });
+        fetchTypeCodes(currentCompanyId);
+        setNewMaterial(prev => ({ ...prev, rm_type_code: normalizedCode }));
+      } else {
+        error(data.error || data.message || 'Error occurred');
+      }
+    } catch (err: any) {
+      error(err.message || 'Network error.');
+    } finally {
+      setSavingTypeCode(false);
+    }
+  };
+
+  const handleCreateMaterial = async () => {
+    const codeRegex = /^[A-Z0-9-]+$/;
+    const rmNameRegex = /^[a-zA-Z0-9\s-]+$/;
+    const gradeRegex = /^[a-zA-Z0-9\s+-/]+$/;
+
+    const normalizedCode = (newMaterial.rm_code || '').trim().toUpperCase();
+    const normalizedName = (newMaterial.rm_name || '').trim();
+
+    if (!normalizedCode || !normalizedName) {
+      error('Please fill Code and Name.');
+      return;
+    }
+
+    if (normalizedCode.length < 3 || normalizedCode.length > 30) {
+      error('Material Code must be 3-30 characters');
+      return;
+    }
+
+    if (normalizedName.length < 3 || normalizedName.length > 50) {
+      error('Material Name must be 3-50 characters');
+      return;
+    }
+
+    if (materialCodeError) {
+      error('Material Code can only contain uppercase letters, numbers, and hyphens.');
+      return;
+    }
+
+    if (materialNameError) {
+      error('Material Name can only contain letters, numbers, spaces, and hyphens.');
+      return;
+    }
+    
+    if (materialGradeError) {
+      error('Grade contains invalid characters.');
+      return;
+    }
+
+    setSavingMaterial(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/raw-materials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...newMaterial,
+          rm_code: normalizedCode,
+          rm_name: normalizedName
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Raw material added!');
+        setShowMaterialModal(false);
+
+        const stockRes = await fetch(`${STOCK_API}?company_id=${currentCompanyId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const stockData = await stockRes.json();
+        let updatedMaterials: any[] = [];
+        if (stockData.success) {
+          setMaterials(stockData.data);
+          updatedMaterials = stockData.data;
+        }
+
+        if (targetRowIndex !== null) {
+          const newlyAdded = updatedMaterials.find((m: any) => m.rm_code === normalizedCode);
+          if (newlyAdded) {
+            updateItem(targetRowIndex, 'rm_id', newlyAdded.id);
+          }
+        }
+      } else {
+        error(data.error || data.message || 'Error occurred');
+      }
+    } catch (err: any) {
+      error(err.message || 'Network error.');
+    } finally {
+      setSavingMaterial(false);
+    }
+  };
+
   const handleEdit = (rec: any) => {
     setEditingId(rec.id);
     setFormData({
@@ -366,8 +790,7 @@ export default function PurchaseEntryPage() {
           rate: rate,
           gst_percent: gstPerc,
           gst_amount: gstAmt,
-          amount: base + gstAmt,
-          hsn_code: i.hsn_code || ''
+          amount: base + gstAmt
         };
       })
     });
@@ -453,7 +876,18 @@ export default function PurchaseEntryPage() {
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 text-primary italic font-black">Vendor Identity</label>
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-primary italic font-black">Vendor Identity</label>
+                  {!formData.order_id && (
+                    <button
+                      type="button"
+                      onClick={() => openNewSupplierModal()}
+                      className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 animate-in fade-in"
+                    >
+                      <Plus className="w-3 h-3" /> Add New Vendor
+                    </button>
+                  )}
+                </div>
                 <Select
                   value={formData.supplier_id}
                   onValueChange={(val) => {
@@ -556,31 +990,40 @@ export default function PurchaseEntryPage() {
                       return (
                         <tr key={idx} className="bg-white">
                           <td className="p-4">
-                            <Select
-                              value={item.rm_id}
-                              onValueChange={(val) => updateItem(idx, 'rm_id', val)}
-                              disabled={!!formData.order_id}
-                            >
-                              <SelectTrigger className="w-full h-10 border border-slate-200 text-sm font-medium">
-                                <SelectValue placeholder="Select Material..." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white border-slate-200">
-                                {materials.map(m => (
-                                  <SelectItem key={m.id} value={m.id}>
-                                    {m.rm_name} (Global Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-1.5 min-w-[200px]">
+                              <Select
+                                value={item.rm_id}
+                                onValueChange={(val) => updateItem(idx, 'rm_id', val)}
+                                disabled={!!formData.order_id}
+                              >
+                                <SelectTrigger className="w-full h-10 border border-slate-200 text-sm font-medium">
+                                  <SelectValue placeholder="Select Material..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-slate-200">
+                                  {materials.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>
+                                      {m.rm_name} (Global Stock: {Number(m.balance).toLocaleString()} {m.unit_type})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {!formData.order_id && (
+                                <Button
+                                  type="button"
+                                  onClick={() => openNewMaterialModal(idx)}
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-10 w-10 shrink-0 border-primary/20 text-primary hover:bg-primary/10 rounded"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
                           </td>
                           <td className="p-4">
-                            <Input
-                              type="text"
-                              value={item.hsn_code || ''}
-                              onChange={(e) => updateItem(idx, 'hsn_code', e.target.value)}
-                              className="h-10 text-left font-bold text-slate-700 placeholder:text-slate-300 placeholder:font-normal"
-                              placeholder="HSN"
-                            />
+                            <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold uppercase whitespace-nowrap">
+                              {materials.find(m => m.id === item.rm_id)?.hsn_code || '—'}
+                            </span>
                           </td>
                           <td className="p-4">
                             <Input
@@ -824,6 +1267,548 @@ export default function PurchaseEntryPage() {
           )}
         />
       )}
+
+      <Dialog open={showSupplierModal} onOpenChange={setShowSupplierModal}>
+        <DialogContent className="bg-white border-slate-200 max-w-4xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-secondary" /> Add New Supplier / Vendor
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Create a new vendor profile to register material intake.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Row 1: Code, Name, GST */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Code</label>
+                <Input
+                  value={newSupplier.supplier_code}
+                  readOnly
+                  className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                  placeholder="e.g. VEN-001"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Supplier Name</label>
+                <Input
+                  value={newSupplier.supplier_name}
+                  maxLength={255}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewSupplier({ ...newSupplier, supplier_name: val });
+                    if (val && !nameRegex.test(val)) {
+                      setVendorNameError('Special characters not allowed');
+                    } else {
+                      setVendorNameError('');
+                    }
+                  }}
+                  className={`h-11 font-bold ${vendorNameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`}
+                  placeholder="Supplier Name"
+                />
+                {vendorNameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in">{vendorNameError}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">GST No (Optional)</label>
+                <Input
+                  value={newSupplier.gst_no}
+                  maxLength={15}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setNewSupplier({ ...newSupplier, gst_no: val });
+                    if (val && !gstRegex.test(val)) {
+                      setVendorGstError('Invalid GST format (Example: 29ABCDE1234F1Z5)');
+                    } else {
+                      setVendorGstError('');
+                    }
+                  }}
+                  className={`h-11 uppercase font-bold transition-all ${vendorGstError ? 'border-rose-500 bg-rose-50 text-rose-600 focus:ring-rose-200' : 'text-emerald-600 border-slate-200'}`}
+                  placeholder="29XXXXX..."
+                />
+                {vendorGstError && <p className="text-[10px] font-bold text-rose-500 mt-1 ml-1 animate-in fade-in">{vendorGstError}</p>}
+              </div>
+            </div>
+
+            {/* Row 2: Addresses */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 border-t border-slate-100 pt-4">
+              {/* Supplier Address Section */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-primary border-b border-primary/10 pb-2">
+                   <MapPin className="w-4 h-4" />
+                   <h3 className="text-xs font-black uppercase tracking-widest">Supplier Official Address</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Street / Landmark</label>
+                    <Input value={newSupplier.supplier_address.street} onChange={(e) => setNewSupplier({...newSupplier, supplier_address: {...newSupplier.supplier_address, street: e.target.value}})} placeholder="123 Industrial Area..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">City</label>
+                    <Input value={newSupplier.supplier_address.city} onChange={(e) => setNewSupplier({...newSupplier, supplier_address: {...newSupplier.supplier_address, city: e.target.value}})} placeholder="City" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">State</label>
+                    <Input value={newSupplier.supplier_address.state} onChange={(e) => setNewSupplier({...newSupplier, supplier_address: {...newSupplier.supplier_address, state: e.target.value}})} placeholder="State" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
+                    <Input 
+                        value={newSupplier.supplier_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setNewSupplier({...newSupplier, supplier_address: {...newSupplier.supplier_address, zip_code: val}});
+                            if (val && val.length !== 6) setVendorZipError('Must be 6 digits');
+                            else setVendorZipError('');
+                        }} 
+                        className={vendorZipError ? 'border-amber-400 bg-amber-50 h-10' : 'h-10'}
+                        placeholder="XXXXXX" 
+                    />
+                    {vendorZipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{vendorZipError}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
+                    <Input value={newSupplier.supplier_address.country} onChange={(e) => setNewSupplier({...newSupplier, supplier_address: {...newSupplier.supplier_address, country: e.target.value}})} placeholder="Country" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Billing Address Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-slate-600 border-b border-slate-100 pb-2">
+                   <div className="flex items-center space-x-2">
+                     <FileCheck className="w-4 h-4" />
+                     <h3 className="text-xs font-black uppercase tracking-widest">
+                       Billing Address
+                     </h3>
+                   </div>
+                   <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={copyOfficialAddressForNewSupplier}
+                    className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
+                  >
+                    <Copy className="w-3 h-3 mr-1" /> Same as Official
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Street / Landmark</label>
+                    <Input value={newSupplier.billing_address.street} onChange={(e) => setNewSupplier({...newSupplier, billing_address: {...newSupplier.billing_address, street: e.target.value}})} placeholder="Same as above or specific..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">City</label>
+                    <Input value={newSupplier.billing_address.city} onChange={(e) => setNewSupplier({...newSupplier, billing_address: {...newSupplier.billing_address, city: e.target.value}})} placeholder="City" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">State</label>
+                    <Input value={newSupplier.billing_address.state} onChange={(e) => setNewSupplier({...newSupplier, billing_address: {...newSupplier.billing_address, state: e.target.value}})} placeholder="State" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Zip Code</label>
+                    <Input 
+                        value={newSupplier.billing_address.zip_code} 
+                        maxLength={6}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setNewSupplier({...newSupplier, billing_address: {...newSupplier.billing_address, zip_code: val}});
+                            if (val && val.length !== 6) setVendorBillingZipError('Must be 6 digits');
+                            else setVendorBillingZipError('');
+                        }} 
+                        className={vendorBillingZipError ? 'border-amber-400 bg-amber-50 h-10' : 'h-10'}
+                        placeholder="XXXXXX"
+                    />
+                    {vendorBillingZipError && <p className="text-[10px] font-bold text-amber-600 ml-1">{vendorBillingZipError}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Country</label>
+                    <Input value={newSupplier.billing_address.country} onChange={(e) => setNewSupplier({...newSupplier, billing_address: {...newSupplier.billing_address, country: e.target.value}})} placeholder="Country" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Product line & terms */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 border-t border-slate-100 pt-4">
+              <div className="space-y-1 lg:col-span-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Product Category Supplied</label>
+                <Input value={newSupplier.product_supplied} onChange={(e) => setNewSupplier({...newSupplier, product_supplied: e.target.value})} className="h-11" placeholder="Resins, Chemicals, etc." />
+              </div>
+              
+              <div className="space-y-1 lg:col-span-3">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex justify-between">
+                  <span>Specific Raw Materials Supplied</span>
+                  <span className="text-[10px] text-emerald-600 font-black">{newSupplier.supplied_materials.length} Selected</span>
+                </label>
+                <div className="border border-slate-200 rounded-md p-3 max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50">
+                  {materials.map(m => (
+                    <label key={m.id} className="flex items-start space-x-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-white p-1.5 rounded transition-all">
+                      <Checkbox 
+                        checked={newSupplier.supplied_materials.includes(m.id)}
+                        onCheckedChange={(checked: boolean) => {
+                          if (checked) {
+                            setNewSupplier(prev => ({ ...prev, supplied_materials: [...prev.supplied_materials, m.id] }));
+                          } else {
+                            setNewSupplier(prev => ({ ...prev, supplied_materials: prev.supplied_materials.filter(id => id !== m.id) }));
+                          }
+                        }}
+                        className="mt-0.5"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{m.rm_name}</span>
+                        {m.rm_type_code && (
+                          <span className="text-[10px] text-slate-400 font-medium">Type: {m.rm_type_code}</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                  {materials.length === 0 && <span className="text-xs text-slate-400 font-bold col-span-full">No active materials in inventory.</span>}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Delivery Mode</label>
+                <Select value={newSupplier.delivery_mode} onValueChange={(val) => setNewSupplier({...newSupplier, delivery_mode: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 text-sm shadow-sm bg-slate-50">
+                    <SelectValue placeholder="Select Mode..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Direct Truck">Direct Truck</SelectItem>
+                    <SelectItem value="Courier">Courier</SelectItem>
+                    <SelectItem value="Self Pickup">Self Pickup</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Delivery Period</label>
+                <Input 
+                  value={newSupplier.delivery_period} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewSupplier({...newSupplier, delivery_period: val});
+                    if (val && !deliveryPeriodRegex.test(val)) {
+                      setVendorDeliveryPeriodError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    } else {
+                      setVendorDeliveryPeriodError('');
+                    }
+                  }} 
+                  className={`h-11 ${vendorDeliveryPeriodError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                  placeholder="e.g. 2-4 Days" 
+                />
+                {vendorDeliveryPeriodError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in">{vendorDeliveryPeriodError}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Credit Period (Days)</label>
+                <Input type="number" min="0" value={newSupplier.credit_period || ''} onChange={(e) => setNewSupplier({...newSupplier, credit_period: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Credit Limit (₹)</label>
+                <Input type="number" min="0" value={newSupplier.credit_limit || ''} onChange={(e) => setNewSupplier({...newSupplier, credit_limit: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Opening Balance (₹)</label>
+                <Input type="number" min="0" value={newSupplier.opening_balance || ''} onChange={(e) => setNewSupplier({...newSupplier, opening_balance: Math.max(0, Number(e.target.value) || 0)})} className="h-11" />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 border-t border-slate-100 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowSupplierModal(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateSupplier}
+              loading={savingSupplier}
+              className="bg-primary hover:bg-primary/95 text-white font-bold px-6 rounded-full shadow-md"
+            >
+              <Save className="w-4 h-4 mr-2" /> Complete Onboarding
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMaterialModal} onOpenChange={setShowMaterialModal}>
+        <DialogContent className="bg-white border-slate-200 max-w-4xl overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
+              <Package className="w-5 h-5 text-secondary" /> Add New Raw Material
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Register a new material feedstock in the master registry.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Tag className="w-3 h-3 mr-2 text-primary" /> Material Code
+                </label>
+                <Input 
+                  placeholder="e.g. RM-001"
+                  value={newMaterial.rm_code}
+                  readOnly
+                  className="h-11 font-bold bg-slate-50 cursor-not-allowed" 
+                />
+              </div>
+ 
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                   <Package className="w-3 h-3 mr-2 text-primary" /> Material Name
+                </label>
+                <Input 
+                  placeholder="e.g. Virgin LDPE Granules"
+                  value={newMaterial.rm_name}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const rmNameRegex = /^[a-zA-Z0-9\s-]+$/;
+                    setNewMaterial({...newMaterial, rm_name: val});
+                    if (val && !rmNameRegex.test(val)) {
+                      setMaterialNameError('Invalid characters (Use A-Z, 0-9, spaces, hyphens)');
+                    } else {
+                      setMaterialNameError('');
+                    }
+                  }} 
+                  className={`h-11 font-bold ${materialNameError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                />
+                {materialNameError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in">{materialNameError}</p>}
+              </div>
+ 
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <Layers className="w-3 h-3 mr-2 text-primary" /> Grade
+                </label>
+                <Input 
+                  placeholder="e.g. Grade A+"
+                  value={newMaterial.grade}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const gradeRegex = /^[a-zA-Z0-9\s+-/]+$/;
+                    setNewMaterial({...newMaterial, grade: val});
+                    if (val && !gradeRegex.test(val)) {
+                      setMaterialGradeError('Invalid characters (Use A-Z, 0-9, +, -, /)');
+                    } else {
+                      setMaterialGradeError('');
+                    }
+                  }}
+                  className={`h-11 font-bold ${materialGradeError ? 'border-amber-400 bg-amber-50 focus:ring-amber-200' : 'border-slate-200'}`} 
+                />
+                {materialGradeError && <p className="text-[10px] font-bold text-amber-600 mt-1 ml-1 animate-in fade-in">{materialGradeError}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <FileText className="w-3 h-3 mr-2 text-primary" /> HSN Code
+                </label>
+                <Input 
+                  placeholder="e.g. 39011010"
+                  value={newMaterial.hsn_code}
+                  onChange={(e) => setNewMaterial({...newMaterial, hsn_code: e.target.value})}
+                  className="h-11 font-bold border-slate-200" 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                    <Briefcase className="w-3 h-3 mr-2 text-primary" /> RM Type Code
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeCodeModal(true)}
+                    className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                  >
+                    <Plus className="w-3 h-3" /> Add New
+                  </button>
+                </div>
+                <Select value={newMaterial.rm_type_code} onValueChange={(val) => setNewMaterial({...newMaterial, rm_type_code: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm font-bold shadow-sm">
+                    <SelectValue placeholder="Select Type Code..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {typeCodes.map(tc => (
+                      <SelectItem key={tc.id} value={tc.code}>{tc.code} - {tc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                   Unit Type
+                </label>
+                <Select value={newMaterial.unit_type} onValueChange={(val) => setNewMaterial({...newMaterial, unit_type: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Unit..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Kg">Kilogram (Kg)</SelectItem>
+                    <SelectItem value="Ton">Metric Ton (Ton)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+ 
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit {!newMaterial.rate_per_unit && <span className="text-[10px] ml-1">(₹)</span>}
+                </label>
+                <div className="relative">
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={newMaterial.rate_per_unit || ''}
+                    onChange={(e) => setNewMaterial({...newMaterial, rate_per_unit: Math.max(0, Number(e.target.value))})}
+                    className="h-11 font-black text-primary pr-20"
+                  />
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
+                    PER {newMaterial.unit_type.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+ 
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
+                   <Activity className="w-3 h-3 mr-2 text-primary" /> Stock Threshold
+                </label>
+                <div className="relative">
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="100.00"
+                    value={newMaterial.stock_threshold || ''}
+                    onChange={(e) => setNewMaterial({...newMaterial, stock_threshold: Math.max(0, Number(e.target.value))})}
+                    className="h-11 font-black text-slate-600 pr-12"
+                  />
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center bg-slate-100 px-2 rounded text-[10px] font-black text-slate-500">
+                    {newMaterial.unit_type.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground/70 flex items-center">
+                  <Globe2 className="w-4 h-4 mr-2 text-primary" /> Availability 
+                </label>
+                <Select value={newMaterial.availability} onValueChange={(val) => setNewMaterial({...newMaterial, availability: val})}>
+                  <SelectTrigger className="w-full h-11 border border-slate-200 bg-slate-50 text-sm shadow-sm">
+                    <SelectValue placeholder="Select Availability..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Local">Local (Domestic)</SelectItem>
+                    <SelectItem value="Outstation">Outstation (Inter-state)</SelectItem>
+                    <SelectItem value="Abroad">Abroad (Imported)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3 space-y-2">
+                <label className="text-sm font-bold text-foreground/70 flex items-center">
+                  <FileText className="w-4 h-4 mr-2 text-primary" /> Description
+                </label>
+                <textarea 
+                  className="w-full h-24 p-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm resize-none"
+                  placeholder="Notes about quality, chemical properties or vendor specifics..."
+                  value={newMaterial.rm_description}
+                  onChange={(e) => setNewMaterial({...newMaterial, rm_description: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 border-t border-slate-100 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowMaterialModal(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateMaterial}
+              loading={savingMaterial}
+              className="bg-primary hover:bg-primary/95 text-white font-bold px-6 rounded-full shadow-md"
+            >
+              <Save className="w-4 h-4 mr-2" /> Register Material
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTypeCodeModal} onOpenChange={setShowTypeCodeModal}>
+        <DialogContent className="bg-white border-slate-200 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-secondary" /> Add RM Type Code
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Create a new Raw Material classification code.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <Tag className="w-3 h-3 text-primary" /> Type Code
+              </label>
+              <Input
+                placeholder="e.g. LDPE"
+                value={newTypeCode.code}
+                onChange={(e) => setNewTypeCode({ ...newTypeCode, code: e.target.value.toUpperCase() })}
+                className="h-10 font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <FileText className="w-3 h-3 text-primary" /> Type Name
+              </label>
+              <Input
+                placeholder="e.g. Low Density Polyethylene"
+                value={newTypeCode.name}
+                onChange={(e) => setNewTypeCode({ ...newTypeCode, name: e.target.value })}
+                className="h-10 font-medium"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowTypeCodeModal(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateTypeCode}
+              loading={savingTypeCode}
+              className="bg-primary hover:bg-primary/95 text-white font-bold px-6 rounded-full shadow-md"
+            >
+              <Save className="w-4 h-4 mr-2" /> Save Code
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

@@ -64,10 +64,17 @@ export default function MarketingReportsPage() {
       const compData = await compRes.json();
       
       let coId = '';
-      if (compData.success) {
-        // Just take the first or filter by name if needed.
-        coId = compData.data[0]?.id;
-        setCurrentCompanyId(coId);
+      if (compData.success && Array.isArray(compData.data)) {
+        const activeCo = compData.data.find((c: any) => 
+          c.company_name?.toUpperCase().includes('MAXTRON')
+        );
+        if (activeCo) {
+          coId = activeCo.id;
+          setCurrentCompanyId(coId);
+        } else {
+          coId = compData.data[0]?.id;
+          setCurrentCompanyId(coId);
+        }
       }
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits?company_id=${coId}`, {
