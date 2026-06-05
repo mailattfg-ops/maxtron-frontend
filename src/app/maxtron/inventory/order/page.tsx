@@ -42,6 +42,7 @@ export default function RMOrderPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [companyState, setCompanyState] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -151,6 +152,11 @@ export default function RMOrderPage() {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
           setFormData(prev => ({ ...prev, company_id: coId }));
+          // Capture company's registered state for GST type determination
+          const companyAddr = (activeCo.addresses || []).find((a: any) => a.address_type === 'registered' || a.address_type === 'billing') || (activeCo.addresses || [])[0];
+          if (companyAddr?.state) {
+            setCompanyState(companyAddr.state.trim().toLowerCase());
+          }
         }
       }
 
@@ -987,37 +993,78 @@ export default function RMOrderPage() {
                   />
                </div>
                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col items-center md:items-end justify-center text-center md:text-right">
-                  <div className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-                    <Checkbox
-                      id="po-round-off-checkbox"
-                      checked={formData.is_round_off}
-                      onCheckedChange={(checked: boolean) => setFormData({ ...formData, is_round_off: !!checked })}
-                      className="border-primary data-[state=checked]:bg-primary"
-                    />
-                    <label htmlFor="po-round-off-checkbox" className="text-[10px] font-black text-primary uppercase tracking-widest cursor-pointer select-none">
-                      Round Off Final Amount
-                    </label>
-                  </div>
-                  
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Total Order Value</p>
-                  {(() => {
-                    const subTotalVal = formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                    const displayTotalVal = formData.is_round_off ? Math.round(subTotalVal) : subTotalVal;
-                    const roundOffDifference = formData.is_round_off ? (Math.round(subTotalVal) - subTotalVal) : 0;
-                    return (
-                      <>
-                        <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {displayTotalVal.toLocaleString()}</h2>
-                        {formData.is_round_off && roundOffDifference !== 0 && (
-                          <div className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
-                            <span>Round Off:</span>
-                            <span className="font-mono">₹{roundOffDifference > 0 ? `+${roundOffDifference.toFixed(2)}` : roundOffDifference.toFixed(2)}</span>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter font-heading">Includes GST Charges</p>
-               </div>
+                   <div className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                     <Checkbox
+                       id="po-round-off-checkbox"
+                       checked={formData.is_round_off}
+                       onCheckedChange={(checked: boolean) => setFormData({ ...formData, is_round_off: !!checked })}
+                       className="border-primary data-[state=checked]:bg-primary"
+                     />
+                     <label htmlFor="po-round-off-checkbox" className="text-[10px] font-black text-primary uppercase tracking-widest cursor-pointer select-none">
+                       Round Off Final Amount
+                     </label>
+                   </div>
+                   
+                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Total Order Value</p>
+                   {(() => {
+                     const subTotalVal = formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                     const displayTotalVal = formData.is_round_off ? Math.round(subTotalVal) : subTotalVal;
+                     const roundOffDifference = formData.is_round_off ? (Math.round(subTotalVal) - subTotalVal) : 0;
+
+                     // GST type determination based on supplier billing address state vs company state
+                     const totalGst = formData.items.reduce((acc, curr) => acc + (Number(curr.gst_amount) || 0), 0);
+                     const selectedSupplier = suppliers.find(s => s.id === formData.supplier_id);
+                     const supplierBillingState = selectedSupplier?.billing_addr_data?.state?.trim().toLowerCase() || '';
+                     const isInterState = supplierBillingState && companyState && supplierBillingState !== companyState;
+
+                     return (
+                       <>
+                         <h2 className="text-3xl md:text-4xl font-black text-primary tracking-tighter">₹ {displayTotalVal.toLocaleString()}</h2>
+                         {formData.is_round_off && roundOffDifference !== 0 && (
+                           <div className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
+                             <span>Round Off:</span>
+                             <span className="font-mono">₹{roundOffDifference > 0 ? `+${roundOffDifference.toFixed(2)}` : roundOffDifference.toFixed(2)}</span>
+                           </div>
+                         )}
+                         {totalGst > 0 && (
+                           <div className="mt-3 w-full border-t border-primary/10 pt-3 space-y-1.5">
+                             {isInterState ? (
+                               <div className="flex items-center justify-between text-[11px]">
+                                 <span className="font-bold text-slate-500 uppercase tracking-wider">IGST</span>
+                                 <span className="font-black text-amber-600 font-mono">₹ {totalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                               </div>
+                             ) : (
+                               <>
+                                 <div className="flex items-center justify-between text-[11px]">
+                                   <span className="font-bold text-slate-500 uppercase tracking-wider">CGST</span>
+                                   <span className="font-black text-blue-600 font-mono">₹ {(totalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                 </div>
+                                 <div className="flex items-center justify-between text-[11px]">
+                                   <span className="font-bold text-slate-500 uppercase tracking-wider">SGST</span>
+                                   <span className="font-black text-violet-600 font-mono">₹ {(totalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                 </div>
+                               </>
+                             )}
+                             <div className="flex items-center justify-between text-[10px] border-t border-slate-200 pt-1.5">
+                               <span className="font-bold text-slate-400 uppercase tracking-wider">Total Tax</span>
+                               <span className="font-black text-slate-600 font-mono">₹ {totalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                             </div>
+                           </div>
+                         )}
+                         {formData.supplier_id && (
+                           <div className={`mt-2 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                             isInterState
+                               ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                               : 'bg-blue-100 text-blue-700 border border-blue-200'
+                           }`}>
+                             {isInterState ? '⚡ Inter-State · IGST Applicable' : '✓ Intra-State · CGST + SGST'}
+                           </div>
+                         )}
+                       </>
+                     );
+                   })()}
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-tighter font-heading">Includes GST Charges</p>
+                </div>
             </div>
  
             <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
