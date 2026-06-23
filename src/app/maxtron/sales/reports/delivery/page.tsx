@@ -65,7 +65,6 @@ export default function DeliveryReport() {
   const filteredData = useMemo(() => {
     return data.filter(item => 
       item.delivery_number.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.vehicles?.registration_number.toLowerCase().includes(filters.search.toLowerCase()) ||
       item.driver_name?.toLowerCase().includes(filters.search.toLowerCase())
     );
   }, [data, filters.search]);
@@ -75,11 +74,10 @@ export default function DeliveryReport() {
       info('No dispatch logs to export.');
       return;
     }
-    const headers = ['Dispatch ID', 'Date', 'Vehicle Reg.', 'Driver Name', 'Status', 'Line Items Count'];
+    const headers = ['Dispatch ID', 'Date', 'Driver Name', 'Status', 'Line Items Count'];
     const rows = filteredData.map(row => [
       row.delivery_number,
       new Date(row.delivery_date).toLocaleDateString(),
-      row.vehicles?.registration_number || 'N/A',
       row.driver_name || 'Not Assigned',
       row.status.replace(/_/g, ' '),
       row.items?.length || 0
@@ -127,10 +125,10 @@ export default function DeliveryReport() {
       </div>
 
       <TableView
-        headers={['Dispatch ID', 'Date', 'Vehicle Reg.', 'Driver Name', 'Status', 'Line Items']}
+        headers={['Dispatch ID', 'Date', 'Driver Name', 'Status', 'Line Items']}
         data={filteredData}
         loading={loading}
-        searchFields={['delivery_number', 'vehicles.registration_number', 'driver_name']}
+        searchFields={['delivery_number', 'driver_name']}
         renderRow={(row: any) => (
           <tr key={row.id} className="hover:bg-slate-50 border-b last:border-0 transition-all">
             <td className="px-6 py-5 font-mono font-black text-slate-700">{row.delivery_number}</td>
@@ -138,12 +136,6 @@ export default function DeliveryReport() {
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
                     <Calendar className="w-3.5 h-3.5" />
                     {new Date(row.delivery_date).toLocaleDateString()}
-                </div>
-            </td>
-            <td className="px-6 py-5">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Navigation2 className="w-4 h-4" /></div>
-                    <span className="font-black text-slate-800 tracking-tight">{row.vehicles?.registration_number}</span>
                 </div>
             </td>
             <td className="px-6 py-5">

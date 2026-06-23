@@ -9,7 +9,8 @@ import {
   ShoppingBag, Plus, Trash2, Save, X, Search, 
   User, Calendar, DollarSign, Package, Briefcase, 
   ChevronRight, Info, AlertCircle, Edit2, CheckCircle2,
-  AlertTriangle, XCircle
+  AlertTriangle, XCircle, UserPlus, Phone, Mail, FileText, 
+  CreditCard, MapPin
 } from 'lucide-react';
 import { 
   Select, 
@@ -37,6 +38,7 @@ export default function CustomerOrderEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [companyState, setCompanyState] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
   // Custom Alert State
@@ -56,6 +58,194 @@ export default function CustomerOrderEntry() {
   const { success, error, info } = useToast();
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+
+  // Create Customer Popup States
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerActiveTab, setCustomerActiveTab] = useState('basic');
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+  const [customerFormData, setCustomerFormData] = useState({
+    customer_name: '',
+    customer_code: '',
+    gst_no: '',
+    credit_period: 0,
+    credit_limit: 0,
+    delivery_period: '',
+    delivery_mode: '',
+    mobile_no: '',
+    email_id: '',
+    contact_person: '',
+    custom_label1: '',
+    custom_value1: '',
+    custom_label2: '',
+    custom_value2: '',
+    opening_balance: 0,
+    is_active: true,
+    company_id: '',
+    addresses: [
+      { address_type: 'Customer', street: '', city: '', state: '', zip_code: '', country: 'India' },
+      { address_type: 'Billing', street: '', city: '', state: '', zip_code: '', country: 'India' }
+    ]
+  });
+
+  const getNextCustomerCode = () => {
+    let nextCode = 'CUST-000001';
+    const validCodes = customers
+      .filter(c => c.customer_code && /^CUST-\d+$/i.test(c.customer_code))
+      .map(c => {
+        const parts = c.customer_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `CUST-${String(max + 1).padStart(6, '0')}`;
+    }
+    return nextCode;
+  };
+
+  const openCustomerModal = () => {
+    const nextCode = getNextCustomerCode();
+    setCustomerFormData({
+      customer_name: '',
+      customer_code: nextCode,
+      gst_no: '',
+      credit_period: 0,
+      credit_limit: 0,
+      delivery_period: '',
+      delivery_mode: '',
+      mobile_no: '',
+      email_id: '',
+      contact_person: '',
+      custom_label1: '',
+      custom_value1: '',
+      custom_label2: '',
+      custom_value2: '',
+      opening_balance: 0,
+      is_active: true,
+      company_id: currentCompanyId,
+      addresses: [
+        { address_type: 'Customer', street: '', city: '', state: '', zip_code: '', country: 'India' },
+        { address_type: 'Billing', street: '', city: '', state: '', zip_code: '', country: 'India' }
+      ]
+    });
+    setCustomerActiveTab('basic');
+    setShowCustomerModal(true);
+  };
+
+  const handleCustomerInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    setCustomerFormData({ ...customerFormData, [e.target.name]: value });
+  };
+
+  const handleCustomerAddressChange = (index: number, field: string, value: string) => {
+    const newAddresses = [...customerFormData.addresses];
+    newAddresses[index] = { ...newAddresses[index], [field]: value };
+    setCustomerFormData({ ...customerFormData, addresses: newAddresses });
+  };
+
+  const copyBillingToShipping = () => {
+    const billing = customerFormData.addresses[0];
+    const newAddresses = [...customerFormData.addresses];
+    newAddresses[1] = { ...billing, address_type: 'Shipping' };
+    setCustomerFormData({ ...customerFormData, addresses: newAddresses });
+  };
+
+  const validateCustomerForm = () => {
+    if (!customerFormData.customer_name || !customerFormData.customer_code) {
+      error('Customer name and code are required.');
+      return false;
+    }
+
+    if (customerFormData.mobile_no && !/^[0-9]{10,12}$/.test(customerFormData.mobile_no)) {
+      error('Invalid mobile number. Please enter 10-12 digits.');
+      return false;
+    }
+
+    if (customerFormData.email_id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerFormData.email_id)) {
+      error('Invalid email format. Please check again.');
+      return false;
+    }
+
+    if (customerFormData.contact_person && customerFormData.contact_person.length < 2) {
+      error('Contact person name should be at least 2 characters.');
+      return false;
+    }
+
+    if (customerFormData.delivery_period && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(customerFormData.delivery_period)) {
+        error('Delivery Period contains invalid special characters. Use alphanumeric, space, hyphens or slashes.');
+        return false;
+    }
+
+    if (customerFormData.delivery_mode && !/^[a-zA-Z0-9\s\-\/\.]+$/.test(customerFormData.delivery_mode)) {
+        error('Delivery Mode contains invalid characters.');
+        return false;
+    }
+
+    for (const addr of customerFormData.addresses) {
+      if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+        error(`Invalid Zip code for ${addr.address_type} address. Please enter exactly 6 digits.`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const saveNewCustomer = async () => {
+    if (!validateCustomerForm()) return;
+
+    setCustomerSubmitting(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/maxtron/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(customerFormData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Customer created successfully!');
+        setShowCustomerModal(false);
+        // Refresh customer list
+        const coId = currentCompanyId;
+        const resList = await fetch(`${API_BASE}/api/maxtron/customers?company_id=${coId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataList = await resList.json();
+        if (dataList.success) {
+          const sorted = (dataList.data || []).sort((a: any, b: any) => 
+              new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          );
+          setCustomers(sorted);
+        }
+        // Auto-select the newly created customer
+        if (data.data?.id) {
+          setFormData(prev => ({ ...prev, customer_id: data.data.id }));
+        }
+      } else {
+        error(data.message || 'Something went wrong');
+      }
+    } catch (err) {
+      console.error('Error saving customer:', err);
+      error('System error occurred while creating customer.');
+    } finally {
+      setCustomerSubmitting(false);
+    }
+  };
+
+  const getGstType = (customerId: string): 'IGST' | 'CGST_SGST' | 'UNKNOWN' => {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return 'UNKNOWN';
+    const billingAddr = (customer.addresses || []).find((a: any) => a.address_type?.toLowerCase() === 'billing' || a.address_type?.toLowerCase() === 'customer') || (customer.addresses || [])[0];
+    const billingState = billingAddr?.state?.trim().toLowerCase() || '';
+    if (!billingState || !companyState) return 'UNKNOWN';
+    return billingState !== companyState ? 'IGST' : 'CGST_SGST';
+  };
 
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -91,6 +281,10 @@ export default function CustomerOrderEntry() {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
           setFormData(prev => ({ ...prev, company_id: coId }));
+          const companyAddr = (activeCo.addresses || []).find((a: any) => a.address_type === 'registered' || a.address_type === 'billing') || (activeCo.addresses || [])[0];
+          if (companyAddr?.state) {
+            setCompanyState(companyAddr.state.trim().toLowerCase());
+          }
         }
       }
 
@@ -354,7 +548,7 @@ export default function CustomerOrderEntry() {
     }
   };
 
-  const selectedCustomer = customers.find(c => c.id === formData.customer_id);
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -481,20 +675,32 @@ export default function CustomerOrderEntry() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <User className="w-3 h-3" /> Select Customer
                   </label>
-                  <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
-                    <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm">
-                      <SelectValue placeholder="Choose Customer..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200">
-                      {customers.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 items-center min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <Select value={formData.customer_id} onValueChange={(val) => setFormData({...formData, customer_id: val})}>
+                        <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm truncate">
+                          <SelectValue placeholder="Choose Customer..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-slate-200">
+                          {customers.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button 
+                      type="button" 
+                      onClick={openCustomerModal} 
+                      className="px-3 bg-primary text-white hover:bg-primary/95 shrink-0 rounded-md h-10 flex items-center justify-center shadow-sm"
+                      title="Create New Customer"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -514,31 +720,7 @@ export default function CustomerOrderEntry() {
                 </div>
               </div>
 
-              {selectedCustomer && (
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-center gap-6 animate-in fade-in zoom-in duration-300">
-                    <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
-                        <Info className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-1 flex-1">
-                         <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-blue-400">GST No</span>
-                            <span className="text-sm font-bold text-blue-900">{selectedCustomer.gst_no || 'N/A'}</span>
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-blue-400">Credit Limit</span>
-                            <span className="text-sm font-bold text-blue-900">₹ {selectedCustomer.credit_limit || 0}</span>
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-blue-400">Delivery Period</span>
-                            <span className="text-sm font-bold text-blue-900">{selectedCustomer.delivery_period || 'N/A'}</span>
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-blue-400 italic">Outstanding Amt</span>
-                            <span className="text-sm font-black text-rose-600">₹ {selectedCustomer.opening_balance || 0}</span>
-                         </div>
-                    </div>
-                </div>
-              )}
+
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center px-1">
@@ -629,11 +811,41 @@ export default function CustomerOrderEntry() {
                                 <td className="p-3 text-right text-sm">₹ {orderCalculations.taxableValue.toLocaleString()}</td>
                                 <td></td>
                             </tr>
-                            <tr>
-                                <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total GST</td>
-                                <td className="p-3 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString()}</td>
-                                <td></td>
-                            </tr>
+                            {(() => {
+                              const gstType = getGstType(formData.customer_id);
+                              if (gstType === 'IGST') {
+                                return (
+                                  <tr>
+                                    <td colSpan={4} className="px-6 py-2.5 text-right text-[10px] uppercase tracking-widest text-amber-300">IGST (100%)</td>
+                                    <td className="p-2.5 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td></td>
+                                  </tr>
+                                );
+                              } else if (gstType === 'CGST_SGST') {
+                                return (
+                                  <>
+                                    <tr>
+                                      <td colSpan={4} className="px-6 py-2.5 text-right text-[10px] uppercase tracking-widest text-blue-300">CGST (50%)</td>
+                                      <td className="p-2.5 text-right text-sm">₹ {(orderCalculations.taxAmount / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                      <td></td>
+                                    </tr>
+                                    <tr>
+                                      <td colSpan={4} className="px-6 py-2.5 text-right text-[10px] uppercase tracking-widest text-violet-300">SGST (50%)</td>
+                                      <td className="p-2.5 text-right text-sm">₹ {(orderCalculations.taxAmount / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                      <td></td>
+                                    </tr>
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <tr>
+                                    <td colSpan={4} className="px-6 py-3 text-right text-[10px] uppercase tracking-widest text-slate-400">Total GST</td>
+                                    <td className="p-3 text-right text-sm">₹ {orderCalculations.taxAmount.toLocaleString()}</td>
+                                    <td></td>
+                                  </tr>
+                                );
+                              }
+                            })()}
                             <tr className="border-t border-white/10">
                                 <td colSpan={4} className="px-6 py-3 text-right">
                                     <label className="inline-flex items-center gap-2 cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white select-none">
@@ -754,6 +966,276 @@ export default function CustomerOrderEntry() {
             </tr>
           )}
         />
+      )}
+
+      {/* Create Customer Popup Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
+                 onClick={() => setShowCustomerModal(false)} />
+            
+            <Card className="relative w-full max-w-[800px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] border-none bg-white rounded-3xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 max-h-[90vh] flex flex-col">
+                <CardHeader className="bg-primary/5 border-b p-4 md:p-6 space-y-4 shrink-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="text-lg md:text-xl font-bold text-primary flex items-center gap-2">
+                        <UserPlus className="w-5 h-5" /> Register New Customer
+                      </CardTitle>
+                      <CardDescription className="text-xs">Add a new customer to the database directly from here.</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'basic' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('basic');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'basic' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >1. Basic</Button>
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'address' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('address');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'address' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >2. Addresses</Button>
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'financial' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('financial');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'financial' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >3. Financials</Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6 overflow-y-auto flex-1 text-slate-700">
+                  {customerActiveTab === 'basic' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Customer Name *</label>
+                        <Input name="customer_name" value={customerFormData.customer_name} onChange={handleCustomerInputChange} placeholder="Legal Company Name" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Customer Code *</label>
+                        <Input 
+                          name="customer_code" 
+                          value={customerFormData.customer_code} 
+                          readOnly
+                          className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                          placeholder="e.g. CUST-001" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>
+                        <Input name="gst_no" value={customerFormData.gst_no} onChange={handleCustomerInputChange} placeholder="GSTXXXXXXXXXXXX" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
+                        <Input name="mobile_no" value={customerFormData.mobile_no} onChange={handleCustomerInputChange} placeholder="+91 XXXXX XXXXX" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
+                        <Input name="email_id" value={customerFormData.email_id} onChange={handleCustomerInputChange} placeholder="contact@company.com" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Contact Person</label>
+                        <Input name="contact_person" value={customerFormData.contact_person} onChange={handleCustomerInputChange} placeholder="e.g. John Doe" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Delivery Period</label>
+                        <Input name="delivery_period" value={customerFormData.delivery_period} onChange={handleCustomerInputChange} placeholder="e.g. 7-10 Days" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Delivery Mode</label>
+                        <Input name="delivery_mode" value={customerFormData.delivery_mode} onChange={handleCustomerInputChange} placeholder="e.g. Courier, Hand-delivery" />
+                      </div>
+
+                      {/* Custom Fields Section */}
+                      <div className="md:col-span-2 lg:col-span-3 pt-4 border-t border-primary/5">
+                        <h3 className="text-sm font-bold text-primary mb-4 flex items-center">
+                          Custom Information (Optional)
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 1</label>
+                              <Input 
+                                name="custom_label1" 
+                                value={customerFormData.custom_label1} 
+                                onChange={handleCustomerInputChange} 
+                                placeholder="e.g. Preferred Contact Time" 
+                                className="h-8 text-xs bg-white"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 1</label>
+                              <Input 
+                                name="custom_value1" 
+                                value={customerFormData.custom_value1} 
+                                onChange={handleCustomerInputChange} 
+                                placeholder="e.g. 10 AM - 4 PM" 
+                                className="h-8 text-xs bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 transition-all hover:bg-primary/[0.08]">
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Label 2</label>
+                              <Input 
+                                name="custom_label2" 
+                                value={customerFormData.custom_label2} 
+                                onChange={handleCustomerInputChange} 
+                                placeholder="e.g. Lead Source" 
+                                className="h-8 text-xs bg-white"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Field Data 2</label>
+                              <Input 
+                                name="custom_value2" 
+                                value={customerFormData.custom_value2} 
+                                onChange={handleCustomerInputChange} 
+                                placeholder="e.g. Website Referral" 
+                                className="h-8 text-xs bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {customerActiveTab === 'address' && (
+                    <div className="space-y-8 animate-in slide-in-from-right duration-500">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {customerFormData.addresses.map((addr, idx) => (
+                          <div key={idx} className="p-4 rounded-xl border border-primary/10 bg-slate-50/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-bold text-primary flex items-center">
+                                <MapPin className="w-4 h-4 mr-2" /> {addr.address_type} Address
+                              </h3>
+                              {idx === 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={copyBillingToShipping} className="text-[10px] h-7 bg-white shadow-sm border">
+                                  Same as Customer Address
+                                </Button>
+                              )}
+                            </div>
+                            <div className="grid gap-4">
+                              <Input placeholder="Street / Area" value={addr.street} onChange={(e) => handleCustomerAddressChange(idx, 'street', e.target.value)} />
+                              <div className="grid grid-cols-2 gap-4">
+                                <Input placeholder="City" value={addr.city} onChange={(e) => handleCustomerAddressChange(idx, 'city', e.target.value)} />
+                                <Input placeholder="State" value={addr.state} onChange={(e) => handleCustomerAddressChange(idx, 'state', e.target.value)} />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <Input placeholder="Zip Code" value={addr.zip_code} onChange={(e) => handleCustomerAddressChange(idx, 'zip_code', e.target.value)} />
+                                <Input placeholder="Country" value={addr.country} onChange={(e) => handleCustomerAddressChange(idx, 'country', e.target.value)} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {customerActiveTab === 'financial' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
+                        <Input type="number" min={0} name="credit_limit" value={customerFormData.credit_limit || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Credit Period (Days)</label>
+                        <Input type="number" min={0} name="credit_period" value={customerFormData.credit_period || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Opening Balance (₹)</label>
+                        <Input type="number" min={0} name="opening_balance" value={customerFormData.opening_balance || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                
+                <div className="p-4 md:p-6 border-t flex justify-between items-center bg-slate-50 shrink-0">
+                  <div>
+                    {customerActiveTab !== 'basic' && (
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={() => {
+                          if (customerActiveTab === 'address') setCustomerActiveTab('basic');
+                          if (customerActiveTab === 'financial') setCustomerActiveTab('address');
+                        }}
+                        className="rounded-full px-6 h-10 font-bold border-primary/20 hover:bg-primary/5 mr-3"
+                      >
+                        Back
+                      </Button>
+                    )}
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      onClick={() => setShowCustomerModal(false)}
+                      className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium"
+                    >
+                      Close Modal
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-3">
+                    {customerActiveTab !== 'financial' ? (
+                      <Button 
+                        type="button"
+                        onClick={() => {
+                          if (customerActiveTab === 'basic') {
+                            if (!validateCustomerForm()) return;
+                            setCustomerActiveTab('address');
+                          }
+                          else if (customerActiveTab === 'address') {
+                            for (const addr of customerFormData.addresses) {
+                              if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+                                 return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
+                              }
+                            }
+                            setCustomerActiveTab('financial');
+                          }
+                        }}
+                        className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                      >
+                        Next Section
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="button"
+                        onClick={saveNewCustomer} 
+                        loading={customerSubmitting}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Create Customer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+            </Card>
+        </div>
       )}
     </div>
   );

@@ -32,14 +32,12 @@ import { VisuallyHidden } from '@/components/ui/visually-hidden';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const DELIVERIES_API = `${API_BASE}/api/maxtron/sales/deliveries`;
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
-const VEHICLES_API = `${API_BASE}/api/maxtron/vehicles`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function DeliveryDetails() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,20 +99,17 @@ export default function DeliveryDetails() {
         }
       }
 
-      const [invRes, vehRes, prodRes, empRes] = await Promise.all([
+      const [invRes, prodRes, empRes] = await Promise.all([
         fetch(`${INVOICES_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${VEHICLES_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${PRODUCTS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
       const invData = await invRes.json();
-      const vehData = await vehRes.json();
       const prodData = await prodRes.json();
       const empData = await empRes.json();
       
       if (invData.success) setInvoices(invData.data);
-      if (vehData.success) setVehicles(vehData.data);
       if (prodData.success) setProducts(prodData.data);
       if (empData.success) {
           setEmployees(empData.data.filter((e: any) => 
@@ -187,7 +182,6 @@ export default function DeliveryDetails() {
     const newErrors: Record<string, boolean> = {};
     if (!formData.delivery_date) newErrors.delivery_date = true;
     if (!formData.invoice_id) newErrors.invoice_id = true;
-    if (!formData.vehicle_id) newErrors.vehicle_id = true;
     if (!formData.delivery_person_id) newErrors.delivery_person_id = true;
     if (!formData.receiver_name) newErrors.receiver_name = true;
     if (!formData.receiver_section) newErrors.receiver_section = true;
@@ -448,7 +442,7 @@ export default function DeliveryDetails() {
           </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Delivery Date <span className="text-rose-500">*</span></label>
                   <Input 
@@ -471,19 +465,6 @@ export default function DeliveryDetails() {
                     {invoices.map(i => <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>)}
                   </select>
                   {errors.invoice_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Please link an invoice</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Select Vehicle <span className="text-rose-500">*</span></label>
-                  <select 
-                    value={formData.vehicle_id} 
-                    onChange={e => setFormData({...formData, vehicle_id: e.target.value})} 
-                    className={`w-full flex h-10 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors ${errors.vehicle_id ? "border-rose-400 focus:ring-rose-200 ring-2 ring-rose-50" : "border-slate-200"}`}
-                  >
-                    <option value="">Choose Vehicle...</option>
-                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.registration_number} ({v.vehicle_type})</option>)}
-                  </select>
-                  {errors.vehicle_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">Vehicle selection is required</p>}
                 </div>
 
                 <div className="space-y-1.5">

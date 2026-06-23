@@ -53,7 +53,8 @@ export default function FinishedProductPage() {
     avg_count_per_kg: 0,
     company_id: '',
     description: '',
-    stock_threshold: 50
+    stock_threshold: 50,
+    hsn_code: ''
   });
 
   useEffect(() => {
@@ -165,7 +166,8 @@ export default function FinishedProductPage() {
       avg_count_per_kg: prod.avg_count_per_kg || 0,
       company_id: prod.company_id,
       description: prod.description || '',
-      stock_threshold: prod.stock_threshold || 50
+      stock_threshold: prod.stock_threshold || 50,
+      hsn_code: prod.hsn_code || ''
     });
     setShowForm(true);
   };
@@ -225,7 +227,8 @@ export default function FinishedProductPage() {
       avg_count_per_kg: 0,
       company_id: currentCompanyId,
       description: '',
-      stock_threshold: 50
+      stock_threshold: 50,
+      hsn_code: ''
     });
     setEditingId(null);
     setCodeError('');
@@ -345,10 +348,19 @@ export default function FinishedProductPage() {
                 <Input type="number" min="0" placeholder="0" value={formData.avg_count_per_kg || ''} onChange={e => setFormData({ ...formData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11" />
               </div>
               <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> HSN Code</label>
+                <Input 
+                  placeholder="e.g. 3920" 
+                  value={formData.hsn_code} 
+                  onChange={e => setFormData({ ...formData, hsn_code: e.target.value })}
+                  className="h-11 font-bold" 
+                />
+              </div>
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)</label>
                 <Input type="number" min="0" placeholder="50" value={formData.stock_threshold || ''} onChange={e => setFormData({ ...formData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} className="h-11 font-bold" />
               </div>
-              <div className="space-y-2 lg:col-span-2">
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Product Description</label>
                 <textarea 
                   className="w-full h-11 p-3 rounded-md border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
@@ -373,15 +385,16 @@ export default function FinishedProductPage() {
         <TableView
           title="Master Data Explorer"
           description="Explore and manage finished product specifications."
-          headers={['Code', 'Name', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
+          headers={['Code', 'Name', 'HSN Code', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
           data={products}
           loading={loading}
-          searchFields={['product_code', 'product_name', 'color']}
+          searchFields={['product_code', 'product_name', 'color', 'hsn_code']}
           searchPlaceholder="Search products..."
           renderRow={(p: any) => (
             <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none group">
               <td className="px-6 py-4 font-mono text-xs font-bold text-primary">{p.product_code}</td>
               <td className="px-6 py-4 font-bold text-primary">{p.product_name}</td>
+              <td className="px-6 py-4 font-mono text-xs font-bold">{p.hsn_code || '-'}</td>
               <td className="px-6 py-4 text-sm font-medium">{p.color}</td>
               <td className="px-6 py-4 text-sm">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>
               <td className="px-6 py-4 text-sm">{p.size}</td>

@@ -10,7 +10,7 @@ import {
     UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, 
     Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2,
     DollarSign, Lock, Copy, AlertCircle, Users, TrendingUp, 
-    FileDown, Download, Eye, EyeOff 
+    FileDown, Download, Eye, EyeOff, CreditCard 
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -38,6 +38,7 @@ export default function EmployeeInformationPage() {
   const [newEmployeePopup, setNewEmployeePopup] = useState<{username: string, password: string} | null>(null);
   const [showTempPassword, setShowTempPassword] = useState(false);
   const [showFormPassword, setShowFormPassword] = useState(false);
+  const [enableLogin, setEnableLogin] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [userTypes, setUserTypes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -108,21 +109,20 @@ export default function EmployeeInformationPage() {
     phone: '',
     aadhaar: '',
     type: '',
-    guarantor_name: '',
-    is_married: false,
-    family_details: '',
     category_id: '',
     basic_salary: 0,
+    bank_account_no: '',
+    bank_ifsc: '',
+    bank_branch: '',
+    bank_account_type: '',
+    bank_name: '',
     employee_qualifications: [] as any[],
     employee_experiences: [] as any[],
     employee_certificates: [] as any[],
     employee_licenses: [] as any[],
     employee_insurances: [] as any[],
     employee_passports: [] as any[],
-    employee_loans: [] as any[],
-    employee_targets: [] as any[],
-    employee_suspenses: [] as any[],
-    employee_incentive_slabs: [] as any[]
+    employee_loans: [] as any[]
   });
 
   const [categories, setCategories] = useState<any[]>([]);
@@ -254,6 +254,14 @@ export default function EmployeeInformationPage() {
       val = val.replace(/\D/g, '');
     }
 
+    if (name === 'bank_account_no') {
+      val = val.replace(/[^A-Za-z0-9]/g, '').slice(0, 30);
+    }
+
+    if (name === 'bank_ifsc') {
+      val = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+    }
+
     // Restrict negative values for number inputs
     if (type === 'number' && Number(val) < 0) {
       val = '0';
@@ -299,7 +307,7 @@ export default function EmployeeInformationPage() {
     const list = [...(formData[collection] as any[])];
     
     // Restrict negative values for numeric fields
-    const numericFields = ['loan_availed', 'balance_receivable', 'suspense_issued', 'minimum_target', 'slab_from', 'slab_to', 'incentive_percent'];
+    const numericFields = ['loan_availed', 'balance_receivable'];
     if (numericFields.includes(field) && Number(value) < 0) {
       value = '0';
     }
@@ -387,7 +395,10 @@ export default function EmployeeInformationPage() {
     const headers = [
       'Emp Code', 'Full Name', 'Username/Email', 'Phone', 'Aadhaar', 
       'Role', 'Category', 'Company', 'DOB', 'Salary', 
-      'Guarantor', 'Married', 'Has License', 'Has Passport'
+      'Has License', 'License Number', 'License Expiry', 'Vehicle Class',
+      'Has Passport', 
+      'Has Insurance', 'Policy Number', 'Insurance Provider', 'Insurance Type', 'Insurance Expiry', 'Insurance Premium',
+      'Bank Name', 'Account Number', 'IFSC Code', 'Branch', 'Account Type'
     ];
 
     const rows = employees.map(emp => {
@@ -411,10 +422,22 @@ export default function EmployeeInformationPage() {
         emp.companies?.company_name || 'N/A',
         formatDate(emp.date_of_birth),
         Number(emp.basic_salary) || 0,
-        emp.guarantor_name || 'N/A',
-        emp.is_married ? 'Yes' : 'No',
         emp.has_license ? 'Yes' : 'No',
-        emp.has_passport ? 'Yes' : 'No'
+        emp.employee_licenses?.[0]?.license_number || 'N/A',
+        formatDate(emp.employee_licenses?.[0]?.expiry_date),
+        emp.employee_licenses?.[0]?.class_of_vehicle || 'N/A',
+        emp.has_passport ? 'Yes' : 'No',
+        emp.has_insurance ? 'Yes' : 'No',
+        emp.employee_insurances?.[0]?.policy_number || 'N/A',
+        emp.employee_insurances?.[0]?.provider || 'N/A',
+        emp.employee_insurances?.[0]?.insurance_type || 'N/A',
+        formatDate(emp.employee_insurances?.[0]?.expiry_date),
+        Number(emp.employee_insurances?.[0]?.premium_amount) || 0,
+        emp.bank_name || 'N/A',
+        emp.bank_account_no || 'N/A',
+        emp.bank_ifsc || 'N/A',
+        emp.bank_branch || 'N/A',
+        emp.bank_account_type || 'N/A'
       ];
     });
     
@@ -434,9 +457,7 @@ export default function EmployeeInformationPage() {
       { key: 'date_of_birth', label: 'Date of Birth' },
       { key: 'phone', label: 'Phone Number' },
       { key: 'aadhaar', label: 'Aadhaar Card No' },
-      { key: 'category_id', label: 'Employee Category' },
-      { key: 'type', label: 'System Role' },
-      { key: 'username', label: 'Login Email' }
+      { key: 'category_id', label: 'Employee Category' }
     ];
 
     const newErrors: Record<string, string> = {};
@@ -447,13 +468,26 @@ export default function EmployeeInformationPage() {
       }
     }
 
+    // Conditional validation if login access is enabled
+    if (enableLogin) {
+      if (!formData.username || formData.username.trim() === '') {
+        newErrors.username = 'Login Email required when login setup is enabled';
+      }
+      if (!formData.type || formData.type.trim() === '') {
+        newErrors.type = 'System Role required when login setup is enabled';
+      }
+      if (!editingId && (!formData.password || formData.password.trim() === '')) {
+        newErrors.password = 'Password required when login setup is enabled';
+      }
+    }
+
     const nameRegex = /^[a-zA-Z0-9\s-]+$/;
     if (formData.name && !nameRegex.test(formData.name.trim())) {
         newErrors.name = 'Invalid characters (A-Z, 0-9, -)';
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.username && !emailRegex.test(formData.username)) {
+    if (formData.username && formData.username.trim() !== '' && !emailRegex.test(formData.username)) {
       newErrors.username = 'Invalid email format';
     }
 
@@ -461,11 +495,7 @@ export default function EmployeeInformationPage() {
       newErrors.phone = 'Must be 10 digits';
     }
 
-    if (!editingId && !formData.password) {
-      newErrors.password = 'Password required';
-    }
-
-    if (formData.password) {
+    if (formData.password && formData.password.trim() !== '') {
       if (formData.password.length < 8) newErrors.password = 'Min 8 characters';
       else if (!/[A-Z]/.test(formData.password)) newErrors.password = 'Need uppercase';
       else if (!/\d/.test(formData.password)) newErrors.password = 'Need number';
@@ -481,6 +511,28 @@ export default function EmployeeInformationPage() {
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
       if (age < 18) newErrors.date_of_birth = 'Must be 18+ years old';
+    }
+
+    const bankFields = ['bank_name', 'bank_account_no', 'bank_ifsc', 'bank_branch', 'bank_account_type'];
+    const hasAnyBankField = bankFields.some(k => !!formData[k as keyof typeof formData]?.toString().trim());
+
+    if (hasAnyBankField) {
+      if (!formData.bank_name?.trim()) newErrors.bank_name = 'Bank Name is required';
+      
+      if (!formData.bank_account_no?.trim()) {
+        newErrors.bank_account_no = 'Account Number is required';
+      } else if (!/^\d{9,20}$/.test(formData.bank_account_no)) {
+        newErrors.bank_account_no = 'Must be 9 to 20 digits';
+      }
+
+      if (!formData.bank_ifsc?.trim()) {
+        newErrors.bank_ifsc = 'IFSC Code is required';
+      } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.bank_ifsc)) {
+        newErrors.bank_ifsc = 'Invalid IFSC format (e.g. SBIN0001234)';
+      }
+
+      if (!formData.bank_branch?.trim()) newErrors.bank_branch = 'Branch is required';
+      if (!formData.bank_account_type?.trim()) newErrors.bank_account_type = 'Account Type is required';
     }
 
     setErrors(newErrors);
@@ -523,21 +575,6 @@ export default function EmployeeInformationPage() {
           ...l,
           loan_availed: Number(l.loan_availed) || 0,
           balance_receivable: Number(l.balance_receivable) || 0
-        })),
-        employee_suspenses: formData.employee_suspenses.map(s => ({
-          ...s,
-          suspense_issued: Number(s.suspense_issued) || 0,
-          balance_receivable: Number(s.balance_receivable) || 0
-        })),
-        employee_targets: formData.employee_targets.map(t => ({
-          ...t,
-          minimum_target: Number(t.minimum_target) || 0
-        })),
-        employee_incentive_slabs: formData.employee_incentive_slabs.map(slab => ({
-          ...slab,
-          slab_from: Number(slab.slab_from) || 0,
-          slab_to: Number(slab.slab_to) || 0,
-          incentive_percent: Number(slab.incentive_percent) || 0
         }))
       };
 
@@ -552,10 +589,10 @@ export default function EmployeeInformationPage() {
       const submittedCreds = { username: formData.username, password: formData.password };
       const data = await res.json();
       if (data.success) {
-        if (!editingId) {
+        if (!editingId && submittedCreds.username && submittedCreds.password) {
            setNewEmployeePopup(submittedCreds);
         } else {
-           success('Employee record updated successfully!');
+           success(editingId ? 'Employee record updated successfully!' : 'Employee record created successfully!');
         }
         setShowForm(false);
         setEditingId(null);
@@ -568,8 +605,9 @@ export default function EmployeeInformationPage() {
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
           ],
           company_id: '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '',
-          guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0,
-          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: []
+          category_id: '', basic_salary: 0,
+          bank_account_no: '', bank_ifsc: '', bank_branch: '', bank_account_type: '', bank_name: '',
+          employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: []
         });
         setErrors({});
         setActiveTab('personal');
@@ -585,6 +623,7 @@ export default function EmployeeInformationPage() {
 
   const editEmployee = (emp: any) => {
     setEditingId(emp.id);
+    setEnableLogin(!!emp.username);
     
     // Ensure we have at least one license/insurance entry if marked as a holder
     const hasLicense = !!emp.has_license;
@@ -614,21 +653,20 @@ export default function EmployeeInformationPage() {
       phone: emp.phone || '',
       aadhaar: emp.aadhaar || '',
       type: emp.type || '',
-      guarantor_name: emp.guarantor_name || '',
-      is_married: !!emp.is_married,
-      family_details: emp.family_details || '',
       category_id: emp.category_id || '',
       basic_salary: Number(emp.basic_salary) || 0,
+      bank_account_no: emp.bank_account_no || '',
+      bank_ifsc: emp.bank_ifsc || '',
+      bank_branch: emp.bank_branch || '',
+      bank_account_type: emp.bank_account_type || '',
+      bank_name: emp.bank_name || '',
       employee_qualifications: emp.employee_qualifications || [],
       employee_experiences: emp.employee_experiences || [],
       employee_certificates: emp.employee_certificates || [],
       employee_licenses: licenses,
       employee_insurances: insurances,
       employee_passports: emp.employee_passports || [],
-      employee_loans: emp.employee_loans || [],
-      employee_targets: emp.employee_targets || [],
-      employee_suspenses: emp.employee_suspenses || [],
-      employee_incentive_slabs: emp.employee_incentive_slabs || []
+      employee_loans: emp.employee_loans || []
     });
     setErrors({});
     setIsViewMode(false);
@@ -787,8 +825,11 @@ export default function EmployeeInformationPage() {
                       { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                       { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                     ],
-                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', guarantor_name: '', is_married: false, family_details: '', category_id: '', basic_salary: 0, employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [], employee_targets: [], employee_suspenses: [], employee_incentive_slabs: [] 
+                    company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', category_id: '', basic_salary: 0, 
+                    bank_account_no: '', bank_ifsc: '', bank_branch: '', bank_account_type: '', bank_name: '',
+                    employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [] 
                   });
+                  setEnableLogin(false);
                   setIsViewMode(false);
                   setShowForm(true);
                 }} className="h-10 md:h-11 bg-primary hover:bg-primary/95 text-white shadow-lg transition-all font-bold order-1 md:order-2 px-6 rounded-full flex-1 md:flex-none">
@@ -989,35 +1030,7 @@ export default function EmployeeInformationPage() {
                            </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Guarantor Name</label>
-                        <Input name="guarantor_name" value={formData.guarantor_name} onChange={handleInputChange} disabled={isViewMode} placeholder="Name of Guarantor" className="h-10" />
-                      </div>
-                      <div className="space-y-2 flex items-center h-full pt-4">
-                        <label className="flex items-center space-x-3 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 px-4 py-2 rounded-full border border-slate-100 hover:bg-slate-100 transition-colors">
-                          <Checkbox 
-                             name="is_married" 
-                             checked={formData.is_married} 
-                             onCheckedChange={(checked) => !isViewMode && setFormData({...formData, is_married: !!checked})} 
-                             disabled={isViewMode}
-                          />
-                          <span>Is Married?</span>
-                        </label>
-                      </div>
-                      {formData.is_married && (
-                          <div className="space-y-2 col-span-full">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Family Details</label>
-                            <textarea 
-                                name="family_details" 
-                                value={formData.family_details} 
-                                maxLength={50}
-                                onChange={handleInputChange as any} 
-                                disabled={isViewMode}
-                                placeholder="Spouse / Children details..."
-                                className="w-full h-20 p-3 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-primary/10 transition-all resize-none"
-                            />
-                          </div>
-                      )}
+
                     </div>
                   </CardContent>
           </Card>
@@ -1040,11 +1053,6 @@ export default function EmployeeInformationPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
-                <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} />
-                {errors.username && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
-              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">Company / Department Appointed</label>
@@ -1059,45 +1067,89 @@ export default function EmployeeInformationPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password' : 'Appoint Temporary Password'} {!editingId && !formData.password && <span className="text-muted-foreground/50 text-[10px]">(Necessary)</span>}</label>
-                <div className="relative">
-                  <Input 
-                    type={showFormPassword ? "text" : "password"} 
-                    name="password" 
-                    value={formData.password} 
-                    onChange={handleInputChange} 
-                    disabled={isViewMode} 
-                    placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
-                    className={`${errors.password ? 'border-destructive bg-amber-50' : ''}`}
+
+              <div className="pt-2 pb-2">
+                <div className="flex items-center space-x-3 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <Checkbox 
+                     id="enableLogin" 
+                     checked={enableLogin} 
+                     onCheckedChange={(checked) => {
+                       if (!isViewMode) {
+                         setEnableLogin(!!checked);
+                         if (!checked) {
+                           setFormData(prev => ({ ...prev, username: '', password: '', type: '' }));
+                           setErrors(prev => {
+                             const newErr = { ...prev };
+                             delete newErr.username;
+                             delete newErr.password;
+                             delete newErr.type;
+                             return newErr;
+                           });
+                         }
+                       }
+                     }}
+                     disabled={isViewMode}
                   />
-                  {!isViewMode && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowFormPassword(!showFormPassword)}
-                    >
-                      {showFormPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />}
-                    </Button>
-                  )}
+                  <div className="grid gap-1.5 leading-none">
+                    <label htmlFor="enableLogin" className="text-sm font-bold text-primary cursor-pointer select-none">
+                       Enable System Login Access
+                    </label>
+                    <p className="text-[10px] text-muted-foreground font-medium">Allow this employee to sign in to the application with email & password.</p>
+                  </div>
                 </div>
-                {errors.password && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground/80">System Role</label>
-                <Select value={formData.type} onValueChange={(val) => updateFormData('type', val)} disabled={isViewMode}>
-                  <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
-                    <SelectValue placeholder="Select System Role" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200">
-                    {userTypes.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {enableLogin && (
+                <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
+                    <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} />
+                    {errors.username && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">{editingId ? 'Change Password (Optional)' : 'Appoint Temporary Password'} {!editingId && !formData.password && <span className="text-muted-foreground/50 text-[10px]">(Necessary)</span>}</label>
+                    <div className="relative">
+                      <Input 
+                        type={showFormPassword ? "text" : "password"} 
+                        name="password" 
+                        value={formData.password} 
+                        onChange={handleInputChange} 
+                        disabled={isViewMode} 
+                        placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
+                        className={`${errors.password ? 'border-destructive bg-amber-50' : ''}`}
+                      />
+                      {!isViewMode && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowFormPassword(!showFormPassword)}
+                        >
+                          {showFormPassword ? <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />}
+                        </Button>
+                      )}
+                    </div>
+                    {errors.password && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.password}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">System Role</label>
+                    <Select value={formData.type} onValueChange={(val) => updateFormData('type', val)} disabled={isViewMode}>
+                      <SelectTrigger className="w-full h-10 border-input bg-transparent px-3 py-1 text-sm shadow-sm font-medium">
+                        <SelectValue placeholder="Select System Role" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-slate-200">
+                        {userTypes.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.type && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.type}</p>}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1233,7 +1285,82 @@ export default function EmployeeInformationPage() {
                             className="h-12 font-black text-xl text-primary bg-white border-primary/20 rounded-xl text-right"
                             min="0"
                           />
-                       </div>
+                    </div>
+                  </div>
+                </div>
+                  
+                  {/* Bank Details */}
+                  <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 mb-6">
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center mb-4">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Bank Account Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Bank Name</label>
+                        <Input 
+                          name="bank_name" 
+                          value={formData.bank_name || ''} 
+                          onChange={handleInputChange} 
+                          disabled={isViewMode} 
+                          placeholder="e.g. State Bank of India" 
+                          className={`h-10 text-sm font-bold bg-white border-primary/20 ${errors.bank_name ? 'border-destructive bg-amber-50' : ''}`}
+                        />
+                        {errors.bank_name && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in">{errors.bank_name}</p>}
+                      </div>
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Branch</label>
+                        <Input 
+                          name="bank_branch" 
+                          value={formData.bank_branch || ''} 
+                          onChange={handleInputChange} 
+                          disabled={isViewMode} 
+                          placeholder="e.g. MG Road Branch" 
+                          className={`h-10 text-sm font-bold bg-white border-primary/20 ${errors.bank_branch ? 'border-destructive bg-amber-50' : ''}`}
+                        />
+                        {errors.bank_branch && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in">{errors.bank_branch}</p>}
+                      </div>
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Account Number</label>
+                        <Input 
+                          name="bank_account_no" 
+                          value={formData.bank_account_no || ''} 
+                          onChange={handleInputChange} 
+                          disabled={isViewMode} 
+                          placeholder="e.g. 1234567890" 
+                          className={`h-10 text-sm font-bold bg-white border-primary/20 ${errors.bank_account_no ? 'border-destructive bg-amber-50' : ''}`}
+                        />
+                        {errors.bank_account_no && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in">{errors.bank_account_no}</p>}
+                      </div>
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">IFSC Code</label>
+                        <Input 
+                          name="bank_ifsc" 
+                          value={formData.bank_ifsc || ''} 
+                          onChange={handleInputChange} 
+                          disabled={isViewMode} 
+                          placeholder="e.g. SBIN0001234" 
+                          className={`h-10 text-sm font-bold bg-white border-primary/20 ${errors.bank_ifsc ? 'border-destructive bg-amber-50' : ''}`}
+                        />
+                        {errors.bank_ifsc && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in">{errors.bank_ifsc}</p>}
+                      </div>
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest mr-1">Account Type</label>
+                        <Select 
+                          value={formData.bank_account_type || ''} 
+                          onValueChange={(val) => updateFormData('bank_account_type', val)} 
+                          disabled={isViewMode}
+                        >
+                          <SelectTrigger className={`h-10 w-full border-primary/20 bg-white text-sm shadow-sm font-bold ${errors.bank_account_type ? 'border-destructive bg-amber-50' : ''}`}>
+                            <SelectValue placeholder="Select Account Type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border-slate-200">
+                            <SelectItem value="SAVINGS">Savings Account</SelectItem>
+                            <SelectItem value="CURRENT">Current Account</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.bank_account_type && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in">{errors.bank_account_type}</p>}
+                      </div>
                     </div>
                   </div>
                   
@@ -1572,125 +1699,7 @@ export default function EmployeeInformationPage() {
                               </div>
                            </div>
                         ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-foreground/90">Suspense Amounts</h3>
-                        {!isViewMode && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => {
-                              if (formData.employee_suspenses.length >= 3) {
-                                info('Maximum limit of 3 suspense entries reached.');
-                                return;
-                              }
-                              addNestedRow('employee_suspenses', { suspense_issued: '', balance_receivable: '' });
-                            }}
-                          >
-                             <Plus className="w-4 h-4 mr-1" /> Add Row
-                          </Button>
-                        )}
-
-                      </div>
-                      <div className="space-y-3">
-                         {formData.employee_suspenses.map((susp, idx) => (
-                           <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                                <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Suspense Issued {!susp.suspense_issued ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  placeholder="Suspense Issued" 
-                                  value={Number(susp.suspense_issued) || ''} 
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'suspense_issued', val);
-                                  }} 
-                                  disabled={isViewMode} 
-                                />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground">Balance Received {!susp.balance_receivable ? <span className="text-[10px] font-medium lowercase">(₹)</span> : ''}</label>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  placeholder="Balance Received" 
-                                  value={Number(susp.balance_receivable) || ''} 
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val.length <= 10) handleNestedRowChange('employee_suspenses', idx, 'balance_receivable', val);
-                                  }} 
-                                  disabled={isViewMode} 
-                                />
-                              </div>
-
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_suspenses', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <hr className="border-border" />
-
-                  {/* Targets & Incentives */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                     <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-foreground/90">Minimum Targets</h3>
-                        {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_targets', { minimum_target: '' })}>
-                             <Plus className="w-4 h-4 mr-1" /> Add Target
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                         {formData.employee_targets.map((tgt, idx) => (
-                            <div key={idx} className="flex gap-2 items-center animate-in fade-in">
-                               <div className="flex-1 space-y-1">
-                                 <label className="text-xs text-muted-foreground font-bold tracking-tight">Minimum Target {!tgt.minimum_target && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
-                                 <Input type="number" min="0" placeholder="Target Minimum" value={Number(tgt.minimum_target) || ''} onChange={(e) => handleNestedRowChange('employee_targets', idx, 'minimum_target', e.target.value)} disabled={isViewMode} />
-                               </div>
-                                {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_targets', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                           </div>
-                        ))}
-                      </div>
-                     </div>
-
-                     <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-foreground/90">Incentive Slabs</h3>
-                        {!isViewMode && (
-                          <Button size="sm" variant="outline" onClick={() => addNestedRow('employee_incentive_slabs', { slab_from: '', slab_to: '', incentive_percent: '' })}>
-                             <Plus className="w-4 h-4 mr-1" /> Add Slab
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                         {formData.employee_incentive_slabs.map((slab, idx) => (
-                            <div key={idx} className="grid lg:flex gap-2 items-center animate-in fade-in">
-                               <Input type="number" min="0" placeholder="From Amount" value={Number(slab.slab_from) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_from', e.target.value)} disabled={isViewMode} />
-                               <Input type="number" min="0" placeholder="To Amount" value={Number(slab.slab_to) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'slab_to', e.target.value)} disabled={isViewMode} />
-                               <Input type="number" min="0" max="100" placeholder="Percent (%)" value={Number(slab.incentive_percent) || ''} onChange={(e) => handleNestedRowChange('employee_incentive_slabs', idx, 'incentive_percent', e.target.value)} disabled={isViewMode} />
-                               {!isViewMode && (
-                                 <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removeNestedRow('employee_incentive_slabs', idx)}>
-                                   <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               )}
-                           </div>
-                        ))}
-                      </div>
+     </div>
                      </div>
                   </div>
 

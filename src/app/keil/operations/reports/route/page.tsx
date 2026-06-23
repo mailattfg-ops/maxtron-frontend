@@ -48,7 +48,8 @@ export default function RouteCollectionReportPage() {
     const [currentCompanyId, setCurrentCompanyId] = useState('');
     
     const [filters, setFilters] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date_from: new Date().toISOString().split('T')[0],
+        date_to: new Date().toISOString().split('T')[0],
         route_id: 'all'
     });
 
@@ -83,7 +84,7 @@ export default function RouteCollectionReportPage() {
                 const rData = await rRes.json();
                 if (rData.success) setRoutes(rData.data);
                 
-                await fetchReport(coId, filters.date, filters.route_id);
+                await fetchReport(coId, filters.date_from, filters.date_to, filters.route_id);
             }
         } catch (err) {
             console.error('Error fetching initial data:', err);
@@ -92,12 +93,13 @@ export default function RouteCollectionReportPage() {
         }
     };
 
-    const fetchReport = async (coId: string, date: string, routeId: string) => {
+    const fetchReport = async (coId: string, dateFrom: string, dateTo: string, routeId: string) => {
         setLoading(true);
         const token = localStorage.getItem('token');
         try {
             let url = `${COLLECTION_API}?company_id=${coId}`;
-            if (date) url += `&date=${date}`;
+            if (dateFrom) url += `&date_from=${dateFrom}`;
+            if (dateTo) url += `&date_to=${dateTo}`;
             if (routeId && routeId !== 'all') url += `&route_id=${routeId}`;
             
             const res = await fetch(url, {
@@ -115,7 +117,13 @@ export default function RouteCollectionReportPage() {
     const handleFilterChange = (key: string, value: string) => {
         const newFilters = { ...filters, [key]: value };
         setFilters(newFilters);
-        fetchReport(currentCompanyId, newFilters.date, newFilters.route_id);
+        fetchReport(currentCompanyId, newFilters.date_from, newFilters.date_to, newFilters.route_id);
+    };
+
+    const clearDateRange = () => {
+        const newFilters = { ...filters, date_from: '', date_to: '' };
+        setFilters(newFilters);
+        fetchReport(currentCompanyId, '', '', newFilters.route_id);
     };
 
     const handleExport = async () => {
@@ -255,7 +263,10 @@ export default function RouteCollectionReportPage() {
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `route_collection_detailed_${filters.date}.xlsx`);
+        const rangeStr = filters.date_from && filters.date_to 
+            ? `${filters.date_from}_to_${filters.date_to}` 
+            : filters.date_from || filters.date_to || 'all';
+        saveAs(blob, `route_collection_detailed_${rangeStr}.xlsx`);
         success("Detailed report exported to Excel.");
     };
 
@@ -346,24 +357,40 @@ export default function RouteCollectionReportPage() {
                             <CardTitle className="text-lg font-bold text-primary">Route Collection Summary</CardTitle>
                             <CardDescription className="text-muted-foreground font-medium text-xs">Analysis of field performance and collection yield.</CardDescription>
                         </div>
-                        <div className="flex flex-col md:flex-row gap-3">
-                            <div className="relative group">
-                                <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
-                                <Input 
-                                    type="date" 
-                                    className="pl-9 pr-8 h-10 rounded-md border-primary/20 bg-background font-bold text-xs md:text-sm w-full md:w-44"
-                                    value={filters.date}
-                                    onChange={e => handleFilterChange('date', e.target.value)}
-                                />
-                                {filters.date && (
-                                    <button 
-                                        onClick={() => handleFilterChange('date', '')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                )}
+                        <div className="flex flex-col md:flex-row gap-3 items-end">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-black text-primary/50 uppercase tracking-widest ml-1">From</span>
+                                <div className="relative group">
+                                    <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60 pointer-events-none" />
+                                    <Input 
+                                        type="date" 
+                                        className="pl-9 h-10 rounded-md border-primary/20 bg-background font-bold text-xs md:text-sm w-full md:w-44"
+                                        value={filters.date_from}
+                                        onChange={e => handleFilterChange('date_from', e.target.value)}
+                                    />
+                                </div>
                             </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-black text-primary/50 uppercase tracking-widest ml-1">To</span>
+                                <div className="relative group">
+                                    <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60 pointer-events-none" />
+                                    <Input 
+                                        type="date" 
+                                        className="pl-9 h-10 rounded-md border-primary/20 bg-background font-bold text-xs md:text-sm w-full md:w-44"
+                                        value={filters.date_to}
+                                        min={filters.date_from || undefined}
+                                        onChange={e => handleFilterChange('date_to', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            {(filters.date_from || filters.date_to) && (
+                                <button 
+                                    onClick={clearDateRange}
+                                    className="h-10 px-3 flex items-center gap-1 text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors border border-primary/10 rounded-md bg-white"
+                                >
+                                    <X className="w-3 h-3" /> Clear
+                                </button>
+                            )}
                             <div className="relative">
                                 <Map className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/60" />
                                 <Select value={filters.route_id} onValueChange={(val) => handleFilterChange('route_id', val)}>

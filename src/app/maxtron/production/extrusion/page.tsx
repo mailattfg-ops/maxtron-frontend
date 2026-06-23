@@ -109,12 +109,14 @@ export default function ExtrusionPage() {
       }
       
       if (empData.success && Array.isArray(empData.data)) {
-        setEmployees(empData.data.filter((e: any) => 
+        console.log("Raw fetched employees:", empData.data);
+        console.log("activeTenant:", activeTenant);
+        const filtered = empData.data.filter((e: any) => 
           (e.companies?.company_name?.toUpperCase() === activeTenant ||
-          e.companies?.company_name?.toUpperCase().includes(activeTenant)) &&
-          (e.employee_categories?.category_name?.toLowerCase().includes('production') ||
-           e.user_types?.name?.toLowerCase().includes('production'))
-        ));
+          e.companies?.company_name?.toUpperCase().includes(activeTenant))
+        );
+        console.log("Filtered employees:", filtered);
+        setEmployees(filtered);
       }
 
       if (coId) await fetchBatches(coId);
@@ -143,7 +145,8 @@ export default function ExtrusionPage() {
             ...formData,
             consumption_id: id,
             raw_material_consumed_qty: consumption.quantity_used,
-            machine_no: consumption.machine_no || formData.machine_no
+            machine_no: consumption.machine_no || formData.machine_no,
+            operator_id: consumption.issued_by || formData.operator_id
         });
     } else {
         setFormData({
@@ -268,8 +271,7 @@ export default function ExtrusionPage() {
       { field: 'product_id', label: 'Finished Product' },
       { field: 'shift', label: 'Shift' },
       { field: 'machine_no', label: 'Machine Number' },
-      { field: 'operator_id', label: 'Operator' },
-      { field: 'supervisor_id', label: 'Supervisor' },
+      { field: 'operator_id', label: 'Employee' },
       { field: 'consumption_id', label: 'Consumption Record' }
     ];
 
@@ -308,7 +310,10 @@ export default function ExtrusionPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          supervisor_id: formData.supervisor_id === 'none' ? '' : formData.supervisor_id
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -408,7 +413,7 @@ export default function ExtrusionPage() {
                 </Select>
               </div>
               <div className="space-y-4 grid items-end mb-0 gap-2 pb-0">
-                <label htmlFor="requires_printing" className="text-sm flex font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0">
+                <label htmlFor="requires_printing" className="text-sm flex font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0 items-center gap-2">
                     <SquareCheck className="w-4 h-4 text-primary" /> Printing
                 </label>
                 <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 h-10 w-full">
@@ -454,36 +459,6 @@ export default function ExtrusionPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <User className="w-4 h-4 text-primary" /> Operator <span className="text-rose-500">*</span>
-                </label>
-                <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
-                    <SelectValue placeholder="Select Operator" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-input">
-                    {employees.map(e => (
-                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <User className="w-4 h-4 text-primary" /> Supervisor <span className="text-rose-500">*</span>
-                </label>
-                <Select value={formData.supervisor_id} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
-                    <SelectValue placeholder="Select Supervisor" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-input">
-                    {employees.map(e => (
-                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                    <Layers className="w-4 h-4 text-primary" /> Consumption Record <span className="text-rose-500">*</span>
                 </label>
                 <Select value={formData.consumption_id} onValueChange={(val) => handleConsumptionSelect(val)}>
@@ -495,6 +470,37 @@ export default function ExtrusionPage() {
                       <SelectItem key={c.id} value={c.id}>
                         {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
                       </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Employee <span className="text-rose-500">*</span>
+                </label>
+                <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Employee" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Supervisor
+                </label>
+                <Select value={formData.supervisor_id || 'none'} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                    <SelectValue placeholder="Select Supervisor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-input">
+                    <SelectItem value="none">Select Supervisor</SelectItem>
+                    {employees.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -559,7 +565,7 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator', 'Actions']}
+          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Employee', 'Actions']}
           data={batches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}
