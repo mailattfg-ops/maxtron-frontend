@@ -10,7 +10,7 @@ import {
   User, Calendar, DollarSign, Package, Briefcase, 
   ChevronRight, Info, AlertCircle, Edit2, CheckCircle2,
   AlertTriangle, XCircle, UserPlus, Phone, Mail, FileText, 
-  CreditCard, MapPin
+  CreditCard, MapPin, Truck, Copy, Check
 } from 'lucide-react';
 import { 
   Select, 
@@ -258,7 +258,15 @@ export default function CustomerOrderEntry() {
     round_off: 0,
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }
-    ]
+    ],
+    transporter_id: '',
+    transporter_name: '',
+    trans_distance: 0,
+    trans_mode: '1',
+    vehicle_no: '',
+    vehicle_type: 'R',
+    trans_doc_no: '',
+    trans_doc_date: ''
   });
 
   useEffect(() => {
@@ -400,7 +408,15 @@ export default function CustomerOrderEntry() {
         gst_percent: i.gst_percent || 0,
         gst_amount: i.gst_amount || 0,
         total_value: i.total_value || (i.quantity * i.rate)
-      }))
+      })),
+      transporter_id: order.transporter_id || '',
+      transporter_name: order.transporter_name || '',
+      trans_distance: Number(order.trans_distance || 0),
+      trans_mode: order.trans_mode || '1',
+      vehicle_no: order.vehicle_no || '',
+      vehicle_type: order.vehicle_type || 'R',
+      trans_doc_no: order.trans_doc_no || '',
+      trans_doc_date: order.trans_doc_date ? order.trans_doc_date.split('T')[0] : ''
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -485,6 +501,25 @@ export default function CustomerOrderEntry() {
       }
     }
 
+    // E-Way Bill Validations
+    if (orderCalculations.netAmount > 50000) {
+      if (!formData.trans_distance || formData.trans_distance <= 0 || formData.trans_distance > 4000) {
+        error('Please enter a valid transport distance between 1 and 4000 km.');
+        return;
+      }
+      if (formData.trans_mode === '1') { // Road
+        if (!formData.vehicle_no) {
+          error('Vehicle number is required for Road transport mode.');
+          return;
+        }
+        const cleanVehicle = formData.vehicle_no.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        const vehicleRegex = /^[A-Z]{2}\d{2}[A-Z0-9]{1,3}\d{4}$|^[A-Z]{2}\d{6}$|^BH\d{2}[A-Z]{1,2}\d{4}$/;
+        if (!vehicleRegex.test(cleanVehicle)) {
+          error('Please enter a valid Indian vehicle registration number (e.g. MH-12-AB-1234 or MH12AB1234).');
+          return;
+        }
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -525,7 +560,15 @@ export default function CustomerOrderEntry() {
             section_type: 'customer order',
             is_round_off: false,
             round_off: 0,
-            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }]
+            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }],
+            transporter_id: '',
+            transporter_name: '',
+            trans_distance: 0,
+            trans_mode: '1',
+            vehicle_no: '',
+            vehicle_type: 'R',
+            trans_doc_no: '',
+            trans_doc_date: ''
         });
         fetchOrders();
       } else {
@@ -875,6 +918,123 @@ export default function CustomerOrderEntry() {
                 </div>
               </div>
 
+              {orderCalculations.netAmount > 50000 && (
+                <Card className="border-amber-200 bg-amber-50/10 shadow-sm rounded-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+                  <CardHeader className="bg-amber-500/[0.03] border-b border-amber-200/30 py-4 px-6">
+                    <CardTitle className="text-sm font-bold text-amber-700 flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-amber-500 animate-bounce" />
+                      E-Way Bill Generation Required
+                    </CardTitle>
+                    <CardDescription className="text-xs text-amber-600/80">
+                      Grand Total exceeds ₹50,000. Please provide transport and vehicle details.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-slate-700">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Transporter ID / GSTIN
+                        </label>
+                        <Input
+                          placeholder="e.g. 27AAAAA1111A1Z1"
+                          value={formData.transporter_id}
+                          onChange={e => setFormData({ ...formData, transporter_id: e.target.value.toUpperCase() })}
+                          className="border-slate-200 h-10 text-xs font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Transporter Name
+                        </label>
+                        <Input
+                          placeholder="e.g. Blue Dart Logistics"
+                          value={formData.transporter_name}
+                          onChange={e => setFormData({ ...formData, transporter_name: e.target.value })}
+                          className="border-slate-200 h-10 text-xs font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Distance (in km) *
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={4000}
+                          placeholder="e.g. 150"
+                          value={formData.trans_distance || ''}
+                          onChange={e => setFormData({ ...formData, trans_distance: parseFloat(e.target.value) || 0 })}
+                          className="border-slate-200 h-10 text-xs font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 text-primary">
+                          Transport Mode *
+                        </label>
+                        <Select value={formData.trans_mode} onValueChange={(val) => setFormData({ ...formData, trans_mode: val })}>
+                          <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-semibold h-10 text-xs">
+                            <SelectValue placeholder="Choose Mode..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border-slate-200">
+                            <SelectItem value="1">Road</SelectItem>
+                            <SelectItem value="2">Rail</SelectItem>
+                            <SelectItem value="3">Air</SelectItem>
+                            <SelectItem value="4">Ship</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Vehicle Number {formData.trans_mode === '1' && '*'}
+                        </label>
+                        <Input
+                          placeholder="e.g. MH-12-AB-1234"
+                          value={formData.vehicle_no}
+                          onChange={e => setFormData({ ...formData, vehicle_no: e.target.value.toUpperCase() })}
+                          className="border-slate-200 font-mono h-10 text-xs font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 text-primary">
+                          Vehicle Type
+                        </label>
+                        <Select value={formData.vehicle_type} onValueChange={(val) => setFormData({ ...formData, vehicle_type: val })}>
+                          <SelectTrigger className="w-full border-slate-200 bg-white shadow-sm font-semibold h-10 text-xs">
+                            <SelectValue placeholder="Choose Type..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border-slate-200">
+                            <SelectItem value="R">Regular</SelectItem>
+                            <SelectItem value="O">Over Dimensional Cargo (ODC)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Transport Doc No
+                        </label>
+                        <Input
+                          placeholder="LR No / Consignment No"
+                          value={formData.trans_doc_no}
+                          onChange={e => setFormData({ ...formData, trans_doc_no: e.target.value })}
+                          className="border-slate-200 h-10 text-xs font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                          Transport Doc Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={formData.trans_doc_date}
+                          onChange={e => setFormData({ ...formData, trans_doc_date: e.target.value })}
+                          className="border-slate-200 h-10 text-xs font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Additional Remarks</label>
                   <Input 
@@ -903,7 +1063,7 @@ export default function CustomerOrderEntry() {
         <TableView
           title="Recent Orders"
           description="Log of latest customer orders and their status."
-          headers={['Order No', 'Date', 'Type', 'Customer', 'Executive', 'Total Value', 'Items', 'Actions']}
+          headers={['Order No', 'Date', 'Type', 'Customer', 'Executive', 'Total Value', 'E-Way Bill', 'Items', 'Actions']}
           data={orders}
           loading={loading}
           searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
@@ -933,6 +1093,62 @@ export default function CustomerOrderEntry() {
                   </div>
               </td>
               <td className="px-6 py-4 font-black text-slate-900">₹ {o.total_value?.toLocaleString()}</td>
+              <td className="px-6 py-4">
+                  {Number(o.net_amount) <= 50000 ? (
+                      <span className="text-xs text-slate-400 font-semibold italic">Not Req.</span>
+                  ) : (
+                      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                          {o.ewb_status === 'GENERATED' ? (
+                              <>
+                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <Check className="w-3 h-3 text-emerald-600 font-bold" />
+                                      Generated
+                                  </span>
+                                  {o.ewb_no && (
+                                      <div className="flex items-center gap-1 group/copy select-all">
+                                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                              {o.ewb_no}
+                                          </span>
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  navigator.clipboard.writeText(o.ewb_no);
+                                                  success('E-Way Bill number copied!');
+                                              }}
+                                              className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-all"
+                                              title="Copy E-Way Bill Number"
+                                          >
+                                              <Copy className="w-3 h-3" />
+                                          </button>
+                                      </div>
+                                  )}
+                                  {o.ewb_valid_till && (
+                                      <span className="text-[9px] text-slate-500 font-medium">
+                                          Valid till: {new Date(o.ewb_valid_till).toLocaleDateString()}
+                                      </span>
+                                  )}
+                              </>
+                          ) : o.ewb_status === 'FAILED' ? (
+                              <>
+                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={o.ewb_error || 'Generation failed'}>
+                                      <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                      Failed
+                                  </span>
+                                  {o.ewb_error && (
+                                      <span className="text-[9px] text-rose-500 max-w-[150px] truncate block font-medium" title={o.ewb_error}>
+                                          {o.ewb_error}
+                                      </span>
+                                  )}
+                              </>
+                          ) : (
+                              <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  <Info className="w-3 h-3 text-amber-600 animate-pulse" />
+                                  Pending
+                              </span>
+                          )}
+                      </div>
+                  )}
+              </td>
               <td className="px-6 py-4">
                   <div className="flex items-center gap-1">
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-[10px] font-bold text-slate-500 border">
