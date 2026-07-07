@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-    Truck, 
+import {
+    Truck,
     Calendar,
     BarChart3,
     TrendingUp,
@@ -49,10 +49,10 @@ export default function FleetReportsPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const compData = await compRes.json();
-            
+
             let coId = '';
             if (compData.success && Array.isArray(compData.data)) {
-                const activeCo = compData.data.find((c: any) => 
+                const activeCo = compData.data.find((c: any) =>
                     c.company_name?.toUpperCase().includes('KEIL')
                 );
                 if (activeCo) {
@@ -143,8 +143,8 @@ export default function FleetReportsPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                 <Card className="lg:col-span-2 border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
+            <div className="grid  gap-8">
+                <Card className="lg:col-span-2 border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
                     <CardHeader className="bg-slate-50 border-b border-slate-100 p-8 rounded-[3rem] ">
                         <div className="grid md:flex justify-between items-center gap-4 md:gap-0">
                             <div>
@@ -165,7 +165,7 @@ export default function FleetReportsPage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
+                                <thead className="bg-slate-50 text-muted-foreground font-bold uppercase text-[10px] tracking-widest border-b">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle ID</th>
                                         <th className="px-6 py-4 text-center">Fuel Efficiency</th>
@@ -212,61 +212,9 @@ export default function FleetReportsPage() {
                             </table>
                         </div>
                     </CardContent>
-                 </Card>
+                </Card>
 
-                 <div className="space-y-8">
-                     <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-slate-900 text-white p-8 group relative">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/80/10 rounded-full blur-3xl -mr-16 -mt-16" />
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-8 flex items-center gap-2">
-                            <Clock className="w-4 h-4" /> Next Maintenance Window
-                        </h3>
-                        <div className="space-y-6">
-                            {intelligence.upcoming.map((u: any) => {
-                                const d = new Date(u.date);
-                                const month = d.toLocaleString('default', { month: 'short' }).toUpperCase();
-                                const day = d.getDate();
-                                return (
-                                    <div key={u.id} className="flex items-center gap-6">
-                                        <div className="w-16 h-16 rounded-2xl bg-white/5 flex flex-col items-center justify-center border border-white/10">
-                                            <span className="text-xs font-black opacity-40">{month}</span>
-                                            <span className="text-2xl font-black italic">{day}</span>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-base font-black tracking-tight text-white group-hover:text-amber-400 transition-colors">{u.vehicle}</span>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">{u.work}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {intelligence.upcoming.length === 0 && (
-                                <div className="py-10 text-center">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">No Maintenance Scheduled</p>
-                                </div>
-                            )}
-                        </div>
-                        <Button className="w-full mt-10 h-14 rounded-2xl bg-white text-slate-900 hover:bg-primary/10 font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/80/10">
-                            Schedule Technical Audit
-                        </Button>
-                     </Card>
 
-                     <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-primary text-white p-8 relative overflow-hidden">
-                        <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-24 -mb-24" />
-                        <div className="relative z-10">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Environmental Impact</h3>
-                            <h2 className="text-4xl font-black italic mb-6">Carbon Prot.</h2>
-                            <div className="space-y-2">
-                                <div className="h-4 w-full bg-white/10 rounded-full overflow-hidden p-1">
-                                    <div className="h-full bg-emerald-400 rounded-full" style={{ width: '64%' }} />
-                                </div>
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                    <span className="opacity-60 text-emerald-100 italic">Net Emissions Reduction</span>
-                                    <span className="text-emerald-300">64% / Level 3</span>
-                                </div>
-                            </div>
-                            <p className="text-[9px] font-bold opacity-50 mt-8 leading-relaxed">System calculating historical biodiesel integration metrics and route optimization efficiency.</p>
-                        </div>
-                     </Card>
-                 </div>
             </div>
         </div>
     );
