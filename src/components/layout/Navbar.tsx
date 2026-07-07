@@ -44,10 +44,10 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
           />
         </div> */}
       </div>
-      
+
       <div className="flex items-center space-x-6">
         {mounted && false && (
-          <button 
+          <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2.5 rounded-xl bg-accent/50 text-accent-foreground hover:bg-accent transition-all duration-300 group"
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
@@ -59,12 +59,12 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
             )}
           </button>
         )}
-        
+
         {/* <button className="relative text-foreground/70 hover:text-primary transition-colors">
           <Bell className="w-6 h-6" />
           <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
         </button> */}
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <div className="flex items-center cursor-pointer group">
@@ -81,7 +81,7 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 mt-2">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
             {/* <DropdownMenuSeparator />
             <DropdownMenuItem>Profile Settings</DropdownMenuItem>
             <DropdownMenuItem>Theme Options</DropdownMenuItem>

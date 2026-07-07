@@ -188,7 +188,7 @@ export default function ProductionSummaryReport() {
       <TableView
         title="Production Report"
         description="Filtered view of production efficiency."
-        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Output (Kg)', 'Actions']}
+        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Output (Kg)']}
         data={filtered}
         loading={loading}
         searchFields={['batch_number', 'finished_products.product_name']}
@@ -201,30 +201,6 @@ export default function ProductionSummaryReport() {
             <td className="px-6 py-4 text-xs font-semibold text-slate-500">{b.machine_no}</td>
             <td className="px-6 py-4 text-slate-600 font-medium">{b.raw_material_consumed_qty}</td>
             <td className="px-6 py-4 font-black text-primary">{b.extrusion_output_qty}</td>
-            <td className="px-6 py-4 text-right">
-              <div className="flex items-center justify-end gap-2">
-                {canEdit && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleEdit(b.id)}
-                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDelete(b.id)}
-                    className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            </td>
           </tr>
         )}
       />
