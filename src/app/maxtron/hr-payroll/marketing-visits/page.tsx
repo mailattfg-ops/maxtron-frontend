@@ -104,11 +104,21 @@ export default function MarketingVisitsPage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      // Fetch Companies
-      const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const compData = await compRes.json();
+      // 1. Fetch Companies and Employees in parallel
+      const [compRes, empRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/companies`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(EMPLOYEES_API, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      const [compData, empData] = await Promise.all([
+        compRes.json(),
+        empRes.json()
+      ]);
+
       let coId = '';
       if (compData.success) {
         const activeCo = compData.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
@@ -119,14 +129,8 @@ export default function MarketingVisitsPage() {
         }
       }
 
-      // Fetch Employees (Filter by Marketing/Sales types)
-      const empRes = await fetch(EMPLOYEES_API, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const empData = await empRes.json();
       if (empData.success) {
         const maxtronEmps = empData.data.filter((e: any) => e.companies?.company_name?.toUpperCase() === activeTenant);
-        // Filter specifically for Marketing roles if data supports it, otherwise keep Maxtron emps
         const marketingEmps = maxtronEmps.filter((e: any) => 
           e.categories?.category_name?.toLowerCase().includes('marketing') || 
           e.user_types?.name?.toLowerCase().includes('marketing') ||
@@ -135,26 +139,35 @@ export default function MarketingVisitsPage() {
         setEmployees(marketingEmps.length > 0 ? marketingEmps : maxtronEmps);
       }
 
-      // Fetch Customers for the dropdown
-      const custRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers?company_id=${coId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const custData = await custRes.json();
-      if (custData.success) {
-        setCustomers(custData.data);
-      }
+      // 2. Fetch Customers, Products, Offers, and Visits in parallel using coId
+      if (coId) {
+        const [custRes, prodRes, offersRes, visitsRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers?company_id=${coId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/inventory/fg-stock-summary?company_id=${coId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${OFFERS_API}?company_id=${coId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${MARKETING_API}?company_id=${coId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
 
-      // Fetch Finished Products for Quotations (FG Stock Summary)
-      const prodRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/inventory/fg-stock-summary?company_id=${coId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const prodData = await prodRes.json();
-      if (prodData.success) {
-        setProducts(prodData.data);
-      }
+        const [custData, prodData, offersData, visitsData] = await Promise.all([
+          custRes.json(),
+          prodRes.json(),
+          offersRes.json(),
+          visitsRes.json()
+        ]);
 
-      fetchOffers(coId);
-      fetchVisits(coId);
+        if (custData.success) setCustomers(custData.data);
+        if (prodData.success) setProducts(prodData.data);
+        if (offersData.success) setOffers(offersData.data);
+        if (visitsData.success) setVisitRecords(visitsData.data);
+      }
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {

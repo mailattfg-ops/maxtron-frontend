@@ -916,6 +916,7 @@ export default function AttendancePage() {
                   <Input 
                     type="date"
                     value={formData.date}
+                    max={new Date().toLocaleDateString('en-CA')}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     className="h-11 font-bold border-slate-200 rounded-xl shadow-sm focus:ring-primary/20"
                   />
@@ -1029,6 +1030,7 @@ export default function AttendancePage() {
                   <Input 
                     type="date" 
                     value={bulkDate} 
+                    max={new Date().toLocaleDateString('en-CA')}
                     onChange={(e) => handleBulkDateChange(e.target.value)}
                     className="text-xs font-bold outline-none bg-transparent h-7 border-none shadow-none p-0 w-fit"
                   />

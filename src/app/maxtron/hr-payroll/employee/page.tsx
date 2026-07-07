@@ -949,7 +949,7 @@ export default function EmployeeInformationPage() {
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee Code</label>
                         <Input 
                           name="employee_code" 
-                          value={!editingId ? 'AUTO-GENERATED' : formData.employee_code} 
+                          value={formData.employee_code || 'AUTO-GENERATED'} 
                           disabled={true} 
                           className="h-10 md:h-11 bg-slate-50 font-mono font-bold text-primary text-sm"
                         />
@@ -1751,7 +1751,7 @@ export default function EmployeeInformationPage() {
 
             return (
               <>
-                <div className="border border-border/60 rounded-xl mx-2 overflow-x-auto lg:overflow-hidden shadow-sm">
+                <div className="border border-border/60 rounded-xl mx-2 overflow-x-auto shadow-sm">
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-primary/5 text-primary border-b border-border/60">
                       <tr>

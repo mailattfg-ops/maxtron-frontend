@@ -1072,8 +1072,8 @@ export default function CustomerOrderEntry() {
               <td className="px-6 py-4 font-mono font-black text-primary">{o.order_number}</td>
               <td className="px-6 py-4 text-xs font-semibold text-slate-600">{new Date(o.order_date).toLocaleDateString()}</td>
               <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                    o.section_type === 'customer sample' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                  <span className={`text-[10px] font-black uppercase tracking-tighter ${
+                    o.section_type === 'customer sample' ? 'text-amber-600' : 'text-blue-600'
                   }`}>
                     {o.section_type || 'Standard'}
                   </span>

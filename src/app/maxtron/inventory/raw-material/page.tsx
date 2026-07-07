@@ -687,12 +687,12 @@ export default function RawMaterialPage() {
                 <span className="font-mono text-[11px] text-slate-600 font-bold">{m.hsn_code || '-'}</span>
               </td>
               <td className="px-6 py-4">
-                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-slate-50 text-slate-500 border border-slate-200">
+                <span className="text-[10px] font-black tracking-widest text-slate-500">
                   {m.rm_type_code || 'N/A'}
                 </span>
               </td>
               <td className="px-6 py-4">
-                <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="text-[10px] font-black tracking-widest text-slate-600">
                   {m.grade || 'STD'}
                 </span>
               </td>
