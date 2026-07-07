@@ -125,8 +125,40 @@ export default function ScorecardPage() {
                         <PieChart className="w-5 h-5 text-secondary" />
                         Income vs Expenditure
                     </h3>
-                    <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 px-10">
-                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs italic text-center">Visualization Matrix Interface Coming Soon</p>
+                    <div className="flex-1 flex flex-col justify-center space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-bold">
+                                <span className="text-emerald-600 flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> Total Sales (Inflow)</span>
+                                <span className="font-mono text-slate-800">₹{(data?.totalSales || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${(data?.totalSales + data?.totalExpenses) > 0 ? (data?.totalSales / (data?.totalSales + data?.totalExpenses)) * 100 : 50}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-bold">
+                                <span className="text-rose-600 flex items-center gap-1.5"><ArrowUpRight className="w-4 h-4" /> Operating Expenses</span>
+                                <span className="font-mono text-slate-800">₹{(data?.totalExpenses || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${(data?.totalSales + data?.totalExpenses) > 0 ? (data?.totalExpenses / (data?.totalSales + data?.totalExpenses)) * 100 : 50}%` }}></div>
+                            </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4 text-center">
+                            <div className="bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100/50">
+                                <p className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">Inflow Ratio</p>
+                                <p className="text-lg font-black text-emerald-600 mt-0.5">
+                                    {((data?.totalSales / ((data?.totalSales + data?.totalExpenses) || 1)) * 100).toFixed(1)}%
+                                </p>
+                            </div>
+                            <div className="bg-rose-50/50 p-3 rounded-2xl border border-rose-100/50">
+                                <p className="text-[9px] text-rose-700 font-bold uppercase tracking-wider">Expense Ratio</p>
+                                <p className="text-lg font-black text-rose-600 mt-0.5">
+                                    {((data?.totalExpenses / ((data?.totalSales + data?.totalExpenses) || 1)) * 100).toFixed(1)}%
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-white bg-gradient-to-br from-primary to-primary overflow-hidden relative">

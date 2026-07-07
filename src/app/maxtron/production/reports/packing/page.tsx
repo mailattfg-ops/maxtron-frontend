@@ -191,7 +191,7 @@ export default function PackingSummaryReport() {
       <TableView
         title="Packing Activity Log"
         description="Historical data for packed units."
-        headers={['Date', 'Batch No', 'Product', 'Bundles', 'Qty/Bundle', 'Total Packed', 'Actions']}
+        headers={['Date', 'Batch No', 'Product', 'Bundles', 'Qty/Bundle', 'Total Packed']}
         data={filtered}
         loading={loading}
         searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
@@ -205,30 +205,6 @@ export default function PackingSummaryReport() {
               <td className="px-6 py-4 font-black">{p.bundle_count}</td>
               <td className="px-6 py-4 text-xs font-semibold text-slate-500">{p.qty_per_bundle}</td>
               <td className="px-6 py-4 font-black text-primary">{p.total_packed_qty} Kg</td>
-              <td className="px-6 py-4 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {canEdit && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleEdit(p.id)}
-                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(p.id)}
-                      className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </td>
             </tr>
           );
         }}

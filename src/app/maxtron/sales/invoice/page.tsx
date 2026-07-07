@@ -9,7 +9,7 @@ import {
   FileText, Plus, Trash2, Save, X, Search, 
   User, Calendar, DollarSign, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
-  Truck, ArrowRight
+  Truck, ArrowRight, Check, Copy
 } from 'lucide-react';
 import { 
   Select, 
@@ -313,6 +313,40 @@ export default function SalesInvoiceEntry() {
     });
   };
 
+  const handleGenerateEInvoice = async (id: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${INVOICES_API}/${id}/einvoice`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const result = await res.json();
+      if (result.success) {
+        setAlert({
+          show: true,
+          type: 'success',
+          title: 'E-Invoice Generated',
+          message: `IRN successfully registered. Ack No: ${result.data?.einvoice_ack_no || 'N/A'}`
+        });
+        fetchInvoices();
+      } else {
+        setAlert({
+          show: true,
+          type: 'error',
+          title: 'E-Invoice Failed',
+          message: result.message || 'Could not generate E-Invoice.'
+        });
+        fetchInvoices();
+      }
+    } catch (err) {
+      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Could not connect to server.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectedCustomer = customers.find(c => c.id === formData.customer_id);
 
   return (
@@ -541,7 +575,7 @@ export default function SalesInvoiceEntry() {
         <TableView
           title="Posted Invoices"
           description="History of all sales invoices generated."
-          headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'Actions']}
+          headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'E-Invoice', 'Actions']}
           data={invoices}
           loading={loading}
           searchFields={['invoice_number', 'customers.customer_name']}
@@ -552,6 +586,64 @@ export default function SalesInvoiceEntry() {
               <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
               <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
               <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
+              <td className="px-6 py-4">
+                  {!inv.customers?.gst_no ? (
+                      <span className="text-xs text-slate-400 font-semibold italic">Not Req (B2C)</span>
+                  ) : (
+                      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                          {inv.einvoice_status === 'GENERATED' ? (
+                              <>
+                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <Check className="w-3 h-3 text-emerald-600 font-bold" />
+                                      Generated
+                                  </span>
+                                  {inv.einvoice_ack_no && (
+                                      <div className="flex items-center gap-1 group/copy select-all">
+                                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`IRN: ${inv.einvoice_irn}`}>
+                                              Ack: {inv.einvoice_ack_no}
+                                          </span>
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  navigator.clipboard.writeText(inv.einvoice_irn);
+                                                  success('E-Invoice IRN copied!');
+                                              }}
+                                              className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-all"
+                                              title="Copy IRN"
+                                          >
+                                              <Copy className="w-3 h-3" />
+                                          </button>
+                                      </div>
+                                  )}
+                              </>
+                          ) : inv.einvoice_status === 'FAILED' ? (
+                              <div className="flex flex-col gap-1 items-start">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.einvoice_error}>
+                                      <XCircle className="w-3 h-3 text-rose-600" />
+                                      Failed
+                                  </span>
+                                  <Button 
+                                      onClick={() => handleGenerateEInvoice(inv.id)}
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600"
+                                  >
+                                      Retry
+                                  </Button>
+                              </div>
+                          ) : (
+                              <Button 
+                                  onClick={() => handleGenerateEInvoice(inv.id)}
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-7 text-[10px] px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 rounded-full font-bold"
+                              >
+                                  Generate IRN
+                              </Button>
+                          )}
+                      </div>
+                  )}
+              </td>
               <td className="px-2 py-4">
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10 font-bold"><Edit2 className="w-4 h-4" /></Button>
