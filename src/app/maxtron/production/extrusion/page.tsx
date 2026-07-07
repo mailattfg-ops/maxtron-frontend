@@ -58,7 +58,7 @@ export default function ExtrusionPage() {
     extrusion_output_qty: 0,
     date: new Date().toISOString().split('T')[0],
     company_id: '',
-    consumption_id: '',
+    consumption_ids: [] as string[],
     requires_printing: true
   });
 
@@ -113,7 +113,9 @@ export default function ExtrusionPage() {
         console.log("activeTenant:", activeTenant);
         const filtered = empData.data.filter((e: any) => 
           (e.companies?.company_name?.toUpperCase() === activeTenant ||
-          e.companies?.company_name?.toUpperCase().includes(activeTenant))
+          e.companies?.company_name?.toUpperCase().includes(activeTenant)) &&
+          e.user_types?.name?.toLowerCase() !== 'admin' &&
+          e.username?.toLowerCase() !== 'admin@maxtron.com'
         );
         console.log("Filtered employees:", filtered);
         setEmployees(filtered);
@@ -138,23 +140,27 @@ export default function ExtrusionPage() {
     }
   }, [batches, showForm, editingId]);
 
-  const handleConsumptionSelect = (id: string) => {
-    const consumption = consumptions.find(c => c.id === id);
-    if (consumption) {
-        setFormData({
-            ...formData,
-            consumption_id: id,
-            raw_material_consumed_qty: consumption.quantity_used,
-            machine_no: consumption.machine_no || formData.machine_no,
-            operator_id: consumption.issued_by || formData.operator_id
-        });
+  const handleToggleConsumption = (id: string) => {
+    const currentIds = formData.consumption_ids || [];
+    const isSelected = currentIds.includes(id);
+    let newIds: string[];
+    if (isSelected) {
+      newIds = currentIds.filter((cid: string) => cid !== id);
     } else {
-        setFormData({
-            ...formData,
-            consumption_id: '',
-            raw_material_consumed_qty: 0
-        });
+      newIds = [...currentIds, id];
     }
+
+    const selectedConsumptions = consumptions.filter((c: any) => newIds.includes(c.id));
+    const totalQty = selectedConsumptions.reduce((sum: number, c: any) => sum + (Number(c.quantity_used) || 0), 0);
+
+    const firstConsumption = selectedConsumptions[0];
+    setFormData({
+      ...formData,
+      consumption_ids: newIds,
+      raw_material_consumed_qty: totalQty,
+      machine_no: firstConsumption?.machine_no || formData.machine_no,
+      operator_id: firstConsumption?.issued_by || formData.operator_id
+    });
   };
 
   const fetchBatches = async (coId?: string) => {
@@ -215,7 +221,7 @@ export default function ExtrusionPage() {
       extrusion_output_qty: 0,
       date: new Date().toISOString().split('T')[0],
       company_id: currentCompanyId,
-      consumption_id: '',
+      consumption_ids: [],
       requires_printing: true
     });
   };
@@ -233,7 +239,9 @@ export default function ExtrusionPage() {
       extrusion_output_qty: b.extrusion_output_qty,
       date: b.date.split('T')[0],
       company_id: b.company_id,
-      consumption_id: b.consumption_id,
+      consumption_ids: Array.isArray(b.material_consumptions)
+        ? b.material_consumptions.map((c: any) => c.id)
+        : b.consumption_id ? [b.consumption_id] : [],
       requires_printing: b.requires_printing ?? true
     });
     setShowForm(true);
@@ -271,8 +279,7 @@ export default function ExtrusionPage() {
       { field: 'product_id', label: 'Finished Product' },
       { field: 'shift', label: 'Shift' },
       { field: 'machine_no', label: 'Machine Number' },
-      { field: 'operator_id', label: 'Employee' },
-      { field: 'consumption_id', label: 'Consumption Record' }
+      { field: 'operator_id', label: 'Employee' }
     ];
 
     for (const { field, label } of requiredFields) {
@@ -280,6 +287,11 @@ export default function ExtrusionPage() {
         error(`${label} is required.`);
         return;
       }
+    }
+
+    if (!formData.consumption_ids || formData.consumption_ids.length === 0) {
+      error("At least one Consumption Record is required.");
+      return;
     }
 
     // Alphanumeric, spaces, dashes, and underscores only for Machine No
@@ -331,13 +343,18 @@ export default function ExtrusionPage() {
   };
 
   const availableConsumptions = useMemo(() => {
-    // Collect all consumption_ids already used in batches
-    const usedConsumptionIds = batches.map(b => b.consumption_id).filter(id => !!id);
-    // Filter consumptions: unused OR explicitly selected in the current editing state
+    const otherBatches = batches.filter(b => b.id !== editingId);
+    const usedConsumptionIds = otherBatches.flatMap(b => {
+      if (Array.isArray(b.material_consumptions)) {
+        return b.material_consumptions.map((mc: any) => mc.id);
+      }
+      return b.consumption_id ? [b.consumption_id] : [];
+    }).filter(id => !!id);
+
     return consumptions.filter(c => 
-        !usedConsumptionIds.includes(c.id) || c.id === formData.consumption_id
+        !usedConsumptionIds.includes(c.id) || (formData.consumption_ids || []).includes(c.id)
     );
-  }, [consumptions, batches, formData.consumption_id]);
+  }, [consumptions, batches, formData.consumption_ids, editingId]);
 
   const filteredBatches = batches.filter(b => 
     b.batch_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -457,22 +474,48 @@ export default function ExtrusionPage() {
                   }} 
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-3">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <Layers className="w-4 h-4 text-primary" /> Consumption Record <span className="text-rose-500">*</span>
+                   <Layers className="w-4 h-4 text-primary" /> Select Consumption Records (Multiple) <span className="text-rose-500">*</span>
                 </label>
-                <Select value={formData.consumption_id} onValueChange={(val) => handleConsumptionSelect(val)}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
-                    <SelectValue placeholder="Select Consumption Record" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-input">
-                    {availableConsumptions.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.raw_materials?.rm_name} - {c.quantity_used} Kg ({new Date(c.consumption_date).toLocaleDateString()})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="border border-input rounded-xl p-3 bg-white max-h-48 overflow-y-auto space-y-2 shadow-sm">
+                  {availableConsumptions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2 text-center">No unused consumption records available.</p>
+                  ) : (
+                    availableConsumptions.map(c => {
+                      const isChecked = (formData.consumption_ids || []).includes(c.id);
+                      return (
+                        <div 
+                          key={c.id} 
+                          onClick={() => handleToggleConsumption(c.id)}
+                          className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${
+                            isChecked ? 'border-primary bg-primary/5' : 'border-slate-100'
+                          }`}
+                        >
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 accent-primary" 
+                            checked={isChecked}
+                            onChange={() => {}} 
+                          />
+                          <div className="flex-1 text-xs">
+                            <span className="font-bold text-slate-800">{c.raw_materials?.rm_name}</span>
+                            <span className="mx-2 text-slate-400">|</span>
+                            <span className="font-mono font-bold text-primary">{c.quantity_used} Kg</span>
+                            <span className="mx-2 text-slate-400">|</span>
+                            <span className="text-slate-500">{new Date(c.consumption_date).toLocaleDateString()}</span>
+                            {c.machine_no && (
+                              <>
+                                <span className="mx-2 text-slate-400">|</span>
+                                <span className="text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{c.machine_no}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
@@ -591,9 +634,22 @@ export default function ExtrusionPage() {
                 </td>
                 <td className="px-6 py-4 text-xs font-semibold text-foreground/60">{b.machine_no}</td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-700">{b.material_consumptions?.raw_materials?.rm_name || 'N/A'}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{b.material_consumptions?.raw_materials?.rm_code || ''}</span>
+                  <div className="flex flex-col gap-1 max-w-[200px]">
+                    {b.material_consumptions && b.material_consumptions.length > 0 ? (
+                      b.material_consumptions.map((mc: any, idx: number) => (
+                        <div key={idx} className="flex flex-col bg-slate-50 p-1.5 rounded border border-slate-100 text-xs">
+                          <span className="font-bold text-primary">{mc.raw_materials?.rm_name || 'N/A'}</span>
+                          <span className="text-[10px] text-slate-600 font-mono font-black">{mc.quantity_used} Kg</span>
+                        </div>
+                      ))
+                    ) : b.material_consumptions?.raw_materials?.rm_name ? (
+                      <div className="flex flex-col bg-slate-50 p-1.5 rounded border border-slate-100 text-xs">
+                         <span className="font-bold text-primary">{b.material_consumptions.raw_materials.rm_name}</span>
+                         <span className="text-[10px] text-slate-600 font-mono font-black">{b.material_consumptions.quantity_used} Kg</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic text-xs">N/A</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4">
