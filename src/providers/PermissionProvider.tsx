@@ -26,7 +26,7 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
     const fetchUserPermissions = async () => {
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
-        if (!token || !storedUser) {
+        if (!token || token === 'null' || token === 'undefined' || !storedUser || storedUser === 'null') {
             setLoading(false);
             return;
         }
@@ -56,6 +56,12 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
                 console.error(`[PermissionProvider] API Error (${res.status}):`, errorData);
+                if (res.status === 401) {
+                    console.warn('[PermissionProvider] Token invalid or expired. Logging out...');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                }
                 return;
             }
 
