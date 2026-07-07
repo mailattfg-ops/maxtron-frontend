@@ -75,7 +75,6 @@ export const maxtronSidebarMenu: NavItem[] = [
         permissionKey: "sales_view",
         children: [
             { title: "Customer Information", path: "/maxtron/sales/customers", permissionKey: "sales_customers_view" },
-            { title: "Vehicle Information", path: "/maxtron/sales/vehicles", permissionKey: "sales_vehicles_view" },
             { title: "Customer Order Entry", path: "/maxtron/sales/order", permissionKey: "sales_orders_view" },
             { title: "Sales / Invoice Entry", path: "/maxtron/sales/invoice", permissionKey: "sales_invoice_view" },
             { title: "Delivery Details", path: "/maxtron/sales/delivery", permissionKey: "sales_orders_view" },

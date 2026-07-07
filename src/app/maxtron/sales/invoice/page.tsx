@@ -446,6 +446,7 @@ export default function SalesInvoiceEntry() {
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">HSN Code</th>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Quantity</th>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Rate (₹)</th>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-40">Value (₹)</th>
@@ -466,6 +467,9 @@ export default function SalesInvoiceEntry() {
                                                 <option key={p.id} value={p.id}>{p.product_code} - {p.product_name}</option>
                                             ))}
                                         </select>
+                                    </td>
+                                    <td className="p-4 text-center font-mono text-xs font-bold text-slate-500">
+                                        {products.find(p => p.id === item.product_id)?.hsn_code || '-'}
                                     </td>
                                     <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
                                     <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>

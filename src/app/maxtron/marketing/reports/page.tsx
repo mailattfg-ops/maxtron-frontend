@@ -19,7 +19,9 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   XCircle,
-  Clock3
+  Clock3,
+  Mail,
+  Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -131,8 +133,11 @@ export default function MarketingReportsPage() {
       'Client': v.customer_name,
       'Contact Person': v.customers?.contact_person || 'N/A',
       'Contact Number': v.customers?.mobile_no || 'N/A',
+      'Email ID': v.customers?.email_id || 'N/A',
       'Probability': v.probability || 'N/A',
       'Location': v.location,
+      'Vehicle Number': v.vehicle_number || 'N/A',
+      'Vehicle Description': v.vehicle_description || 'N/A',
       'Type': v.is_quotation ? 'Quotation' : 'Visit Only',
       'Status': v.quotation_status || 'N/A',
       'Quotation Details': v.quotation_items?.map((i: any) => `${i.product_name || i.product} (Qty: ${i.quantity}, Amt: ${i.amount})`).join('; ') || '',
@@ -283,10 +288,21 @@ export default function MarketingReportsPage() {
                           <span className="text-secondary font-bold">M:</span> {rec.customers.mobile_no}
                         </div>
                       )}
+                      {rec.customers?.email_id && (
+                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                          <Mail className="w-2.5 h-2.5 text-slate-400" /> {rec.customers.email_id}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-0.5 truncate max-w-[150px]" title={rec.location}>
                         <MapPin className="w-2.5 h-2.5 text-rose-400" />
                         {rec.location}
                       </div>
+                      {rec.vehicle_number && (
+                        <div className="flex items-center gap-1.5 text-[9px] text-primary/80 font-bold mt-0.5" title={rec.vehicle_description || 'No description'}>
+                          <Truck className="w-2.5 h-2.5 text-primary/60 shrink-0" />
+                          {rec.vehicle_number}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>

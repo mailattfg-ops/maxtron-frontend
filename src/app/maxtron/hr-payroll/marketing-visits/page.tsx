@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone, Mail, Truck } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -91,7 +91,9 @@ export default function MarketingVisitsPage() {
     quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
     quotation_delivery_date: '',
     quotation_status: 'Pending',
-    probability: ''
+    probability: '',
+    vehicle_number: '',
+    vehicle_description: ''
   });
 
   useEffect(() => {
@@ -492,7 +494,9 @@ export default function MarketingVisitsPage() {
       quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
       quotation_delivery_date: '',
       quotation_status: 'Pending',
-      probability: ''
+      probability: '',
+      vehicle_number: '',
+      vehicle_description: ''
     });
   };
 
@@ -522,7 +526,9 @@ export default function MarketingVisitsPage() {
         : [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
       quotation_status: rec.quotation_status || 'Pending',
-      probability: rec.probability || ''
+      probability: rec.probability || '',
+      vehicle_number: rec.vehicle_number || '',
+      vehicle_description: rec.vehicle_description || ''
     });
     setShowForm(true);
   };
@@ -534,7 +540,7 @@ export default function MarketingVisitsPage() {
       return;
     }
 
-    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Probability', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
+    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Email ID', 'Probability', 'Location', 'Vehicle Number', 'Vehicle Description', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
     const rows = activeRecords.map(rec => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -550,8 +556,11 @@ export default function MarketingVisitsPage() {
         rec.customer_name || 'N/A',
         rec.customers?.contact_person || 'N/A',
         rec.customers?.mobile_no || 'N/A',
+        rec.customers?.email_id || 'N/A',
         rec.probability || 'N/A',
         rec.location || 'N/A',
+        rec.vehicle_number || 'N/A',
+        rec.vehicle_description || 'N/A',
         formatDate(rec.visit_date),
         rec.time_in || 'N/A',
         rec.time_out || 'N/A',
@@ -1010,6 +1019,31 @@ export default function MarketingVisitsPage() {
                         onChange={(e) => setFormData({...formData, feedback: e.target.value})}
                       />
                     </div>
+                    <div className="space-y-4 lg:col-span-3 bg-slate-50/50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
+                      <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-primary" /> Vehicle Info
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-foreground/80">Vehicle Number</label>
+                          <Input 
+                            placeholder="e.g. KA-01-MJ-1234"
+                            value={formData.vehicle_number}
+                            onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-foreground/80">Description</label>
+                          <Input 
+                            placeholder="e.g. Service pickup truck"
+                            value={formData.vehicle_description}
+                            onChange={(e) => setFormData({...formData, vehicle_description: e.target.value})}
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-4 lg:col-span-3 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
                       <div className="flex items-center gap-3">
                         <label htmlFor="is_quotation" className="relative inline-flex items-center cursor-pointer">
@@ -1240,11 +1274,17 @@ export default function MarketingVisitsPage() {
                         <div className="flex flex-col gap-0.5 mt-1 text-[10px] text-muted-foreground font-medium">
                           {rec.customers.contact_person && <span className="flex items-center text-primary/80"><Briefcase className="w-2.5 h-2.5 mr-1" /> {rec.customers.contact_person}</span>}
                           {rec.customers.mobile_no && <span className="flex items-center"><Phone className="w-2.5 h-2.5 mr-1" /> {rec.customers.mobile_no}</span>}
+                          {rec.customers.email_id && <span className="flex items-center"><Mail className="w-2.5 h-2.5 mr-1 text-slate-400" /> {rec.customers.email_id}</span>}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 text-xs text-muted-foreground">
                       <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
+                      {rec.vehicle_number && (
+                        <div className="flex items-center mt-1 text-[10px] text-primary/80 font-semibold" title={rec.vehicle_description || 'No description'}>
+                          <Truck className="w-3 h-3 mr-1 text-primary/60 shrink-0" /> {rec.vehicle_number}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-mono text-[11px] text-primary">

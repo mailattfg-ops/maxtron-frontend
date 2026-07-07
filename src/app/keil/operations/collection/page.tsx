@@ -150,19 +150,15 @@ export default function DailyCollectionEntryPage() {
             const data = await res.json();
             if (data.success) {
                 setAssignedHces(data.data);
-                // Initialize entries map
                 const initialEntries: Record<string, any> = {};
                 data.data.forEach((a: any) => {
                     initialEntries[a.hce_id] = {
                         hce_id: a.hce_id,
                         is_visited: false,
-                        start_time: '',
-                        end_time: '',
-                        yellow_bags: 0,
-                        red_bags: 0,
-                        white_containers: 0,
-                        bottle_containers: 0,
-                        remarks: ''
+                        collection_amount: 0,
+                        note: '',
+                        remark: '',
+                        visit_status: 'Not Visited'
                     };
                 });
                 setEntries(initialEntries);
@@ -195,12 +191,9 @@ export default function DailyCollectionEntryPage() {
     const calculateTotals = () => {
         const visitedList = Object.values(entries).filter(e => e.is_visited);
         
-        let yellow = 0, red = 0, white = 0, bottle = 0;
+        let totalAmount = 0;
         visitedList.forEach(e => {
-            yellow += (e.yellow_bags || 0);
-            red += (e.red_bags || 0);
-            white += (e.white_containers || 0);
-            bottle += (e.bottle_containers || 0);
+            totalAmount += (parseFloat(e.collection_amount) || 0);
         });
 
         const total_assigned = assignedHces.length;
@@ -228,7 +221,7 @@ export default function DailyCollectionEntryPage() {
             visited_others,
             missed_bedded,
             missed_others,
-            yellow, red, white, bottle
+            totalAmount
         };
     };
 
@@ -258,27 +251,6 @@ export default function DailyCollectionEntryPage() {
 
         // Detailed Validation for visited HCEs
         const visitedEntries = Object.values(entries).filter(e => e.is_visited);
-
-        for (const entry of visitedEntries) {
-            const hce = assignedHces.find(a => a.hce_id === entry.hce_id);
-            const name = hce?.keil_hces?.hce_name || "Facility";
-
-            if (!entry.start_time || !entry.end_time) {
-                error(`Timestamps (In/Out) required for ${name}.`);
-                return;
-            }
-
-            if (entry.end_time <= entry.start_time) {
-                error(`Facility visit 'Time Out' must be later than 'Time In' for ${name}.`);
-                return;
-            }
-
-            const totalWaste = (entry.yellow_bags || 0) + (entry.red_bags || 0) + (entry.white_containers || 0) + (entry.bottle_containers || 0);
-            if (totalWaste === 0) {
-                error(`At least one waste category must be entered for ${name}.`);
-                return;
-            }
-        }
 
         if (await confirm({ message: "Confirm saving today's collection data?" })) {
             const token = localStorage.getItem('token');
@@ -325,7 +297,7 @@ export default function DailyCollectionEntryPage() {
         }
 
         const routeData = routes.find(r => r.id === selectedRouteId);
-        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Time In', 'Time Out', 'Yellow Bags', 'Red Bags', 'White Cont.', 'Bottle/Blue Cont.', 'Remarks'];
+        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Collection Amount', 'Remark'];
         
         const rows = assignedHces.map(a => {
             const entry = entries[a.hce_id] || {};
@@ -334,13 +306,9 @@ export default function DailyCollectionEntryPage() {
                 a.keil_hces?.hce_code || 'N/A',
                 a.keil_hces?.hce_place || 'N/A',
                 entry.is_visited ? 'YES' : 'NO',
-                entry.start_time || '-',
-                entry.end_time || '-',
-                entry.yellow_bags || 0,
-                entry.red_bags || 0,
-                entry.white_containers || 0,
-                entry.bottle_containers || 0,
-                entry.remarks || '-'
+                entry.visit_status || 'Not Visited',
+                entry.collection_amount || 0,
+                entry.remark || '-'
             ];
         });
 
@@ -540,22 +508,13 @@ export default function DailyCollectionEntryPage() {
             {/* HCE Entries Table */}
             {selectedRouteId ? (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-yellow-500/10 border border-yellow-200 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-yellow-700 tracking-widest">Yellow Vol.</span>
-                            <span className="text-2xl font-black text-yellow-800">{totals.yellow} Bags</span>
-                        </div>
-                        <div className="bg-rose-500/10 border border-rose-200 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-rose-700 tracking-widest">Red Vol.</span>
-                            <span className="text-2xl font-black text-rose-800">{totals.red} Bags</span>
-                        </div>
-                        <div className="bg-slate-500/10 border border-slate-200 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-slate-700 tracking-widest">White Vol.</span>
-                            <span className="text-2xl font-black text-slate-800">{totals.white} Boxes</span>
-                        </div>
-                        <div className="bg-primary/80/10 border border-primary/20 p-4 rounded-2xl flex flex-col gap-1 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-primary tracking-widest">Bottle Vol.</span>
-                            <span className="text-2xl font-black text-primary">{totals.bottle} Units</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-primary/5 border border-primary/10 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                            <div>
+                                <span className="text-[10px] font-black uppercase text-primary/60 tracking-wider">Gross Collection Amount</span>
+                                <h3 className="text-2xl font-black text-primary mt-1">₹ {totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                            </div>
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg">₹</div>
                         </div>
                     </div>
 
@@ -566,19 +525,24 @@ export default function DailyCollectionEntryPage() {
                                     <tr>
                                         <th className="px-6 py-4 text-center">Visit</th>
                                         <th className="px-6 py-4">Managed Facility Detail</th>
-                                        <th className="px-6 py-4 text-center">Timestamps (In/Out)</th>
-                                        <th className="px-6 py-4 text-center">Categories (Y / R / W / B)</th>
-                                        <th className="px-6 py-4">Observation Notes</th>
+                                        <th className="px-6 py-4">Visit Status</th>
+                                        <th className="px-6 py-4">Collection Amount</th>
+                                        <th className="px-6 py-4">Remark</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {assignedHces.map(a => {
                                         const isVisited = entries[a.hce_id]?.is_visited;
+                                        const visitStatus = entries[a.hce_id]?.visit_status || 'Not Visited';
                                         return (
                                             <tr key={a.id} className={`group border-b border-slate-50 transition-all ${isVisited ? 'bg-primary/10/30' : 'hover:bg-slate-50'}`}>
                                                 <td className="px-6 py-6 text-center">
                                                     <div 
-                                                        onClick={() => updateEntry(a.hce_id, 'is_visited', !isVisited)}
+                                                        onClick={() => {
+                                                            const newVisited = !isVisited;
+                                                            updateEntry(a.hce_id, 'is_visited', newVisited);
+                                                            updateEntry(a.hce_id, 'visit_status', newVisited ? 'Visited' : 'Not Visited');
+                                                        }}
                                                         className={`mx-auto w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all border-2 ${
                                                             isVisited 
                                                             ? 'bg-primary border-primary shadow-lg shadow-primary/20 text-white scale-105' 
@@ -597,42 +561,47 @@ export default function DailyCollectionEntryPage() {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="flex flex-col gap-2">
-                                                            <div className="relative">
-                                                                <Clock className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-35 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.start_time} onChange={e => updateEntry(a.hce_id, 'start_time', e.target.value)} />
-                                                            </div>
-                                                            <div className="relative">
-                                                                <Clock className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                                                <Input type="time" disabled={!isVisited} className="pl-6 w-35 h-8 text-[11px] font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" value={entries[a.hce_id]?.end_time} onChange={e => updateEntry(a.hce_id, 'end_time', e.target.value)} />
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                <td className="px-6 py-4 min-w-[200px]">
+                                                    <Select 
+                                                        value={visitStatus} 
+                                                        onValueChange={(val) => {
+                                                            updateEntry(a.hce_id, 'visit_status', val);
+                                                            updateEntry(a.hce_id, 'is_visited', val !== 'Not Visited');
+                                                        }}
+                                                        disabled={!isVisited} 
+                                                    >
+                                                        <SelectTrigger className="h-8 w-full border-primary/20 bg-background shadow-sm font-bold text-xs">
+                                                            <SelectValue placeholder="Visit Status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-white border-primary/20">
+                                                            <SelectItem value="Visited">Visited</SelectItem>
+                                                            <SelectItem value="Not Visited">Not Visited</SelectItem>
+                                                            <SelectItem value="Visited – Door Closed">Visited – Door Closed</SelectItem>
+                                                            <SelectItem value="Visited – No Waste">Visited – No Waste</SelectItem>
+                                                            <SelectItem value="Visited – Road Block">Visited – Road Block</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <div className="w-8 h-1 bg-yellow-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-yellow-400" value={entries[a.hce_id]?.yellow_bags || ''} onChange={e => updateEntry(a.hce_id, 'yellow_bags', parseInt(e.target.value) || 0)} />
-                                                        </div>
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <div className="w-8 h-1 bg-rose-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-rose-400" value={entries[a.hce_id]?.red_bags || ''} onChange={e => updateEntry(a.hce_id, 'red_bags', parseInt(e.target.value) || 0)} />
-                                                        </div>
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <div className="w-8 h-1 bg-slate-400 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-slate-400" value={entries[a.hce_id]?.white_containers || ''} onChange={e => updateEntry(a.hce_id, 'white_containers', parseInt(e.target.value) || 0)} />
-                                                        </div>
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <div className="w-8 h-1 bg-primary/40 rounded-full" />
-                                                            <Input type="number" min={0} disabled={!isVisited} className="w-14 h-8 text-center text-xs font-bold border-primary/10 bg-background rounded-md focus:border-primary" value={entries[a.hce_id]?.bottle_containers || ''} onChange={e => updateEntry(a.hce_id, 'bottle_containers', parseInt(e.target.value) || 0)} />
-                                                        </div>
-                                                    </div>
+                                                    <Input 
+                                                        type="number" 
+                                                        min={0} 
+                                                        step="0.01" 
+                                                        disabled={!isVisited} 
+                                                        placeholder="Amount (₹)" 
+                                                        className="w-full h-8 text-xs font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" 
+                                                        value={entries[a.hce_id]?.collection_amount ?? ''} 
+                                                        onChange={e => updateEntry(a.hce_id, 'collection_amount', parseFloat(e.target.value) || 0)} 
+                                                    />
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <Input disabled={!isVisited} placeholder="Observations..." className="w-full h-8 text-[11px] font-medium bg-background border-primary/20 rounded-md" value={entries[a.hce_id]?.remarks} onChange={e => updateEntry(a.hce_id, 'remarks', e.target.value)} />
+                                                    <textarea 
+                                                        disabled={!isVisited} 
+                                                        placeholder="Remark..." 
+                                                        className="w-full h-12 text-[11px] font-medium bg-background border border-primary/20 rounded-md p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" 
+                                                        value={entries[a.hce_id]?.remark || ''} 
+                                                        onChange={e => updateEntry(a.hce_id, 'remark', e.target.value)} 
+                                                    />
                                                 </td>
                                             </tr>
                                         );

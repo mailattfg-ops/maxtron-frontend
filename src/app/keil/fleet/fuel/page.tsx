@@ -63,6 +63,7 @@ export default function FuelFillingPage() {
         vehicle_id: '',
         log_date: new Date().toISOString().split('T')[0],
         indent_number: '',
+        pump_details: '',
         liters: '',
         rate: '',
         amount: '',
@@ -186,6 +187,7 @@ export default function FuelFillingPage() {
             vehicle_id: '',
             log_date: new Date().toISOString().split('T')[0],
             indent_number: '',
+            pump_details: '',
             liters: '',
             rate: '',
             amount: '',
@@ -231,7 +233,7 @@ export default function FuelFillingPage() {
         worksheet.addRow([]);
 
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE NO', 'INDENT NO', 'LITERS (LTR)', 'RATE', 'TOTAL AMOUNT', 'EFFICIENCY (EQ)', 'DIFFERENCE (DIFF)', 'REMARKS'
+            'DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'LITERS (LTR)', 'RATE', 'TOTAL AMOUNT', 'EFFICIENCY (EQ)', 'DIFFERENCE (DIFF)', 'REMARKS'
         ]);
 
         headerRow.eachCell((cell) => {
@@ -244,6 +246,7 @@ export default function FuelFillingPage() {
                 new Date(f.log_date).toLocaleDateString(),
                 f.vehicle?.registration_number || 'N/A',
                 f.indent_number || '-',
+                f.pump_details || '-',
                 f.liters,
                 f.rate,
                 f.amount,
@@ -334,6 +337,10 @@ export default function FuelFillingPage() {
                                 <Input value={formData.indent_number} onChange={e => setFormData({...formData, indent_number: e.target.value})} placeholder="IND-XXXXX" className="h-11 rounded-lg border-primary/20 font-bold" />
                             </div>
                             <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary">Pump Details</label>
+                                <Input value={formData.pump_details || ''} onChange={e => setFormData({...formData, pump_details: e.target.value})} placeholder="Pump Name / Station" className="h-11 rounded-lg border-primary/20 font-bold" />
+                            </div>
+                            <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Liters (LTR) *</label>
                                 <Input type="number" step="0.01" value={formData.liters} onChange={e => {setFormData({...formData, liters: e.target.value}); handleAmountCalc(e.target.value, formData.rate);}} className="h-11 rounded-lg border-primary/20 font-bold" />
                             </div>
@@ -352,6 +359,10 @@ export default function FuelFillingPage() {
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Difference (DIFF)</label>
                                 <Input type="number" step="0.01" value={formData.difference} onChange={e => setFormData({...formData, difference: e.target.value})} className="h-11 rounded-lg border-primary/20 font-bold" />
+                            </div>
+                            <div className="space-y-1.5 lg:col-span-4 md:col-span-2 col-span-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary">Remarks</label>
+                                <Input value={formData.remarks || ''} onChange={e => setFormData({...formData, remarks: e.target.value})} placeholder="Enter remarks or notes" className="h-11 rounded-lg border-primary/20 font-bold" />
                             </div>
                         </div>
                         <div className="mt-8 flex justify-end gap-3">
@@ -397,8 +408,8 @@ export default function FuelFillingPage() {
                         <TableView 
                             data={fillings}
                             loading={loading}
-                            headers={['DATE', 'VEHICLE NO', 'INDENT NO', 'QUANTITY', 'RATE / AMOUNT', 'EFFICIENCY HUB', 'ACTIONS']}
-                            searchFields={['indent_number', 'vehicle.registration_number']}
+                            headers={['DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'QUANTITY', 'RATE / AMOUNT', 'EFFICIENCY HUB', 'REMARKS', 'ACTIONS']}
+                            searchFields={['indent_number', 'vehicle.registration_number', 'remarks', 'pump_details']}
                             renderRow={(f) => (
                                 <tr key={f.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0">
                                     <td className="px-6 py-4 font-bold text-sm text-slate-700">
@@ -417,6 +428,9 @@ export default function FuelFillingPage() {
                                             <Hash className="w-3 h-3 text-slate-400" />
                                             <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{f.indent_number || 'N/A'}</span>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-xs font-semibold text-slate-700">{f.pump_details || '--'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
@@ -449,6 +463,9 @@ export default function FuelFillingPage() {
                                                 </span>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-xs font-semibold text-slate-600 max-w-[200px] truncate" title={f.remarks || ''}>
+                                        {f.remarks || '--'}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">

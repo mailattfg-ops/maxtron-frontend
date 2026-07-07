@@ -9,7 +9,8 @@ import {
   FileCheck, Plus, Search, Edit, Trash2, X, Save,
   Truck, Calendar, Hash, User, IndianRupee,
   Warehouse, ClipboardList, Trash, Package, AlertCircle, Info,
-  Building2, MapPin, Copy, Layers, Briefcase, Globe2, Activity, Tag, FileText
+  Building2, MapPin, Copy, Layers, Briefcase, Globe2, Activity, Tag, FileText,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +41,8 @@ export default function PurchaseEntryPage() {
   const [entries, setEntries] = useState<any[]>([]);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [companyState, setCompanyState] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -140,6 +143,13 @@ export default function PurchaseEntryPage() {
     resetForm();
   }, [entries, showForm]);
 
+  const getGstType = (supplierId: string): 'IGST' | 'CGST_SGST' | 'UNKNOWN' => {
+    const supplier = suppliers.find(s => s.id === supplierId);
+    const billingState = supplier?.billing_addr_data?.state?.trim().toLowerCase() || supplier?.billing_address?.state?.trim().toLowerCase() || '';
+    if (!billingState || !companyState) return 'UNKNOWN';
+    return billingState !== companyState ? 'IGST' : 'CGST_SGST';
+  };
+
   const fetchInitialData = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
@@ -155,6 +165,10 @@ export default function PurchaseEntryPage() {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
           setFormData(prev => ({ ...prev, company_id: coId }));
+          const companyAddr = (activeCo.addresses || []).find((a: any) => a.address_type === 'registered' || a.address_type === 'billing') || (activeCo.addresses || [])[0];
+          if (companyAddr?.state) {
+            setCompanyState(companyAddr.state.trim().toLowerCase());
+          }
         }
       }
 
@@ -1171,10 +1185,62 @@ export default function PurchaseEntryPage() {
                 </div>
 
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Receipt Valuation</p>
-                <div className="text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                  <span>Total Excl. GST:</span>
-                  <span className="font-mono">₹{formData.items.reduce((acc, curr) => acc + (Number(curr.received_quantity || 0) * Number(curr.rate || 0)), 0).toLocaleString()}</span>
-                </div>
+                {(() => {
+                  const gstType = getGstType(formData.supplier_id);
+                  const totalGst = formData.items.reduce((acc, curr) => acc + Number(curr.gst_amount || 0), 0);
+                  const cgst = gstType === 'CGST_SGST' ? totalGst / 2 : 0;
+                  const sgst = gstType === 'CGST_SGST' ? totalGst / 2 : 0;
+                  const igst = gstType === 'IGST' ? totalGst : 0;
+
+                  return (
+                    <>
+                      {formData.supplier_id && gstType !== 'UNKNOWN' && (
+                        <div className="mb-2">
+                          {gstType === 'IGST' ? (
+                            <span className="inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                              ⚡ Inter-State · IGST Applicable
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                              ✓ Intra-State · CGST + SGST
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
+                        <span>Total Excl. GST:</span>
+                        <span className="font-mono">₹{formData.items.reduce((acc, curr) => acc + (Number(curr.received_quantity || 0) * Number(curr.rate || 0)), 0).toLocaleString()}</span>
+                      </div>
+                      {formData.supplier_id && gstType !== 'UNKNOWN' && totalGst > 0 && (
+                        <div className="space-y-0.5 mb-1 text-right">
+                          {gstType === 'IGST' ? (
+                            <div className="text-[11px] font-bold text-amber-600 flex items-center justify-end gap-1">
+                              <span>IGST:</span>
+                              <span className="font-mono">₹{igst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-[11px] font-bold text-blue-600 flex items-center justify-end gap-1">
+                                <span>CGST (50%):</span>
+                                <span className="font-mono">₹{cgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                              <div className="text-[11px] font-bold text-violet-600 flex items-center justify-end gap-1">
+                                <span>SGST (50%):</span>
+                                <span className="font-mono">₹{sgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {gstType === 'UNKNOWN' && totalGst > 0 && (
+                        <div className="text-[11px] font-bold text-slate-500 mb-1 flex items-center gap-1">
+                          <span>Total GST:</span>
+                          <span className="font-mono">₹{totalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {(() => {
                   const subTotalVal = formData.items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) + (Number(formData.unloading_charges) || 0);
                   const displayTotalVal = formData.is_round_off ? Math.round(subTotalVal) : subTotalVal;
@@ -1216,55 +1282,195 @@ export default function PurchaseEntryPage() {
         <TableView
           title="Material Intake Log"
           description="Verify incoming shipments and audit quantities delivered against orders."
-          headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Actions']}
+          headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Details', 'Actions']}
           data={entries}
           loading={loading}
           searchFields={['entry_number', 'suppliers.supplier_name', 'invoice_number']}
-          renderRow={(e: any) => (
-            <tr key={e.id} className="hover:bg-emerald-50 transition-all border-b border-slate-50 last:border-none">
-              <td className="px-6 py-4">
-                <div className="font-black text-slate-800 text-[13px]">{e.entry_number}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-bold text-slate-700">{e.supplier_master?.supplier_name}</div>
-                {e.rm_orders?.order_number && (
-                  <div className="text-[10px] font-black text-primary uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
+          renderRow={(e: any) => {
+            const gstType = getGstType(e.supplier_id);
+            const entryTotalGst = (e.purchase_entry_items || []).reduce((a: number, i: any) => a + Number(i.gst_amount || 0), 0);
+            return (
+              <>
+                <tr key={e.id} className="hover:bg-emerald-50 transition-all border-b border-slate-50 last:border-none">
+                  <td className="px-6 py-4">
+                    <div className="font-black text-slate-800 text-[13px]">{e.entry_number}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString()}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-700">{e.supplier_master?.supplier_name}</div>
+                    {e.rm_orders?.order_number && (
+                      <div className="text-[10px] font-black text-primary uppercase mt-0.5 tracking-tighter">Order: {e.rm_orders.order_number}</div>
+                    )}
+                    {gstType !== 'UNKNOWN' && (
+                      <span className={`inline-block mt-1 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
+                        gstType === 'IGST'
+                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                          : 'bg-blue-100 text-blue-700 border border-blue-200'
+                      }`}>
+                        {gstType === 'IGST' ? '⚡ IGST' : '✓ CGST+SGST'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-lg font-black text-primary">{e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0).toLocaleString()}</div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-black text-slate-900 tracking-tight text-base">₹ {Number(e.total_amount || 0).toLocaleString()}</div>
+                    {Number(e.round_off || 0) !== 0 && (
+                      <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">
+                        Round Off: {Number(e.round_off) > 0 ? `+₹${Number(e.round_off).toFixed(2)}` : `-₹${Math.abs(Number(e.round_off)).toFixed(2)}`}
+                      </div>
+                    )}
+                    {entryTotalGst > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {gstType === 'IGST' ? (
+                          <div className="text-[10px] font-bold text-amber-600">
+                            IGST: ₹ {entryTotalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        ) : gstType === 'CGST_SGST' ? (
+                          <>
+                            <div className="text-[10px] font-bold text-blue-600">
+                              CGST: ₹ {(entryTotalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <div className="text-[10px] font-bold text-violet-600">
+                              SGST: ₹ {(entryTotalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                    {Number(e.unloading_charges || 0) > 0 && (
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Incl. ₹{e.unloading_charges} labor</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>
+                    <div className="text-[10px] text-slate-400 font-bold mt-1">Invoice: {e.invoice_number || '---'}</div>
+                  </td>
+                  <td className="px-3 py-4 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
+                      className="h-8 rounded-full text-xs font-bold text-primary hover:bg-primary/10"
+                    >
+                      {expandedId === e.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {expandedId === e.id ? 'Hide' : 'Expand'}
+                    </Button>
+                  </td>
+                  <td className="md:px-4 py-4 text-right space-x-1">
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                        <Edit className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => deleteEntry(e.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+                {expandedId === e.id && (
+                  <tr key={`${e.id}-details`} className="bg-primary/5">
+                    <td colSpan={7} className="px-6 py-4">
+                      <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-100">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-[10px] font-black text-slate-500 uppercase">Material</th>
+                              <th className="px-4 py-2 text-left text-[10px] font-black text-slate-500 uppercase">HSN Code</th>
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Ordered Qty</th>
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Received Qty</th>
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Rate (₹)</th>
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Base Amt (₹)</th>
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">GST %</th>
+                              {gstType === 'IGST' ? (
+                                <th className="px-4 py-2 text-right text-[10px] font-black text-amber-600 uppercase">IGST (₹)</th>
+                              ) : (
+                                <>
+                                  <th className="px-4 py-2 text-right text-[10px] font-black text-blue-600 uppercase">CGST (₹)</th>
+                                  <th className="px-4 py-2 text-right text-[10px] font-black text-violet-600 uppercase">SGST (₹)</th>
+                                </>
+                              )}
+                              <th className="px-4 py-2 text-right text-[10px] font-black text-slate-500 uppercase">Total (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {(e.purchase_entry_items || []).map((item: any, idx: number) => {
+                              const baseAmt = Number(item.received_quantity || 0) * Number(item.rate || 0);
+                              const gstAmt = Number(item.gst_amount || 0);
+                              const totalAmt = baseAmt + gstAmt;
+                              return (
+                                <tr key={idx} className="bg-white hover:bg-slate-50/50">
+                                  <td className="px-4 py-2.5 font-semibold text-slate-700">
+                                    {item.raw_materials?.rm_name || '—'}
+                                    {item.raw_materials?.rm_code && (
+                                      <span className="ml-2 text-[10px] font-mono text-slate-400">{item.raw_materials.rm_code}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-left text-slate-600 font-mono">{item.raw_materials?.hsn_code || '—'}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{Number(item.ordered_quantity || 0).toLocaleString()} {item.raw_materials?.unit_type}</td>
+                                  <td className="px-4 py-2.5 text-right font-bold text-emerald-600">{Number(item.received_quantity || 0).toLocaleString()} {item.raw_materials?.unit_type}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600 font-mono">₹ {Number(item.rate || 0).toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600 font-mono">₹ {baseAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-500 font-bold font-mono">{Number(item.gst_percent || 0)}%</td>
+                                  {gstType === 'IGST' ? (
+                                    <td className="px-4 py-2.5 text-right font-bold text-amber-600 font-mono">
+                                      ₹ {gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                  ) : (
+                                    <>
+                                      <td className="px-4 py-2.5 text-right font-bold text-blue-600 font-mono">
+                                        ₹ {(gstAmt / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </td>
+                                      <td className="px-4 py-2.5 text-right font-bold text-violet-600 font-mono">
+                                        ₹ {(gstAmt / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </td>
+                                    </>
+                                  )}
+                                  <td className="px-4 py-2.5 text-right font-black text-slate-900 font-mono">
+                                    ₹ {totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          {entryTotalGst > 0 && (
+                            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                              <tr>
+                                <td colSpan={gstType === 'IGST' ? 7 : 8} className="px-4 py-2.5 text-right text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                  GST Summary ({gstType === 'IGST' ? 'IGST Applicable' : 'CGST + SGST split'})
+                                </td>
+                                {gstType === 'IGST' ? (
+                                  <td className="px-4 py-2.5 text-right font-black text-amber-600 font-mono">
+                                    ₹ {entryTotalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                ) : (
+                                  <>
+                                    <td className="px-4 py-2.5 text-right font-black text-blue-600 font-mono">
+                                      ₹ {(entryTotalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-black text-violet-600 font-mono">
+                                      ₹ {(entryTotalGst / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                  </>
+                                )}
+                                <td className="px-4 py-2.5 text-right font-black text-slate-900 font-mono">
+                                  ₹ {entryTotalGst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          )}
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              </td>
-              <td className="px-6 py-4">
-                <div className="text-lg font-black text-primary">{e.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0).toLocaleString()}</div>
-                <div className="text-[9px] font-bold text-slate-400 uppercase">{e.purchase_entry_items?.length || 0} ITEMS</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-black text-slate-900 tracking-tight text-base">₹ {Number(e.total_amount || 0).toLocaleString()}</div>
-                {Number(e.round_off || 0) !== 0 && (
-                  <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">
-                    Round Off: {Number(e.round_off) > 0 ? `+₹${Number(e.round_off).toFixed(2)}` : `-₹${Math.abs(Number(e.round_off)).toFixed(2)}`}
-                  </div>
-                )}
-                {Number(e.unloading_charges || 0) > 0 && (
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Incl. ₹{e.unloading_charges} labor</div>
-                )}
-              </td>
-              <td className="px-6 py-4">
-                <div className="text-xs font-semibold text-slate-600 flex items-center capitalize"><Truck className="w-3 h-3 mr-1 opacity-50" /> {e.vehicle_number || '---'}</div>
-                <div className="text-[10px] text-slate-400 font-bold mt-1">Invoice: {e.invoice_number || '---'}</div>
-              </td>
-              <td className="md:px-4 py-4 text-right space-x-1">
-                {canEdit && (
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(e)} className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button variant="ghost" size="icon" onClick={() => deleteEntry(e.id)} className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </td>
-            </tr>
-          )}
+              </>
+            );
+          }}
         />
       )}
 
