@@ -143,7 +143,7 @@ export default function RouteCollectionReportPage() {
             'STARTING TIME', 'ENDING TIME', 'KM RUN', 
             'TOTAL HCE', '', '', // 8, 9, 10
             'VISITED HCE', '', '', // 11, 12, 13
-            'COLLECTION', 'DC', 'NW', 'RD',
+            'COLLECTION', 'DC', 'NW', 'RB',
             'MISSED', '', '' // 18, 19, 20
         ];
         const headerRow1 = worksheet.addRow(mainHeader);

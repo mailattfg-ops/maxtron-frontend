@@ -227,7 +227,7 @@ export default function BatchDetailsPage() {
                                 <p className="text-2xl font-bold text-white">{batch.nw_qty || 0}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] font-bold uppercase text-secondary/60">RD</p>
+                                <p className="text-[9px] font-bold uppercase text-secondary/60">RB</p>
                                 <p className="text-2xl font-bold text-white">{batch.rd_qty || 0}</p>
                             </div>
                         </div>

@@ -155,7 +155,7 @@ export default function DailyCollectionEntryPage() {
                     initialEntries[a.hce_id] = {
                         hce_id: a.hce_id,
                         is_visited: false,
-                        collection_amount: 0,
+                        collection_amount: '',
                         note: '',
                         remark: '',
                         visit_status: 'Not Visited'
@@ -497,7 +497,7 @@ export default function DailyCollectionEntryPage() {
                                 <Input type="number" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm text-center" value={headerData.nw_qty || ''} onChange={e => setHeaderData({ ...headerData, nw_qty: parseInt(e.target.value) || 0 })} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">RD</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">RB</label>
                                 <Input type="number" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm text-center" value={headerData.rd_qty || ''} onChange={e => setHeaderData({ ...headerData, rd_qty: parseInt(e.target.value) || 0 })} />
                             </div>
                         </div>
@@ -591,7 +591,7 @@ export default function DailyCollectionEntryPage() {
                                                         placeholder="Amount (₹)" 
                                                         className="w-full h-8 text-xs font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" 
                                                         value={entries[a.hce_id]?.collection_amount ?? ''} 
-                                                        onChange={e => updateEntry(a.hce_id, 'collection_amount', parseFloat(e.target.value) || 0)} 
+                                                        onChange={e => updateEntry(a.hce_id, 'collection_amount', e.target.value === '' ? '' : parseFloat(e.target.value))} 
                                                     />
                                                 </td>
                                                 <td className="px-6 py-4">
