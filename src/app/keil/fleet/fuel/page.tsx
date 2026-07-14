@@ -352,14 +352,7 @@ export default function FuelFillingPage() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Total Amount (₹)</label>
                                 <Input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="h-11 rounded-lg border-primary/20 font-bold" />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-primary">Efficiency (EQ)</label>
-                                <Input type="number" step="0.01" value={formData.efficiency} onChange={e => setFormData({...formData, efficiency: e.target.value})} className="h-11 rounded-lg border-primary/20 font-bold" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-primary">Difference (DIFF)</label>
-                                <Input type="number" step="0.01" value={formData.difference} onChange={e => setFormData({...formData, difference: e.target.value})} className="h-11 rounded-lg border-primary/20 font-bold" />
-                            </div>
+
                             <div className="space-y-1.5 lg:col-span-4 md:col-span-2 col-span-1">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Remarks</label>
                                 <Input value={formData.remarks || ''} onChange={e => setFormData({...formData, remarks: e.target.value})} placeholder="Enter remarks or notes" className="h-11 rounded-lg border-primary/20 font-bold" />
