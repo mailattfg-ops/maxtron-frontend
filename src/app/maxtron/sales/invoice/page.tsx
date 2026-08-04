@@ -60,10 +60,20 @@ export default function SalesInvoiceEntry() {
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
+  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C'>('ALL');
+
+  // Cancellation Modal States
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; type: 'EINVOICE' | 'EWB'; docNo: string } | null>(null);
+  const [cancelReasonCode, setCancelReasonCode] = useState('2');
+  const [cancelRemarks, setCancelRemarks] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
   const [formData, setFormData] = useState({
     customer_id: '',
     order_id: '',
     executive_id: '',
+    invoice_type: 'B2B',
     invoice_date: new Date().toISOString().split('T')[0],
     scheduled_delivery_date: '',
     remarks: '',
@@ -142,13 +152,22 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  const handleCustomerChange = (customerId: string) => {
+    const cust = customers.find(c => c.id === customerId);
+    const autoType = cust?.gst_no ? 'B2B' : 'B2C';
+    setFormData(prev => ({ ...prev, customer_id: customerId, invoice_type: autoType }));
+  };
+
   const handleOrderSelect = (orderId: string) => {
       const order = orders.find(o => o.id === orderId);
       if (order) {
+          const cust = customers.find(c => c.id === order.customer_id);
+          const autoType = cust?.gst_no ? 'B2B' : 'B2C';
           setFormData({
               ...formData,
               order_id: orderId,
               customer_id: order.customer_id,
+              invoice_type: autoType,
               executive_id: order.executive_id || '',
               items: order.items.map((i: any) => ({
                   product_id: i.product_id,
@@ -199,6 +218,16 @@ export default function SalesInvoiceEntry() {
     return { subtotal, tax, discount, net, roundoffAmount };
   }, [formData.items, formData.tax_amount, formData.discount_amount, roundOff]);
 
+  const filteredInvoices = useMemo(() => {
+    if (activeSection === 'B2B') {
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B');
+    }
+    if (activeSection === 'B2C') {
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C');
+    }
+    return invoices;
+  }, [invoices, activeSection]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_id) { 
@@ -242,6 +271,7 @@ export default function SalesInvoiceEntry() {
             customer_id: '',
             order_id: '',
             executive_id: '',
+            invoice_type: 'B2B',
             invoice_date: new Date().toISOString().split('T')[0],
             scheduled_delivery_date: '',
             remarks: '',
@@ -263,11 +293,14 @@ export default function SalesInvoiceEntry() {
   };
 
   const handleEdit = (inv: any) => {
+    const cust = customers.find(c => c.id === inv.customer_id);
+    const resolvedType = inv.invoice_type || (cust?.gst_no ? 'B2B' : 'B2C');
     setEditingId(inv.id);
     setFormData({
       customer_id: inv.customer_id,
       order_id: inv.order_id || '',
       executive_id: inv.executive_id || '',
+      invoice_type: resolvedType,
       invoice_date: inv.invoice_date.split('T')[0],
       scheduled_delivery_date: inv.scheduled_delivery_date ? inv.scheduled_delivery_date.split('T')[0] : '',
       remarks: inv.remarks || '',
@@ -347,6 +380,85 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  const handleGenerateEwb = async (id: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${INVOICES_API}/${id}/ewaybill`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const result = await res.json();
+      if (result.success) {
+        setAlert({
+          show: true,
+          type: 'success',
+          title: 'E-Way Bill Generated',
+          message: `EWB successfully registered: ${result.data?.ewb_no || 'N/A'}`
+        });
+        fetchInvoices();
+      } else {
+        setAlert({
+          show: true,
+          type: 'error',
+          title: 'E-Way Bill Failed',
+          message: result.message || 'Could not generate E-Way Bill.'
+        });
+        fetchInvoices();
+      }
+    } catch (err) {
+      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Could not connect to server.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelTarget) return;
+
+    setCancelling(true);
+    try {
+      const endpoint = cancelTarget.type === 'EINVOICE' ? 'einvoice/cancel' : 'ewaybill/cancel';
+      const res = await fetch(`${INVOICES_API}/${cancelTarget.id}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          reasonCode: cancelReasonCode,
+          remarks: cancelRemarks || 'Cancelled from ERP'
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setAlert({
+          show: true,
+          type: 'success',
+          title: `${cancelTarget.type === 'EINVOICE' ? 'E-Invoice' : 'E-Way Bill'} Cancelled`,
+          message: 'Cancellation reported successfully.'
+        });
+        setShowCancelDialog(false);
+        setCancelTarget(null);
+        setCancelRemarks('');
+        fetchInvoices();
+      } else {
+        setAlert({
+          show: true,
+          type: 'error',
+          title: 'Cancellation Failed',
+          message: result.message || 'Could not process cancellation.'
+        });
+      }
+    } catch (err) {
+      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.' });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const selectedCustomer = customers.find(c => c.id === formData.customer_id);
 
   return (
@@ -409,52 +521,78 @@ export default function SalesInvoiceEntry() {
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8 w-full max-w-full min-w-0 overflow-hidden">
             <form onSubmit={handleSubmit} className="space-y-8 w-full max-w-full min-w-0 overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
-                    <Calendar className="w-3 h-3" /> Date of Sale
-                  </label>
-                  <Input type="date" value={formData.invoice_date} onChange={e => setFormData({...formData, invoice_date: e.target.value})} />
+              <div className="space-y-6">
+                {/* Row 1: Date of Sale, Link Order, Customer */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <Calendar className="w-3 h-3" /> Date of Sale
+                    </label>
+                    <Input type="date" value={formData.invoice_date} onChange={e => setFormData({...formData, invoice_date: e.target.value})} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <Search className="w-3 h-3" /> Link Order (Optional)
+                    </label>
+                    <Select value={formData.order_id || "manual"} onValueChange={handleOrderSelect}>
+                      <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
+                        <SelectValue placeholder="Manual Entry (No Order)" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
+                        <SelectItem value="manual">Manual Entry (No Order)</SelectItem>
+                        {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <User className="w-3 h-3" /> Customer
+                    </label>
+                    <Select value={formData.customer_id || ""} onValueChange={handleCustomerChange}>
+                      <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
+                        <SelectValue placeholder="Select Customer..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
+                        {customers.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.customer_name} ({c.customer_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
-                    <Search className="w-3 h-3" /> Link Order (Optional)
-                  </label>
-                  <select 
-                    value={formData.order_id} 
-                    onChange={e => handleOrderSelect(e.target.value)}
-                    className="w-full flex h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
-                  >
-                    <option value="manual">Manual Entry (No Order)</option>
-                    {orders.filter(o => !invoices.find(inv => inv.order_id === o.id) || o.id === formData.order_id).map(o => (
-                      <option key={o.id} value={o.id}>{o.order_number} | {new Date(o.order_date).toLocaleDateString()} | {o.items?.length || 0} items</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Row 2: Business Type, Executive Name */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <Briefcase className="w-3 h-3" /> Business Type
+                    </label>
+                    <Select value={formData.invoice_type || "B2B"} onValueChange={val => setFormData({...formData, invoice_type: val})}>
+                      <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
+                        <SelectValue placeholder="Select Business Type..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[1000]">
+                        <SelectItem value="B2B">B2B Invoice</SelectItem>
+                        <SelectItem value="B2C">B2C Invoice</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
-                    <User className="w-3 h-3" /> Customer
-                  </label>
-                  <select 
-                    value={formData.customer_id} 
-                    onChange={e => setFormData({...formData, customer_id: e.target.value})}
-                    className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
-                  >
-                    <option value="">Select Customer...</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.customer_name} ({c.customer_code})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
-                    <Briefcase className="w-3 h-3" /> Executive Name
-                  </label>
-                  <div className="w-full flex items-center h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 shadow-sm cursor-not-allowed">
-                    {executives.find(e => e.id === formData.executive_id)?.name || 'N/A (Auto-filled from order)'}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <Briefcase className="w-3 h-3" /> Executive Name
+                    </label>
+                    <div className="w-full flex items-center h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 shadow-sm cursor-not-allowed font-semibold truncate">
+                      {executives.find(e => e.id === formData.executive_id)?.name || 'N/A (Auto-filled)'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -491,16 +629,19 @@ export default function SalesInvoiceEntry() {
                             {formData.items.map((item, index) => (
                                 <tr key={index} className="bg-white hover:bg-slate-50 group">
                                     <td className="p-4">
-                                        <select 
-                                          value={item.product_id} 
-                                          onChange={e => handleItemChange(index, 'product_id', e.target.value)}
-                                          className="w-full bg-transparent border-none text-sm focus:ring-0 font-bold cursor-pointer"
+                                        <Select 
+                                          value={item.product_id || ""} 
+                                          onValueChange={val => handleItemChange(index, 'product_id', val)}
                                         >
-                                            <option value="">Select Product...</option>
+                                          <SelectTrigger className="w-full h-9 font-bold bg-transparent border-none text-sm shadow-none focus:ring-0">
+                                            <SelectValue placeholder="Select Product..." />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
                                             {products.map(p => (
-                                                <option key={p.id} value={p.id}>{p.product_code} - {p.product_name}</option>
+                                              <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
                                             ))}
-                                        </select>
+                                          </SelectContent>
+                                        </Select>
                                     </td>
                                     <td className="p-4 text-center font-mono text-xs font-bold text-slate-500">
                                         {products.find(p => p.id === item.product_id)?.hsn_code || '-'}
@@ -572,58 +713,188 @@ export default function SalesInvoiceEntry() {
       )}
 
       {!showForm && (
-        <TableView
-          title="Posted Invoices"
-          description="History of all sales invoices generated."
-          headers={['Inv No', 'Date', 'Customer', 'Linked Order', 'Net Amount', 'E-Invoice', 'Actions']}
-          data={invoices}
-          loading={loading}
-          searchFields={['invoice_number', 'customers.customer_name']}
-          renderRow={(inv: any) => (
-            <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
-              <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
-              <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
-              <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
-              <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
-              <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
-              <td className="px-6 py-4">
-                  {!inv.customers?.gst_no ? (
-                      <span className="text-xs text-slate-400 font-semibold italic">Not Req (B2C)</span>
-                  ) : (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setActiveSection('ALL')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                activeSection === 'ALL' 
+                  ? 'bg-white text-slate-900 shadow-md shadow-slate-200/50' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              All Invoices ({invoices.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('B2B')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                activeSection === 'B2B' 
+                  ? 'bg-white text-primary shadow-md shadow-primary/10' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('B2C')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
+                activeSection === 'B2C' 
+                  ? 'bg-white text-amber-700 shadow-md shadow-amber-200/50' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C').length})
+            </button>
+          </div>
+
+          <TableView
+            title={`${activeSection === 'B2B' ? 'B2B' : activeSection === 'B2C' ? 'B2C' : 'All'} Posted Invoices`}
+            description="History of sales invoices generated."
+            headers={['Inv No', 'Date', 'Type', 'Customer', 'Linked Order', 'Net Amount', 'E-Invoice', 'E-Way Bill', 'Actions']}
+            data={filteredInvoices}
+            loading={loading}
+            searchFields={['invoice_number', 'customers.customer_name']}
+            renderRow={(inv: any) => {
+              const invType = (inv.invoice_type || (inv.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase();
+              return (
+                <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
+                  <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
+                  <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                      invType === 'B2B' 
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}>
+                      {invType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
+                  <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
+                  <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
+                  
+                  {/* E-Invoice Column */}
+                  <td className="px-6 py-4">
+                      {invType === 'B2C' ? (
+                          <span className="text-xs text-slate-400 font-semibold italic">Not Req (B2C)</span>
+                      ) : (
+                          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                              {inv.einvoice_status === 'GENERATED' ? (
+                                  <>
+                                      <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                          <Check className="w-3 h-3 text-emerald-600 font-bold" />
+                                          Generated
+                                      </span>
+                                      {inv.einvoice_ack_no && (
+                                          <div className="flex flex-col gap-1 items-start">
+                                              <div className="flex items-center gap-1 group/copy select-all">
+                                                  <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`IRN: ${inv.einvoice_irn}`}>
+                                                      Ack: {inv.einvoice_ack_no}
+                                                  </span>
+                                                  <button
+                                                      onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          navigator.clipboard.writeText(inv.einvoice_irn);
+                                                          success('E-Invoice IRN copied!');
+                                                      }}
+                                                      className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-all"
+                                                      title="Copy IRN"
+                                                  >
+                                                      <Copy className="w-3 h-3" />
+                                                  </button>
+                                              </div>
+                                              <Button
+                                                  onClick={() => {
+                                                      setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.einvoice_ack_no });
+                                                      setCancelReasonCode('2');
+                                                      setShowCancelDialog(true);
+                                                  }}
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600 font-bold mt-0.5"
+                                              >
+                                                  Cancel IRN
+                                              </Button>
+                                          </div>
+                                      )}
+                                  </>
+                              ) : inv.einvoice_status === 'CANCELLED' ? (
+                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 italic">
+                                      Cancelled
+                                  </span>
+                              ) : inv.einvoice_status === 'FAILED' ? (
+                                  <div className="flex flex-col gap-1 items-start">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.einvoice_error}>
+                                          <XCircle className="w-3 h-3 text-rose-600" />
+                                          Failed
+                                      </span>
+                                      <Button 
+                                          onClick={() => handleGenerateEInvoice(inv.id)}
+                                          size="sm" 
+                                          variant="outline" 
+                                          className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600"
+                                      >
+                                          Retry
+                                      </Button>
+                                  </div>
+                              ) : (
+                                  <Button 
+                                      onClick={() => handleGenerateEInvoice(inv.id)}
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-7 text-[10px] px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 rounded-full font-bold"
+                                  >
+                                      Generate IRN
+                                  </Button>
+                              )}
+                          </div>
+                      )}
+                  </td>
+
+                  {/* E-Way Bill Column */}
+                  <td className="px-6 py-4">
                       <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                          {inv.einvoice_status === 'GENERATED' ? (
+                          {inv.ewb_status === 'GENERATED' ? (
                               <>
                                   <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                       <Check className="w-3 h-3 text-emerald-600 font-bold" />
-                                      Generated
+                                      EWB Active
                                   </span>
-                                  {inv.einvoice_ack_no && (
-                                      <div className="flex items-center gap-1 group/copy select-all">
-                                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`IRN: ${inv.einvoice_irn}`}>
-                                              Ack: {inv.einvoice_ack_no}
+                                  {inv.ewb_no && (
+                                      <div className="flex flex-col gap-1 items-start">
+                                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                              EWB: {inv.ewb_no}
                                           </span>
-                                          <button
-                                              onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  navigator.clipboard.writeText(inv.einvoice_irn);
-                                                  success('E-Invoice IRN copied!');
+                                          <Button
+                                              onClick={() => {
+                                                  setCancelTarget({ id: inv.id, type: 'EWB', docNo: inv.ewb_no });
+                                                  setCancelReasonCode('3');
+                                                  setShowCancelDialog(true);
                                               }}
-                                              className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-all"
-                                              title="Copy IRN"
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600 font-bold mt-0.5"
                                           >
-                                              <Copy className="w-3 h-3" />
-                                          </button>
+                                              Cancel EWB
+                                          </Button>
                                       </div>
                                   )}
                               </>
-                          ) : inv.einvoice_status === 'FAILED' ? (
+                          ) : inv.ewb_status === 'CANCELLED' ? (
+                              <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 italic">
+                                  Cancelled
+                              </span>
+                          ) : inv.ewb_status === 'FAILED' ? (
                               <div className="flex flex-col gap-1 items-start">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.einvoice_error}>
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.ewb_error}>
                                       <XCircle className="w-3 h-3 text-rose-600" />
-                                      Failed
+                                      EWB Failed
                                   </span>
                                   <Button 
-                                      onClick={() => handleGenerateEInvoice(inv.id)}
+                                      onClick={() => handleGenerateEwb(inv.id)}
                                       size="sm" 
                                       variant="outline" 
                                       className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600"
@@ -633,26 +904,89 @@ export default function SalesInvoiceEntry() {
                               </div>
                           ) : (
                               <Button 
-                                  onClick={() => handleGenerateEInvoice(inv.id)}
+                                  onClick={() => handleGenerateEwb(inv.id)}
                                   size="sm" 
                                   variant="outline" 
                                   className="h-7 text-[10px] px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 rounded-full font-bold"
                               >
-                                  Generate IRN
+                                  Generate EWB
                               </Button>
                           )}
                       </div>
+                  </td>
+
+                  <td className="px-2 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10 font-bold"><Edit2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-destructive border border-destructive/10 font-bold"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                  </td>
+                </tr>
+              );
+            }}
+          />
+        </div>
+      )}
+
+      {/* Cancellation Reason Modal */}
+      {showCancelDialog && cancelTarget && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
+               onClick={() => setShowCancelDialog(false)} />
+          <Card className="relative w-full max-w-[460px] shadow-2xl border-none bg-white rounded-3xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300">
+            <div className="h-2 w-full bg-destructive" />
+            <CardContent className="p-8">
+              <h3 className="text-xl font-black text-slate-900 mb-2">Cancel {cancelTarget.type === 'EINVOICE' ? 'E-Invoice (IRN)' : 'E-Way Bill'}</h3>
+              <p className="text-slate-500 text-xs font-semibold mb-6">
+                Are you sure you want to cancel {cancelTarget.type === 'EINVOICE' ? 'IRN Ack' : 'E-Way Bill'} #{cancelTarget.docNo}? This action is reported to the GST system.
+              </p>
+              
+              <form onSubmit={handleCancelSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Reason Code</label>
+                  {cancelTarget.type === 'EINVOICE' ? (
+                    <select
+                      value={cancelReasonCode}
+                      onChange={e => setCancelReasonCode(e.target.value)}
+                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
+                    >
+                      <option value="1">1 - Duplicate</option>
+                      <option value="2">2 - Data Entry Error</option>
+                      <option value="3">3 - Order Cancelled</option>
+                      <option value="4">4 - Others</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={cancelReasonCode}
+                      onChange={e => setCancelReasonCode(e.target.value)}
+                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
+                    >
+                      <option value="1">1 - Duplicate</option>
+                      <option value="2">2 - Order Cancelled</option>
+                      <option value="3">3 - Data Entry Error</option>
+                      <option value="4">4 - Others</option>
+                    </select>
                   )}
-              </td>
-              <td className="px-2 py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10 font-bold"><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-destructive border border-destructive/10 font-bold"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-              </td>
-            </tr>
-          )}
-        />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Remarks / Explanation</label>
+                  <Input 
+                    placeholder="Enter reason details..." 
+                    value={cancelRemarks} 
+                    onChange={e => setCancelRemarks(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="mt-8 flex gap-3 justify-end pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowCancelDialog(false)} className="rounded-xl px-6 h-11 border-slate-200 font-bold">Cancel</Button>
+                  <Button type="submit" loading={cancelling} className="rounded-xl px-8 h-11 bg-destructive hover:bg-destructive/90 text-white font-black shadow-lg shadow-destructive/20">Confirm Cancellation</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

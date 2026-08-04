@@ -40,10 +40,8 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
                 return;
             }
 
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:5000';
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:5004';
             const apiUrl = `${baseUrl}/api/${activeEntity}/permissions/${roleId}`;
-            
-            console.log(`[PermissionProvider] Fetching permissions from: ${apiUrl}`);
             
             const res = await fetch(apiUrl, {
                 method: 'GET',
@@ -55,7 +53,7 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                console.error(`[PermissionProvider] API Error (${res.status}):`, errorData);
+                console.warn(`[PermissionProvider] API Warning (${res.status}):`, errorData);
                 if (res.status === 401) {
                     console.warn('[PermissionProvider] Token invalid or expired. Logging out...');
                     localStorage.removeItem('token');
@@ -70,10 +68,9 @@ export const PermissionProvider = ({ children }: { children: React.ReactNode }) 
                 setPermissions(data.data);
             }
         } catch (err: any) {
-            console.error('[PermissionProvider] Network Error:', err.message);
-            // Fallback for demo users if backend is unreachable
-            if (storedUser.includes('admin@maxtron.com')) {
-                console.info('[PermissionProvider] Granting full permissions to demo admin despite fetch failure.');
+            console.warn('[PermissionProvider] Backend network unreachable:', err.message);
+            // Fallback for admin users if backend is temporarily restarting
+            if (storedUser.includes('admin@maxtron.com') || storedUser.includes('admin')) {
                 setPermissions([{ permission_key: '*', can_view: true, can_create: true, can_edit: true, can_delete: true }]);
             }
         } finally {
