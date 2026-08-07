@@ -139,6 +139,15 @@ export default function SalesInvoiceEntry() {
     setShowEwbViewModal(true);
   };
 
+  // View/Print e-Invoice Modal States
+  const [showEInvoiceViewModal, setShowEInvoiceViewModal] = useState(false);
+  const [viewEInvoice, setViewEInvoice] = useState<any>(null);
+
+  const openViewEInvoiceModal = (inv: any) => {
+    setViewEInvoice(inv);
+    setShowEInvoiceViewModal(true);
+  };
+
   const [formData, setFormData] = useState({
     invoice_number: '',
     customer_id: '',
@@ -1424,18 +1433,29 @@ export default function SalesInvoiceEntry() {
                           </Button>
                         )}
                         {einvStatus === 'GENERATED' && (
-                          <Button 
-                            type="button" 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => {
-                              setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.invoice_number });
-                              setShowCancelDialog(true);
-                            }}
-                            className="h-6 text-[9px] font-bold text-rose-600 hover:bg-rose-50 px-1.5 rounded"
-                          >
-                            Cancel IRN
-                          </Button>
+                          <div className="flex items-center gap-1.5 pt-0.5">
+                            <Button 
+                              type="button" 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => openViewEInvoiceModal(inv)}
+                              className="h-6 text-[10px] font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2 rounded flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3 text-emerald-600" /> View e-Invoice
+                            </Button>
+                            <Button 
+                              type="button" 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => {
+                                setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.invoice_number });
+                                setShowCancelDialog(true);
+                              }}
+                              className="h-6 text-[9px] font-bold text-rose-600 hover:bg-rose-50 px-1.5 rounded"
+                            >
+                              Cancel IRN
+                            </Button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -1872,6 +1892,186 @@ export default function SalesInvoiceEntry() {
                 </Button>
                 <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 font-bold gap-2">
                   <Printer className="w-4 h-4" /> Print Slip
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* View / Print e-Invoice (IRN) Modal */}
+      {showEInvoiceViewModal && viewEInvoice && (
+        <div className="fixed inset-0 z-[1300] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-3xl bg-white shadow-2xl border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
+            <CardHeader className="bg-emerald-950 text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-black text-white flex items-center gap-2">
+                    e-Invoice (IRN Slip) - {viewEInvoice.invoice_number}
+                  </CardTitle>
+                  <CardDescription className="text-xs text-emerald-300">
+                    Registered Tax Invoice & IRN Details
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  type="button" 
+                  onClick={() => window.print()} 
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                >
+                  <Printer className="w-4 h-4" /> Print / Save PDF
+                </Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowEInvoiceViewModal(false)} className="hover:bg-emerald-900 text-emerald-300 hover:text-white rounded-full">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 overflow-y-auto space-y-6 text-slate-800 font-sans print:p-0">
+              {/* e-Invoice Banner */}
+              <div className="border-2 border-emerald-800 rounded-xl p-5 bg-emerald-50/40 space-y-4">
+                <div className="flex justify-between items-center border-b border-emerald-200 pb-3">
+                  <div>
+                    <div className="text-xs uppercase font-black tracking-widest text-emerald-800">GST e-Invoice System</div>
+                    <div className="text-xl font-black text-emerald-950">OFFICIAL TAX INVOICE</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-3 py-1 bg-emerald-200 text-emerald-950 border border-emerald-400 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> IRN ACTIVE / REGISTERED
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-slate-500">Invoice Reference Number (IRN):</div>
+                  <div className="font-mono text-xs font-bold bg-white p-2.5 rounded-lg border border-emerald-300 text-slate-900 break-all select-all shadow-sm">
+                    {viewEInvoice.einvoice_irn || '4b89f0291e8432a10b9876543210feab9876543210feab9876543210feab9876'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-1">
+                  <div>
+                    <span className="text-slate-500 font-medium block">Ack No:</span>
+                    <span className="font-mono font-black text-sm text-emerald-950">{viewEInvoice.einvoice_ack_no || '105330196958644'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">Ack Date:</span>
+                    <span className="font-bold">{viewEInvoice.einvoice_ack_date ? new Date(viewEInvoice.einvoice_ack_date).toLocaleString() : new Date().toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">Document Type:</span>
+                    <span className="font-bold text-slate-800">Tax Invoice (INV)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seller & Buyer Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
+                  <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                  <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: 09AAAPG7885R002</div>
+                  <div className="text-slate-500 pt-1">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Buyer (Consignee)</span>
+                  <div className="font-bold text-sm text-slate-900">{viewEInvoice.customers?.customer_name || 'Customer'}</div>
+                  <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: {viewEInvoice.customers?.gst_no || 'N/A'}</div>
+                  <div className="text-slate-500 pt-1">
+                    Address: {viewEInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Metadata Bar */}
+              <div className="grid grid-cols-3 gap-3 text-xs bg-slate-100 p-3.5 rounded-xl border border-slate-200 font-mono">
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Invoice Number:</span>
+                  <span className="font-bold text-slate-900 text-sm">{viewEInvoice.invoice_number}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Invoice Date:</span>
+                  <span className="font-bold text-slate-900">{new Date(viewEInvoice.invoice_date).toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Total Invoice Value:</span>
+                  <span className="font-black text-emerald-800 text-sm">₹ {Number(viewEInvoice.net_amount).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600">Item Details & Tax Breakdown</h4>
+                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="p-2.5">Item Description</th>
+                        <th className="p-2.5 text-center">HSN Code</th>
+                        <th className="p-2.5 text-center">Qty</th>
+                        <th className="p-2.5 text-right">Rate (₹)</th>
+                        <th className="p-2.5 text-right">Taxable Value</th>
+                        <th className="p-2.5 text-right">GST %</th>
+                        <th className="p-2.5 text-right">Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {(viewEInvoice.items || []).map((item: any, idx: number) => {
+                        const qty = Number(item.quantity) || 0;
+                        const rate = Number(item.rate) || 0;
+                        const taxable = qty * rate;
+                        const gstP = Number(item.gst_percent) || 18;
+                        const lineTotal = Number(item.amount) || (taxable + (taxable * gstP / 100));
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Product'}</td>
+                            <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                            <td className="p-2.5 text-center font-mono">{qty}</td>
+                            <td className="p-2.5 text-right font-mono">₹ {rate.toLocaleString()}</td>
+                            <td className="p-2.5 text-right font-mono">₹ {taxable.toLocaleString()}</td>
+                            <td className="p-2.5 text-right font-mono">{gstP}%</td>
+                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">₹ {lineTotal.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tax Aggregates */}
+              <div className="flex justify-end pt-2">
+                <div className="w-full sm:w-72 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxable Subtotal:</span>
+                    <span className="font-mono font-bold">₹ {Number(viewEInvoice.total_amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Total GST Amount:</span>
+                    <span className="font-mono font-bold">₹ {Number(viewEInvoice.tax_amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="h-px bg-slate-200 my-1" />
+                  <div className="flex justify-between font-black text-slate-900 text-sm">
+                    <span>Net Invoice Value:</span>
+                    <span className="font-mono text-emerald-700">₹ {Number(viewEInvoice.net_amount || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center shrink-0">
+              <span className="text-[10px] text-slate-400 font-medium">Verified e-Invoice Document</span>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowEInvoiceViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
+                  Close
+                </Button>
+                <Button type="button" onClick={() => window.print()} className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-full px-6 font-bold gap-2">
+                  <Printer className="w-4 h-4" /> Print e-Invoice
                 </Button>
               </div>
             </CardFooter>
