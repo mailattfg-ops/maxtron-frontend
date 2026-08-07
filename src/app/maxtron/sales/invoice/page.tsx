@@ -10,7 +10,7 @@ import {
   User, Calendar, DollarSign, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin, 
-  CreditCard, Tag, Layers
+  CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit
 } from 'lucide-react';
 import { 
   Select, 
@@ -1691,136 +1691,146 @@ export default function SalesInvoiceEntry() {
         </div>
       )}
 
-      {/* Product Creation Modal */}
+      {/* Product Creation Modal (Matching Finished Products Specification Form) */}
       {showProductModal && (
         <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-          <Card className="w-full max-w-2xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden animate-in zoom-in-95">
-            <CardHeader className="bg-primary/5 border-b border-primary/10 py-5">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-primary flex items-center gap-2 text-xl font-black">
-                  <Package className="w-6 h-6" /> Create New Finished Product
+          <Card className="w-full max-w-3xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden animate-in zoom-in-95">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 py-4">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-xl flex items-center gap-2 text-primary font-black">
+                  <Plus className="w-5 h-5 text-primary" />
+                  Add New Product Specification
                 </CardTitle>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowProductModal(false)} className="rounded-full w-8 h-8 p-0">
-                  <X className="w-5 h-5 text-slate-400" />
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowProductModal(false)} className="hover:bg-primary/10 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
                 </Button>
               </div>
+              <CardDescription>Enter technical details like thickness, color, and size.</CardDescription>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Product Code *</label>
-                  <Input value={productFormData.product_code} readOnly className="font-mono bg-slate-50 font-bold cursor-not-allowed" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Product Name *</label>
+            <CardContent className="p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-primary" /> Product Code
+                  </label>
                   <Input 
+                    placeholder="e.g. FP-001" 
+                    value={productFormData.product_code} 
+                    readOnly
+                    className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Box className="w-4 h-4 text-primary" /> Product Name *
+                  </label>
+                  <Input 
+                    placeholder="e.g. Milky Polybag" 
                     value={productFormData.product_name} 
                     onChange={e => setProductFormData({ ...productFormData, product_name: e.target.value })} 
-                    placeholder="e.g. Poly Bag 50 Micron 10x12" 
-                    className="font-bold"
+                    className="h-11 font-bold" 
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2 p-4 rounded-xl bg-amber-50/50 border border-amber-200/60">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black uppercase text-amber-900 flex items-center gap-1.5">
-                    <Tag className="w-4 h-4 text-amber-600" /> HSN Code *
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-primary" /> Color
                   </label>
-                  <span className="text-[10px] text-amber-700 font-bold">GST Standard Classification</span>
-                </div>
-                <Input 
-                  value={productFormData.hsn_code} 
-                  onChange={e => setProductFormData({ ...productFormData, hsn_code: e.target.value })} 
-                  placeholder="e.g. 392011" 
-                  className="font-mono font-bold bg-white text-amber-900 border-amber-300"
-                />
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-amber-700 font-bold self-center mr-1">Presets:</span>
-                  {[
-                    { code: '392011', label: '392011 (Poly Sheets/Film)' },
-                    { code: '392321', label: '392321 (Sacks & Bags)' },
-                    { code: '392310', label: '392310 (Boxes/Containers)' },
-                    { code: '392020', label: '392020 (Propylene Polymers)' }
-                  ].map(preset => (
-                    <button
-                      key={preset.code}
-                      type="button"
-                      onClick={() => setProductFormData({ ...productFormData, hsn_code: preset.code })}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 transition-colors"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Color</label>
                   <Input 
+                    placeholder="e.g. White" 
                     value={productFormData.color} 
                     onChange={e => setProductFormData({ ...productFormData, color: e.target.value })} 
-                    placeholder="e.g. Natural" 
+                    className="h-11" 
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Thickness (Microns)</label>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" /> Thickness (Microns)
+                  </label>
                   <Input 
                     type="number" 
+                    min="0" 
+                    placeholder="0.00" 
                     value={productFormData.thickness_microns || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, thickness_microns: parseFloat(e.target.value) || 0 })} 
-                    placeholder="e.g. 50" 
+                    onChange={e => setProductFormData({ ...productFormData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} 
+                    className="h-11" 
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Size</label>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Ruler className="w-4 h-4 text-primary" /> Size
+                  </label>
                   <Input 
+                    placeholder="e.g. 10x12" 
                     value={productFormData.size} 
                     onChange={e => setProductFormData({ ...productFormData, size: e.target.value })} 
-                    placeholder="e.g. 10x12" 
+                    className="h-11 px-3" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-primary" /> Avg Count per Kg
+                  </label>
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    placeholder="0" 
+                    value={productFormData.avg_count_per_kg || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} 
+                    className="h-11" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" /> HSN Code *
+                  </label>
+                  <Input 
+                    placeholder="e.g. 3920" 
+                    value={productFormData.hsn_code} 
+                    onChange={e => setProductFormData({ ...productFormData, hsn_code: e.target.value })}
+                    className="h-11 font-bold" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)
+                  </label>
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    placeholder="50" 
+                    value={productFormData.stock_threshold || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} 
+                    className="h-11 font-bold" 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Avg Count / Kg</label>
-                  <Input 
-                    type="number" 
-                    value={productFormData.avg_count_per_kg || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, avg_count_per_kg: parseFloat(e.target.value) || 0 })} 
-                    placeholder="e.g. 120" 
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Opening Stock (Kg)</label>
-                  <Input 
-                    type="number" 
-                    value={productFormData.opening_stock || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, opening_stock: parseFloat(e.target.value) || 0 })} 
-                    placeholder="e.g. 100" 
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-600">Reorder Threshold (Kg)</label>
-                  <Input 
-                    type="number" 
-                    value={productFormData.stock_threshold || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, stock_threshold: parseFloat(e.target.value) || 0 })} 
-                    placeholder="e.g. 50" 
-                  />
-                </div>
+              <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3 border-t pt-6">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowProductModal(false)} 
+                  className="w-full sm:w-auto px-6 h-11 rounded-full text-slate-500 font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={saveNewProduct} 
+                  loading={productSubmitting} 
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-8 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold gap-2"
+                >
+                  <Save className="w-4 h-4" /> Save Product
+                </Button>
               </div>
             </CardContent>
-            <div className="p-4 border-t bg-slate-50 flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setShowProductModal(false)} className="rounded-full px-6 font-bold">
-                Cancel
-              </Button>
-              <Button type="button" onClick={saveNewProduct} loading={productSubmitting} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 font-black">
-                <Save className="w-4 h-4 mr-2" /> Save Product
-              </Button>
-            </div>
           </Card>
         </div>
       )}
