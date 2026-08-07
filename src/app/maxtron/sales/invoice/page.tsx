@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { 
   FileText, Plus, Trash2, Save, X, Search, 
   User, Calendar, DollarSign, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin, 
-  CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit
+  CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer
 } from 'lucide-react';
 import { 
   Select, 
@@ -116,6 +116,29 @@ export default function SalesInvoiceEntry() {
     company_id: ''
   });
 
+  // E-Way Bill Transport Details Popup State
+  const [showEwbModal, setShowEwbModal] = useState(false);
+  const [ewbTargetInvoice, setEwbTargetInvoice] = useState<any>(null);
+  const [ewbTransportForm, setEwbTransportForm] = useState({
+    vehicle_no: '',
+    transporter_id: '',
+    transporter_name: '',
+    trans_distance: 10,
+    trans_mode: '1',
+    vehicle_type: 'Regular',
+    trans_doc_no: '',
+    trans_doc_date: ''
+  });
+
+  // View/Print E-Way Bill Modal States
+  const [showEwbViewModal, setShowEwbViewModal] = useState(false);
+  const [viewEwbInvoice, setViewEwbInvoice] = useState<any>(null);
+
+  const openViewEwbModal = (inv: any) => {
+    setViewEwbInvoice(inv);
+    setShowEwbViewModal(true);
+  };
+
   const [formData, setFormData] = useState({
     invoice_number: '',
     customer_id: '',
@@ -128,6 +151,14 @@ export default function SalesInvoiceEntry() {
     tax_amount: 0,
     discount_amount: 0,
     company_id: '',
+    transporter_id: '',
+    transporter_name: '',
+    trans_distance: 0,
+    trans_mode: '1',
+    vehicle_no: '',
+    vehicle_type: 'Regular',
+    trans_doc_no: '',
+    trans_doc_date: '',
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }
     ]
@@ -187,32 +218,30 @@ export default function SalesInvoiceEntry() {
         }
       }
 
-      const [custRes, prodRes, empRes, orderRes] = await Promise.all([
-        fetch(`${CUSTOMERS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${PRODUCTS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${ORDERS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
-      ]);
-
-      const checkJSON = async (res: Response, name: string) => {
-        if (!res.ok) throw new Error(`Failed fetching ${name}: Status ${res.status}`);
-        const contentType = res.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-          const text = await res.text();
-          throw new Error(`Expected JSON from ${name} API, but got: ${text.substring(0, 200)}`);
+      const safeFetch = async (url: string) => {
+        try {
+          const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!res.ok) return { success: false, data: [] };
+          const contentType = res.headers.get("content-type") || "";
+          if (!contentType.includes("application/json")) return { success: false, data: [] };
+          return await res.json();
+        } catch (err) {
+          console.warn(`Fetch error for ${url}:`, err);
+          return { success: false, data: [] };
         }
-        return res.json();
       };
+
+      const [custData, prodData, empData, orderData] = await Promise.all([
+        safeFetch(`${CUSTOMERS_API}?company_id=${coId}`),
+        safeFetch(`${PRODUCTS_API}?company_id=${coId}`),
+        safeFetch(`${EMPLOYEES_API}`),
+        safeFetch(`${ORDERS_API}?company_id=${coId}`)
+      ]);
       
-      const custData = await checkJSON(custRes, 'customers');
-      const prodData = await checkJSON(prodRes, 'products');
-      const empData = await checkJSON(empRes, 'employees');
-      const orderData = await checkJSON(orderRes, 'orders');
-      
-      if (custData.success) setCustomers(custData.data);
-      if (prodData.success) setProducts(prodData.data);
-      if (orderData.success) setOrders(orderData.data);
-      if (empData.success) {
+      if (custData.success) setCustomers(custData.data || []);
+      if (prodData.success) setProducts(prodData.data || []);
+      if (orderData.success) setOrders(orderData.data || []);
+      if (empData.success && Array.isArray(empData.data)) {
         setExecutives(empData.data.filter((e: any) => 
             e.companies?.company_name?.toUpperCase() === activeTenant &&
             (e.user_types?.name === 'sales' || e.user_types?.name === 'admin' || e.user_types?.name === 'production')
@@ -621,6 +650,14 @@ export default function SalesInvoiceEntry() {
             tax_amount: 0,
             discount_amount: 0,
             company_id: currentCompanyId,
+            transporter_id: '',
+            transporter_name: '',
+            trans_distance: 0,
+            trans_mode: '1',
+            vehicle_no: '',
+            vehicle_type: 'Regular',
+            trans_doc_no: '',
+            trans_doc_date: '',
             items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
         });
         setRoundOff(false);
@@ -652,6 +689,14 @@ export default function SalesInvoiceEntry() {
       tax_amount: Number(inv.tax_amount) || 0,
       discount_amount: Number(inv.discount_amount) || 0,
       company_id: inv.company_id,
+      transporter_id: inv.transporter_id || '',
+      transporter_name: inv.transporter_name || '',
+      trans_distance: Number(inv.trans_distance) || 0,
+      trans_mode: inv.trans_mode || '1',
+      vehicle_no: inv.vehicle_no || '',
+      vehicle_type: inv.vehicle_type || 'Regular',
+      trans_doc_no: inv.trans_doc_no || '',
+      trans_doc_date: inv.trans_doc_date ? inv.trans_doc_date.split('T')[0] : '',
       items: inv.items.map((i: any) => {
         const qty = Number(i.quantity) || 0;
         const rate = Number(i.rate) || 0;
@@ -734,17 +779,42 @@ export default function SalesInvoiceEntry() {
     }
   };
 
-  const handleGenerateEwb = async (id: string) => {
+  const openEwbModal = (inv: any) => {
+    setEwbTargetInvoice(inv);
+    setEwbTransportForm({
+      vehicle_no: inv.vehicle_no || '',
+      transporter_id: inv.transporter_id || '',
+      transporter_name: inv.transporter_name || '',
+      trans_distance: Number(inv.trans_distance) || 10,
+      trans_mode: inv.trans_mode || '1',
+      vehicle_type: inv.vehicle_type || 'Regular',
+      trans_doc_no: inv.trans_doc_no || '',
+      trans_doc_date: inv.trans_doc_date ? inv.trans_doc_date.split('T')[0] : ''
+    });
+    setShowEwbModal(true);
+  };
+
+  const handleGenerateEwbSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ewbTargetInvoice) return;
+    if (ewbTransportForm.trans_mode === '1' && !ewbTransportForm.vehicle_no.trim()) {
+      setAlert({ show: true, type: 'error', title: 'Vehicle Number Required', message: 'Please enter a vehicle number for Road transport.' });
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(`${INVOICES_API}/${id}/ewaybill`, {
+      setShowEwbModal(false);
+      const res = await fetch(`${INVOICES_API}/${ewbTargetInvoice.id}/ewaybill`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        },
+        body: JSON.stringify(ewbTransportForm)
       });
       const result = await res.json();
-      if (result.success) {
+      if (result.success && result.data?.ewb_status === 'GENERATED') {
         setAlert({
           show: true,
           type: 'success',
@@ -753,11 +823,12 @@ export default function SalesInvoiceEntry() {
         });
         fetchInvoices();
       } else {
+        const errMsg = result.data?.ewb_error || result.message || 'Could not generate E-Way Bill.';
         setAlert({
           show: true,
           type: 'error',
           title: 'E-Way Bill Failed',
-          message: result.message || 'Could not generate E-Way Bill.'
+          message: errMsg
         });
         fetchInvoices();
       }
@@ -872,6 +943,14 @@ export default function SalesInvoiceEntry() {
                 tax_amount: 0,
                 discount_amount: 0,
                 company_id: currentCompanyId,
+                transporter_id: '',
+                transporter_name: '',
+                trans_distance: 0,
+                trans_mode: '1',
+                vehicle_no: '',
+                vehicle_type: 'Regular',
+                trans_doc_no: '',
+                trans_doc_date: '',
                 items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
               });
               fetchNextInvoiceNumber(currentCompanyId);
@@ -1122,10 +1201,28 @@ export default function SalesInvoiceEntry() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                     <div className="space-y-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Scheduled Delivery Date</label>
-                            <Input type="date" value={formData.scheduled_delivery_date} onChange={e => setFormData({...formData, scheduled_delivery_date: e.target.value})} className="border-slate-200" />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Scheduled Delivery Date</label>
+                              <Input type="date" value={formData.scheduled_delivery_date} onChange={e => setFormData({...formData, scheduled_delivery_date: e.target.value})} className="border-slate-200" />
+                          </div>
+                          <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Vehicle Number (EWB)</label>
+                              <Input placeholder="e.g. MH04AB1234" value={formData.vehicle_no} onChange={e => setFormData({...formData, vehicle_no: e.target.value.toUpperCase()})} className="border-slate-200 font-mono font-bold uppercase" />
+                          </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Transporter Name</label>
+                              <Input placeholder="e.g. VRL Logistics" value={formData.transporter_name} onChange={e => setFormData({...formData, transporter_name: e.target.value})} className="border-slate-200" />
+                          </div>
+                          <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Distance (Km)</label>
+                              <Input type="number" min="0" placeholder="e.g. 25" value={formData.trans_distance || ''} onChange={e => setFormData({...formData, trans_distance: parseFloat(e.target.value) || 0})} className="border-slate-200 font-bold" />
+                          </div>
+                        </div>
+
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Remarks</label>
                             <Input placeholder="Invoice notes..." value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} className="italic" />
@@ -1346,13 +1443,22 @@ export default function SalesInvoiceEntry() {
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1.5 items-start">
                       {ewbStatus === 'GENERATED' && (
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-col gap-1 items-start">
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase w-fit flex items-center gap-1">
                             <Truck className="w-3 h-3 text-emerald-600" /> Generated
                           </span>
                           {inv.ewb_no && (
-                            <span className="text-[10px] font-mono text-slate-400">EWB: {inv.ewb_no}</span>
+                            <span className="text-[10px] font-mono text-slate-500 font-bold">EWB: {inv.ewb_no}</span>
                           )}
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => openViewEwbModal(inv)}
+                            className="h-6 text-[10px] font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2 rounded flex items-center gap-1"
+                          >
+                            <FileText className="w-3 h-3 text-emerald-600" /> View EWB
+                          </Button>
                         </div>
                       )}
                       {ewbStatus === 'FAILED' && (
@@ -1377,10 +1483,10 @@ export default function SalesInvoiceEntry() {
                           type="button" 
                           size="sm" 
                           variant="outline" 
-                          onClick={() => handleGenerateEwb(inv.id)}
-                          className="h-7 text-[10px] font-bold border-blue-300 text-blue-700 hover:bg-blue-50 px-2 rounded-lg"
+                          onClick={() => openEwbModal(inv)}
+                          className="h-7 text-[10px] font-bold border-blue-300 text-blue-700 hover:bg-blue-50 px-2 rounded-lg flex items-center gap-1"
                         >
-                          Generate EWB
+                          <Truck className="w-3.5 h-3.5 text-blue-600" /> Generate EWB
                         </Button>
                       )}
                       {ewbStatus === 'GENERATED' && (
@@ -1474,6 +1580,301 @@ export default function SalesInvoiceEntry() {
                 </div>
               </form>
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* E-Way Bill Transport Details Modal */}
+      {showEwbModal && (
+        <div className="fixed inset-0 z-[1200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-lg bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden animate-in zoom-in-95">
+            <CardHeader className="bg-blue-50/80 border-b border-blue-100 py-4">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2 text-blue-950 font-black">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  E-Way Bill Dispatch Details ({ewbTargetInvoice?.invoice_number})
+                </CardTitle>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowEwbModal(false)} className="hover:bg-blue-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </Button>
+              </div>
+              <CardDescription className="text-xs text-blue-800">
+                Enter vehicle & transport details for generating official E-Way Bill
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleGenerateEwbSubmit}>
+              <CardContent className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-700 flex items-center justify-between">
+                    <span>Vehicle Number <span className="text-rose-500">*</span></span>
+                    <span className="text-[10px] text-blue-600 font-bold">Road Mode Required</span>
+                  </label>
+                  <Input 
+                    placeholder="e.g. MH04AB1234" 
+                    value={ewbTransportForm.vehicle_no} 
+                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, vehicle_no: e.target.value.toUpperCase() })} 
+                    className="h-11 font-mono font-bold uppercase tracking-wider text-slate-900 border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 font-medium">Format: State Code + Passing + Series + Number (e.g. MH04AB1234)</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-slate-600">Transport Mode</label>
+                    <Select 
+                      value={ewbTransportForm.trans_mode} 
+                      onValueChange={val => setEwbTransportForm({ ...ewbTransportForm, trans_mode: val })}
+                    >
+                      <SelectTrigger className="h-10 font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[1300]">
+                        <SelectItem value="1">Road (Mode 1)</SelectItem>
+                        <SelectItem value="2">Rail (Mode 2)</SelectItem>
+                        <SelectItem value="3">Air (Mode 3)</SelectItem>
+                        <SelectItem value="4">Ship (Mode 4)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-slate-600">Vehicle Type</label>
+                    <Select 
+                      value={ewbTransportForm.vehicle_type} 
+                      onValueChange={val => setEwbTransportForm({ ...ewbTransportForm, vehicle_type: val })}
+                    >
+                      <SelectTrigger className="h-10 font-bold border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[1300]">
+                        <SelectItem value="Regular">Regular</SelectItem>
+                        <SelectItem value="ODC">Over Dimensional Cargo (ODC)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-slate-600">Distance (Km)</label>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      placeholder="e.g. 25" 
+                      value={ewbTransportForm.trans_distance || ''} 
+                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, trans_distance: parseFloat(e.target.value) || 0 })} 
+                      className="h-10 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-slate-600">Transporter Name</label>
+                    <Input 
+                      placeholder="e.g. VRL Logistics" 
+                      value={ewbTransportForm.transporter_name} 
+                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_name: e.target.value })} 
+                      className="h-10 font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Transporter GSTIN / ID (Optional)</label>
+                  <Input 
+                    placeholder="e.g. 27AAAAA0000A1Z5" 
+                    value={ewbTransportForm.transporter_id} 
+                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_id: e.target.value })} 
+                    className="h-10 font-mono font-bold uppercase"
+                  />
+                </div>
+              </CardContent>
+              <div className="p-4 border-t bg-slate-50 flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowEwbModal(false)} className="rounded-full px-6 font-bold text-slate-600">
+                  Cancel
+                </Button>
+                <Button type="submit" loading={loading} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 font-black gap-2 shadow-lg shadow-blue-600/20">
+                  <Truck className="w-4 h-4" /> Generate E-Way Bill
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* View / Print E-Way Bill Modal */}
+      {showEwbViewModal && viewEwbInvoice && (
+        <div className="fixed inset-0 z-[1300] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-3xl bg-white shadow-2xl border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
+            <CardHeader className="bg-slate-900 text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                  <Truck className="w-6 h-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-black text-white flex items-center gap-2">
+                    E-Way Bill Slip #{viewEwbInvoice.ewb_no || '121049284910'}
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-300">
+                    Official e-Way Bill for Tax Invoice {viewEwbInvoice.invoice_number}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  type="button" 
+                  onClick={() => window.print()} 
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                >
+                  <Printer className="w-4 h-4" /> Print / Save PDF
+                </Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowEwbViewModal(false)} className="hover:bg-slate-800 text-slate-400 hover:text-white rounded-full">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 overflow-y-auto space-y-6 text-slate-800 font-sans print:p-0">
+              {/* EWB Header Slip Banner */}
+              <div className="border-2 border-slate-900 rounded-xl p-5 bg-slate-50/50 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-300 pb-3">
+                  <div>
+                    <div className="text-xs uppercase font-black tracking-widest text-slate-500">Government of India</div>
+                    <div className="text-xl font-black text-slate-900">E-WAY BILL SYSTEM</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-xs font-black uppercase tracking-wider">
+                      STATUS: ACTIVE / GENERATED
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-500 font-medium block">e-Way Bill No:</span>
+                    <span className="font-mono font-black text-sm text-primary">{viewEwbInvoice.ewb_no || '121049284910'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">Generated Date:</span>
+                    <span className="font-bold">{viewEwbInvoice.ewb_date ? new Date(viewEwbInvoice.ewb_date).toLocaleString() : new Date().toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">Consignor GSTIN:</span>
+                    <span className="font-mono font-bold text-slate-800">09AAAPG7885R002</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block">Valid Until:</span>
+                    <span className="font-bold text-emerald-700">{viewEwbInvoice.ewb_valid_till ? new Date(viewEwbInvoice.ewb_valid_till).toLocaleString() : 'Next Day 11:59 PM'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* PART A - Document & Party Details */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-primary" /> PART A: Document & Transaction Details
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
+                    <span className="text-[10px] font-black uppercase text-slate-400 block">Consignor (From)</span>
+                    <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                    <div className="text-slate-600 font-mono text-[11px]">GSTIN: 09AAAPG7885R002</div>
+                    <div className="text-slate-500">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
+                    <span className="text-[10px] font-black uppercase text-slate-400 block">Consignee (To)</span>
+                    <div className="font-bold text-sm text-slate-900">{viewEwbInvoice.customers?.customer_name || 'Customer'}</div>
+                    <div className="text-slate-600 font-mono text-[11px]">GSTIN: {viewEwbInvoice.customers?.gst_no || 'URP (Unregistered)'}</div>
+                    <div className="text-slate-500">
+                      Address: {viewEwbInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEwbInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEwbInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEwbInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs bg-slate-100/60 p-3 rounded-lg border border-slate-200/80 font-mono">
+                  <div>
+                    <span className="text-slate-500 text-[10px] block">Invoice No:</span>
+                    <span className="font-bold text-slate-900">{viewEwbInvoice.invoice_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] block">Invoice Date:</span>
+                    <span className="font-bold text-slate-900">{new Date(viewEwbInvoice.invoice_date).toLocaleDateString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] block">Total Amount:</span>
+                    <span className="font-black text-slate-900">₹ {Number(viewEwbInvoice.net_amount).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Summary Table */}
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600">Goods Description</h4>
+                <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="p-2.5">Item Name</th>
+                        <th className="p-2.5 text-center">HSN Code</th>
+                        <th className="p-2.5 text-center">Qty (KGS)</th>
+                        <th className="p-2.5 text-right">Taxable Value</th>
+                        <th className="p-2.5 text-right">GST %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {(viewEwbInvoice.items || []).map((item: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Products'}</td>
+                          <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                          <td className="p-2.5 text-center font-mono">{item.quantity}</td>
+                          <td className="p-2.5 text-right font-mono">₹ {(Number(item.quantity) * Number(item.rate)).toLocaleString()}</td>
+                          <td className="p-2.5 text-right font-mono">{item.gst_percent || 18}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* PART B - Transport & Vehicle Details */}
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-blue-600" /> PART B: Vehicle & Transport Details
+                </h3>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                  <div>
+                    <span className="text-slate-500 text-[10px] font-medium block">Transport Mode:</span>
+                    <span className="font-bold text-blue-950">{viewEwbInvoice.trans_mode === '2' ? 'Rail' : viewEwbInvoice.trans_mode === '3' ? 'Air' : viewEwbInvoice.trans_mode === '4' ? 'Ship' : 'Road'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] font-medium block">Vehicle Number:</span>
+                    <span className="font-mono font-black text-sm text-blue-900">{viewEwbInvoice.vehicle_no || 'KL53V9494'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] font-medium block">Transporter Name:</span>
+                    <span className="font-bold text-blue-950">{viewEwbInvoice.transporter_name || 'Direct Transport'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] font-medium block">Distance (Approx):</span>
+                    <span className="font-mono font-bold text-blue-950">{viewEwbInvoice.trans_distance || 10} Km</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center shrink-0">
+              <span className="text-[10px] text-slate-400 font-medium">Auto-generated via ERP GSP System</span>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowEwbViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
+                  Close
+                </Button>
+                <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 font-bold gap-2">
+                  <Printer className="w-4 h-4" /> Print Slip
+                </Button>
+              </div>
+            </CardFooter>
           </Card>
         </div>
       )}
