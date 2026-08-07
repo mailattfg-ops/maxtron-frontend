@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   FileText, Plus, Trash2, Save, X, Search, 
   User, Calendar, DollarSign, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
-  Truck, ArrowRight, Check, Copy
+  Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin, 
+  CreditCard, Tag, Layers
 } from 'lucide-react';
 import { 
   Select, 
@@ -22,7 +23,7 @@ import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
 const ORDERS_API = `${API_BASE}/api/maxtron/sales/orders`;
 const CUSTOMERS_API = `${API_BASE}/api/maxtron/customers`;
@@ -39,6 +40,7 @@ export default function SalesInvoiceEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [companyState, setCompanyState] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [roundOff, setRoundOff] = useState(false);
   
@@ -69,7 +71,53 @@ export default function SalesInvoiceEntry() {
   const [cancelRemarks, setCancelRemarks] = useState('');
   const [cancelling, setCancelling] = useState(false);
 
+  // Create Customer Popup States
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerActiveTab, setCustomerActiveTab] = useState('basic');
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+  const [customerFormData, setCustomerFormData] = useState({
+    customer_name: '',
+    customer_code: '',
+    gst_no: '',
+    credit_period: 0,
+    credit_limit: 0,
+    delivery_period: '',
+    delivery_mode: '',
+    mobile_no: '',
+    email_id: '',
+    contact_person: '',
+    custom_label1: '',
+    custom_value1: '',
+    custom_label2: '',
+    custom_value2: '',
+    opening_balance: 0,
+    is_active: true,
+    company_id: '',
+    addresses: [
+      { address_type: 'Customer', street: '', city: '', state: '', zip_code: '', country: 'India' },
+      { address_type: 'Billing', street: '', city: '', state: '', zip_code: '', country: 'India' }
+    ]
+  });
+
+  // Create Product Popup States
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productSubmitting, setProductSubmitting] = useState(false);
+  const [activeLineIndexForNewProduct, setActiveLineIndexForNewProduct] = useState<number | null>(null);
+  const [productFormData, setProductFormData] = useState({
+    product_code: '',
+    product_name: '',
+    color: 'Natural',
+    thickness_microns: 50,
+    size: '',
+    avg_count_per_kg: 0,
+    hsn_code: '392011',
+    opening_stock: 0,
+    stock_threshold: 0,
+    company_id: ''
+  });
+
   const [formData, setFormData] = useState({
+    invoice_number: '',
     customer_id: '',
     order_id: '',
     executive_id: '',
@@ -81,13 +129,29 @@ export default function SalesInvoiceEntry() {
     discount_amount: 0,
     company_id: '',
     items: [
-      { product_id: '', quantity: 0, rate: 0, amount: 0 }
+      { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }
     ]
   });
 
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  const fetchNextInvoiceNumber = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    try {
+      const res = await fetch(`${INVOICES_API}/next-number?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.invoice_number) {
+        setFormData(prev => ({ ...prev, invoice_number: data.invoice_number }));
+      }
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+    }
+  };
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -96,6 +160,16 @@ export default function SalesInvoiceEntry() {
       const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!compRes.ok) {
+        throw new Error(`Failed to fetch companies: Status ${compRes.status}`);
+      }
+      
+      const compContentType = compRes.headers.get("content-type") || "";
+      if (!compContentType.includes("application/json")) {
+        const text = await compRes.text();
+        throw new Error(`Expected JSON from companies API, but got: ${text.substring(0, 200)}`);
+      }
       const compData = await compRes.json();
       
       let coId = '';
@@ -105,6 +179,11 @@ export default function SalesInvoiceEntry() {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
           setFormData(prev => ({ ...prev, company_id: coId }));
+          fetchNextInvoiceNumber(coId);
+          const companyAddr = (activeCo.addresses || []).find((a: any) => a.address_type === 'registered' || a.address_type === 'billing') || (activeCo.addresses || [])[0];
+          if (companyAddr?.state) {
+            setCompanyState(companyAddr.state.trim().toLowerCase());
+          }
         }
       }
 
@@ -114,11 +193,21 @@ export default function SalesInvoiceEntry() {
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${ORDERS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
+
+      const checkJSON = async (res: Response, name: string) => {
+        if (!res.ok) throw new Error(`Failed fetching ${name}: Status ${res.status}`);
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          const text = await res.text();
+          throw new Error(`Expected JSON from ${name} API, but got: ${text.substring(0, 200)}`);
+        }
+        return res.json();
+      };
       
-      const custData = await custRes.json();
-      const prodData = await prodRes.json();
-      const empData = await empRes.json();
-      const orderData = await orderRes.json();
+      const custData = await checkJSON(custRes, 'customers');
+      const prodData = await checkJSON(prodRes, 'products');
+      const empData = await checkJSON(empRes, 'employees');
+      const orderData = await checkJSON(orderRes, 'orders');
       
       if (custData.success) setCustomers(custData.data);
       if (prodData.success) setProducts(prodData.data);
@@ -152,6 +241,235 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  const getGstType = (customerId: string): 'IGST' | 'CGST_SGST' | 'UNKNOWN' => {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return 'UNKNOWN';
+    const billingAddr = (customer.addresses || []).find((a: any) => a.address_type?.toLowerCase() === 'billing' || a.address_type?.toLowerCase() === 'customer') || (customer.addresses || [])[0];
+    const billingState = billingAddr?.state?.trim().toLowerCase() || '';
+    if (!billingState || !companyState) return 'UNKNOWN';
+    return billingState !== companyState ? 'IGST' : 'CGST_SGST';
+  };
+
+  const getNextCustomerCode = () => {
+    let nextCode = 'CUST-000001';
+    const validCodes = customers
+      .filter(c => c.customer_code && /^CUST-\d+$/i.test(c.customer_code))
+      .map(c => {
+        const parts = c.customer_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `CUST-${String(max + 1).padStart(6, '0')}`;
+    }
+    return nextCode;
+  };
+
+  const openCustomerModal = () => {
+    const nextCode = getNextCustomerCode();
+    setCustomerFormData({
+      customer_name: '',
+      customer_code: nextCode,
+      gst_no: '',
+      credit_period: 0,
+      credit_limit: 0,
+      delivery_period: '',
+      delivery_mode: '',
+      mobile_no: '',
+      email_id: '',
+      contact_person: '',
+      custom_label1: '',
+      custom_value1: '',
+      custom_label2: '',
+      custom_value2: '',
+      opening_balance: 0,
+      is_active: true,
+      company_id: currentCompanyId,
+      addresses: [
+        { address_type: 'Customer', street: '', city: '', state: '', zip_code: '', country: 'India' },
+        { address_type: 'Billing', street: '', city: '', state: '', zip_code: '', country: 'India' }
+      ]
+    });
+    setCustomerActiveTab('basic');
+    setShowCustomerModal(true);
+  };
+
+  const handleCustomerInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    setCustomerFormData({ ...customerFormData, [e.target.name]: value });
+  };
+
+  const handleCustomerAddressChange = (index: number, field: string, value: string) => {
+    const newAddresses = [...customerFormData.addresses];
+    newAddresses[index] = { ...newAddresses[index], [field]: value };
+    setCustomerFormData({ ...customerFormData, addresses: newAddresses });
+  };
+
+  const copyBillingToShipping = () => {
+    const billing = customerFormData.addresses[0];
+    const newAddresses = [...customerFormData.addresses];
+    newAddresses[1] = { ...billing, address_type: 'Shipping' };
+    setCustomerFormData({ ...customerFormData, addresses: newAddresses });
+  };
+
+  const validateCustomerForm = () => {
+    if (!customerFormData.customer_name || !customerFormData.customer_code) {
+      error('Customer name and code are required.');
+      return false;
+    }
+    if (customerFormData.mobile_no && !/^[0-9]{10,12}$/.test(customerFormData.mobile_no)) {
+      error('Invalid mobile number. Please enter 10-12 digits.');
+      return false;
+    }
+    if (customerFormData.email_id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerFormData.email_id)) {
+      error('Invalid email format. Please check again.');
+      return false;
+    }
+    for (const addr of customerFormData.addresses) {
+      if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+        error(`Invalid Zip code for ${addr.address_type} address. 6 digits required.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const saveNewCustomer = async () => {
+    if (!validateCustomerForm()) return;
+    setCustomerSubmitting(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch(CUSTOMERS_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(customerFormData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Customer created successfully!');
+        setShowCustomerModal(false);
+        const coId = currentCompanyId;
+        const resList = await fetch(`${CUSTOMERS_API}?company_id=${coId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataList = await resList.json();
+        if (dataList.success) {
+          setCustomers(dataList.data || []);
+        }
+        if (data.data?.id) {
+          const autoType = data.data.gst_no ? 'B2B' : 'B2C';
+          setFormData(prev => ({ ...prev, customer_id: data.data.id, invoice_type: autoType }));
+        }
+      } else {
+        error(data.message || 'Something went wrong');
+      }
+    } catch (err) {
+      console.error('Error saving customer:', err);
+      error('System error occurred while creating customer.');
+    } finally {
+      setCustomerSubmitting(false);
+    }
+  };
+
+  const getNextProductCode = () => {
+    let nextCode = 'FP-000001';
+    const validCodes = products
+      .filter(p => p.product_code && /^FP-\d+$/i.test(p.product_code))
+      .map(p => {
+        const parts = p.product_code.split('-');
+        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+
+    if (validCodes.length > 0) {
+      const max = Math.max(...validCodes);
+      nextCode = `FP-${String(max + 1).padStart(6, '0')}`;
+    }
+    return nextCode;
+  };
+
+  const openProductModal = (lineIndex?: number) => {
+    setActiveLineIndexForNewProduct(lineIndex !== undefined ? lineIndex : null);
+    const nextCode = getNextProductCode();
+    setProductFormData({
+      product_code: nextCode,
+      product_name: '',
+      color: 'Natural',
+      thickness_microns: 50,
+      size: '',
+      avg_count_per_kg: 0,
+      hsn_code: '392011',
+      opening_stock: 0,
+      stock_threshold: 0,
+      company_id: currentCompanyId
+    });
+    setShowProductModal(true);
+  };
+
+  const saveNewProduct = async () => {
+    if (!productFormData.product_name.trim()) {
+      error('Product name is required.');
+      return;
+    }
+    if (!productFormData.hsn_code.trim()) {
+      error('HSN Code is required.');
+      return;
+    }
+
+    setProductSubmitting(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(PRODUCTS_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...productFormData,
+          company_id: currentCompanyId
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Product created successfully!');
+        setShowProductModal(false);
+        const coId = currentCompanyId;
+        const resList = await fetch(`${PRODUCTS_API}?company_id=${coId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataList = await resList.json();
+        if (dataList.success) {
+          setProducts(dataList.data || []);
+        }
+        const createdProdId = data.data?.id;
+        if (createdProdId) {
+          if (activeLineIndexForNewProduct !== null && activeLineIndexForNewProduct < formData.items.length) {
+            handleItemChange(activeLineIndexForNewProduct, 'product_id', createdProdId);
+          } else {
+            setFormData(prev => ({
+              ...prev,
+              items: [...prev.items, { product_id: createdProdId, quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
+            }));
+          }
+        }
+      } else {
+        error(data.message || 'Failed to create product.');
+      }
+    } catch (err) {
+      console.error('Error saving product:', err);
+      error('System error while creating product.');
+    } finally {
+      setProductSubmitting(false);
+    }
+  };
+
   const handleCustomerChange = (customerId: string) => {
     const cust = customers.find(c => c.id === customerId);
     const autoType = cust?.gst_no ? 'B2B' : 'B2C';
@@ -169,12 +487,21 @@ export default function SalesInvoiceEntry() {
               customer_id: order.customer_id,
               invoice_type: autoType,
               executive_id: order.executive_id || '',
-              items: order.items.map((i: any) => ({
+              items: order.items.map((i: any) => {
+                const qty = i.quantity || 0;
+                const rate = i.rate || 0;
+                const gstP = i.gst_percent || 18;
+                const taxable = qty * rate;
+                const gstAmt = i.gst_amount || ((taxable * gstP) / 100);
+                return {
                   product_id: i.product_id,
-                  quantity: i.quantity,
-                  rate: i.rate,
-                  amount: i.value
-              }))
+                  quantity: qty,
+                  rate: rate,
+                  gst_percent: gstP,
+                  gst_amount: gstAmt,
+                  amount: taxable + gstAmt
+                };
+              })
           });
       }
   };
@@ -182,7 +509,7 @@ export default function SalesInvoiceEntry() {
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, amount: 0 }]
+      items: [...formData.items, { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
     });
   };
 
@@ -190,33 +517,48 @@ export default function SalesInvoiceEntry() {
     if (formData.items.length === 1) return;
     const newItems = [...formData.items];
     newItems.splice(index, 1);
-    setFormData({ ...formData, items: newItems });
+    const totalGst = newItems.reduce((sum, i) => sum + (i.gst_amount || 0), 0);
+    setFormData({ ...formData, items: newItems, tax_amount: totalGst });
   };
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
     const item = { ...newItems[index], [field]: value };
     
-    if (field === 'quantity' || field === 'rate') {
-      const qty = field === 'quantity' ? Math.max(0, parseFloat(value) || 0) : item.quantity;
-      const rate = field === 'rate' ? Math.max(0, parseFloat(value) || 0) : item.rate;
-      item.amount = qty * rate;
-      item[field] = field === 'quantity' ? qty : rate;
-    }
+    const qty = field === 'quantity' ? Math.max(0, parseFloat(value) || 0) : (item.quantity || 0);
+    const rate = field === 'rate' ? Math.max(0, parseFloat(value) || 0) : (item.rate || 0);
+    const gstP = field === 'gst_percent' ? Math.max(0, parseFloat(value) || 0) : (item.gst_percent !== undefined ? item.gst_percent : 18);
+
+    const taxableValue = qty * rate;
+    const gstAmount = (taxableValue * gstP) / 100;
+    const lineTotal = taxableValue + gstAmount;
+
+    item.quantity = qty;
+    item.rate = rate;
+    item.gst_percent = gstP;
+    item.gst_amount = gstAmount;
+    item.amount = lineTotal;
 
     newItems[index] = item;
-    setFormData({ ...formData, items: newItems });
+
+    const totalGst = newItems.reduce((sum, i) => sum + (i.gst_amount || 0), 0);
+    setFormData({ ...formData, items: newItems, tax_amount: totalGst });
   };
 
   const totals = useMemo(() => {
-    const subtotal = formData.items.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const tax = formData.tax_amount || 0;
+    const subtotal = formData.items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.rate || 0)), 0);
+    const calculatedTax = formData.items.reduce((sum, item) => sum + (item.gst_amount || 0), 0);
+    const tax = formData.tax_amount !== undefined && formData.tax_amount !== null ? formData.tax_amount : calculatedTax;
     const discount = formData.discount_amount || 0;
     const netBeforeRound = subtotal + tax - discount;
     const net = roundOff ? Math.round(netBeforeRound) : netBeforeRound;
     const roundoffAmount = roundOff ? (net - netBeforeRound) : 0;
-    return { subtotal, tax, discount, net, roundoffAmount };
+    return { subtotal, tax, discount, net, roundoffAmount, calculatedTax };
   }, [formData.items, formData.tax_amount, formData.discount_amount, roundOff]);
+
+  const selectedCustomer = useMemo(() => {
+    return customers.find(c => c.id === formData.customer_id);
+  }, [customers, formData.customer_id]);
 
   const filteredInvoices = useMemo(() => {
     if (activeSection === 'B2B') {
@@ -235,7 +577,6 @@ export default function SalesInvoiceEntry() {
         return; 
     }
 
-
     setSubmitting(true);
     try {
       const url = editingId ? `${INVOICES_API}/${editingId}` : INVOICES_API;
@@ -253,6 +594,7 @@ export default function SalesInvoiceEntry() {
           executive_id: formData.executive_id === '' ? null : formData.executive_id,
           scheduled_delivery_date: formData.scheduled_delivery_date === '' ? null : formData.scheduled_delivery_date,
           total_amount: totals.subtotal,
+          tax_amount: totals.tax,
           net_amount: totals.net
         })
       });
@@ -268,6 +610,7 @@ export default function SalesInvoiceEntry() {
         setShowForm(false);
         setEditingId(null);
         setFormData({
+            invoice_number: '',
             customer_id: '',
             order_id: '',
             executive_id: '',
@@ -278,9 +621,10 @@ export default function SalesInvoiceEntry() {
             tax_amount: 0,
             discount_amount: 0,
             company_id: currentCompanyId,
-            items: [{ product_id: '', quantity: 0, rate: 0, amount: 0 }]
+            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
         });
         setRoundOff(false);
+        fetchNextInvoiceNumber(currentCompanyId);
         fetchInvoices();
       } else {
         setAlert({ show: true, type: 'error', title: 'Error', message: result.message });
@@ -297,6 +641,7 @@ export default function SalesInvoiceEntry() {
     const resolvedType = inv.invoice_type || (cust?.gst_no ? 'B2B' : 'B2C');
     setEditingId(inv.id);
     setFormData({
+      invoice_number: inv.invoice_number || '',
       customer_id: inv.customer_id,
       order_id: inv.order_id || '',
       executive_id: inv.executive_id || '',
@@ -307,14 +652,23 @@ export default function SalesInvoiceEntry() {
       tax_amount: Number(inv.tax_amount) || 0,
       discount_amount: Number(inv.discount_amount) || 0,
       company_id: inv.company_id,
-      items: inv.items.map((i: any) => ({
-        product_id: i.product_id,
-        quantity: i.quantity,
-        rate: i.rate,
-        amount: i.amount
-      }))
+      items: inv.items.map((i: any) => {
+        const qty = Number(i.quantity) || 0;
+        const rate = Number(i.rate) || 0;
+        const gstP = Number(i.gst_percent) || 18;
+        const taxable = qty * rate;
+        const gstAmt = Number(i.gst_amount) || ((taxable * gstP) / 100);
+        return {
+          product_id: i.product_id,
+          quantity: qty,
+          rate: rate,
+          gst_percent: gstP,
+          gst_amount: gstAmt,
+          amount: Number(i.amount) || (taxable + gstAmt)
+        };
+      })
     });
-    const subtotal = inv.items?.reduce((sum: number, item: any) => sum + (item.amount || 0), 0) || 0;
+    const subtotal = inv.items?.reduce((sum: number, item: any) => sum + ((item.quantity || 0) * (item.rate || 0)), 0) || 0;
     const tax = Number(inv.tax_amount) || 0;
     const discount = Number(inv.discount_amount) || 0;
     const netBeforeRound = subtotal + tax - discount;
@@ -428,8 +782,8 @@ export default function SalesInvoiceEntry() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          reasonCode: cancelReasonCode,
-          remarks: cancelRemarks || 'Cancelled from ERP'
+          cancel_reason: cancelReasonCode,
+          cancel_remarks: cancelRemarks
         })
       });
       const result = await res.json();
@@ -438,7 +792,7 @@ export default function SalesInvoiceEntry() {
           show: true,
           type: 'success',
           title: `${cancelTarget.type === 'EINVOICE' ? 'E-Invoice' : 'E-Way Bill'} Cancelled`,
-          message: 'Cancellation reported successfully.'
+          message: 'Cancellation completed successfully.'
         });
         setShowCancelDialog(false);
         setCancelTarget(null);
@@ -449,34 +803,32 @@ export default function SalesInvoiceEntry() {
           show: true,
           type: 'error',
           title: 'Cancellation Failed',
-          message: result.message || 'Could not process cancellation.'
+          message: result.message || 'Could not cancel document.'
         });
       }
     } catch (err) {
-      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.' });
+      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Could not connect to server.' });
     } finally {
       setCancelling(false);
     }
   };
 
-  const selectedCustomer = customers.find(c => c.id === formData.customer_id);
-
   return (
-    <div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 min-w-0">
-      {/* Custom Alert Modal */}
+    <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto min-w-0">
+      {/* Alert Dialog */}
       {alert.show && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
-                 onClick={() => setAlert({...alert, show: false})} />
-            <Card className="relative w-full max-w-[440px] shadow-2xl border-none bg-white rounded-3xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300">
-                <div className={`h-2 w-full ${alert.type === 'success' ? 'bg-primary' : alert.type === 'error' ? 'bg-destructive' : 'bg-primary'}`} />
-                <CardContent className="p-10 text-center">
-                    <div className="flex justify-center mb-6">
-                        <div className={`p-5 rounded-full ${alert.type === 'success' ? 'bg-primary/5 text-primary' : alert.type === 'error' ? 'bg-destructive/5 text-destructive' : 'bg-primary/5 text-primary'}`}>
-                            {alert.type === 'success' && <CheckCircle2 className="w-12 h-12" />}
-                            {alert.type === 'error' && <XCircle className="w-12 h-12" />}
-                            {alert.type === 'confirm' && <AlertCircle className="w-12 h-12" />}
-                        </div>
+        <div className="fixed inset-0 z-[1200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <Card className="w-full max-w-md bg-white border-none shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95">
+                <CardContent className="p-8 text-center">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                        alert.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                        alert.type === 'error' ? 'bg-rose-100 text-rose-600' :
+                        alert.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-primary/10 text-primary'
+                    }`}>
+                        {alert.type === 'success' && <CheckCircle2 className="w-8 h-8" />}
+                        {alert.type === 'error' && <XCircle className="w-8 h-8" />}
+                        {alert.type === 'warning' && <AlertTriangle className="w-8 h-8" />}
+                        {alert.type === 'confirm' && <AlertCircle className="w-8 h-8" />}
                     </div>
                     <h3 className="text-2xl font-black text-slate-900 mb-2">{alert.title}</h3>
                     <p className="text-slate-500 font-medium">{alert.message}</p>
@@ -495,6 +847,7 @@ export default function SalesInvoiceEntry() {
         </div>
       )}
 
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-primary/10">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
@@ -504,7 +857,30 @@ export default function SalesInvoiceEntry() {
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Generate tax invoices and link to customer orders.</p>
         </div>
         <Button 
-          onClick={() => setShowForm(!showForm)} 
+          onClick={() => {
+            if (!showForm) {
+              setEditingId(null);
+              setFormData({
+                invoice_number: '',
+                customer_id: '',
+                order_id: '',
+                executive_id: '',
+                invoice_type: 'B2B',
+                invoice_date: new Date().toISOString().split('T')[0],
+                scheduled_delivery_date: '',
+                remarks: '',
+                tax_amount: 0,
+                discount_amount: 0,
+                company_id: currentCompanyId,
+                items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
+              });
+              fetchNextInvoiceNumber(currentCompanyId);
+              setShowForm(true);
+            } else {
+              setShowForm(false);
+              setEditingId(null);
+            }
+          }}
           className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"}`}
         >
           {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -522,8 +898,21 @@ export default function SalesInvoiceEntry() {
           <CardContent className="px-0 md:px-6 md:p-8 w-full max-w-full min-w-0 overflow-hidden">
             <form onSubmit={handleSubmit} className="space-y-8 w-full max-w-full min-w-0 overflow-hidden">
               <div className="space-y-6">
-                {/* Row 1: Date of Sale, Link Order, Customer */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Row 1: Inv No, Date of Sale, Link Order, Customer */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                      <FileText className="w-3 h-3 text-primary" /> Inv No
+                    </label>
+                    <Input 
+                      type="text" 
+                      value={formData.invoice_number} 
+                      onChange={e => setFormData({ ...formData, invoice_number: e.target.value })}
+                      placeholder="e.g. MP001"
+                      className="font-mono font-black text-primary border-slate-200 bg-slate-50/50 focus:bg-white"
+                    />
+                  </div>
+
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                       <Calendar className="w-3 h-3" /> Date of Sale
@@ -551,9 +940,18 @@ export default function SalesInvoiceEntry() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
-                      <User className="w-3 h-3" /> Customer
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                        <User className="w-3 h-3" /> Customer
+                      </label>
+                      <button 
+                        type="button" 
+                        onClick={openCustomerModal}
+                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" /> + New Customer
+                      </button>
+                    </div>
                     <Select value={formData.customer_id || ""} onValueChange={handleCustomerChange}>
                       <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
                         <SelectValue placeholder="Select Customer..." />
@@ -597,63 +995,127 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
 
+              {/* Customer GST Banner */}
               {selectedCustomer && (
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-6">
-                    <Info className="w-6 h-6 text-primary" />
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-1 flex-1">
-                         <div className="flex flex-col"><span className="text-[10px] font-bold text-primary/60 uppercase">GST No</span><span className="text-sm font-bold">{selectedCustomer.gst_no || 'N/A'}</span></div>
-                         <div className="flex flex-col"><span className="text-[10px] font-bold text-primary/60 uppercase">Limit</span><span className="text-sm font-bold">₹ {selectedCustomer.credit_limit || 0}</span></div>
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Info className="w-6 h-6 text-primary shrink-0" />
+                      <div>
+                        <div className="text-sm font-black text-slate-900">{selectedCustomer.customer_name} ({selectedCustomer.customer_code})</div>
+                        <div className="text-xs text-slate-500 font-medium">GST No: <span className="font-bold text-slate-700">{selectedCustomer.gst_no || 'N/A'}</span></div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Credit Limit</span>
+                        ₹ {(selectedCustomer.credit_limit || 0).toLocaleString()}
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border ${
+                        getGstType(selectedCustomer.id) === 'IGST' 
+                          ? 'bg-amber-50 border-amber-200 text-amber-800' 
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      }`}>
+                        <span className="text-[10px] uppercase font-bold opacity-70 block">Tax Method</span>
+                        {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST 18%)' : 'Intra-State (CGST 9% + SGST 9%)'}
+                      </div>
                     </div>
                 </div>
               )}
 
+              {/* Line Items */}
               <div className="space-y-4 w-full max-w-full min-w-0">
-                <div className="flex justify-between items-center px-1">
+                <div className="flex flex-wrap justify-between items-center px-1 gap-2">
                     <label className="text-xs font-black uppercase text-slate-500 border-l-4 border-primary pl-3">Line Items</label>
-                    <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary h-8"><Plus className="w-3 h-3 mr-1" /> Add Row</Button>
+                    <div className="flex gap-2">
+                        <Button type="button" onClick={() => openProductModal()} size="sm" variant="outline" className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/5 font-bold">
+                          <Plus className="w-3 h-3 mr-1" /> New Product
+                        </Button>
+                        <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 h-8 text-xs font-bold">
+                          <Plus className="w-3 h-3 mr-1" /> Add Row
+                        </Button>
+                    </div>
                 </div>
                 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto text-sm w-full max-w-full">
-                    <table className="w-full min-w-[600px]">
+                    <table className="w-full min-w-[800px]">
                         <thead className="bg-slate-100/80 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">HSN Code</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Quantity</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-32">Rate (₹)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-40">Value (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">HSN Code</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Quantity</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Rate (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">GST (%)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-32">GST Amount (₹)</th>
+                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-36">Total Amount (₹)</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                            {formData.items.map((item, index) => (
+                            {formData.items.map((item, index) => {
+                              const prod = products.find(p => p.id === item.product_id);
+                              return (
                                 <tr key={index} className="bg-white hover:bg-slate-50 group">
                                     <td className="p-4">
                                         <Select 
                                           value={item.product_id || ""} 
-                                          onValueChange={val => handleItemChange(index, 'product_id', val)}
+                                          onValueChange={val => {
+                                            if (val === 'CREATE_NEW') {
+                                              openProductModal(index);
+                                            } else {
+                                              handleItemChange(index, 'product_id', val);
+                                            }
+                                          }}
                                         >
                                           <SelectTrigger className="w-full h-9 font-bold bg-transparent border-none text-sm shadow-none focus:ring-0">
                                             <SelectValue placeholder="Select Product..." />
                                           </SelectTrigger>
                                           <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
+                                            <SelectItem value="CREATE_NEW" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
+                                              + Create New Product
+                                            </SelectItem>
                                             {products.map(p => (
                                               <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
                                             ))}
                                           </SelectContent>
                                         </Select>
                                     </td>
-                                    <td className="p-4 text-center font-mono text-xs font-bold text-slate-500">
-                                        {products.find(p => p.id === item.product_id)?.hsn_code || '-'}
+                                    <td className="p-4 text-center font-mono text-xs font-bold text-slate-600">
+                                        {prod?.hsn_code || '-'}
                                     </td>
-                                    <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
-                                    <td className="p-4"><Input type="number" min="0" placeholder='₹ 0' value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-none text-xs md:text-sm" /></td>
-                                    <td className="p-4 text-right font-black text-slate-500 text-xs md:text-sm">₹ {(item.amount || 0).toLocaleString()}</td>
+                                    <td className="p-4">
+                                      <Input type="number" min="0" placeholder="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                                    </td>
+                                    <td className="p-4">
+                                      <Input type="number" min="0" placeholder="₹ 0" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                                    </td>
+                                    <td className="p-4">
+                                      <Select value={String(item.gst_percent !== undefined ? item.gst_percent : 18)} onValueChange={val => handleItemChange(index, 'gst_percent', val)}>
+                                        <SelectTrigger className="h-8 font-bold border-slate-200 text-xs text-center">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white z-[1000]">
+                                          <SelectItem value="0">0%</SelectItem>
+                                          <SelectItem value="5">5%</SelectItem>
+                                          <SelectItem value="12">12%</SelectItem>
+                                          <SelectItem value="18">18%</SelectItem>
+                                          <SelectItem value="28">28%</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </td>
+                                    <td className="p-4 text-right font-mono font-bold text-slate-600 text-xs md:text-sm">
+                                      ₹ {(item.gst_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="p-4 text-right font-mono font-black text-slate-900 text-xs md:text-sm">
+                                      ₹ {(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
                                     <td className="p-4 text-center">
-                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </td>
                                 </tr>
-                            ))}
+                              );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -670,15 +1132,55 @@ export default function SalesInvoiceEntry() {
                         </div>
                     </div>
                     <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
-                        <div className="flex justify-between text-sm font-medium text-slate-500"><span>Subtotal</span><span>₹ {totals.subtotal.toLocaleString()}</span></div>
-                        <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500">Tax (GST) (+) {!formData.tax_amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</span>
-                            <Input type="number" placeholder='₹ 0' min="0" value={formData.tax_amount === 0 ? '' : formData.tax_amount} onChange={e => setFormData({...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
+                        <div className="flex justify-between text-sm font-medium text-slate-500">
+                          <span>Subtotal (Taxable)</span>
+                          <span className="font-mono font-bold text-slate-700">₹ {totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500">Discount (-) {!formData.discount_amount && <span className="text-[10px] font-medium lowercase">(₹)</span>}</span>
-                            <Input type="number" placeholder='₹ 0' min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-bold" />
+                        
+                        <div className="space-y-1 py-1 bg-white p-3 rounded-xl border border-slate-200/80">
+                          <div className="flex justify-between text-sm items-center">
+                            <span className="text-slate-700 font-bold flex items-center gap-1.5">
+                              GST Tax Amount (+)
+                            </span>
+                            <Input 
+                              type="number" 
+                              placeholder="₹ 0" 
+                              min="0" 
+                              value={formData.tax_amount === 0 ? '' : formData.tax_amount} 
+                              onChange={e => setFormData({ ...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0) })} 
+                              className="w-32 h-8 text-right font-mono font-bold" 
+                            />
+                          </div>
+                          
+                          {/* GST Tax Breakdown */}
+                          {totals.tax > 0 && formData.customer_id && (
+                            <div className="pt-2 border-t border-dashed border-slate-200 text-xs space-y-1 font-mono">
+                              {getGstType(formData.customer_id) === 'IGST' ? (
+                                <div className="flex justify-between text-amber-700 font-medium">
+                                  <span>IGST (18%)</span>
+                                  <span>₹ {totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex justify-between text-emerald-700 font-medium">
+                                    <span>CGST (9%)</span>
+                                    <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                  </div>
+                                  <div className="flex justify-between text-emerald-700 font-medium">
+                                    <span>SGST (9%)</span>
+                                    <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
+
+                        <div className="flex justify-between text-sm items-center gap-4">
+                            <span className="text-slate-500">Discount (-)</span>
+                            <Input type="number" placeholder="₹ 0" min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-mono font-bold" />
+                        </div>
+
                         <div className="flex justify-between text-sm items-center gap-4">
                             <span className="text-slate-500 flex items-center gap-2 cursor-pointer select-none">
                               <Checkbox 
@@ -693,7 +1195,10 @@ export default function SalesInvoiceEntry() {
                             </span>
                         </div>
                         <div className="h-px bg-slate-200 my-2" />
-                        <div className="flex justify-between text-xl font-black text-primary"><span>Total Value</span><span>₹ {totals.net.toLocaleString()}</span></div>
+                        <div className="flex justify-between text-xl font-black text-primary">
+                          <span>Total Value</span>
+                          <span className="font-mono">₹ {totals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
                     </div>
                 </div>
               </div>
@@ -731,7 +1236,7 @@ export default function SalesInvoiceEntry() {
               onClick={() => setActiveSection('B2B')}
               className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
                 activeSection === 'B2B' 
-                  ? 'bg-white text-primary shadow-md shadow-primary/10' 
+                  ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50' 
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
@@ -742,7 +1247,7 @@ export default function SalesInvoiceEntry() {
               onClick={() => setActiveSection('B2C')}
               className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
                 activeSection === 'B2C' 
-                  ? 'bg-white text-amber-700 shadow-md shadow-amber-200/50' 
+                  ? 'bg-white text-blue-700 shadow-md shadow-slate-200/50' 
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
@@ -751,175 +1256,158 @@ export default function SalesInvoiceEntry() {
           </div>
 
           <TableView
-            title={`${activeSection === 'B2B' ? 'B2B' : activeSection === 'B2C' ? 'B2C' : 'All'} Posted Invoices`}
-            description="History of sales invoices generated."
-            headers={['Inv No', 'Date', 'Type', 'Customer', 'Linked Order', 'Net Amount', 'E-Invoice', 'E-Way Bill', 'Actions']}
+            headers={['Invoice No', 'Date', 'Customer', 'Type', 'Amount', 'E-Invoice Status', 'E-Way Bill Status', 'Actions']}
             data={filteredInvoices}
             loading={loading}
-            searchFields={['invoice_number', 'customers.customer_name']}
+            searchPlaceholder="Search invoices by Inv No or Customer..."
+            searchFields={['invoice_number', 'customers.customer_name'] as any}
             renderRow={(inv: any) => {
-              const invType = (inv.invoice_type || (inv.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase();
+              const resolvedType = inv.invoice_type || (inv.customers?.gst_no ? 'B2B' : 'B2C');
+              const isB2B = resolvedType.toUpperCase() === 'B2B';
+              const einvStatus = inv.einvoice_status || 'PENDING';
+              const ewbStatus = inv.ewb_status || 'PENDING';
+
               return (
-                <tr key={inv.id} className="hover:bg-primary/5 transition-all group">
+                <tr key={inv.id} className="hover:bg-slate-50 border-b border-slate-100 transition-colors">
                   <td className="px-6 py-4 font-mono font-black text-primary">{inv.invoice_number}</td>
-                  <td className="px-6 py-4 text-xs font-semibold">{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-medium text-slate-700">{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-bold text-slate-800">
+                    {inv.customers?.customer_name}
+                    <div className="text-[10px] text-slate-400 font-normal">{inv.customers?.customer_code}</div>
+                  </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                      invType === 'B2B' 
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
                     }`}>
-                      {invType}
+                      {resolvedType}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-bold">{inv.customers?.customer_name}</td>
-                  <td className="px-6 py-4 text-xs italic text-slate-500">{inv.order_id ? inv.invoices?.order_number || 'Linked' : 'Manual Entry'}</td>
-                  <td className="px-6 py-4 font-black">₹ {inv.net_amount?.toLocaleString()}</td>
-                  
-                  {/* E-Invoice Column */}
+                  <td className="px-6 py-4 font-mono font-bold text-slate-900">₹ {Number(inv.net_amount).toLocaleString()}</td>
                   <td className="px-6 py-4">
-                      {invType === 'B2C' ? (
-                          <span className="text-xs text-slate-400 font-semibold italic">Not Req (B2C)</span>
-                      ) : (
-                          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                              {inv.einvoice_status === 'GENERATED' ? (
-                                  <>
-                                      <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                          <Check className="w-3 h-3 text-emerald-600 font-bold" />
-                                          Generated
-                                      </span>
-                                      {inv.einvoice_ack_no && (
-                                          <div className="flex flex-col gap-1 items-start">
-                                              <div className="flex items-center gap-1 group/copy select-all">
-                                                  <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title={`IRN: ${inv.einvoice_irn}`}>
-                                                      Ack: {inv.einvoice_ack_no}
-                                                  </span>
-                                                  <button
-                                                      onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          navigator.clipboard.writeText(inv.einvoice_irn);
-                                                          success('E-Invoice IRN copied!');
-                                                      }}
-                                                      className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-all"
-                                                      title="Copy IRN"
-                                                  >
-                                                      <Copy className="w-3 h-3" />
-                                                  </button>
-                                              </div>
-                                              <Button
-                                                  onClick={() => {
-                                                      setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.einvoice_ack_no });
-                                                      setCancelReasonCode('2');
-                                                      setShowCancelDialog(true);
-                                                  }}
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600 font-bold mt-0.5"
-                                              >
-                                                  Cancel IRN
-                                              </Button>
-                                          </div>
-                                      )}
-                                  </>
-                              ) : inv.einvoice_status === 'CANCELLED' ? (
-                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 italic">
-                                      Cancelled
-                                  </span>
-                              ) : inv.einvoice_status === 'FAILED' ? (
-                                  <div className="flex flex-col gap-1 items-start">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.einvoice_error}>
-                                          <XCircle className="w-3 h-3 text-rose-600" />
-                                          Failed
-                                      </span>
-                                      <Button 
-                                          onClick={() => handleGenerateEInvoice(inv.id)}
-                                          size="sm" 
-                                          variant="outline" 
-                                          className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600"
-                                      >
-                                          Retry
-                                      </Button>
-                                  </div>
-                              ) : (
-                                  <Button 
-                                      onClick={() => handleGenerateEInvoice(inv.id)}
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-7 text-[10px] px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 rounded-full font-bold"
-                                  >
-                                      Generate IRN
-                                  </Button>
-                              )}
+                    {!isB2B ? (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-400 uppercase">N/A (B2C)</span>
+                    ) : (
+                      <div className="flex flex-col gap-1.5 items-start">
+                        {einvStatus === 'GENERATED' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase w-fit flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Generated
+                            </span>
+                            {inv.einvoice_ack_no && (
+                              <span className="text-[10px] font-mono text-slate-400">Ack: {inv.einvoice_ack_no}</span>
+                            )}
                           </div>
-                      )}
-                  </td>
+                        )}
+                        {einvStatus === 'FAILED' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 uppercase w-fit flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-rose-600" /> Failed
+                            </span>
+                            {inv.einvoice_error && (
+                              <span className="text-[9px] text-rose-500 max-w-[150px] truncate" title={inv.einvoice_error}>{inv.einvoice_error}</span>
+                            )}
+                          </div>
+                        )}
+                        {einvStatus === 'CANCELLED' && (
+                          <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Cancelled</span>
+                        )}
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'FAILED' && (
+                          <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">Pending</span>
+                        )}
 
-                  {/* E-Way Bill Column */}
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && (
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleGenerateEInvoice(inv.id)}
+                            className="h-7 text-[10px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2 rounded-lg"
+                          >
+                            Generate IRN
+                          </Button>
+                        )}
+                        {einvStatus === 'GENERATED' && (
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.invoice_number });
+                              setShowCancelDialog(true);
+                            }}
+                            className="h-6 text-[9px] font-bold text-rose-600 hover:bg-rose-50 px-1.5 rounded"
+                          >
+                            Cancel IRN
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                          {inv.ewb_status === 'GENERATED' ? (
-                              <>
-                                  <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                      <Check className="w-3 h-3 text-emerald-600 font-bold" />
-                                      EWB Active
-                                  </span>
-                                  {inv.ewb_no && (
-                                      <div className="flex flex-col gap-1 items-start">
-                                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                              EWB: {inv.ewb_no}
-                                          </span>
-                                          <Button
-                                              onClick={() => {
-                                                  setCancelTarget({ id: inv.id, type: 'EWB', docNo: inv.ewb_no });
-                                                  setCancelReasonCode('3');
-                                                  setShowCancelDialog(true);
-                                              }}
-                                              size="sm"
-                                              variant="outline"
-                                              className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600 font-bold mt-0.5"
-                                          >
-                                              Cancel EWB
-                                          </Button>
-                                      </div>
-                                  )}
-                              </>
-                          ) : inv.ewb_status === 'CANCELLED' ? (
-                              <span className="inline-flex items-center gap-1 w-max px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 italic">
-                                  Cancelled
-                              </span>
-                          ) : inv.ewb_status === 'FAILED' ? (
-                              <div className="flex flex-col gap-1 items-start">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200" title={inv.ewb_error}>
-                                      <XCircle className="w-3 h-3 text-rose-600" />
-                                      EWB Failed
-                                  </span>
-                                  <Button 
-                                      onClick={() => handleGenerateEwb(inv.id)}
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-6 text-[10px] px-2 py-0.5 rounded border-rose-200 hover:bg-rose-50 text-rose-600"
-                                  >
-                                      Retry
-                                  </Button>
-                              </div>
-                          ) : (
-                              <Button 
-                                  onClick={() => handleGenerateEwb(inv.id)}
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-7 text-[10px] px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 rounded-full font-bold"
-                              >
-                                  Generate EWB
-                              </Button>
+                    <div className="flex flex-col gap-1.5 items-start">
+                      {ewbStatus === 'GENERATED' && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase w-fit flex items-center gap-1">
+                            <Truck className="w-3 h-3 text-emerald-600" /> Generated
+                          </span>
+                          {inv.ewb_no && (
+                            <span className="text-[10px] font-mono text-slate-400">EWB: {inv.ewb_no}</span>
                           )}
-                      </div>
-                  </td>
+                        </div>
+                      )}
+                      {ewbStatus === 'FAILED' && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 uppercase w-fit flex items-center gap-1">
+                            <XCircle className="w-3 h-3 text-rose-600" /> Failed
+                          </span>
+                          {inv.ewb_error && (
+                            <span className="text-[9px] text-rose-500 max-w-[150px] truncate" title={inv.ewb_error}>{inv.ewb_error}</span>
+                          )}
+                        </div>
+                      )}
+                      {ewbStatus === 'CANCELLED' && (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Cancelled</span>
+                      )}
+                      {ewbStatus !== 'GENERATED' && ewbStatus !== 'CANCELLED' && ewbStatus !== 'FAILED' && (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">Pending</span>
+                      )}
 
-                  <td className="px-2 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-primary border border-primary/10 font-bold"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-destructive border border-destructive/10 font-bold"><Trash2 className="w-4 h-4" /></Button>
-                      </div>
+                      {ewbStatus !== 'GENERATED' && ewbStatus !== 'CANCELLED' && (
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleGenerateEwb(inv.id)}
+                          className="h-7 text-[10px] font-bold border-blue-300 text-blue-700 hover:bg-blue-50 px-2 rounded-lg"
+                        >
+                          Generate EWB
+                        </Button>
+                      )}
+                      {ewbStatus === 'GENERATED' && (
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => {
+                            setCancelTarget({ id: inv.id, type: 'EWB', docNo: inv.invoice_number });
+                            setShowCancelDialog(true);
+                          }}
+                          className="h-6 text-[9px] font-bold text-rose-600 hover:bg-rose-50 px-1.5 rounded"
+                        >
+                          Cancel EWB
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-slate-500 hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -928,63 +1416,411 @@ export default function SalesInvoiceEntry() {
         </div>
       )}
 
-      {/* Cancellation Reason Modal */}
+      {/* Cancellation Modal */}
       {showCancelDialog && cancelTarget && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
-               onClick={() => setShowCancelDialog(false)} />
-          <Card className="relative w-full max-w-[460px] shadow-2xl border-none bg-white rounded-3xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300">
-            <div className="h-2 w-full bg-destructive" />
-            <CardContent className="p-8">
-              <h3 className="text-xl font-black text-slate-900 mb-2">Cancel {cancelTarget.type === 'EINVOICE' ? 'E-Invoice (IRN)' : 'E-Way Bill'}</h3>
-              <p className="text-slate-500 text-xs font-semibold mb-6">
-                Are you sure you want to cancel {cancelTarget.type === 'EINVOICE' ? 'IRN Ack' : 'E-Way Bill'} #{cancelTarget.docNo}? This action is reported to the GST system.
-              </p>
-              
+        <div className="fixed inset-0 z-[1200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <Card className="w-full max-w-md bg-white border-none shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95">
+            <CardHeader className="bg-rose-50 border-b border-rose-100 py-6">
+              <CardTitle className="text-rose-900 flex items-center gap-2 text-xl font-black">
+                <AlertTriangle className="w-6 h-6 text-rose-600" /> Cancel {cancelTarget.type === 'EINVOICE' ? 'E-Invoice' : 'E-Way Bill'}
+              </CardTitle>
+              <CardDescription className="text-rose-700 text-xs font-semibold">
+                Document No: {cancelTarget.docNo}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
               <form onSubmit={handleCancelSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Reason Code</label>
-                  {cancelTarget.type === 'EINVOICE' ? (
-                    <select
-                      value={cancelReasonCode}
-                      onChange={e => setCancelReasonCode(e.target.value)}
-                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
-                    >
-                      <option value="1">1 - Duplicate</option>
-                      <option value="2">2 - Data Entry Error</option>
-                      <option value="3">3 - Order Cancelled</option>
-                      <option value="4">4 - Others</option>
-                    </select>
-                  ) : (
-                    <select
-                      value={cancelReasonCode}
-                      onChange={e => setCancelReasonCode(e.target.value)}
-                      className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:ring-1 focus:ring-primary font-bold"
-                    >
-                      <option value="1">1 - Duplicate</option>
-                      <option value="2">2 - Order Cancelled</option>
-                      <option value="3">3 - Data Entry Error</option>
-                      <option value="4">4 - Others</option>
-                    </select>
-                  )}
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Reason Code *</label>
+                  <Select value={cancelReasonCode} onValueChange={setCancelReasonCode}>
+                    <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white z-[1300]">
+                      <SelectItem value="1">1 - Duplicate Entry</SelectItem>
+                      <SelectItem value="2">2 - Data Entry Error</SelectItem>
+                      <SelectItem value="3">3 - Order Cancelled</SelectItem>
+                      <SelectItem value="4">4 - Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                
+
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Remarks / Explanation</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Remarks / Reason Description</label>
                   <Input 
-                    placeholder="Enter reason details..." 
+                    placeholder="Provide additional details..." 
                     value={cancelRemarks} 
-                    onChange={e => setCancelRemarks(e.target.value)}
-                    required
+                    onChange={e => setCancelRemarks(e.target.value)} 
+                    className="font-medium"
                   />
                 </div>
-                
-                <div className="mt-8 flex gap-3 justify-end pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowCancelDialog(false)} className="rounded-xl px-6 h-11 border-slate-200 font-bold">Cancel</Button>
-                  <Button type="submit" loading={cancelling} className="rounded-xl px-8 h-11 bg-destructive hover:bg-destructive/90 text-white font-black shadow-lg shadow-destructive/20">Confirm Cancellation</Button>
+
+                <div className="flex gap-3 justify-end pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => { setShowCancelDialog(false); setCancelTarget(null); }}
+                    className="rounded-xl px-6 font-bold"
+                  >
+                    Close
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    loading={cancelling}
+                    className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-8 font-black shadow-lg shadow-rose-600/20"
+                  >
+                    Confirm Cancellation
+                  </Button>
                 </div>
               </form>
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Customer Creation Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+            <Card className="w-full max-w-4xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
+                <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 shrink-0">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="text-primary flex items-center gap-2 text-xl font-black">
+                        <UserPlus className="w-6 h-6" /> Quick Create Customer
+                      </CardTitle>
+                      <CardDescription className="text-xs">Add a new customer to the database directly from here.</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'basic' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('basic');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'basic' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >1. Basic</Button>
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'address' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('address');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'address' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >2. Addresses</Button>
+                      <Button 
+                        type="button"
+                        variant={customerActiveTab === 'financial' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => {
+                          if (!customerFormData.customer_name) {
+                            error('Customer name is required before switching tabs.');
+                            return;
+                          }
+                          setCustomerActiveTab('financial');
+                        }}
+                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'financial' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                      >3. Financials</Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6 overflow-y-auto flex-1 text-slate-700">
+                  {customerActiveTab === 'basic' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Customer Name *</label>
+                        <Input name="customer_name" value={customerFormData.customer_name} onChange={handleCustomerInputChange} placeholder="Legal Company Name" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Customer Code *</label>
+                        <Input 
+                          name="customer_code" 
+                          value={customerFormData.customer_code} 
+                          readOnly
+                          className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                          placeholder="e.g. CUST-001" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>
+                        <Input name="gst_no" value={customerFormData.gst_no} onChange={handleCustomerInputChange} placeholder="GSTXXXXXXXXXXXX" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
+                        <Input name="mobile_no" value={customerFormData.mobile_no} onChange={handleCustomerInputChange} placeholder="+91 XXXXX XXXXX" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
+                        <Input name="email_id" value={customerFormData.email_id} onChange={handleCustomerInputChange} placeholder="contact@company.com" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Contact Person</label>
+                        <Input name="contact_person" value={customerFormData.contact_person} onChange={handleCustomerInputChange} placeholder="e.g. John Doe" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Delivery Period</label>
+                        <Input name="delivery_period" value={customerFormData.delivery_period} onChange={handleCustomerInputChange} placeholder="e.g. 7-10 Days" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Delivery Mode</label>
+                        <Input name="delivery_mode" value={customerFormData.delivery_mode} onChange={handleCustomerInputChange} placeholder="e.g. Courier, Hand-delivery" />
+                      </div>
+                    </div>
+                  )}
+
+                  {customerActiveTab === 'address' && (
+                    <div className="space-y-8 animate-in slide-in-from-right duration-500">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {customerFormData.addresses.map((addr, idx) => (
+                          <div key={idx} className="p-4 rounded-xl border border-primary/10 bg-slate-50/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-bold text-primary flex items-center">
+                                <MapPin className="w-4 h-4 mr-2" /> {addr.address_type} Address
+                              </h3>
+                              {idx === 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={copyBillingToShipping} className="text-[10px] h-7 bg-white shadow-sm border">
+                                  Same as Customer Address
+                                </Button>
+                              )}
+                            </div>
+                            <div className="grid gap-4">
+                              <Input placeholder="Street / Area" value={addr.street} onChange={(e) => handleCustomerAddressChange(idx, 'street', e.target.value)} />
+                              <div className="grid grid-cols-2 gap-4">
+                                <Input placeholder="City" value={addr.city} onChange={(e) => handleCustomerAddressChange(idx, 'city', e.target.value)} />
+                                <Input placeholder="State" value={addr.state} onChange={(e) => handleCustomerAddressChange(idx, 'state', e.target.value)} />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <Input placeholder="Zip Code" value={addr.zip_code} onChange={(e) => handleCustomerAddressChange(idx, 'zip_code', e.target.value)} />
+                                <Input placeholder="Country" value={addr.country} onChange={(e) => handleCustomerAddressChange(idx, 'country', e.target.value)} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {customerActiveTab === 'financial' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
+                        <Input type="number" min={0} name="credit_limit" value={customerFormData.credit_limit || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Credit Period (Days)</label>
+                        <Input type="number" min={0} name="credit_period" value={customerFormData.credit_period || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Opening Balance (₹)</label>
+                        <Input type="number" min={0} name="opening_balance" value={customerFormData.opening_balance || ''} onChange={handleCustomerInputChange} />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                
+                <div className="p-4 md:p-6 border-t flex justify-between items-center bg-slate-50 shrink-0">
+                  <div>
+                    {customerActiveTab !== 'basic' && (
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={() => {
+                          if (customerActiveTab === 'address') setCustomerActiveTab('basic');
+                          if (customerActiveTab === 'financial') setCustomerActiveTab('address');
+                        }}
+                        className="rounded-full px-6 h-10 font-bold border-primary/20 hover:bg-primary/5 mr-3"
+                      >
+                        Back
+                      </Button>
+                    )}
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      onClick={() => setShowCustomerModal(false)}
+                      className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium"
+                    >
+                      Close Modal
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-3">
+                    {customerActiveTab !== 'financial' ? (
+                      <Button 
+                        type="button"
+                        onClick={() => {
+                          if (customerActiveTab === 'basic') {
+                            if (!validateCustomerForm()) return;
+                            setCustomerActiveTab('address');
+                          }
+                          else if (customerActiveTab === 'address') {
+                            for (const addr of customerFormData.addresses) {
+                              if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+                                 return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
+                              }
+                            }
+                            setCustomerActiveTab('financial');
+                          }
+                        }}
+                        className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                      >
+                        Next Section
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="button"
+                        onClick={saveNewCustomer} 
+                        loading={customerSubmitting}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Create Customer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+            </Card>
+        </div>
+      )}
+
+      {/* Product Creation Modal */}
+      {showProductModal && (
+        <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-2xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden animate-in zoom-in-95">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 py-5">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-primary flex items-center gap-2 text-xl font-black">
+                  <Package className="w-6 h-6" /> Create New Finished Product
+                </CardTitle>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowProductModal(false)} className="rounded-full w-8 h-8 p-0">
+                  <X className="w-5 h-5 text-slate-400" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Product Code *</label>
+                  <Input value={productFormData.product_code} readOnly className="font-mono bg-slate-50 font-bold cursor-not-allowed" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Product Name *</label>
+                  <Input 
+                    value={productFormData.product_name} 
+                    onChange={e => setProductFormData({ ...productFormData, product_name: e.target.value })} 
+                    placeholder="e.g. Poly Bag 50 Micron 10x12" 
+                    className="font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 p-4 rounded-xl bg-amber-50/50 border border-amber-200/60">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase text-amber-900 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-amber-600" /> HSN Code *
+                  </label>
+                  <span className="text-[10px] text-amber-700 font-bold">GST Standard Classification</span>
+                </div>
+                <Input 
+                  value={productFormData.hsn_code} 
+                  onChange={e => setProductFormData({ ...productFormData, hsn_code: e.target.value })} 
+                  placeholder="e.g. 392011" 
+                  className="font-mono font-bold bg-white text-amber-900 border-amber-300"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-[10px] text-amber-700 font-bold self-center mr-1">Presets:</span>
+                  {[
+                    { code: '392011', label: '392011 (Poly Sheets/Film)' },
+                    { code: '392321', label: '392321 (Sacks & Bags)' },
+                    { code: '392310', label: '392310 (Boxes/Containers)' },
+                    { code: '392020', label: '392020 (Propylene Polymers)' }
+                  ].map(preset => (
+                    <button
+                      key={preset.code}
+                      type="button"
+                      onClick={() => setProductFormData({ ...productFormData, hsn_code: preset.code })}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Color</label>
+                  <Input 
+                    value={productFormData.color} 
+                    onChange={e => setProductFormData({ ...productFormData, color: e.target.value })} 
+                    placeholder="e.g. Natural" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Thickness (Microns)</label>
+                  <Input 
+                    type="number" 
+                    value={productFormData.thickness_microns || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, thickness_microns: parseFloat(e.target.value) || 0 })} 
+                    placeholder="e.g. 50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Size</label>
+                  <Input 
+                    value={productFormData.size} 
+                    onChange={e => setProductFormData({ ...productFormData, size: e.target.value })} 
+                    placeholder="e.g. 10x12" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Avg Count / Kg</label>
+                  <Input 
+                    type="number" 
+                    value={productFormData.avg_count_per_kg || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, avg_count_per_kg: parseFloat(e.target.value) || 0 })} 
+                    placeholder="e.g. 120" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Opening Stock (Kg)</label>
+                  <Input 
+                    type="number" 
+                    value={productFormData.opening_stock || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, opening_stock: parseFloat(e.target.value) || 0 })} 
+                    placeholder="e.g. 100" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase text-slate-600">Reorder Threshold (Kg)</label>
+                  <Input 
+                    type="number" 
+                    value={productFormData.stock_threshold || ''} 
+                    onChange={e => setProductFormData({ ...productFormData, stock_threshold: parseFloat(e.target.value) || 0 })} 
+                    placeholder="e.g. 50" 
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <div className="p-4 border-t bg-slate-50 flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowProductModal(false)} className="rounded-full px-6 font-bold">
+                Cancel
+              </Button>
+              <Button type="button" onClick={saveNewProduct} loading={productSubmitting} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 font-black">
+                <Save className="w-4 h-4 mr-2" /> Save Product
+              </Button>
+            </div>
           </Card>
         </div>
       )}
