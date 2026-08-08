@@ -10,7 +10,8 @@ import {
   User, Calendar, DollarSign, Package, Briefcase, 
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin, 
-  CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer
+  CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer,
+  Download, FileDown, ChevronDown, Loader2
 } from 'lucide-react';
 import { 
   Select, 
@@ -22,6 +23,11 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  downloadAllInvoiceDocs, 
+  downloadSingleTaxInvoice, 
+  downloadSingleEWayBill 
+} from '@/utils/invoicePdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
@@ -146,6 +152,67 @@ export default function SalesInvoiceEntry() {
   const openViewEInvoiceModal = (inv: any) => {
     setViewEInvoice(inv);
     setShowEInvoiceViewModal(true);
+  };
+
+  // Download States & Handlers
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadDropdownInvId, setDownloadDropdownInvId] = useState<string | null>(null);
+
+  const handleDownloadAllDocs = async (inv: any) => {
+    setDownloadingId(inv.id);
+    const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
+    try {
+      await downloadAllInvoiceDocs(
+        inv,
+        activeTenant,
+        () => {
+          if (isEwbGenerated) {
+            success(`Official 5-page PDF document bundle (Invoice + e-Way Bill) for ${inv.invoice_number || 'Invoice'} downloaded!`);
+          } else {
+            success(`Tax Invoice 4-page bundle for ${inv.invoice_number || 'Invoice'} downloaded (e-Way Bill excluded as it is not generated).`);
+          }
+        },
+        (err) => {
+          console.error(err);
+          error('Could not generate PDF documents.');
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      error('Failed to generate PDF document bundle.');
+    } finally {
+      setDownloadingId(null);
+      setDownloadDropdownInvId(null);
+    }
+  };
+
+  const handleDownloadSingleDoc = async (inv: any, type: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE' | 'EXTRA' | 'EWB') => {
+    const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
+    
+    if (type === 'EWB' && !isEwbGenerated) {
+      error(`e-Way Bill has not been generated for invoice ${inv.invoice_number || ''}. Please click "Generate EWB" first.`);
+      return;
+    }
+
+    setDownloadingId(inv.id);
+    try {
+      if (type === 'EWB') {
+        await downloadSingleEWayBill(inv, activeTenant);
+        success(`e-Way Bill document for ${inv.invoice_number || ''} downloaded.`);
+      } else {
+        const copyLabel = type === 'ORIGINAL' ? '(ORIGINAL FOR RECIPIENT)' :
+                          type === 'DUPLICATE' ? '(DUPLICATE FOR TRANSPORTER)' :
+                          type === 'TRIPLICATE' ? '(TRIPLICATE FOR SUPPLIER)' : '(EXTRA COPY)';
+        await downloadSingleTaxInvoice(inv, activeTenant, copyLabel);
+        success(`Tax Invoice ${copyLabel} downloaded.`);
+      }
+    } catch (err) {
+      console.error(err);
+      error('Error generating document.');
+    } finally {
+      setDownloadingId(null);
+      setDownloadDropdownInvId(null);
+    }
   };
 
   const [formData, setFormData] = useState({
@@ -1526,11 +1593,133 @@ export default function SalesInvoiceEntry() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Download Action with Dropdown Menu */}
+                      <div className="relative">
+                        <div className="flex items-center rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors shadow-sm">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={downloadingId === inv.id}
+                            onClick={() => handleDownloadAllDocs(inv)}
+                            className="h-8 px-2.5 text-primary hover:bg-primary hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all rounded-l-lg rounded-r-none border-r border-primary/20"
+                            title="Download All Documents (5-page PDF Bundle)"
+                          >
+                            {downloadingId === inv.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                            ) : (
+                              <FileDown className="w-3.5 h-3.5" />
+                            )}
+                            <span className="hidden xl:inline">Download All Docs</span>
+                            <span className="xl:hidden font-mono text-[11px]">PDF</span>
+                          </Button>
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDownloadDropdownInvId(downloadDropdownInvId === inv.id ? null : inv.id);
+                            }}
+                            className="h-8 px-1.5 text-primary hover:text-white hover:bg-primary rounded-r-lg transition-colors flex items-center justify-center"
+                            title="More Document Options"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {downloadDropdownInvId === inv.id && (() => {
+                          const isEwbActive = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
+                          return (
+                            <div 
+                              className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 z-[1500] py-2 text-left animate-in fade-in zoom-in-95"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                                <span>Download Documents</span>
+                                <span className="text-[9px] font-mono text-primary font-bold">{inv.invoice_number}</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadAllDocs(inv)}
+                                className="w-full px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5 flex items-center gap-2 transition-colors border-b border-slate-100"
+                              >
+                                <FileDown className="w-4 h-4 text-primary shrink-0" />
+                                <div className="flex flex-col text-left">
+                                  <span className="font-black text-slate-900">
+                                    {isEwbActive ? 'All Documents (5 Pages Bundle)' : 'Tax Invoice Bundle (4 Pages)'}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {isEwbActive ? 'Invoice + e-Way Bill + All Copies' : 'Invoice + All Copies (EWB Pending)'}
+                                  </span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSingleDoc(inv, 'ORIGINAL')}
+                                className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Tax Invoice (Original for Recipient)</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={!isEwbActive}
+                                onClick={() => handleDownloadSingleDoc(inv, 'EWB')}
+                                className={`w-full px-3 py-1.5 text-xs font-semibold flex items-center justify-between gap-2 transition-colors ${
+                                  isEwbActive 
+                                    ? 'text-slate-700 hover:bg-slate-50' 
+                                    : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                }`}
+                                title={isEwbActive ? 'Download official e-Way Bill' : 'e-Way Bill has not been generated for this invoice'}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Truck className={`w-3.5 h-3.5 shrink-0 ${isEwbActive ? 'text-blue-600' : 'text-slate-300'}`} />
+                                  <span>Official e-Way Bill</span>
+                                </div>
+                                {!isEwbActive && (
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Not Generated</span>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSingleDoc(inv, 'DUPLICATE')}
+                                className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Duplicate for Transporter</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSingleDoc(inv, 'TRIPLICATE')}
+                                className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                <span>Triplicate for Supplier</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSingleDoc(inv, 'EXTRA')}
+                                className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span>Extra Copy</span>
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary rounded-lg" title="Edit Invoice">
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-slate-500 hover:text-destructive">
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)} className="h-8 w-8 p-0 text-slate-500 hover:text-destructive rounded-lg" title="Delete Invoice">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -1540,6 +1729,14 @@ export default function SalesInvoiceEntry() {
             }}
           />
         </div>
+      )}
+
+      {/* Backdrop to close download dropdown */}
+      {downloadDropdownInvId && (
+        <div 
+          className="fixed inset-0 z-[1400] bg-transparent" 
+          onClick={() => setDownloadDropdownInvId(null)}
+        />
       )}
 
       {/* Cancellation Modal */}
@@ -1742,10 +1939,24 @@ export default function SalesInvoiceEntry() {
               <div className="flex items-center gap-2">
                 <Button 
                   type="button" 
-                  onClick={() => window.print()} 
+                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)} 
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                >
+                  <FileDown className="w-4 h-4" /> Download All Docs (PDF)
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)} 
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
-                  <Printer className="w-4 h-4" /> Print / Save PDF
+                  <Download className="w-4 h-4" /> Download EWB
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => window.print()} 
+                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
+                >
+                  <Printer className="w-4 h-4" /> Print
                 </Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => setShowEwbViewModal(false)} className="hover:bg-slate-800 text-slate-400 hover:text-white rounded-full">
                   <X className="w-5 h-5" />
@@ -1884,11 +2095,25 @@ export default function SalesInvoiceEntry() {
               </div>
             </CardContent>
 
-            <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center shrink-0">
+            <CardFooter className="bg-slate-50 p-4 border-t flex flex-wrap justify-between items-center gap-2 shrink-0">
               <span className="text-[10px] text-slate-400 font-medium">Auto-generated via ERP GSP System</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowEwbViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
                   Close
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)} 
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
+                >
+                  <FileDown className="w-4 h-4" /> Download All Docs (5 Pages)
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)} 
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
+                >
+                  <Download className="w-4 h-4" /> Download EWB
                 </Button>
                 <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 font-bold gap-2">
                   <Printer className="w-4 h-4" /> Print Slip
@@ -1920,10 +2145,24 @@ export default function SalesInvoiceEntry() {
               <div className="flex items-center gap-2">
                 <Button 
                   type="button" 
-                  onClick={() => window.print()} 
+                  onClick={() => handleDownloadAllDocs(viewEInvoice)} 
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                >
+                  <FileDown className="w-4 h-4" /> Download All Docs
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')} 
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
-                  <Printer className="w-4 h-4" /> Print / Save PDF
+                  <Download className="w-4 h-4" /> Download Invoice
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => window.print()} 
+                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
+                >
+                  <Printer className="w-4 h-4" /> Print
                 </Button>
                 <Button type="button" variant="ghost" size="icon" onClick={() => setShowEInvoiceViewModal(false)} className="hover:bg-emerald-900 text-emerald-300 hover:text-white rounded-full">
                   <X className="w-5 h-5" />
@@ -2064,14 +2303,28 @@ export default function SalesInvoiceEntry() {
               </div>
             </CardContent>
 
-            <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center shrink-0">
+            <CardFooter className="bg-slate-50 p-4 border-t flex flex-wrap justify-between items-center gap-2 shrink-0">
               <span className="text-[10px] text-slate-400 font-medium">Verified e-Invoice Document</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowEInvoiceViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
                   Close
                 </Button>
-                <Button type="button" onClick={() => window.print()} className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-full px-6 font-bold gap-2">
-                  <Printer className="w-4 h-4" /> Print e-Invoice
+                <Button 
+                  type="button" 
+                  onClick={() => handleDownloadAllDocs(viewEInvoice)} 
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
+                >
+                  <FileDown className="w-4 h-4" /> Download All Docs (5 Pages)
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')} 
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
+                >
+                  <Download className="w-4 h-4" /> Download Invoice
+                </Button>
+                <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 font-bold gap-2">
+                  <Printer className="w-4 h-4" /> Print
                 </Button>
               </div>
             </CardFooter>
