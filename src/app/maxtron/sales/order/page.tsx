@@ -248,6 +248,7 @@ export default function CustomerOrderEntry() {
   };
 
   const [formData, setFormData] = useState({
+    order_number: '',
     customer_id: '',
     executive_id: '',
     order_date: new Date().toISOString().split('T')[0],
@@ -272,6 +273,23 @@ export default function CustomerOrderEntry() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  const fetchNextOrderNumber = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    const targetCoId = coId || currentCompanyId;
+    if (!targetCoId) return;
+    try {
+      const res = await fetch(`${ORDERS_API}/next-number?company_id=${targetCoId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setFormData(prev => ({ ...prev, order_number: data.data }));
+      }
+    } catch (err) {
+      console.error('Error fetching next order number:', err);
+    }
+  };
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -316,7 +334,10 @@ export default function CustomerOrderEntry() {
         ));
       }
 
-      if (coId) fetchOrders(coId);
+      if (coId) {
+        fetchOrders(coId);
+        fetchNextOrderNumber(coId);
+      }
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -393,22 +414,23 @@ export default function CustomerOrderEntry() {
   const handleEdit = (order: any) => {
     setEditingId(order.id);
     setFormData({
+      order_number: order.order_number || '',
       customer_id: order.customer_id,
       executive_id: order.executive_id || '',
-      order_date: order.order_date.split('T')[0],
+      order_date: order.order_date ? order.order_date.split('T')[0] : new Date().toISOString().split('T')[0],
       remarks: order.remarks || '',
       company_id: order.company_id,
       section_type: order.section_type || 'customer order',
       is_round_off: !!order.is_round_off,
       round_off: Number(order.round_off || 0),
-      items: order.items.map((i: any) => ({
+      items: (order.items && order.items.length > 0) ? order.items.map((i: any) => ({
         product_id: i.product_id,
         quantity: i.quantity,
         rate: i.rate,
         gst_percent: i.gst_percent || 0,
         gst_amount: i.gst_amount || 0,
         total_value: i.total_value || (i.quantity * i.rate)
-      })),
+      })) : [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }],
       transporter_id: order.transporter_id || '',
       transporter_name: order.transporter_name || '',
       trans_distance: Number(order.trans_distance || 0),
@@ -448,56 +470,67 @@ export default function CustomerOrderEntry() {
                         show: true,
                         type: 'error',
                         title: 'Error',
-                        message: result.message
+                        message: result.message || 'Failed to delete order.'
                     });
                 }
             } catch (err) {
-                error('Failed to delete order');
+                setAlert({
+                    show: true,
+                    type: 'error',
+                    title: 'System Error',
+                    message: 'Network issue. Try again later.'
+                });
             }
         }
     });
   };
 
   const orderCalculations = useMemo(() => {
-    const calcs = formData.items.reduce((acc, item) => {
-        const taxable = (item.quantity * item.rate) || 0;
-        const gst = item.gst_amount || 0;
-        return {
-            taxableValue: acc.taxableValue + taxable,
-            taxAmount: acc.taxAmount + gst,
-            netAmount: acc.netAmount + taxable + gst
-        };
-    }, { taxableValue: 0, taxAmount: 0, netAmount: 0 });
+    const taxableValue = formData.items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.rate || 0)), 0);
+    const taxAmount = formData.items.reduce((sum, item) => sum + (item.gst_amount || 0), 0);
+    const totalAmount = taxableValue + taxAmount;
+    const netAmount = formData.is_round_off ? Math.round(totalAmount) : totalAmount;
+    const roundOffDiff = formData.is_round_off ? (netAmount - totalAmount) : 0;
 
-    if (formData.is_round_off) {
-      const rounded = Math.round(calcs.netAmount);
-      const diff = rounded - calcs.netAmount;
-      return {
-        ...calcs,
-        netAmount: rounded,
-        roundOffDiff: diff
-      };
-    }
-    return {
-      ...calcs,
-      roundOffDiff: 0
-    };
+    return { taxableValue, taxAmount, totalAmount, netAmount, roundOffDiff };
   }, [formData.items, formData.is_round_off]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customer_id) { error('Please select a customer.'); return; }
-    if (formData.items.some(i => !i.product_id || i.quantity <= 0)) {
-      error('Please complete all product entries with valid quantities.');
+
+    if (!formData.customer_id) {
+      setAlert({
+        show: true,
+        type: 'error',
+        title: 'Missing Customer',
+        message: 'Please select a customer before submitting.'
+      });
       return;
     }
 
-    // Double check stock before submission
+    if (formData.items.length === 0 || !formData.items[0].product_id) {
+      setAlert({
+        show: true,
+        type: 'error',
+        title: 'Empty Order Items',
+        message: 'Please add at least one product to the order.'
+      });
+      return;
+    }
+
+    // Validate quantities against stock
     for (const item of formData.items) {
-      const prod = products.find(p => p.id === item.product_id);
-      if (prod && item.quantity > Number(prod.balance)) {
-        error(`Stock insufficient for ${prod.product_name}. Available: ${prod.balance} Kg`);
-        return;
+      if (item.product_id) {
+        const prod = products.find(p => p.id === item.product_id);
+        if (prod && Number(item.quantity) > Number(prod.balance)) {
+          setAlert({
+            show: true,
+            type: 'error',
+            title: 'Stock Limit Exceeded',
+            message: `Available stock for ${prod.product_name || 'Item'} is ${prod.balance} Kg. You cannot order ${item.quantity} Kg.`
+          });
+          return;
+        }
       }
     }
 
@@ -534,6 +567,7 @@ export default function CustomerOrderEntry() {
         },
         body: JSON.stringify({
           ...formData,
+          order_number: formData.order_number && formData.order_number.trim() !== '' ? formData.order_number : undefined,
           total_value: orderCalculations.taxableValue,
           tax_amount: orderCalculations.taxAmount,
           net_amount: orderCalculations.netAmount,
@@ -552,6 +586,7 @@ export default function CustomerOrderEntry() {
         setShowForm(false);
         setEditingId(null);
         setFormData({
+            order_number: '',
             customer_id: '',
             executive_id: '',
             order_date: new Date().toISOString().split('T')[0],
@@ -571,6 +606,7 @@ export default function CustomerOrderEntry() {
             trans_doc_date: ''
         });
         fetchOrders();
+        fetchNextOrderNumber(currentCompanyId);
       } else {
         setAlert({
             show: true,
@@ -591,10 +627,8 @@ export default function CustomerOrderEntry() {
     }
   };
 
-
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Custom Alert Modal */}
       {alert.show && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
@@ -672,7 +706,36 @@ export default function CustomerOrderEntry() {
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Create and manage sales orders from customers.</p>
         </div>
         <Button 
-          onClick={() => setShowForm(!showForm)} 
+          onClick={() => {
+            if (!showForm) {
+              setEditingId(null);
+              setFormData({
+                order_number: '',
+                customer_id: '',
+                executive_id: '',
+                order_date: new Date().toISOString().split('T')[0],
+                remarks: '',
+                company_id: currentCompanyId,
+                section_type: 'customer order',
+                is_round_off: false,
+                round_off: 0,
+                items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, total_value: 0 }],
+                transporter_id: '',
+                transporter_name: '',
+                trans_distance: 0,
+                trans_mode: '1',
+                vehicle_no: '',
+                vehicle_type: 'R',
+                trans_doc_no: '',
+                trans_doc_date: ''
+              });
+              fetchNextOrderNumber(currentCompanyId);
+              setShowForm(true);
+            } else {
+              setShowForm(false);
+              setEditingId(null);
+            }
+          }} 
           className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"}`}
         >
           {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -683,14 +746,34 @@ export default function CustomerOrderEntry() {
       {showForm && (
         <Card className="border-primary/20 shadow-2xl overflow-hidden bg-white animate-in slide-in-from-top duration-300">
           <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
-            <CardTitle className="text-primary flex items-center gap-2">
-              {editingId ? <ShoppingBag className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-              {editingId ? "Edit Customer Order" : "New Order Form"}
+            <CardTitle className="text-primary flex items-center justify-between gap-2 flex-wrap w-full">
+              <div className="flex items-center gap-2">
+                {editingId ? <ShoppingBag className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                <span>{editingId ? "Edit Customer Order" : "New Order Form"}</span>
+              </div>
+              {formData.order_number && (
+                <span className="text-xs font-mono font-black bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                  Order No: {formData.order_number}
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
+                    <FileText className="w-3 h-3 text-primary" /> Order ID (Order No)
+                  </label>
+                  <Input 
+                    type="text" 
+                    value={formData.order_number} 
+                    onChange={e => setFormData({ ...formData, order_number: e.target.value })}
+                    placeholder="e.g. ORD-0001"
+                    className="font-mono font-black text-primary border-slate-200 bg-slate-50/50 focus:bg-white"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                     <Calendar className="w-3 h-3" /> Order Date

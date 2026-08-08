@@ -697,7 +697,13 @@ export default function SalesInvoiceEntry() {
           ...formData,
           order_id: formData.order_id === '' || formData.order_id === 'manual' ? null : formData.order_id,
           executive_id: formData.executive_id === '' ? null : formData.executive_id,
-          scheduled_delivery_date: formData.scheduled_delivery_date === '' ? null : formData.scheduled_delivery_date,
+          scheduled_delivery_date: formData.scheduled_delivery_date && formData.scheduled_delivery_date.trim() !== '' ? formData.scheduled_delivery_date : null,
+          transporter_id: formData.transporter_id && formData.transporter_id.trim() !== '' ? formData.transporter_id : null,
+          transporter_name: formData.transporter_name && formData.transporter_name.trim() !== '' ? formData.transporter_name : null,
+          vehicle_no: formData.vehicle_no && formData.vehicle_no.trim() !== '' ? formData.vehicle_no : null,
+          trans_doc_no: formData.trans_doc_no && formData.trans_doc_no.trim() !== '' ? formData.trans_doc_no : null,
+          trans_doc_date: formData.trans_doc_date && formData.trans_doc_date.trim() !== '' ? formData.trans_doc_date : null,
+          remarks: formData.remarks && formData.remarks.trim() !== '' ? formData.remarks : null,
           total_amount: totals.subtotal,
           tax_amount: totals.tax,
           net_amount: totals.net
@@ -1279,29 +1285,44 @@ export default function SalesInvoiceEntry() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Scheduled Delivery Date</label>
+                              <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Scheduled Delivery Date</label>
+                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                              </div>
                               <Input type="date" value={formData.scheduled_delivery_date} onChange={e => setFormData({...formData, scheduled_delivery_date: e.target.value})} className="border-slate-200" />
                           </div>
                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Vehicle Number (EWB)</label>
-                              <Input placeholder="e.g. MH04AB1234" value={formData.vehicle_no} onChange={e => setFormData({...formData, vehicle_no: e.target.value.toUpperCase()})} className="border-slate-200 font-mono font-bold uppercase" />
+                              <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Vehicle Number (EWB)</label>
+                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                              </div>
+                              <Input placeholder="e.g. KL09AB1234 (Optional)" value={formData.vehicle_no} onChange={e => setFormData({...formData, vehicle_no: e.target.value.toUpperCase()})} className="border-slate-200 font-mono font-bold uppercase" />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Transporter Name</label>
-                              <Input placeholder="e.g. VRL Logistics" value={formData.transporter_name} onChange={e => setFormData({...formData, transporter_name: e.target.value})} className="border-slate-200" />
+                              <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Transporter Name</label>
+                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                              </div>
+                              <Input placeholder="e.g. VRL Logistics (Optional)" value={formData.transporter_name} onChange={e => setFormData({...formData, transporter_name: e.target.value})} className="border-slate-200" />
                           </div>
                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Distance (Km)</label>
-                              <Input type="number" min="0" placeholder="e.g. 25" value={formData.trans_distance || ''} onChange={e => setFormData({...formData, trans_distance: parseFloat(e.target.value) || 0})} className="border-slate-200 font-bold" />
+                              <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distance (Km)</label>
+                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                              </div>
+                              <Input type="number" min="0" placeholder="e.g. 25 km (Optional)" value={formData.trans_distance || ''} onChange={e => setFormData({...formData, trans_distance: parseFloat(e.target.value) || 0})} className="border-slate-200 font-bold" />
                           </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Remarks</label>
-                            <Input placeholder="Invoice notes..." value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} className="italic" />
+                            <div className="flex items-center justify-between px-1">
+                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Remarks</label>
+                              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                            </div>
+                            <Input placeholder="Invoice notes (optional)..." value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} className="italic" />
                         </div>
                     </div>
                     <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
