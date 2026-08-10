@@ -5,28 +5,28 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { 
-  FileText, Plus, Trash2, Save, X, Search, 
-  User, Calendar, DollarSign, Package, Briefcase, 
+import {
+  FileText, Plus, Trash2, Save, X, Search,
+  User, Calendar, DollarSign, Package, Briefcase,
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
-  Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin, 
+  Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin,
   CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer,
   Download, FileDown, ChevronDown, Loader2
 } from 'lucide-react';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  downloadAllInvoiceDocs, 
-  downloadSingleTaxInvoice, 
-  downloadSingleEWayBill 
+import {
+  downloadAllInvoiceDocs,
+  downloadSingleTaxInvoice,
+  downloadSingleEWayBill
 } from '@/utils/invoicePdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
@@ -49,10 +49,10 @@ export default function SalesInvoiceEntry() {
   const [companyState, setCompanyState] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [roundOff, setRoundOff] = useState(false);
-  
+
   // Custom Alert State
   const [alert, setAlert] = useState<{
-    show: boolean, 
+    show: boolean,
     type: 'success' | 'error' | 'warning' | 'confirm',
     title: string,
     message: string,
@@ -188,7 +188,7 @@ export default function SalesInvoiceEntry() {
 
   const handleDownloadSingleDoc = async (inv: any, type: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE' | 'EXTRA' | 'EWB') => {
     const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
-    
+
     if (type === 'EWB' && !isEwbGenerated) {
       error(`e-Way Bill has not been generated for invoice ${inv.invoice_number || ''}. Please click "Generate EWB" first.`);
       return;
@@ -201,8 +201,8 @@ export default function SalesInvoiceEntry() {
         success(`e-Way Bill document for ${inv.invoice_number || ''} downloaded.`);
       } else {
         const copyLabel = type === 'ORIGINAL' ? '(ORIGINAL FOR RECIPIENT)' :
-                          type === 'DUPLICATE' ? '(DUPLICATE FOR TRANSPORTER)' :
-                          type === 'TRIPLICATE' ? '(TRIPLICATE FOR SUPPLIER)' : '(EXTRA COPY)';
+          type === 'DUPLICATE' ? '(DUPLICATE FOR TRANSPORTER)' :
+            type === 'TRIPLICATE' ? '(TRIPLICATE FOR SUPPLIER)' : '(EXTRA COPY)';
         await downloadSingleTaxInvoice(inv, activeTenant, copyLabel);
         success(`Tax Invoice ${copyLabel} downloaded.`);
       }
@@ -267,18 +267,18 @@ export default function SalesInvoiceEntry() {
       const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (!compRes.ok) {
         throw new Error(`Failed to fetch companies: Status ${compRes.status}`);
       }
-      
+
       const compContentType = compRes.headers.get("content-type") || "";
       if (!compContentType.includes("application/json")) {
         const text = await compRes.text();
         throw new Error(`Expected JSON from companies API, but got: ${text.substring(0, 200)}`);
       }
       const compData = await compRes.json();
-      
+
       let coId = '';
       if (compData.success) {
         const activeCo = compData.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
@@ -313,14 +313,14 @@ export default function SalesInvoiceEntry() {
         safeFetch(`${EMPLOYEES_API}`),
         safeFetch(`${ORDERS_API}?company_id=${coId}`)
       ]);
-      
+
       if (custData.success) setCustomers(custData.data || []);
       if (prodData.success) setProducts(prodData.data || []);
       if (orderData.success) setOrders(orderData.data || []);
       if (empData.success && Array.isArray(empData.data)) {
-        setExecutives(empData.data.filter((e: any) => 
-            e.companies?.company_name?.toUpperCase() === activeTenant &&
-            (e.user_types?.name === 'sales' || e.user_types?.name === 'admin' || e.user_types?.name === 'production')
+        setExecutives(empData.data.filter((e: any) =>
+          e.companies?.company_name?.toUpperCase() === activeTenant &&
+          (e.user_types?.name === 'sales' || e.user_types?.name === 'admin' || e.user_types?.name === 'production')
         ));
       }
 
@@ -582,33 +582,33 @@ export default function SalesInvoiceEntry() {
   };
 
   const handleOrderSelect = (orderId: string) => {
-      const order = orders.find(o => o.id === orderId);
-      if (order) {
-          const cust = customers.find(c => c.id === order.customer_id);
-          const autoType = cust?.gst_no ? 'B2B' : 'B2C';
-          setFormData({
-              ...formData,
-              order_id: orderId,
-              customer_id: order.customer_id,
-              invoice_type: autoType,
-              executive_id: order.executive_id || '',
-              items: order.items.map((i: any) => {
-                const qty = i.quantity || 0;
-                const rate = i.rate || 0;
-                const gstP = i.gst_percent || 18;
-                const taxable = qty * rate;
-                const gstAmt = i.gst_amount || ((taxable * gstP) / 100);
-                return {
-                  product_id: i.product_id,
-                  quantity: qty,
-                  rate: rate,
-                  gst_percent: gstP,
-                  gst_amount: gstAmt,
-                  amount: taxable + gstAmt
-                };
-              })
-          });
-      }
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      const cust = customers.find(c => c.id === order.customer_id);
+      const autoType = cust?.gst_no ? 'B2B' : 'B2C';
+      setFormData({
+        ...formData,
+        order_id: orderId,
+        customer_id: order.customer_id,
+        invoice_type: autoType,
+        executive_id: order.executive_id || '',
+        items: order.items.map((i: any) => {
+          const qty = i.quantity || 0;
+          const rate = i.rate || 0;
+          const gstP = i.gst_percent || 18;
+          const taxable = qty * rate;
+          const gstAmt = i.gst_amount || ((taxable * gstP) / 100);
+          return {
+            product_id: i.product_id,
+            quantity: qty,
+            rate: rate,
+            gst_percent: gstP,
+            gst_amount: gstAmt,
+            amount: taxable + gstAmt
+          };
+        })
+      });
+    }
   };
 
   const handleAddItem = () => {
@@ -629,7 +629,7 @@ export default function SalesInvoiceEntry() {
   const handleItemChange = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
     const item = { ...newItems[index], [field]: value };
-    
+
     const qty = field === 'quantity' ? Math.max(0, parseFloat(value) || 0) : (item.quantity || 0);
     const rate = field === 'rate' ? Math.max(0, parseFloat(value) || 0) : (item.rate || 0);
     const gstP = field === 'gst_percent' ? Math.max(0, parseFloat(value) || 0) : (item.gst_percent !== undefined ? item.gst_percent : 18);
@@ -677,19 +677,19 @@ export default function SalesInvoiceEntry() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customer_id) { 
-        setAlert({ show: true, type: 'error', title: 'Missing Data', message: 'Please select a customer.' });
-        return; 
+    if (!formData.customer_id) {
+      setAlert({ show: true, type: 'error', title: 'Missing Data', message: 'Please select a customer.' });
+      return;
     }
 
     setSubmitting(true);
     try {
       const url = editingId ? `${INVOICES_API}/${editingId}` : INVOICES_API;
       const method = editingId ? 'PUT' : 'POST';
-      
+
       const res = await fetch(url, {
         method,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
@@ -713,34 +713,34 @@ export default function SalesInvoiceEntry() {
       const result = await res.json();
       if (result.success) {
         setAlert({
-            show: true,
-            type: 'success',
-            title: editingId ? 'Invoice Updated' : 'Invoice Generated',
-            message: editingId ? 'Changes saved.' : 'Sales invoice has been posted.'
+          show: true,
+          type: 'success',
+          title: editingId ? 'Invoice Updated' : 'Invoice Generated',
+          message: editingId ? 'Changes saved.' : 'Sales invoice has been posted.'
         });
         setShowForm(false);
         setEditingId(null);
         setFormData({
-            invoice_number: '',
-            customer_id: '',
-            order_id: '',
-            executive_id: '',
-            invoice_type: 'B2B',
-            invoice_date: new Date().toISOString().split('T')[0],
-            scheduled_delivery_date: '',
-            remarks: '',
-            tax_amount: 0,
-            discount_amount: 0,
-            company_id: currentCompanyId,
-            transporter_id: '',
-            transporter_name: '',
-            trans_distance: 0,
-            trans_mode: '1',
-            vehicle_no: '',
-            vehicle_type: 'Regular',
-            trans_doc_no: '',
-            trans_doc_date: '',
-            items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
+          invoice_number: '',
+          customer_id: '',
+          order_id: '',
+          executive_id: '',
+          invoice_type: 'B2B',
+          invoice_date: new Date().toISOString().split('T')[0],
+          scheduled_delivery_date: '',
+          remarks: '',
+          tax_amount: 0,
+          discount_amount: 0,
+          company_id: currentCompanyId,
+          transporter_id: '',
+          transporter_name: '',
+          trans_distance: 0,
+          trans_mode: '1',
+          vehicle_no: '',
+          vehicle_type: 'Regular',
+          trans_doc_no: '',
+          trans_doc_date: '',
+          items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
         });
         setRoundOff(false);
         fetchNextInvoiceNumber(currentCompanyId);
@@ -749,9 +749,9 @@ export default function SalesInvoiceEntry() {
         setAlert({ show: true, type: 'error', title: 'Error', message: result.message });
       }
     } catch (err) {
-        setAlert({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.' });
+      setAlert({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.' });
     } finally {
-        setSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -809,21 +809,21 @@ export default function SalesInvoiceEntry() {
 
   const handleDelete = async (id: string) => {
     setAlert({
-        show: true,
-        type: 'confirm',
-        title: 'Delete Invoice?',
-        message: 'This will permanently remove the invoice.',
-        onConfirm: async () => {
-            const res = await fetch(`${INVOICES_API}/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
-            const result = await res.json();
-            if (result.success) {
-                setAlert({ show: true, type: 'success', title: 'Deleted', message: 'Invoice removed.' });
-                fetchInvoices();
-            }
+      show: true,
+      type: 'confirm',
+      title: 'Delete Invoice?',
+      message: 'This will permanently remove the invoice.',
+      onConfirm: async () => {
+        const res = await fetch(`${INVOICES_API}/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const result = await res.json();
+        if (result.success) {
+          setAlert({ show: true, type: 'success', title: 'Deleted', message: 'Invoice removed.' });
+          fetchInvoices();
         }
+      }
     });
   };
 
@@ -971,32 +971,31 @@ export default function SalesInvoiceEntry() {
       {/* Alert Dialog */}
       {alert.show && (
         <div className="fixed inset-0 z-[1200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <Card className="w-full max-w-md bg-white border-none shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95">
-                <CardContent className="p-8 text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${
-                        alert.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
-                        alert.type === 'error' ? 'bg-rose-100 text-rose-600' :
-                        alert.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-primary/10 text-primary'
-                    }`}>
-                        {alert.type === 'success' && <CheckCircle2 className="w-8 h-8" />}
-                        {alert.type === 'error' && <XCircle className="w-8 h-8" />}
-                        {alert.type === 'warning' && <AlertTriangle className="w-8 h-8" />}
-                        {alert.type === 'confirm' && <AlertCircle className="w-8 h-8" />}
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900 mb-2">{alert.title}</h3>
-                    <p className="text-slate-500 font-medium">{alert.message}</p>
-                    <div className="mt-10 flex gap-3 justify-center">
-                        {alert.type === 'confirm' ? (
-                            <>
-                                <Button variant="outline" onClick={() => setAlert({...alert, show: false})} className="rounded-2xl px-8 h-12 border-slate-200 font-bold">Cancel</Button>
-                                <Button onClick={() => { alert.onConfirm?.(); setAlert({...alert, show: false}); }} className="rounded-2xl px-10 h-12 bg-primary hover:bg-primary/90 font-black shadow-lg shadow-primary/20">Yes, Delete</Button>
-                            </>
-                        ) : (
-                            <Button onClick={() => setAlert({...alert, show: false})} className="rounded-2xl px-12 h-12 font-black shadow-lg">Got it</Button>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+          <Card className="w-full max-w-md bg-white border-none shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95">
+            <CardContent className="p-8 text-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${alert.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                alert.type === 'error' ? 'bg-rose-100 text-rose-600' :
+                  alert.type === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-primary/10 text-primary'
+                }`}>
+                {alert.type === 'success' && <CheckCircle2 className="w-8 h-8" />}
+                {alert.type === 'error' && <XCircle className="w-8 h-8" />}
+                {alert.type === 'warning' && <AlertTriangle className="w-8 h-8" />}
+                {alert.type === 'confirm' && <AlertCircle className="w-8 h-8" />}
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">{alert.title}</h3>
+              <p className="text-slate-500 font-medium">{alert.message}</p>
+              <div className="mt-10 flex gap-3 justify-center">
+                {alert.type === 'confirm' ? (
+                  <>
+                    <Button variant="outline" onClick={() => setAlert({ ...alert, show: false })} className="rounded-2xl px-8 h-12 border-slate-200 font-bold">Cancel</Button>
+                    <Button onClick={() => { alert.onConfirm?.(); setAlert({ ...alert, show: false }); }} className="rounded-2xl px-10 h-12 bg-primary hover:bg-primary/90 font-black shadow-lg shadow-primary/20">Yes, Delete</Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setAlert({ ...alert, show: false })} className="rounded-2xl px-12 h-12 font-black shadow-lg">Got it</Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1009,7 +1008,7 @@ export default function SalesInvoiceEntry() {
           </h1>
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Generate tax invoices and link to customer orders.</p>
         </div>
-        <Button 
+        <Button
           onClick={() => {
             if (!showForm) {
               setEditingId(null);
@@ -1065,9 +1064,9 @@ export default function SalesInvoiceEntry() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                       <FileText className="w-3 h-3 text-primary" /> Inv No
                     </label>
-                    <Input 
-                      type="text" 
-                      value={formData.invoice_number} 
+                    <Input
+                      type="text"
+                      value={formData.invoice_number}
                       onChange={e => setFormData({ ...formData, invoice_number: e.target.value })}
                       placeholder="e.g. MP001"
                       className="font-mono font-black text-primary border-slate-200 bg-slate-50/50 focus:bg-white"
@@ -1078,7 +1077,7 @@ export default function SalesInvoiceEntry() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                       <Calendar className="w-3 h-3" /> Date of Sale
                     </label>
-                    <Input type="date" value={formData.invoice_date} onChange={e => setFormData({...formData, invoice_date: e.target.value})} />
+                    <Input type="date" value={formData.invoice_date} onChange={e => setFormData({ ...formData, invoice_date: e.target.value })} />
                   </div>
 
                   <div className="space-y-1.5">
@@ -1105,8 +1104,8 @@ export default function SalesInvoiceEntry() {
                       <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                         <User className="w-3 h-3" /> Customer
                       </label>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={openCustomerModal}
                         className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
                       >
@@ -1134,7 +1133,7 @@ export default function SalesInvoiceEntry() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-1">
                       <Briefcase className="w-3 h-3" /> Business Type
                     </label>
-                    <Select value={formData.invoice_type || "B2B"} onValueChange={val => setFormData({...formData, invoice_type: val})}>
+                    <Select value={formData.invoice_type || "B2B"} onValueChange={val => setFormData({ ...formData, invoice_type: val })}>
                       <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-200">
                         <SelectValue placeholder="Select Business Type..." />
                       </SelectTrigger>
@@ -1159,247 +1158,246 @@ export default function SalesInvoiceEntry() {
               {/* Customer GST Banner */}
               {selectedCustomer && (
                 <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <Info className="w-6 h-6 text-primary shrink-0" />
-                      <div>
-                        <div className="text-sm font-black text-slate-900">{selectedCustomer.customer_name} ({selectedCustomer.customer_code})</div>
-                        <div className="text-xs text-slate-500 font-medium">GST No: <span className="font-bold text-slate-700">{selectedCustomer.gst_no || 'N/A'}</span></div>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <Info className="w-6 h-6 text-primary shrink-0" />
+                    <div>
+                      <div className="text-sm font-black text-slate-900">{selectedCustomer.customer_name} ({selectedCustomer.customer_code})</div>
+                      <div className="text-xs text-slate-500 font-medium">GST No: <span className="font-bold text-slate-700">{selectedCustomer.gst_no || 'N/A'}</span></div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Credit Limit</span>
-                        ₹ {(selectedCustomer.credit_limit || 0).toLocaleString()}
-                      </div>
-                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border ${
-                        getGstType(selectedCustomer.id) === 'IGST' 
-                          ? 'bg-amber-50 border-amber-200 text-amber-800' 
-                          : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Credit Limit</span>
+                      ₹ {(selectedCustomer.credit_limit || 0).toLocaleString()}
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border ${getGstType(selectedCustomer.id) === 'IGST'
+                      ? 'bg-amber-50 border-amber-200 text-amber-800'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       }`}>
-                        <span className="text-[10px] uppercase font-bold opacity-70 block">Tax Method</span>
-                        {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST 18%)' : 'Intra-State (CGST 9% + SGST 9%)'}
-                      </div>
+                      <span className="text-[10px] uppercase font-bold opacity-70 block">Tax Method</span>
+                      {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST 18%)' : 'Intra-State (CGST 9% + SGST 9%)'}
                     </div>
+                  </div>
                 </div>
               )}
 
               {/* Line Items */}
               <div className="space-y-4 w-full max-w-full min-w-0">
                 <div className="flex flex-wrap justify-between items-center px-1 gap-2">
-                    <label className="text-xs font-black uppercase text-slate-500 border-l-4 border-primary pl-3">Line Items</label>
-                    <div className="flex gap-2">
-                        <Button type="button" onClick={() => openProductModal()} size="sm" variant="outline" className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/5 font-bold">
-                          <Plus className="w-3 h-3 mr-1" /> New Product
-                        </Button>
-                        <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 h-8 text-xs font-bold">
-                          <Plus className="w-3 h-3 mr-1" /> Add Row
-                        </Button>
-                    </div>
+                  <label className="text-xs font-black uppercase text-slate-500 border-l-4 border-primary pl-3">Line Items</label>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={() => openProductModal()} size="sm" variant="outline" className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/5 font-bold">
+                      <Plus className="w-3 h-3 mr-1" /> New Product
+                    </Button>
+                    <Button type="button" onClick={handleAddItem} size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 h-8 text-xs font-bold">
+                      <Plus className="w-3 h-3 mr-1" /> Add Row
+                    </Button>
+                  </div>
                 </div>
-                
+
                 <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-x-auto text-sm w-full max-w-full">
-                    <table className="w-full min-w-[800px]">
-                        <thead className="bg-slate-100/80 border-b border-slate-200">
-                            <tr>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">HSN Code</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Quantity</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Rate (₹)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">GST (%)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-32">GST Amount (₹)</th>
-                                <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-36">Total Amount (₹)</th>
-                                <th className="px-4 py-3 w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {formData.items.map((item, index) => {
-                              const prod = products.find(p => p.id === item.product_id);
-                              return (
-                                <tr key={index} className="bg-white hover:bg-slate-50 group">
-                                    <td className="p-4">
-                                        <Select 
-                                          value={item.product_id || ""} 
-                                          onValueChange={val => {
-                                            if (val === 'CREATE_NEW') {
-                                              openProductModal(index);
-                                            } else {
-                                              handleItemChange(index, 'product_id', val);
-                                            }
-                                          }}
-                                        >
-                                          <SelectTrigger className="w-full h-9 font-bold bg-transparent border-none text-sm shadow-none focus:ring-0">
-                                            <SelectValue placeholder="Select Product..." />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
-                                            <SelectItem value="CREATE_NEW" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
-                                              + Create New Product
-                                            </SelectItem>
-                                            {products.map(p => (
-                                              <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                    </td>
-                                    <td className="p-4 text-center font-mono text-xs font-bold text-slate-600">
-                                        {prod?.hsn_code || '-'}
-                                    </td>
-                                    <td className="p-4">
-                                      <Input type="number" min="0" placeholder="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
-                                    </td>
-                                    <td className="p-4">
-                                      <Input type="number" min="0" placeholder="₹ 0" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
-                                    </td>
-                                    <td className="p-4">
-                                      <Select value={String(item.gst_percent !== undefined ? item.gst_percent : 18)} onValueChange={val => handleItemChange(index, 'gst_percent', val)}>
-                                        <SelectTrigger className="h-8 font-bold border-slate-200 text-xs text-center">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white z-[1000]">
-                                          <SelectItem value="0">0%</SelectItem>
-                                          <SelectItem value="5">5%</SelectItem>
-                                          <SelectItem value="12">12%</SelectItem>
-                                          <SelectItem value="18">18%</SelectItem>
-                                          <SelectItem value="28">28%</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
-                                    <td className="p-4 text-right font-mono font-bold text-slate-600 text-xs md:text-sm">
-                                      ₹ {(item.gst_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                    <td className="p-4 text-right font-mono font-black text-slate-900 text-xs md:text-sm">
-                                      ₹ {(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                    </table>
+                  <table className="w-full min-w-[800px]">
+                    <thead className="bg-slate-100/80 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-left">Select Product</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">HSN Code</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Quantity</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">Rate (₹)</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-center w-28">GST (%)</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-32">GST Amount (₹)</th>
+                        <th className="px-4 py-3 text-[10px] uppercase font-black text-slate-500 text-right w-36">Total Amount (₹)</th>
+                        <th className="px-4 py-3 w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {formData.items.map((item, index) => {
+                        const prod = products.find(p => p.id === item.product_id);
+                        return (
+                          <tr key={index} className="bg-white hover:bg-slate-50 group">
+                            <td className="p-4">
+                              <Select
+                                value={item.product_id || ""}
+                                onValueChange={val => {
+                                  if (val === 'CREATE_NEW') {
+                                    openProductModal(index);
+                                  } else {
+                                    handleItemChange(index, 'product_id', val);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full h-9 font-bold bg-transparent border-none text-sm shadow-none focus:ring-0">
+                                  <SelectValue placeholder="Select Product..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white z-[1000] max-h-60 overflow-y-auto">
+                                  <SelectItem value="CREATE_NEW" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
+                                    + Create New Product
+                                  </SelectItem>
+                                  {products.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.product_code} - {p.product_name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-4 text-center font-mono text-xs font-bold text-slate-600">
+                              {prod?.hsn_code || '-'}
+                            </td>
+                            <td className="p-4">
+                              <Input type="number" min="0" placeholder="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                            </td>
+                            <td className="p-4">
+                              <Input type="number" min="0" placeholder="₹ 0" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                            </td>
+                            <td className="p-4">
+                              <Select value={String(item.gst_percent !== undefined ? item.gst_percent : 18)} onValueChange={val => handleItemChange(index, 'gst_percent', val)}>
+                                <SelectTrigger className="h-8 font-bold border-slate-200 text-xs text-center">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white z-[1000]">
+                                  <SelectItem value="0">0%</SelectItem>
+                                  <SelectItem value="5">5%</SelectItem>
+                                  <SelectItem value="12">12%</SelectItem>
+                                  <SelectItem value="18">18%</SelectItem>
+                                  <SelectItem value="28">28%</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-4 text-right font-mono font-bold text-slate-600 text-xs md:text-sm">
+                              ₹ {(item.gst_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-4 text-right font-mono font-black text-slate-900 text-xs md:text-sm">
+                              ₹ {(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-4 text-center">
+                              <button type="button" onClick={() => handleRemoveItem(index)} className="text-slate-300 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                              <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Scheduled Delivery Date</label>
-                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
-                              </div>
-                              <Input type="date" value={formData.scheduled_delivery_date} onChange={e => setFormData({...formData, scheduled_delivery_date: e.target.value})} className="border-slate-200" />
-                          </div>
-                          <div className="space-y-1.5">
-                              <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Vehicle Number (EWB)</label>
-                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
-                              </div>
-                              <Input placeholder="e.g. KL09AB1234 (Optional)" value={formData.vehicle_no} onChange={e => setFormData({...formData, vehicle_no: e.target.value.toUpperCase()})} className="border-slate-200 font-mono font-bold uppercase" />
-                          </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Scheduled Delivery Date</label>
+                          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                              <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Transporter Name</label>
-                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
-                              </div>
-                              <Input placeholder="e.g. VRL Logistics (Optional)" value={formData.transporter_name} onChange={e => setFormData({...formData, transporter_name: e.target.value})} className="border-slate-200" />
-                          </div>
-                          <div className="space-y-1.5">
-                              <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distance (Km)</label>
-                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
-                              </div>
-                              <Input type="number" min="0" placeholder="e.g. 25 km (Optional)" value={formData.trans_distance || ''} onChange={e => setFormData({...formData, trans_distance: parseFloat(e.target.value) || 0})} className="border-slate-200 font-bold" />
-                          </div>
+                        <Input type="date" value={formData.scheduled_delivery_date} onChange={e => setFormData({ ...formData, scheduled_delivery_date: e.target.value })} className="border-slate-200" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Vehicle Number (EWB)</label>
+                          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
                         </div>
-
-                        <div className="space-y-1.5">
-                            <div className="flex items-center justify-between px-1">
-                              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Remarks</label>
-                              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
-                            </div>
-                            <Input placeholder="Invoice notes (optional)..." value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} className="italic" />
-                        </div>
+                        <Input placeholder="e.g. KL09AB1234 (Optional)" value={formData.vehicle_no} onChange={e => setFormData({ ...formData, vehicle_no: e.target.value.toUpperCase() })} className="border-slate-200 font-mono font-bold uppercase" />
+                      </div>
                     </div>
-                    <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
-                        <div className="flex justify-between text-sm font-medium text-slate-500">
-                          <span>Subtotal (Taxable)</span>
-                          <span className="font-mono font-bold text-slate-700">₹ {totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Transporter Name</label>
+                          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
                         </div>
-                        
-                        <div className="space-y-1 py-1 bg-white p-3 rounded-xl border border-slate-200/80">
-                          <div className="flex justify-between text-sm items-center">
-                            <span className="text-slate-700 font-bold flex items-center gap-1.5">
-                              GST Tax Amount (+)
-                            </span>
-                            <Input 
-                              type="number" 
-                              placeholder="₹ 0" 
-                              min="0" 
-                              value={formData.tax_amount === 0 ? '' : formData.tax_amount} 
-                              onChange={e => setFormData({ ...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0) })} 
-                              className="w-32 h-8 text-right font-mono font-bold" 
-                            />
-                          </div>
-                          
-                          {/* GST Tax Breakdown */}
-                          {totals.tax > 0 && formData.customer_id && (
-                            <div className="pt-2 border-t border-dashed border-slate-200 text-xs space-y-1 font-mono">
-                              {getGstType(formData.customer_id) === 'IGST' ? (
-                                <div className="flex justify-between text-amber-700 font-medium">
-                                  <span>IGST (18%)</span>
-                                  <span>₹ {totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex justify-between text-emerald-700 font-medium">
-                                    <span>CGST (9%)</span>
-                                    <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                  </div>
-                                  <div className="flex justify-between text-emerald-700 font-medium">
-                                    <span>SGST (9%)</span>
-                                    <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                  </div>
-                                </>
-                              )}
+                        <Input placeholder="e.g. VRL Logistics (Optional)" value={formData.transporter_name} onChange={e => setFormData({ ...formData, transporter_name: e.target.value })} className="border-slate-200" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distance (Km)</label>
+                          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                        </div>
+                        <Input type="number" min="0" placeholder="e.g. 25 km (Optional)" value={formData.trans_distance || ''} onChange={e => setFormData({ ...formData, trans_distance: parseFloat(e.target.value) || 0 })} className="border-slate-200 font-bold" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Remarks</label>
+                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Optional</span>
+                      </div>
+                      <Input placeholder="Invoice notes (optional)..." value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} className="italic" />
+                    </div>
+                  </div>
+                  <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                    <div className="flex justify-between text-sm font-medium text-slate-500">
+                      <span>Subtotal (Taxable)</span>
+                      <span className="font-mono font-bold text-slate-700">₹ {totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+
+                    <div className="space-y-1 py-1 bg-white p-3 rounded-xl border border-slate-200/80">
+                      <div className="flex justify-between text-sm items-center">
+                        <span className="text-slate-700 font-bold flex items-center gap-1.5">
+                          GST Tax Amount (+)
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder="₹ 0"
+                          min="0"
+                          value={formData.tax_amount === 0 ? '' : formData.tax_amount}
+                          onChange={e => setFormData({ ...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0) })}
+                          className="w-32 h-8 text-right font-mono font-bold"
+                        />
+                      </div>
+
+                      {/* GST Tax Breakdown */}
+                      {totals.tax > 0 && formData.customer_id && (
+                        <div className="pt-2 border-t border-dashed border-slate-200 text-xs space-y-1 font-mono">
+                          {getGstType(formData.customer_id) === 'IGST' ? (
+                            <div className="flex justify-between text-amber-700 font-medium">
+                              <span>IGST (18%)</span>
+                              <span>₹ {totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
+                          ) : (
+                            <>
+                              <div className="flex justify-between text-emerald-700 font-medium">
+                                <span>CGST (9%)</span>
+                                <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                              </div>
+                              <div className="flex justify-between text-emerald-700 font-medium">
+                                <span>SGST (9%)</span>
+                                <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            </>
                           )}
                         </div>
-
-                        <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500">Discount (-)</span>
-                            <Input type="number" placeholder="₹ 0" min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0)})} className="w-32 h-8 text-right font-mono font-bold" />
-                        </div>
-
-                        <div className="flex justify-between text-sm items-center gap-4">
-                            <span className="text-slate-500 flex items-center gap-2 cursor-pointer select-none">
-                              <Checkbox 
-                                id="roundoff-toggle" 
-                                checked={roundOff} 
-                                onCheckedChange={(checked) => setRoundOff(!!checked)} 
-                              />
-                              <label htmlFor="roundoff-toggle" className="cursor-pointer">Round Off Fraction</label>
-                            </span>
-                            <span className="font-mono text-slate-600 font-bold">
-                              ₹ {totals.roundoffAmount.toFixed(2)}
-                            </span>
-                        </div>
-                        <div className="h-px bg-slate-200 my-2" />
-                        <div className="flex justify-between text-xl font-black text-primary">
-                          <span>Total Value</span>
-                          <span className="font-mono">₹ {totals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
+                      )}
                     </div>
+
+                    <div className="flex justify-between text-sm items-center gap-4">
+                      <span className="text-slate-500">Discount (-)</span>
+                      <Input type="number" placeholder="₹ 0" min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({ ...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0) })} className="w-32 h-8 text-right font-mono font-bold" />
+                    </div>
+
+                    <div className="flex justify-between text-sm items-center gap-4">
+                      <span className="text-slate-500 flex items-center gap-2 cursor-pointer select-none">
+                        <Checkbox
+                          id="roundoff-toggle"
+                          checked={roundOff}
+                          onCheckedChange={(checked) => setRoundOff(!!checked)}
+                        />
+                        <label htmlFor="roundoff-toggle" className="cursor-pointer">Round Off Fraction</label>
+                      </span>
+                      <span className="font-mono text-slate-600 font-bold">
+                        ₹ {totals.roundoffAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="h-px bg-slate-200 my-2" />
+                    <div className="flex justify-between text-xl font-black text-primary">
+                      <span>Total Value</span>
+                      <span className="font-mono">₹ {totals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 px-4 md:px-0">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   loading={submitting}
                   className="gap-2 px-10 h-12 text-base font-bold shadow-xl hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
@@ -1417,33 +1415,30 @@ export default function SalesInvoiceEntry() {
             <button
               type="button"
               onClick={() => setActiveSection('ALL')}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
-                activeSection === 'ALL' 
-                  ? 'bg-white text-slate-900 shadow-md shadow-slate-200/50' 
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'ALL'
+                ? 'bg-white text-slate-900 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
             >
               All Invoices ({invoices.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveSection('B2B')}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
-                activeSection === 'B2B' 
-                  ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50' 
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'B2B'
+                ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
             >
               B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B').length})
             </button>
             <button
               type="button"
               onClick={() => setActiveSection('B2C')}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${
-                activeSection === 'B2C' 
-                  ? 'bg-white text-blue-700 shadow-md shadow-slate-200/50' 
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'B2C'
+                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
             >
               B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C').length})
             </button>
@@ -1470,9 +1465,8 @@ export default function SalesInvoiceEntry() {
                     <div className="text-[10px] text-slate-400 font-normal">{inv.customers?.customer_code}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
-                    }`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
                       {resolvedType}
                     </span>
                   </td>
@@ -1510,10 +1504,10 @@ export default function SalesInvoiceEntry() {
                         )}
 
                         {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && (
-                          <Button 
-                            type="button" 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleGenerateEInvoice(inv.id)}
                             className="h-7 text-[10px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2 rounded-lg"
                           >
@@ -1522,19 +1516,19 @@ export default function SalesInvoiceEntry() {
                         )}
                         {einvStatus === 'GENERATED' && (
                           <div className="flex items-center gap-1.5 pt-0.5">
-                            <Button 
-                              type="button" 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
                               onClick={() => openViewEInvoiceModal(inv)}
                               className="h-6 text-[10px] font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2 rounded flex items-center gap-1"
                             >
                               <FileText className="w-3 h-3 text-emerald-600" /> View e-Invoice
                             </Button>
-                            <Button 
-                              type="button" 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
                               onClick={() => {
                                 setCancelTarget({ id: inv.id, type: 'EINVOICE', docNo: inv.invoice_number });
                                 setShowCancelDialog(true);
@@ -1558,10 +1552,10 @@ export default function SalesInvoiceEntry() {
                           {inv.ewb_no && (
                             <span className="text-[10px] font-mono text-slate-500 font-bold">EWB: {inv.ewb_no}</span>
                           )}
-                          <Button 
-                            type="button" 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
                             onClick={() => openViewEwbModal(inv)}
                             className="h-6 text-[10px] font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2 rounded flex items-center gap-1"
                           >
@@ -1587,10 +1581,10 @@ export default function SalesInvoiceEntry() {
                       )}
 
                       {ewbStatus !== 'GENERATED' && ewbStatus !== 'CANCELLED' && (
-                        <Button 
-                          type="button" 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
                           onClick={() => openEwbModal(inv)}
                           className="h-7 text-[10px] font-bold border-blue-300 text-blue-700 hover:bg-blue-50 px-2 rounded-lg flex items-center gap-1"
                         >
@@ -1598,10 +1592,10 @@ export default function SalesInvoiceEntry() {
                         </Button>
                       )}
                       {ewbStatus === 'GENERATED' && (
-                        <Button 
-                          type="button" 
-                          size="sm" 
-                          variant="ghost" 
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
                           onClick={() => {
                             setCancelTarget({ id: inv.id, type: 'EWB', docNo: inv.invoice_number });
                             setShowCancelDialog(true);
@@ -1635,7 +1629,7 @@ export default function SalesInvoiceEntry() {
                             <span className="hidden xl:inline">Download All Docs</span>
                             <span className="xl:hidden font-mono text-[11px]">PDF</span>
                           </Button>
-                          
+
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1652,7 +1646,7 @@ export default function SalesInvoiceEntry() {
                         {downloadDropdownInvId === inv.id && (() => {
                           const isEwbActive = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
                           return (
-                            <div 
+                            <div
                               className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 z-[1500] py-2 text-left animate-in fade-in zoom-in-95"
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -1690,11 +1684,10 @@ export default function SalesInvoiceEntry() {
                                 type="button"
                                 disabled={!isEwbActive}
                                 onClick={() => handleDownloadSingleDoc(inv, 'EWB')}
-                                className={`w-full px-3 py-1.5 text-xs font-semibold flex items-center justify-between gap-2 transition-colors ${
-                                  isEwbActive 
-                                    ? 'text-slate-700 hover:bg-slate-50' 
-                                    : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                }`}
+                                className={`w-full px-3 py-1.5 text-xs font-semibold flex items-center justify-between gap-2 transition-colors ${isEwbActive
+                                  ? 'text-slate-700 hover:bg-slate-50'
+                                  : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                  }`}
                                 title={isEwbActive ? 'Download official e-Way Bill' : 'e-Way Bill has not been generated for this invoice'}
                               >
                                 <div className="flex items-center gap-2">
@@ -1754,8 +1747,8 @@ export default function SalesInvoiceEntry() {
 
       {/* Backdrop to close download dropdown */}
       {downloadDropdownInvId && (
-        <div 
-          className="fixed inset-0 z-[1400] bg-transparent" 
+        <div
+          className="fixed inset-0 z-[1400] bg-transparent"
           onClick={() => setDownloadDropdownInvId(null)}
         />
       )}
@@ -1791,25 +1784,25 @@ export default function SalesInvoiceEntry() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Remarks / Reason Description</label>
-                  <Input 
-                    placeholder="Provide additional details..." 
-                    value={cancelRemarks} 
-                    onChange={e => setCancelRemarks(e.target.value)} 
+                  <Input
+                    placeholder="Provide additional details..."
+                    value={cancelRemarks}
+                    onChange={e => setCancelRemarks(e.target.value)}
                     className="font-medium"
                   />
                 </div>
 
                 <div className="flex gap-3 justify-end pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => { setShowCancelDialog(false); setCancelTarget(null); }}
                     className="rounded-xl px-6 font-bold"
                   >
                     Close
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     loading={cancelling}
                     className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-8 font-black shadow-lg shadow-rose-600/20"
                   >
@@ -1847,10 +1840,10 @@ export default function SalesInvoiceEntry() {
                     <span>Vehicle Number <span className="text-rose-500">*</span></span>
                     <span className="text-[10px] text-blue-600 font-bold">Road Mode Required</span>
                   </label>
-                  <Input 
-                    placeholder="e.g. MH04AB1234" 
-                    value={ewbTransportForm.vehicle_no} 
-                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, vehicle_no: e.target.value.toUpperCase() })} 
+                  <Input
+                    placeholder="e.g. MH04AB1234"
+                    value={ewbTransportForm.vehicle_no}
+                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, vehicle_no: e.target.value.toUpperCase() })}
                     className="h-11 font-mono font-bold uppercase tracking-wider text-slate-900 border-blue-300 focus:border-blue-500 focus:ring-blue-200"
                     required
                   />
@@ -1860,8 +1853,8 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold uppercase text-slate-600">Transport Mode</label>
-                    <Select 
-                      value={ewbTransportForm.trans_mode} 
+                    <Select
+                      value={ewbTransportForm.trans_mode}
                       onValueChange={val => setEwbTransportForm({ ...ewbTransportForm, trans_mode: val })}
                     >
                       <SelectTrigger className="h-10 font-bold border-slate-200">
@@ -1878,8 +1871,8 @@ export default function SalesInvoiceEntry() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold uppercase text-slate-600">Vehicle Type</label>
-                    <Select 
-                      value={ewbTransportForm.vehicle_type} 
+                    <Select
+                      value={ewbTransportForm.vehicle_type}
                       onValueChange={val => setEwbTransportForm({ ...ewbTransportForm, vehicle_type: val })}
                     >
                       <SelectTrigger className="h-10 font-bold border-slate-200">
@@ -1896,21 +1889,21 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold uppercase text-slate-600">Distance (Km)</label>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      placeholder="e.g. 25" 
-                      value={ewbTransportForm.trans_distance || ''} 
-                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, trans_distance: parseFloat(e.target.value) || 0 })} 
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 25"
+                      value={ewbTransportForm.trans_distance || ''}
+                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, trans_distance: parseFloat(e.target.value) || 0 })}
                       className="h-10 font-bold"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold uppercase text-slate-600">Transporter Name</label>
-                    <Input 
-                      placeholder="e.g. VRL Logistics" 
-                      value={ewbTransportForm.transporter_name} 
-                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_name: e.target.value })} 
+                    <Input
+                      placeholder="e.g. VRL Logistics"
+                      value={ewbTransportForm.transporter_name}
+                      onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_name: e.target.value })}
                       className="h-10 font-bold"
                     />
                   </div>
@@ -1918,10 +1911,10 @@ export default function SalesInvoiceEntry() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold uppercase text-slate-600">Transporter GSTIN / ID (Optional)</label>
-                  <Input 
-                    placeholder="e.g. 27AAAAA0000A1Z5" 
-                    value={ewbTransportForm.transporter_id} 
-                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_id: e.target.value })} 
+                  <Input
+                    placeholder="e.g. 27AAAAA0000A1Z5"
+                    value={ewbTransportForm.transporter_id}
+                    onChange={e => setEwbTransportForm({ ...ewbTransportForm, transporter_id: e.target.value })}
                     className="h-10 font-mono font-bold uppercase"
                   />
                 </div>
@@ -1958,23 +1951,23 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  type="button" 
-                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)} 
+                <Button
+                  type="button"
+                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)}
                   className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
                   <FileDown className="w-4 h-4" /> Download All Docs (PDF)
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)} 
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
                   <Download className="w-4 h-4" /> Download EWB
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => window.print()} 
+                <Button
+                  type="button"
+                  onClick={() => window.print()}
                   className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
                 >
                   <Printer className="w-4 h-4" /> Print
@@ -2011,7 +2004,7 @@ export default function SalesInvoiceEntry() {
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Consignor GSTIN:</span>
-                    <span className="font-mono font-bold text-slate-800">09AAAPG7885R002</span>
+                    <span className="font-mono font-bold text-slate-800">32AUYPV8850B1Z2</span>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Valid Until:</span>
@@ -2025,12 +2018,12 @@ export default function SalesInvoiceEntry() {
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-primary" /> PART A: Document & Transaction Details
                 </h3>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">Consignor (From)</span>
                     <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
-                    <div className="text-slate-600 font-mono text-[11px]">GSTIN: 09AAAPG7885R002</div>
+                    <div className="text-slate-600 font-mono text-[11px]">GSTIN: 32AUYPV8850B1Z2</div>
                     <div className="text-slate-500">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
                   </div>
 
@@ -2122,16 +2115,16 @@ export default function SalesInvoiceEntry() {
                 <Button type="button" variant="outline" onClick={() => setShowEwbViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
                   Close
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)} 
+                <Button
+                  type="button"
+                  onClick={() => handleDownloadAllDocs(viewEwbInvoice)}
                   className="bg-primary hover:bg-primary/90 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <FileDown className="w-4 h-4" /> Download All Docs (5 Pages)
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)} 
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <Download className="w-4 h-4" /> Download EWB
@@ -2164,23 +2157,23 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  type="button" 
-                  onClick={() => handleDownloadAllDocs(viewEInvoice)} 
+                <Button
+                  type="button"
+                  onClick={() => handleDownloadAllDocs(viewEInvoice)}
                   className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
                   <FileDown className="w-4 h-4" /> Download All Docs
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')} 
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
                 >
                   <Download className="w-4 h-4" /> Download Invoice
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => window.print()} 
+                <Button
+                  type="button"
+                  onClick={() => window.print()}
                   className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
                 >
                   <Printer className="w-4 h-4" /> Print
@@ -2234,7 +2227,7 @@ export default function SalesInvoiceEntry() {
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
                   <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
                   <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
-                  <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: 09AAAPG7885R002</div>
+                  <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: 32AUYPV8850B1Z2</div>
                   <div className="text-slate-500 pt-1">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
                 </div>
 
@@ -2330,16 +2323,16 @@ export default function SalesInvoiceEntry() {
                 <Button type="button" variant="outline" onClick={() => setShowEInvoiceViewModal(false)} className="rounded-full px-6 font-bold text-slate-600">
                   Close
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => handleDownloadAllDocs(viewEInvoice)} 
+                <Button
+                  type="button"
+                  onClick={() => handleDownloadAllDocs(viewEInvoice)}
                   className="bg-primary hover:bg-primary/90 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <FileDown className="w-4 h-4" /> Download All Docs (5 Pages)
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')} 
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')}
                   className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <Download className="w-4 h-4" /> Download Invoice
@@ -2356,213 +2349,213 @@ export default function SalesInvoiceEntry() {
       {/* Customer Creation Modal */}
       {showCustomerModal && (
         <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-            <Card className="w-full max-w-4xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
-                <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 shrink-0">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle className="text-primary flex items-center gap-2 text-xl font-black">
-                        <UserPlus className="w-6 h-6" /> Quick Create Customer
-                      </CardTitle>
-                      <CardDescription className="text-xs">Add a new customer to the database directly from here.</CardDescription>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button 
-                        type="button"
-                        variant={customerActiveTab === 'basic' ? 'default' : 'outline'} 
-                        size="sm" 
-                        onClick={() => {
-                          if (!customerFormData.customer_name) {
-                            error('Customer name is required before switching tabs.');
-                            return;
-                          }
-                          setCustomerActiveTab('basic');
-                        }}
-                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'basic' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
-                      >1. Basic</Button>
-                      <Button 
-                        type="button"
-                        variant={customerActiveTab === 'address' ? 'default' : 'outline'} 
-                        size="sm" 
-                        onClick={() => {
-                          if (!customerFormData.customer_name) {
-                            error('Customer name is required before switching tabs.');
-                            return;
-                          }
-                          setCustomerActiveTab('address');
-                        }}
-                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'address' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
-                      >2. Addresses</Button>
-                      <Button 
-                        type="button"
-                        variant={customerActiveTab === 'financial' ? 'default' : 'outline'} 
-                        size="sm" 
-                        onClick={() => {
-                          if (!customerFormData.customer_name) {
-                            error('Customer name is required before switching tabs.');
-                            return;
-                          }
-                          setCustomerActiveTab('financial');
-                        }}
-                        className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'financial' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
-                      >3. Financials</Button>
-                    </div>
+          <Card className="w-full max-w-4xl bg-white shadow-2xl border-primary/20 rounded-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 p-4 md:p-6 shrink-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-primary flex items-center gap-2 text-xl font-black">
+                    <UserPlus className="w-6 h-6" /> Quick Create Customer
+                  </CardTitle>
+                  <CardDescription className="text-xs">Add a new customer to the database directly from here.</CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant={customerActiveTab === 'basic' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (!customerFormData.customer_name) {
+                        error('Customer name is required before switching tabs.');
+                        return;
+                      }
+                      setCustomerActiveTab('basic');
+                    }}
+                    className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'basic' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                  >1. Basic</Button>
+                  <Button
+                    type="button"
+                    variant={customerActiveTab === 'address' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (!customerFormData.customer_name) {
+                        error('Customer name is required before switching tabs.');
+                        return;
+                      }
+                      setCustomerActiveTab('address');
+                    }}
+                    className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'address' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                  >2. Addresses</Button>
+                  <Button
+                    type="button"
+                    variant={customerActiveTab === 'financial' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (!customerFormData.customer_name) {
+                        error('Customer name is required before switching tabs.');
+                        return;
+                      }
+                      setCustomerActiveTab('financial');
+                    }}
+                    className={`rounded-full text-[10px] md:text-xs h-8 px-3 md:px-4 ${customerActiveTab === 'financial' ? 'bg-primary' : 'bg-transparent text-muted-foreground'}`}
+                  >3. Financials</Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 overflow-y-auto flex-1 text-slate-700">
+              {customerActiveTab === 'basic' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Customer Name *</label>
+                    <Input name="customer_name" value={customerFormData.customer_name} onChange={handleCustomerInputChange} placeholder="Legal Company Name" />
                   </div>
-                </CardHeader>
-                <CardContent className="p-4 md:p-6 overflow-y-auto flex-1 text-slate-700">
-                  {customerActiveTab === 'basic' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Customer Name *</label>
-                        <Input name="customer_name" value={customerFormData.customer_name} onChange={handleCustomerInputChange} placeholder="Legal Company Name" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Customer Code *</label>
-                        <Input 
-                          name="customer_code" 
-                          value={customerFormData.customer_code} 
-                          readOnly
-                          className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
-                          placeholder="e.g. CUST-001" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>
-                        <Input name="gst_no" value={customerFormData.gst_no} onChange={handleCustomerInputChange} placeholder="GSTXXXXXXXXXXXX" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
-                        <Input name="mobile_no" value={customerFormData.mobile_no} onChange={handleCustomerInputChange} placeholder="+91 XXXXX XXXXX" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
-                        <Input name="email_id" value={customerFormData.email_id} onChange={handleCustomerInputChange} placeholder="contact@company.com" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Contact Person</label>
-                        <Input name="contact_person" value={customerFormData.contact_person} onChange={handleCustomerInputChange} placeholder="e.g. John Doe" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Delivery Period</label>
-                        <Input name="delivery_period" value={customerFormData.delivery_period} onChange={handleCustomerInputChange} placeholder="e.g. 7-10 Days" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Delivery Mode</label>
-                        <Input name="delivery_mode" value={customerFormData.delivery_mode} onChange={handleCustomerInputChange} placeholder="e.g. Courier, Hand-delivery" />
-                      </div>
-                    </div>
-                  )}
-
-                  {customerActiveTab === 'address' && (
-                    <div className="space-y-8 animate-in slide-in-from-right duration-500">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {customerFormData.addresses.map((addr, idx) => (
-                          <div key={idx} className="p-4 rounded-xl border border-primary/10 bg-slate-50/50">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="font-bold text-primary flex items-center">
-                                <MapPin className="w-4 h-4 mr-2" /> {addr.address_type} Address
-                              </h3>
-                              {idx === 1 && (
-                                <Button type="button" variant="ghost" size="sm" onClick={copyBillingToShipping} className="text-[10px] h-7 bg-white shadow-sm border">
-                                  Same as Customer Address
-                                </Button>
-                              )}
-                            </div>
-                            <div className="grid gap-4">
-                              <Input placeholder="Street / Area" value={addr.street} onChange={(e) => handleCustomerAddressChange(idx, 'street', e.target.value)} />
-                              <div className="grid grid-cols-2 gap-4">
-                                <Input placeholder="City" value={addr.city} onChange={(e) => handleCustomerAddressChange(idx, 'city', e.target.value)} />
-                                <Input placeholder="State" value={addr.state} onChange={(e) => handleCustomerAddressChange(idx, 'state', e.target.value)} />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <Input placeholder="Zip Code" value={addr.zip_code} onChange={(e) => handleCustomerAddressChange(idx, 'zip_code', e.target.value)} />
-                                <Input placeholder="Country" value={addr.country} onChange={(e) => handleCustomerAddressChange(idx, 'country', e.target.value)} />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {customerActiveTab === 'financial' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
-                        <Input type="number" min={0} name="credit_limit" value={customerFormData.credit_limit || ''} onChange={handleCustomerInputChange} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Credit Period (Days)</label>
-                        <Input type="number" min={0} name="credit_period" value={customerFormData.credit_period || ''} onChange={handleCustomerInputChange} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Opening Balance (₹)</label>
-                        <Input type="number" min={0} name="opening_balance" value={customerFormData.opening_balance || ''} onChange={handleCustomerInputChange} />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-                
-                <div className="p-4 md:p-6 border-t flex justify-between items-center bg-slate-50 shrink-0">
-                  <div>
-                    {customerActiveTab !== 'basic' && (
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        onClick={() => {
-                          if (customerActiveTab === 'address') setCustomerActiveTab('basic');
-                          if (customerActiveTab === 'financial') setCustomerActiveTab('address');
-                        }}
-                        className="rounded-full px-6 h-10 font-bold border-primary/20 hover:bg-primary/5 mr-3"
-                      >
-                        Back
-                      </Button>
-                    )}
-                    <Button 
-                      type="button"
-                      variant="ghost" 
-                      onClick={() => setShowCustomerModal(false)}
-                      className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium"
-                    >
-                      Close Modal
-                    </Button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Customer Code *</label>
+                    <Input
+                      name="customer_code"
+                      value={customerFormData.customer_code}
+                      readOnly
+                      className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
+                      placeholder="e.g. CUST-001"
+                    />
                   </div>
-
-                  <div className="flex gap-3">
-                    {customerActiveTab !== 'financial' ? (
-                      <Button 
-                        type="button"
-                        onClick={() => {
-                          if (customerActiveTab === 'basic') {
-                            if (!validateCustomerForm()) return;
-                            setCustomerActiveTab('address');
-                          }
-                          else if (customerActiveTab === 'address') {
-                            for (const addr of customerFormData.addresses) {
-                              if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
-                                 return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
-                              }
-                            }
-                            setCustomerActiveTab('financial');
-                          }
-                        }}
-                        className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
-                      >
-                        Next Section
-                      </Button>
-                    ) : (
-                      <Button 
-                        type="button"
-                        onClick={saveNewCustomer} 
-                        loading={customerSubmitting}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Create Customer
-                      </Button>
-                    )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center"><FileText className="w-4 h-4 mr-2" /> GST No.</label>
+                    <Input name="gst_no" value={customerFormData.gst_no} onChange={handleCustomerInputChange} placeholder="GSTXXXXXXXXXXXX" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center"><Phone className="w-4 h-4 mr-2" /> Mobile No.</label>
+                    <Input name="mobile_no" value={customerFormData.mobile_no} onChange={handleCustomerInputChange} placeholder="+91 XXXXX XXXXX" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Email ID</label>
+                    <Input name="email_id" value={customerFormData.email_id} onChange={handleCustomerInputChange} placeholder="contact@company.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Contact Person</label>
+                    <Input name="contact_person" value={customerFormData.contact_person} onChange={handleCustomerInputChange} placeholder="e.g. John Doe" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Delivery Period</label>
+                    <Input name="delivery_period" value={customerFormData.delivery_period} onChange={handleCustomerInputChange} placeholder="e.g. 7-10 Days" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Delivery Mode</label>
+                    <Input name="delivery_mode" value={customerFormData.delivery_mode} onChange={handleCustomerInputChange} placeholder="e.g. Courier, Hand-delivery" />
                   </div>
                 </div>
-            </Card>
+              )}
+
+              {customerActiveTab === 'address' && (
+                <div className="space-y-8 animate-in slide-in-from-right duration-500">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {customerFormData.addresses.map((addr, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-primary/10 bg-slate-50/50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-bold text-primary flex items-center">
+                            <MapPin className="w-4 h-4 mr-2" /> {addr.address_type} Address
+                          </h3>
+                          {idx === 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={copyBillingToShipping} className="text-[10px] h-7 bg-white shadow-sm border">
+                              Same as Customer Address
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid gap-4">
+                          <Input placeholder="Street / Area" value={addr.street} onChange={(e) => handleCustomerAddressChange(idx, 'street', e.target.value)} />
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input placeholder="City" value={addr.city} onChange={(e) => handleCustomerAddressChange(idx, 'city', e.target.value)} />
+                            <Input placeholder="State" value={addr.state} onChange={(e) => handleCustomerAddressChange(idx, 'state', e.target.value)} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input placeholder="Zip Code" value={addr.zip_code} onChange={(e) => handleCustomerAddressChange(idx, 'zip_code', e.target.value)} />
+                            <Input placeholder="Country" value={addr.country} onChange={(e) => handleCustomerAddressChange(idx, 'country', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {customerActiveTab === 'financial' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center"><CreditCard className="w-4 h-4 mr-2" /> Credit Limit (₹)</label>
+                    <Input type="number" min={0} name="credit_limit" value={customerFormData.credit_limit || ''} onChange={handleCustomerInputChange} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Credit Period (Days)</label>
+                    <Input type="number" min={0} name="credit_period" value={customerFormData.credit_period || ''} onChange={handleCustomerInputChange} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Opening Balance (₹)</label>
+                    <Input type="number" min={0} name="opening_balance" value={customerFormData.opening_balance || ''} onChange={handleCustomerInputChange} />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+
+            <div className="p-4 md:p-6 border-t flex justify-between items-center bg-slate-50 shrink-0">
+              <div>
+                {customerActiveTab !== 'basic' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (customerActiveTab === 'address') setCustomerActiveTab('basic');
+                      if (customerActiveTab === 'financial') setCustomerActiveTab('address');
+                    }}
+                    className="rounded-full px-6 h-10 font-bold border-primary/20 hover:bg-primary/5 mr-3"
+                  >
+                    Back
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowCustomerModal(false)}
+                  className="rounded-full px-4 text-slate-400 hover:text-rose-500 font-medium"
+                >
+                  Close Modal
+                </Button>
+              </div>
+
+              <div className="flex gap-3">
+                {customerActiveTab !== 'financial' ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (customerActiveTab === 'basic') {
+                        if (!validateCustomerForm()) return;
+                        setCustomerActiveTab('address');
+                      }
+                      else if (customerActiveTab === 'address') {
+                        for (const addr of customerFormData.addresses) {
+                          if (addr.zip_code && !/^[0-9]{6}$/.test(addr.zip_code)) {
+                            return error(`Invalid Zip code for ${addr.address_type}. 6 digits required.`);
+                          }
+                        }
+                        setCustomerActiveTab('financial');
+                      }
+                    }}
+                    className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                  >
+                    Next Section
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={saveNewCustomer}
+                    loading={customerSubmitting}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 h-11 rounded-full shadow-lg font-bold"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Create Customer
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -2588,11 +2581,11 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Hash className="w-4 h-4 text-primary" /> Product Code
                   </label>
-                  <Input 
-                    placeholder="e.g. FP-001" 
-                    value={productFormData.product_code} 
+                  <Input
+                    placeholder="e.g. FP-001"
+                    value={productFormData.product_code}
                     readOnly
-                    className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold" 
+                    className="h-11 font-mono uppercase bg-slate-50 cursor-not-allowed font-bold"
                   />
                 </div>
 
@@ -2600,11 +2593,11 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Box className="w-4 h-4 text-primary" /> Product Name *
                   </label>
-                  <Input 
-                    placeholder="e.g. Milky Polybag" 
-                    value={productFormData.product_name} 
-                    onChange={e => setProductFormData({ ...productFormData, product_name: e.target.value })} 
-                    className="h-11 font-bold" 
+                  <Input
+                    placeholder="e.g. Milky Polybag"
+                    value={productFormData.product_name}
+                    onChange={e => setProductFormData({ ...productFormData, product_name: e.target.value })}
+                    className="h-11 font-bold"
                   />
                 </div>
 
@@ -2612,11 +2605,11 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Palette className="w-4 h-4 text-primary" /> Color
                   </label>
-                  <Input 
-                    placeholder="e.g. White" 
-                    value={productFormData.color} 
-                    onChange={e => setProductFormData({ ...productFormData, color: e.target.value })} 
-                    className="h-11" 
+                  <Input
+                    placeholder="e.g. White"
+                    value={productFormData.color}
+                    onChange={e => setProductFormData({ ...productFormData, color: e.target.value })}
+                    className="h-11"
                   />
                 </div>
 
@@ -2624,13 +2617,13 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Layers className="w-4 h-4 text-primary" /> Thickness (Microns)
                   </label>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    placeholder="0.00" 
-                    value={productFormData.thickness_microns || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })} 
-                    className="h-11" 
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={productFormData.thickness_microns || ''}
+                    onChange={e => setProductFormData({ ...productFormData, thickness_microns: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    className="h-11"
                   />
                 </div>
 
@@ -2638,11 +2631,11 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Ruler className="w-4 h-4 text-primary" /> Size
                   </label>
-                  <Input 
-                    placeholder="e.g. 10x12" 
-                    value={productFormData.size} 
-                    onChange={e => setProductFormData({ ...productFormData, size: e.target.value })} 
-                    className="h-11 px-3" 
+                  <Input
+                    placeholder="e.g. 10x12"
+                    value={productFormData.size}
+                    onChange={e => setProductFormData({ ...productFormData, size: e.target.value })}
+                    className="h-11 px-3"
                   />
                 </div>
 
@@ -2650,13 +2643,13 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <Hash className="w-4 h-4 text-primary" /> Avg Count per Kg
                   </label>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    placeholder="0" 
-                    value={productFormData.avg_count_per_kg || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })} 
-                    className="h-11" 
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={productFormData.avg_count_per_kg || ''}
+                    onChange={e => setProductFormData({ ...productFormData, avg_count_per_kg: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    className="h-11"
                   />
                 </div>
 
@@ -2664,11 +2657,11 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <FileText className="w-4 h-4 text-primary" /> HSN Code *
                   </label>
-                  <Input 
-                    placeholder="e.g. 3920" 
-                    value={productFormData.hsn_code} 
+                  <Input
+                    placeholder="e.g. 3920"
+                    value={productFormData.hsn_code}
                     onChange={e => setProductFormData({ ...productFormData, hsn_code: e.target.value })}
-                    className="h-11 font-bold" 
+                    className="h-11 font-bold"
                   />
                 </div>
 
@@ -2676,30 +2669,30 @@ export default function SalesInvoiceEntry() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-primary" /> Stock Threshold (Kg)
                   </label>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    placeholder="50" 
-                    value={productFormData.stock_threshold || ''} 
-                    onChange={e => setProductFormData({ ...productFormData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })} 
-                    className="h-11 font-bold" 
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="50"
+                    value={productFormData.stock_threshold || ''}
+                    onChange={e => setProductFormData({ ...productFormData, stock_threshold: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    className="h-11 font-bold"
                   />
                 </div>
               </div>
 
               <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3 border-t pt-6">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setShowProductModal(false)} 
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowProductModal(false)}
                   className="w-full sm:w-auto px-6 h-11 rounded-full text-slate-500 font-medium"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={saveNewProduct} 
-                  loading={productSubmitting} 
+                <Button
+                  type="button"
+                  onClick={saveNewProduct}
+                  loading={productSubmitting}
                   className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-8 h-11 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center font-bold gap-2"
                 >
                   <Save className="w-4 h-4" /> Save Product
