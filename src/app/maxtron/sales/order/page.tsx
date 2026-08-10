@@ -22,7 +22,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
 const ORDERS_API = `${API_BASE}/api/maxtron/sales/orders`;
 const CUSTOMERS_API = `${API_BASE}/api/maxtron/customers`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
@@ -282,6 +282,7 @@ export default function CustomerOrderEntry() {
       const res = await fetch(`${ORDERS_API}/next-number?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) return;
       const data = await res.json();
       if (data.success && data.data) {
         setFormData(prev => ({ ...prev, order_number: data.data }));
@@ -298,11 +299,12 @@ export default function CustomerOrderEntry() {
       const compRes = await fetch(`${API_BASE}/api/maxtron/companies`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!compRes.ok) throw new Error('Failed to fetch companies');
       const compData = await compRes.json();
       
       let coId = '';
-      if (compData.success) {
-        const activeCo = compData.data.find((c: any) => c.company_name.toUpperCase() === activeTenant);
+      if (compData.success && Array.isArray(compData.data)) {
+        const activeCo = compData.data.find((c: any) => c.company_name?.toUpperCase() === activeTenant);
         if (activeCo) {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
@@ -314,32 +316,39 @@ export default function CustomerOrderEntry() {
         }
       }
 
-      const [custRes, prodRes, empRes] = await Promise.all([
+      if (!coId) {
+        setLoading(false);
+        return;
+      }
+
+      const [custRes, prodRes, empRes] = await Promise.allSettled([
         fetch(`${CUSTOMERS_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${STOCK_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${EMPLOYEES_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
-      const custData = await custRes.json();
-      const prodData = await prodRes.json();
-      const empData = await empRes.json();
-      
-      if (custData.success) setCustomers(custData.data);
-      if (prodData.success) setProducts(prodData.data);
-      if (empData.success) {
-        // Filter executives (e.g., sales role or management)
-        setExecutives(empData.data.filter((e: any) => 
-            e.companies?.company_name?.toUpperCase() === activeTenant &&
-            (e.user_types?.name === 'sales' || e.user_types?.name === 'admin' || e.user_types?.name === 'production')
-        ));
+      if (custRes.status === 'fulfilled' && custRes.value.ok) {
+        const custData = await custRes.value.json();
+        if (custData.success && Array.isArray(custData.data)) setCustomers(custData.data);
+      }
+      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+        const prodData = await prodRes.value.json();
+        if (prodData.success && Array.isArray(prodData.data)) setProducts(prodData.data);
+      }
+      if (empRes.status === 'fulfilled' && empRes.value.ok) {
+        const empData = await empRes.value.json();
+        if (empData.success && Array.isArray(empData.data)) {
+          setExecutives(empData.data.filter((e: any) => 
+              e.companies?.company_name?.toUpperCase() === activeTenant &&
+              (e.user_types?.name === 'sales' || e.user_types?.name === 'admin' || e.user_types?.name === 'production')
+          ));
+        }
       }
 
-      if (coId) {
-        fetchOrders(coId);
-        fetchNextOrderNumber(coId);
-      }
+      fetchOrders(coId);
+      fetchNextOrderNumber(coId);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error in fetchInitialData:', err);
     } finally {
       setLoading(false);
     }
@@ -348,14 +357,16 @@ export default function CustomerOrderEntry() {
   const fetchOrders = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
+    if (!targetCoId) return;
     try {
       const res = await fetch(`${ORDERS_API}?company_id=${targetCoId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) return;
       const data = await res.json();
-      if (data.success) setOrders(data.data);
+      if (data.success && Array.isArray(data.data)) setOrders(data.data);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error in fetchOrders:', err);
     }
   };
 
