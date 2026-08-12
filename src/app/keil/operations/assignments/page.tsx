@@ -56,6 +56,7 @@ function RouteAssignmentsContent() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [selectedRouteId, setSelectedRouteId] = useState(routeId || '');
     const [assignments, setAssignments] = useState<any[]>([]);
+    const [allAssignments, setAllAssignments] = useState<any[]>([]); // all assignments across all routes
     const [availableHces, setAvailableHces] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState(false);
@@ -100,16 +101,19 @@ function RouteAssignmentsContent() {
             }
 
             if (coId) {
-                const [rRes, hRes] = await Promise.all([
+                const [rRes, hRes, allAssignRes] = await Promise.all([
                     fetch(`${ROUTE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch(`${HCE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch(`${HCE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${ASSIGN_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
                 const rData = await rRes.json();
                 const hData = await hRes.json();
+                const allAData = await allAssignRes.json();
 
                 if (rData.success) setRoutes(rData.data);
                 if (hData.success) setAvailableHces(hData.data);
+                if (allAData.success) setAllAssignments(allAData.data || []);
             }
         } catch (err) {
             console.error('Error fetching baseline data:', err);
@@ -242,9 +246,14 @@ function RouteAssignmentsContent() {
         setAssignmentForm(prev => ({ ...prev, collection_days: DAYS }));
     };
 
+    // Filter: exclude HCEs already assigned to ANY route (except when editing the current assignment)
     const effectiveHces = availableHces.filter(h => {
-        const assignedIds = new Set(assignments.map(a => a.hce_id));
-        return !assignedIds.has(h.id);
+        const globallyAssignedIds = new Set(
+            allAssignments
+                .filter(a => !editingAssignment || a.id !== editingAssignment.id)
+                .map(a => a.hce_id)
+        );
+        return !globallyAssignedIds.has(h.id);
     });
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;

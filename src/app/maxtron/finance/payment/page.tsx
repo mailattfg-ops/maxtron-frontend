@@ -479,7 +479,7 @@ export default function SupplierPaymentPage() {
                                                                     <div className="text-[10px] text-slate-400 uppercase font-bold">{bill.invoice_number ? `GRN: ${bill.entry_number}` : 'No Supplier Bill'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">{new Date(bill.entry_date).toLocaleDateString()}</td>
-                                                                <td className="px-6 py-4 text-right font-medium">₹{Number(bill.bill_amount).toLocaleString()}</td>
+                                                                <td className="px-6 py-4 text-right font-medium">₹{Number(bill.bill_amount ?? bill.total_amount ?? 0).toLocaleString()}</td>
                                                                 <td className="px-6 py-4 text-right">
                                                                     <span className="text-primary font-black">₹{Number(bill.pending_amount).toLocaleString()}</span>
                                                                 </td>

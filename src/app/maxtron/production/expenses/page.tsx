@@ -114,7 +114,12 @@ export default function ProductionExpensesPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setExpenses(data.data || []);
+        const sorted = [...(data.data || [])].sort((a: any, b: any) => {
+          const dateA = new Date(a.created_at || a.expense_date).getTime() || 0;
+          const dateB = new Date(b.created_at || b.expense_date).getTime() || 0;
+          return dateB - dateA;
+        });
+        setExpenses(sorted);
       }
     } catch (err) {
       console.error('Error fetching expenses:', err);
@@ -173,6 +178,14 @@ export default function ProductionExpensesPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${EXPENSES_API}/${editingId}` : EXPENSES_API;
 
+    // Auto-generate reference number for new records
+    const payload = editingId
+      ? formData
+      : {
+          ...formData,
+          reference_no: formData.reference_no || `EXP-${Date.now().toString().slice(-8)}`
+        };
+
     try {
       const res = await fetch(url, {
         method,
@@ -180,7 +193,7 @@ export default function ProductionExpensesPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {

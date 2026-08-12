@@ -97,8 +97,9 @@ export default function MarketingReportsPage() {
 
   const filteredVisits = useMemo(() => {
     return visits.filter(v => {
-      const dateMatch = (!filters.startDate || v.visit_date >= filters.startDate) && 
-                       (!filters.endDate || v.visit_date <= filters.endDate);
+      const vDateStr = v.visit_date ? String(v.visit_date).split('T')[0] : '';
+      const dateMatch = (!filters.startDate || (vDateStr && vDateStr >= filters.startDate)) && 
+                       (!filters.endDate || (vDateStr && vDateStr <= filters.endDate));
       const statusMatch = filters.status === 'all' || v.quotation_status === filters.status;
       const typeMatch = filters.type === 'all' || 
                        (filters.type === 'quotation' && v.is_quotation) || 

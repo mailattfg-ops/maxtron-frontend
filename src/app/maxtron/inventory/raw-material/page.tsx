@@ -453,7 +453,12 @@ export default function RawMaterialPage() {
                 <div>
                   <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Price/Unit</p>
                   <h3 className="text-xl md:text-2xl font-black text-primary mt-1">
-                    ₹ {materials.length > 0 ? (materials.reduce((acc, curr) => acc + (Number(curr.rate_per_unit) || 0), 0) / materials.length).toFixed(2) : '0.00'}
+                    ₹ {(() => {
+                      const priced = materials.filter(m => Number(m.rate_per_unit) > 0);
+                      return priced.length > 0
+                        ? (priced.reduce((acc, curr) => acc + Number(curr.rate_per_unit), 0) / priced.length).toFixed(2)
+                        : '0.00';
+                    })()}
                   </h3>
                 </div>
                 <div className="bg-primary/5 p-2 md:p-3 rounded-xl md:rounded-2xl">
@@ -494,6 +499,7 @@ export default function RawMaterialPage() {
                 <Input 
                   placeholder="e.g. Virgin LDPE Granules"
                   value={formData.rm_name}
+                  maxLength={50}
                   onChange={(e) => {
                     const val = e.target.value;
                     setFormData({...formData, rm_name: val});
@@ -515,6 +521,7 @@ export default function RawMaterialPage() {
                 <Input 
                   placeholder="e.g. Grade A+"
                   value={formData.grade}
+                  maxLength={30}
                   onChange={(e) => {
                     const val = e.target.value;
                     setFormData({...formData, grade: val});
@@ -536,6 +543,7 @@ export default function RawMaterialPage() {
                 <Input 
                   placeholder="e.g. 39011010"
                   value={formData.hsn_code}
+                  maxLength={15}
                   onChange={(e) => setFormData({...formData, hsn_code: e.target.value})}
                   className="h-11 font-bold border-slate-200" 
                 />
@@ -588,8 +596,14 @@ export default function RawMaterialPage() {
                 <div className="relative">
                   <Input 
                     type="number"
-                    min="0"                    placeholder="0.00"
+                    min="0"
+                    placeholder="0.00"
                     value={formData.rate_per_unit || ''}
+                    onFocus={(e) => {
+                      if (formData.rate_per_unit === 0 || formData.rate_per_unit === ('0' as any)) {
+                        setFormData({ ...formData, rate_per_unit: '' as any });
+                      }
+                    }}
                     onChange={(e) => setFormData({...formData, rate_per_unit: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-primary pr-20"
                   />
@@ -609,6 +623,11 @@ export default function RawMaterialPage() {
                     min="0"
                     placeholder="100.00"
                     value={formData.stock_threshold || ''}
+                    onFocus={(e) => {
+                      if (formData.stock_threshold === 0 || formData.stock_threshold === ('0' as any)) {
+                        setFormData({ ...formData, stock_threshold: '' as any });
+                      }
+                    }}
                     onChange={(e) => setFormData({...formData, stock_threshold: Math.max(0, Number(e.target.value))})}
                     className="h-11 font-black text-slate-600 pr-12"
                   />
@@ -643,6 +662,7 @@ export default function RawMaterialPage() {
                   className="w-full h-24 p-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:bg-white outline-none shadow-sm resize-none"
                   placeholder="Notes about quality, chemical properties or vendor specifics..."
                   value={formData.rm_description}
+                  maxLength={200}
                   onChange={(e) => setFormData({...formData, rm_description: e.target.value})}
                 />
               </div>
@@ -680,8 +700,8 @@ export default function RawMaterialPage() {
                 <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-bold uppercase">{m.rm_code}</span>
               </td>
               <td className="px-6 py-4">
-                <div className="font-bold text-slate-800">{m.rm_name?.length > 20 ? m.rm_name.slice(0, 20) + "..." : m.rm_name}</div>
-                <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic">{m.rm_description || 'No description'}</div>
+                <div className="font-bold text-slate-800 truncate max-w-[200px]" title={m.rm_name}>{m.rm_name}</div>
+                <div className="text-[10px] text-muted-foreground truncate max-w-[150px] italic" title={m.rm_description}>{m.rm_description || 'No description'}</div>
               </td>
               <td className="px-6 py-4">
                 <span className="font-mono text-[11px] text-slate-600 font-bold">{m.hsn_code || '-'}</span>
@@ -692,23 +712,21 @@ export default function RawMaterialPage() {
                 </span>
               </td>
               <td className="px-6 py-4">
-                <span className="text-[10px] font-black tracking-widest text-slate-600">
+                <span className="text-[10px] font-black tracking-widest text-slate-600 truncate max-w-[100px] inline-block" title={m.grade}>
                   {m.grade || 'STD'}
                 </span>
               </td>
               <td className="px-6 py-4">
                 <div className="font-black text-slate-900 group-hover:text-primary transition-colors">
-                  {Number(m.rate_per_unit) > 0 ? `₹ ${Number(m.rate_per_unit).toLocaleString()}` : ''}
+                  {Number(m.rate_per_unit) > 0 ? `₹ ${Number(m.rate_per_unit).toLocaleString()}` : '—'}
                 </div>
                 <div className="text-[9px] font-bold text-muted-foreground uppercase">PER {m.unit_type || 'KG'}</div>
               </td>
               <td className="px-6 py-4">
                 <div className="font-bold text-slate-600 tracking-tighter">
-                  {Number(m.stock_threshold) > 0 ? Number(m.stock_threshold).toLocaleString() : ''}
+                  {Number(m.stock_threshold) > 0 ? Number(m.stock_threshold).toLocaleString() : '0'}
                 </div>
-                {Number(m.stock_threshold) > 0 && (
-                  <div className="text-[9px] font-bold text-muted-foreground uppercase">{m.unit_type || 'KG'}</div>
-                )}
+                <div className="text-[9px] font-bold text-muted-foreground uppercase">{m.unit_type || 'KG'}</div>
               </td>
               <td className="px-6 py-4">
                 <span className="flex items-center text-[11px] font-bold text-primary">

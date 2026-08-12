@@ -113,6 +113,7 @@ export default function RMOrderPage() {
 
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [formData, setFormData] = useState({
     order_number: 'GENERATING...',
@@ -638,22 +639,27 @@ export default function RMOrderPage() {
     newItems[index] = { ...newItems[index], [field]: value };
     
     if (field === 'rm_id') {
-        const mat = materials.find(m => m.id === value);
-        if (mat) {
-            newItems[index].rate = Number(mat.rate_per_unit || 0);
-        }
+      const mat = materials.find(m => m.id === value);
+      if (mat) {
+        newItems[index].rate = Number(mat.rate_per_unit || 0);
+      } else {
+        newItems[index].rate = 0;
+        newItems[index].quantity = 0;
+        newItems[index].amount = 0;
+        newItems[index].gst_amount = 0;
+      }
     }
     
     if (field !== 'amount') {
-        const qty = Number(newItems[index].quantity || 0);
-        const rate = Number(newItems[index].rate || 0);
-        const gstPerc = Number(newItems[index].gst_percent || 0);
-        
-        const baseAmount = qty * rate;
-        const gstAmount = (baseAmount * gstPerc) / 100;
-        
-        newItems[index].gst_amount = gstAmount;
-        newItems[index].amount = baseAmount + gstAmount;
+      const qty = Number(newItems[index].quantity || 0);
+      const rate = Number(newItems[index].rate || 0);
+      const gstPerc = Number(newItems[index].gst_percent || 0);
+      
+      const baseAmount = qty * rate;
+      const gstAmount = (baseAmount * gstPerc) / 100;
+      
+      newItems[index].gst_amount = gstAmount;
+      newItems[index].amount = baseAmount + gstAmount;
     }
     
     const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
@@ -661,8 +667,24 @@ export default function RMOrderPage() {
   };
 
   const saveOrder = async () => {
-    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || i.quantity <= 0)) {
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.order_date > today) {
+      error('Order placement date cannot be in the future.');
+      return;
+    }
+
+    if (formData.expected_delivery_date && formData.expected_delivery_date < formData.order_date) {
+      error('Expected delivery date cannot be earlier than order date.');
+      return;
+    }
+
+    if (!formData.supplier_id || formData.items.length === 0 || formData.items.some(i => !i.rm_id || Number(i.quantity) <= 0)) {
       error('Please select Supplier and add items with valid quantities.');
+      return;
+    }
+
+    if (formData.items.some(i => Number(i.rate) <= 0)) {
+      error('Every item in the order must have a Rate per Unit greater than ₹0.');
       return;
     }
 
@@ -855,7 +877,13 @@ export default function RMOrderPage() {
  
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Expected Delivery</label>
-                <Input type="date" value={formData.expected_delivery_date} onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})} className="h-11 border-amber-200 bg-amber-50/10" />
+                <Input 
+                  type="date" 
+                  min={formData.order_date || new Date().toISOString().split('T')[0]}
+                  value={formData.expected_delivery_date} 
+                  onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})} 
+                  className="h-11 border-amber-200 bg-amber-50/10" 
+                />
               </div>
             </div>
 
@@ -1089,9 +1117,25 @@ export default function RMOrderPage() {
           title="Procurement History"
           description="Release and track purchase orders with current stock visibility."
           headers={['PO Details', 'Supplier Partner', 'Total Items', 'Order Value', 'Status', 'Action']}
-          data={orders}
+          data={orders.filter(o => statusFilter === 'ALL' || o.status === statusFilter)}
           loading={loading}
-          searchFields={['order_number', 'suppliers.supplier_name']}
+          searchFields={['order_number', 'supplier_master.supplier_name']}
+          actions={
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 w-36 bg-white border-slate-200 text-xs font-bold shadow-sm">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-xs font-bold">
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="ORDERED">Ordered</SelectItem>
+                  <SelectItem value="RECEIVED">Received</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
           renderRow={(o: any) => (
             <tr key={o.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">
               <td className="px-6 py-4">

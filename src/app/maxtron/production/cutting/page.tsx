@@ -381,30 +381,32 @@ export default function CuttingSealingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2 lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Base Production Batch (Input Source)</label>
                 <Select 
                   value={formData.batch_id} 
                   onValueChange={(val) => {
                     const batch = batches.find(b => b.id === val);
-                    const prodId = batch?.finished_products?.id;
+                    const printJob = printingJobs.find(j => j.batch_id === val);
+                    const prodId = batch?.finished_products?.id || batch?.product_id;
+                    const inputQty = printJob ? (parseFloat(printJob.output_qty) || 0) : (batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0);
                     
                     setFormData({ 
                         ...formData, 
                         batch_id: val,
-                        input_qty: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0,
-                        // Auto-populate item with the product from the batch
+                        input_qty: inputQty,
+                        // Strictly lock item to the finished product from the batch / printing section
                         items: prodId ? [{ 
                           product_id: prodId, 
-                          quantity: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0, 
+                          quantity: inputQty, 
                           bags_per_kg: 0, 
                           micron_size: '' 
                         }] : []
                     });
                   }}
                 >
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm font-bold">
                     <SelectValue placeholder="Select Base Batch" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
@@ -416,6 +418,24 @@ export default function CuttingSealingPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Package className="w-4 h-4 text-primary" /> Finished Product (From Source)
+                </label>
+                {(() => {
+                  const currentBatch = batches.find(b => b.id === formData.batch_id);
+                  const prod = currentBatch?.finished_products;
+                  return (
+                    <Input 
+                      value={prod?.product_name ? `${prod.product_name} (${prod.product_code || 'PROD'})` : (formData.batch_id ? 'Loading...' : 'Select Base Batch First')} 
+                      readOnly 
+                      className="bg-slate-50 font-bold h-10 cursor-not-allowed text-primary" 
+                    />
+                  );
+                })()}
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Input Qty (Kg)</label>
                 <Input type="number" readOnly value={formData.input_qty} className="bg-slate-50 font-bold h-10" />

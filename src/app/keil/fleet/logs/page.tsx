@@ -802,25 +802,25 @@ export default function VehicleDailyLogPage() {
                                     </div>
                                 </div>
                             </td>
-                            <td className="px-1 md:px-6 py-6">
+                            <td className="px-4 py-6 min-w-[180px]">
                                 <div className="flex flex-col gap-2">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-2">
                                         <div className="flex flex-col">
                                             <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">Start KM</span>
-                                            <div className="px-1 md:px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-lg">
+                                            <div className="px-2 py-1.5 bg-primary/5 border border-primary/10 rounded-lg whitespace-nowrap">
                                                 <span className="text-sm font-bold text-primary">{parseFloat(l.start_km).toLocaleString()}</span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">End KM</span>
-                                            <div className="px-1 md:px-3 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg">
+                                            <div className="px-2 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg whitespace-nowrap">
                                                 <span className="text-sm font-bold text-secondary">{l.end_km ? parseFloat(l.end_km).toLocaleString() : '--'}</span>
                                             </div>
                                         </div>
                                     </div>
                                     {l.end_km && (
-                                        <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit">
-                                            <Navigation className="w-3 h-3 text-muted-foreground" />
+                                        <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit whitespace-nowrap">
+                                            <Navigation className="w-3 h-3 text-muted-foreground shrink-0" />
                                             <span className="text-[10px] font-bold text-muted-foreground">Travel: <span className="text-foreground">{(l.end_km - l.start_km).toFixed(1)} KM</span></span>
                                         </div>
                                     )}

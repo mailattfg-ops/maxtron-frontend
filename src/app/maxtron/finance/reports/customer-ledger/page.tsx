@@ -228,12 +228,12 @@ export default function CustomerLedgerPage() {
                         searchPlaceholder="Filter description..."
                         renderRow={(item: any) => (
                             <tr key={`${item.type}-${item.ref}-${item.date}`} className="hover:bg-primary/5 transition-all border-b border-slate-50 last:border-none">
-                                <td className="px-6 py-4">{new Date(item.date).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 font-medium">{item.type}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{(() => { try { const d = new Date(item.date); return isNaN(d.getTime()) ? item.date : d.toLocaleDateString(); } catch(e) { return item.date || '-'; } })()}</td>
+                                <td className="px-6 py-4 font-medium whitespace-nowrap">{item.type}</td>
                                 <td className="px-6 py-4 text-xs font-mono">{item.ref}</td>
-                                <td className="px-6 py-4 font-bold text-red-600">{item.debit > 0 ? `₹${item.debit.toLocaleString()}` : '-'}</td>
-                                <td className="px-6 py-4 font-bold text-green-600">{item.credit > 0 ? `₹${item.credit.toLocaleString()}` : '-'}</td>
-                                <td className="px-6 py-4 font-black">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Dr' : 'Cr'}</td>
+                                <td className="px-6 py-4 font-bold text-red-600">{item.debit > 0 ? `₹${Number(item.debit).toLocaleString()}` : '-'}</td>
+                                <td className="px-6 py-4 font-bold text-green-600">{item.credit > 0 ? `₹${Number(item.credit).toLocaleString()}` : '-'}</td>
+                                <td className="px-6 py-4 font-black whitespace-nowrap">₹{Math.abs(item.balance).toLocaleString()} {item.balance >= 0 ? 'Dr' : 'Cr'}</td>
                             </tr>
                         )}
                     />

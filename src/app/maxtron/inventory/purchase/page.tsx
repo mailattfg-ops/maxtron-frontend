@@ -1871,7 +1871,7 @@ export default function PurchaseEntryPage() {
  
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center">
-                  <IndianRupee className="w-3 h-3 mr-2 text-primary" /> Rate per Unit {!newMaterial.rate_per_unit && <span className="text-[10px] ml-1">(₹)</span>}
+                  Rate per Unit (₹)
                 </label>
                 <div className="relative">
                   <Input 

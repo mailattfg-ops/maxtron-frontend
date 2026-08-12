@@ -87,7 +87,7 @@ export default function ScorecardPage() {
                     </div>
                     <button 
                         onClick={fetchScorecard}
-                        className="hidden md:block bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                        className="bg-primary text-white p-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                     >
                         <Filter className="w-5 h-5" />
                     </button>

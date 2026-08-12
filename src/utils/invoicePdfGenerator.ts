@@ -1326,7 +1326,7 @@ export async function generateAllInvoiceDocumentsPDF(
   const netAmount = inv.net_amount || '148680.00';
   const irn = inv.einvoice_irn || '';
 
-  const einvoiceQrData = JSON.stringify({
+  const einvoiceQrData = inv.einvoice_signed_qr_code || JSON.stringify({
     SellerGstin: gstin,
     BuyerGstin: buyerGstin,
     DocNo: invoiceNo,
@@ -1403,7 +1403,7 @@ export async function downloadSingleTaxInvoice(
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const gstin = activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2';
-  const qrData = JSON.stringify({
+  const qrData = inv.einvoice_signed_qr_code || JSON.stringify({
     SellerGstin: gstin,
     BuyerGstin: inv.customers?.gst_no || '32BDXPP5589C1ZZ',
     DocNo: inv.invoice_number || 'MA154/26-27',

@@ -122,7 +122,7 @@ export default function KeilDashboard() {
                                 <p className="text-4xl font-black text-slate-800">{stats.branches}</p>
                                 <p className="text-[10px] text-slate-400 font-medium font-bold">Operational Zones</p>
                             </div>
-                            <Building2 className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
+                            <Building2 className="w-10 h-10 text-slate-300 group-hover:text-slate-400 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -135,7 +135,7 @@ export default function KeilDashboard() {
                                 <p className="text-4xl font-black text-slate-800">{stats.hces}</p>
                                 <p className="text-[10px] text-slate-400 font-medium font-bold">HCE Service Network</p>
                             </div>
-                            <Activity className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
+                            <Activity className="w-10 h-10 text-slate-300 group-hover:text-slate-400 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -148,7 +148,7 @@ export default function KeilDashboard() {
                                 <p className="text-4xl font-black text-slate-800">{stats.routes}</p>
                                 <p className="text-[10px] text-slate-400 font-medium font-bold">Mapped Collection Loops</p>
                             </div>
-                            <Map className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
+                            <Map className="w-10 h-10 text-slate-300 group-hover:text-slate-400 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -161,7 +161,7 @@ export default function KeilDashboard() {
                                 <p className="text-4xl font-black text-slate-800">{stats.collectionsToday}</p>
                                 <p className="text-[10px] text-slate-400 font-medium font-bold">Today's Batch Entries</p>
                             </div>
-                            <Truck className="w-10 h-10 text-slate-50 group-hover:text-slate-100 transition-colors" />
+                            <Truck className="w-10 h-10 text-slate-300 group-hover:text-slate-400 transition-colors" />
                         </div>
                     </CardContent>
                 </Card>
@@ -199,7 +199,10 @@ export default function KeilDashboard() {
                 </Card>
 
                 <div className="space-y-6">
-                    <Card className="border-none shadow-xl bg-white p-6">
+                    <Card 
+                        className="border-none shadow-xl bg-white p-6 cursor-pointer hover:bg-slate-50 transition-colors group"
+                        onClick={() => window.location.href='/keil/hr-payroll/employee'}
+                    >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
                                 <Users className="w-6 h-6" />
@@ -208,7 +211,7 @@ export default function KeilDashboard() {
                                 <h4 className="font-black text-slate-800">Workforce Management</h4>
                                 <p className="text-xs text-slate-500">Manage drivers, supervisors and field technicians.</p>
                             </div>
-                            <ArrowUpRight className="w-5 h-5 text-slate-300" />
+                            <ArrowUpRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
                         </div>
                     </Card>
                     <Card 
@@ -226,7 +229,10 @@ export default function KeilDashboard() {
                             <ArrowUpRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
                         </div>
                     </Card>
-                    <Card className="border-none shadow-xl bg-white p-6">
+                    <Card 
+                        className="border-none shadow-xl bg-white p-6 cursor-pointer hover:bg-slate-50 transition-colors group"
+                        onClick={() => window.location.href='/keil/hr-payroll/attendance'}
+                    >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
                                 <Calendar className="w-6 h-6" />
@@ -235,7 +241,7 @@ export default function KeilDashboard() {
                                 <h4 className="font-black text-slate-800">Compliance Calendar</h4>
                                 <p className="text-xs text-slate-500">View upcoming audit dates and certificate renewals.</p>
                             </div>
-                            <ArrowUpRight className="w-5 h-5 text-slate-300" />
+                            <ArrowUpRight className="w-5 h-5 text-slate-300 group-hover:text-rose-500 transition-colors" />
                         </div>
                     </Card>
                 </div>

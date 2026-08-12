@@ -99,7 +99,12 @@ export default function PackingDetailsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setPackingRecords(data.data);
+        const sorted = [...(data.data || [])].sort((a: any, b: any) => {
+          const dateA = new Date(a.created_at || a.date).getTime() || 0;
+          const dateB = new Date(b.created_at || b.date).getTime() || 0;
+          return dateB - dateA;
+        });
+        setPackingRecords(sorted);
       }
     } catch (err) {
       console.error('Error fetching packing:', err);

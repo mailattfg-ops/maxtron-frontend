@@ -110,7 +110,12 @@ export default function DamagesWastagePage() {
       });
       const data = await res.json();
       if (data.success) {
-        setWastageRecords(data.data);
+        const sorted = [...(data.data || [])].sort((a: any, b: any) => {
+          const dateA = new Date(a.created_at || a.date).getTime() || 0;
+          const dateB = new Date(b.created_at || b.date).getTime() || 0;
+          return dateB - dateA;
+        });
+        setWastageRecords(sorted);
       }
     } catch (err) {
       console.error('Error fetching wastage:', err);

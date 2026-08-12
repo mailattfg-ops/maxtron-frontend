@@ -68,6 +68,22 @@ export default function MarketingVisitsPage() {
   });
 
 
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState({
+    customer_name: '',
+    customer_code: '',
+    gst_no: '',
+    mobile_no: '',
+    email_id: '',
+    contact_person: '',
+    address: '',
+    city: '',
+    state: 'Kerala',
+    zip_code: '',
+    company_id: ''
+  });
+
   const [dateFilter, setDateFilter] = useState(''); // Default to empty to show all records initially
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -166,12 +182,138 @@ export default function MarketingVisitsPage() {
         if (custData.success) setCustomers(custData.data);
         if (prodData.success) setProducts(prodData.data);
         if (offersData.success) setOffers(offersData.data);
-        if (visitsData.success) setVisitRecords(visitsData.data);
+        if (visitsData.success) {
+          const processed = processVisitRecords(visitsData.data, empData.data || []);
+          setVisitRecords(processed);
+        }
       }
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const processVisitRecords = (records: any[], empsList: any[]) => {
+    const list = empsList && empsList.length > 0 ? empsList : employees;
+    return (records || []).map(rec => {
+      const emp = list.find((e: any) => e.id === rec.employee_id);
+      const employee_code = rec.users?.employee_code || emp?.employee_code || '';
+      const employee_name = rec.users?.name || emp?.name || 'Unknown Staff';
+      return {
+        ...rec,
+        employee_code,
+        employee_name,
+        users: {
+          ...rec.users,
+          name: employee_name,
+          employee_code
+        }
+      };
+    });
+  };
+
+  const openAddCustomerModal = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers/next-code?company_id=${currentCompanyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const code = data.success && data.data ? data.data : `CUST-${String(customers.length + 1).padStart(3, '0')}`;
+      setNewCustomerData({
+        customer_name: '',
+        customer_code: code,
+        gst_no: '',
+        mobile_no: '',
+        email_id: '',
+        contact_person: '',
+        address: '',
+        city: '',
+        state: 'Kerala',
+        zip_code: '',
+        company_id: currentCompanyId
+      });
+    } catch (e) {
+      setNewCustomerData({
+        customer_name: '',
+        customer_code: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
+        gst_no: '',
+        mobile_no: '',
+        email_id: '',
+        contact_person: '',
+        address: '',
+        city: '',
+        state: 'Kerala',
+        zip_code: '',
+        company_id: currentCompanyId
+      });
+    }
+    setShowAddCustomerModal(true);
+  };
+
+  const handleSaveNewCustomer = async () => {
+    if (!newCustomerData.customer_name || newCustomerData.customer_name.trim().length < 2) {
+      error('Customer Name is required (minimum 2 characters).');
+      return;
+    }
+    if (newCustomerData.mobile_no && !/^[0-9+\-\s]{7,15}$/.test(newCustomerData.mobile_no)) {
+      error('Please enter a valid mobile number.');
+      return;
+    }
+    if (newCustomerData.zip_code && !/^[0-9]{6}$/.test(newCustomerData.zip_code)) {
+      error('ZIP/PIN code must be exactly 6 digits.');
+      return;
+    }
+
+    setCustomerSubmitting(true);
+    const token = localStorage.getItem('token');
+    try {
+      const payload = {
+        customer_name: newCustomerData.customer_name.trim(),
+        customer_code: newCustomerData.customer_code.trim(),
+        gst_no: newCustomerData.gst_no.trim() || undefined,
+        mobile_no: newCustomerData.mobile_no.trim() || undefined,
+        email_id: newCustomerData.email_id.trim() || undefined,
+        contact_person: newCustomerData.contact_person.trim() || undefined,
+        company_id: currentCompanyId,
+        addresses: [
+          {
+            address_type: 'billing',
+            address_line1: newCustomerData.address || '',
+            city: newCustomerData.city || '',
+            state: newCustomerData.state || 'Kerala',
+            zip_code: newCustomerData.zip_code || ''
+          }
+        ]
+      };
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Customer created successfully!');
+        setShowAddCustomerModal(false);
+        const createdCustomer = data.data;
+        setCustomers(prev => [createdCustomer, ...prev]);
+        setFormData(prev => ({
+          ...prev,
+          customer_name: createdCustomer.customer_name,
+          customer_id: createdCustomer.id
+        }));
+      } else {
+        error(data.message || 'Failed to create customer');
+      }
+    } catch (err: any) {
+      error(err.message || 'Error creating customer');
+    } finally {
+      setCustomerSubmitting(false);
     }
   };
 
@@ -328,7 +470,7 @@ export default function MarketingVisitsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setVisitRecords(data.data);
+        setVisitRecords(processVisitRecords(data.data, employees));
       }
     } catch (err) {
       console.error('Error fetching visits:', err);
@@ -337,15 +479,18 @@ export default function MarketingVisitsPage() {
 
   const saveVisit = async () => {
     if (!formData.employee_id || !formData.customer_name || !formData.visit_date) {
-      error('Please fill customer and date.');
+      error('Please fill staff, customer, and date.');
       return;
     }
 
-    if (formData.time_in && formData.time_out) {
-      if (formData.time_out <= formData.time_in) {
-        error('Time Out must be strictly later than Time In.');
-        return;
-      }
+    if (!formData.time_in || !formData.time_out) {
+      error('Both Time In and Time Out are required.');
+      return;
+    }
+
+    if (formData.time_out <= formData.time_in) {
+      error(`Invalid timing: Time Out (${formData.time_out}) must be strictly later than Time In (${formData.time_in}).`);
+      return;
     }
 
     if (formData.is_quotation && formData.quotation_status === 'Approved') {
@@ -694,28 +839,24 @@ export default function MarketingVisitsPage() {
                </CardHeader>
                <CardContent>
                    {!showOfferAdmin ? (
-                      <div className="space-y-4">
-                          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-4">
-                               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                   <LayoutDashboard className="w-5 h-5 text-primary" />
+                       <div className="space-y-4">
+                           <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <LayoutDashboard className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-800">Visit Analytics</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Field Visit Summary</p>
+                                </div>
+                           </div>
+                           
+                           <div className="grid grid-cols-1 gap-3">
+                               <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                                   <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Active Quotations</p>
+                                   <p className="text-sm font-black text-emerald-700">{visitRecords.filter(v => v.is_quotation).length}</p>
                                </div>
-                               <div>
-                                   <p className="text-xs font-bold text-slate-800">Visit Analytics</p>
-                                   <p className="text-[10px] text-slate-400 font-medium">Tracking {visitRecords.length} activities</p>
-                               </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
-                                  <p className="text-[8px] font-bold text-emerald-400 uppercase">Quotes</p>
-                                  <p className="text-sm font-black text-emerald-700">{visitRecords.filter(v => v.is_quotation).length}</p>
-                              </div>
-                              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center">
-                                  <p className="text-[8px] font-bold text-blue-400 uppercase">Avg. GST</p>
-                                  <p className="text-sm font-black text-blue-700">18%</p>
-                              </div>
-                          </div>
-                      </div>
+                           </div>
+                       </div>
                    ) : (
                       <div className="space-y-6 animate-in slide-in-from-right duration-300">
                           <form onSubmit={handleCreateOffer} className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -783,11 +924,11 @@ export default function MarketingVisitsPage() {
                 <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                {/* {!showForm && (
-                  <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 hidden md:flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95">
+                {!showForm && (
+                  <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto">
                     <Download className="w-4 h-4 mr-2" /> Download Visit List
                   </Button>
-                )} */}
+                )}
                 {canCreate && (
                   <Button 
                     onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
@@ -854,14 +995,34 @@ export default function MarketingVisitsPage() {
                               'Initial Contact': 1,
                               'Not Interested': 0
                             };
-                            const scores = visitRecords.reduce((acc: any, curr) => {
-                              const name = curr.users?.name || 'Unknown';
-                              const score = weights[curr.outcome] || 0;
-                              acc[name] = (acc[name] || 0) + score;
-                              return acc;
-                            }, {});
-                            const top = Object.entries(scores).sort((a: any, b: any) => b[1] - a[1])[0];
-                            return top ? top[0] : 'N/A';
+                            const statsMap: Record<string, { name: string; count: number; score: number; lastVisitTime: number }> = {};
+                            visitRecords.forEach((curr) => {
+                              const emp = employees.find(e => e.id === curr.employee_id);
+                              const name = curr.users?.name || emp?.name || 'Unknown Staff';
+                              const score = weights[curr.outcome] !== undefined ? weights[curr.outcome] : 1;
+                              let visitTime = 0;
+                              if (curr.visit_date) {
+                                const datePart = curr.visit_date.split('T')[0];
+                                const timePart = curr.time_in ? curr.time_in : '00:00:00';
+                                visitTime = new Date(`${datePart}T${timePart}`).getTime() || 0;
+                              }
+                              if (!statsMap[name]) {
+                                statsMap[name] = { name, count: 0, score: 0, lastVisitTime: 0 };
+                              }
+                              statsMap[name].count += 1;
+                              statsMap[name].score += score;
+                              if (visitTime > statsMap[name].lastVisitTime) {
+                                statsMap[name].lastVisitTime = visitTime;
+                              }
+                            });
+                            const list = Object.values(statsMap);
+                            if (list.length === 0) return 'N/A';
+                            list.sort((a, b) => {
+                              if (b.score !== a.score) return b.score - a.score;
+                              if (b.count !== a.count) return b.count - a.count;
+                              return b.lastVisitTime - a.lastVisitTime; // Deterministic tie-breaker
+                            });
+                            return list[0].name;
                           })()}
                         </h3>
                       </div>
@@ -903,29 +1064,57 @@ export default function MarketingVisitsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                        <Building2 className="w-4 h-4 mr-2 text-primary" /> Customer / Company
-                      </label>
-                      <Select 
-                        value={formData.customer_name}
-                        onValueChange={(val) => {
-                          const selectedCust = customers.find(c => c.customer_name === val);
-                          setFormData({
-                            ...formData, 
-                            customer_name: val,
-                            customer_id: selectedCust?.id || ''
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="w-full h-10 bg-white border-slate-200">
-                          <SelectValue placeholder="Select customer..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {customers.map(cust => (
-                            <SelectItem key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                          <Building2 className="w-4 h-4 mr-2 text-primary" /> Customer / Company
+                        </label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={openAddCustomerModal}
+                          className="h-6 px-2 text-xs font-bold text-primary hover:bg-primary/10 gap-1 rounded-md"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Customer
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select 
+                          value={formData.customer_name}
+                          onValueChange={(val) => {
+                            if (val === '__ADD_NEW__') {
+                              openAddCustomerModal();
+                              return;
+                            }
+                            const selectedCust = customers.find(c => c.customer_name === val);
+                            setFormData({
+                              ...formData, 
+                              customer_name: val,
+                              customer_id: selectedCust?.id || ''
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="w-full h-10 bg-white border-slate-200">
+                            <SelectValue placeholder="Select customer..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="__ADD_NEW__" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
+                              + Add New Customer
+                            </SelectItem>
+                            {customers.map(cust => (
+                              <SelectItem key={cust.id} value={cust.customer_name}>{cust.customer_name} ({cust.customer_code})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          onClick={openAddCustomerModal}
+                          className="h-10 px-3 bg-primary text-white hover:bg-primary/90 shrink-0 rounded-md"
+                          title="Add New Customer"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -958,6 +1147,7 @@ export default function MarketingVisitsPage() {
                         type="time"
                         value={formData.time_in}
                         onChange={(e) => setFormData({...formData, time_in: e.target.value})}
+                        className={formData.time_in && formData.time_out && formData.time_out <= formData.time_in ? 'border-destructive' : ''}
                       />
                     </div>
 
@@ -969,7 +1159,11 @@ export default function MarketingVisitsPage() {
                         type="time"
                         value={formData.time_out}
                         onChange={(e) => setFormData({...formData, time_out: e.target.value})}
+                        className={formData.time_in && formData.time_out && formData.time_out <= formData.time_in ? 'border-destructive' : ''}
                       />
+                      {formData.time_in && formData.time_out && formData.time_out <= formData.time_in && (
+                        <p className="text-[10px] text-destructive font-bold">Time Out must be strictly later than Time In</p>
+                      )}
                     </div>
 
                     <div className="space-y-2 md:col-span-1 lg:col-span-1">
@@ -1241,10 +1435,22 @@ export default function MarketingVisitsPage() {
                 title="Field Visit Logs"
                 description="Punching details for field staff tracking."
                 headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Outcome / Feedback', 'Action']}
-                data={visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)))}
+                data={visitRecords.filter(rec => {
+                  if (!dateFilter) return true;
+                  if (!rec.visit_date) return false;
+                  const raw = String(rec.visit_date).split('T')[0];
+                  if (raw === dateFilter) return true;
+                  try {
+                    const d = new Date(rec.visit_date);
+                    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    return local === dateFilter;
+                  } catch (e) {
+                    return false;
+                  }
+                })}
                 loading={loading}
-                searchFields={['users.name', 'users.employee_code', 'customer_name', 'customers.customer_code', 'purpose']}
-                searchPlaceholder="Search staff name/ID, client name/ID..."
+                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome', 'vehicle_number']}
+                searchPlaceholder="Search staff name/ID, client name/ID, location, vehicle..."
                 actions={
                   <div className="flex gap-3">
                     <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
@@ -1378,7 +1584,6 @@ export default function MarketingVisitsPage() {
                                     </div>
                                   ))}
                                 </div>
-                                
                                 {rec.quotation_delivery_date && (
                                   <div className="mt-1.5 flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter px-1 border-t border-slate-100 pt-1">
                                     <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
@@ -1427,10 +1632,10 @@ export default function MarketingVisitsPage() {
                       <span className="text-[10px] font-bold uppercase tracking-tighter">Starts: {selectedOffer?.start_date ? new Date(selectedOffer.start_date).toLocaleDateString() : 'N/A'}</span>
                    </div>
                    {selectedOffer?.end_date && (
-                     <div className="flex items-center gap-2 bg-rose-500/20 px-3 py-1.5 rounded-xl border border-rose-500/10">
-                        <Clock3 className="w-4 h-4 text-white/80" />
-                        <span className="text-[10px] font-bold uppercase tracking-tighter text-white">Ends: {new Date(selectedOffer.end_date).toLocaleDateString()}</span>
-                     </div>
+                      <div className="flex items-center gap-2 bg-rose-500/20 px-3 py-1.5 rounded-xl border border-rose-500/10">
+                         <Clock3 className="w-4 h-4 text-white/80" />
+                         <span className="text-[10px] font-bold uppercase tracking-tighter text-white">Ends: {new Date(selectedOffer.end_date).toLocaleDateString()}</span>
+                      </div>
                    )}
                 </div>
              </div>
@@ -1446,6 +1651,132 @@ export default function MarketingVisitsPage() {
                 <span>Maxtron Operations</span>
                 <span className="flex items-center gap-1.5"><Star className="w-3 h-3 text-primary fill-primary" /> Verified Announcement</span>
              </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Customer Modal */}
+      <Dialog open={showAddCustomerModal} onOpenChange={setShowAddCustomerModal}>
+        <DialogContent className="w-[92%] sm:max-w-lg bg-white rounded-2xl p-6 border shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" /> Add New Customer
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium">
+              Create a new client record and immediately link to this visit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 my-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Customer Name *</label>
+                <Input
+                  value={newCustomerData.customer_name}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, customer_name: e.target.value })}
+                  placeholder="e.g. Acme Industries Ltd"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Customer Code *</label>
+                <Input
+                  value={newCustomerData.customer_code}
+                  readOnly
+                  className="h-9 text-sm bg-slate-50 font-mono font-bold cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Contact Person</label>
+                <Input
+                  value={newCustomerData.contact_person}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, contact_person: e.target.value })}
+                  placeholder="e.g. John Smith"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Mobile Number</label>
+                <Input
+                  value={newCustomerData.mobile_no}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, mobile_no: e.target.value })}
+                  placeholder="+91 9876543210"
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Email Address</label>
+                <Input
+                  value={newCustomerData.email_id}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, email_id: e.target.value })}
+                  placeholder="contact@acme.com"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">GST Number</label>
+                <Input
+                  value={newCustomerData.gst_no}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, gst_no: e.target.value })}
+                  placeholder="32AAAAA0000A1Z5"
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 uppercase">Address / Locality</label>
+              <Input
+                value={newCustomerData.address}
+                onChange={(e) => setNewCustomerData({ ...newCustomerData, address: e.target.value })}
+                placeholder="Street / Industrial Area"
+                className="h-9 text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">City</label>
+                <Input
+                  value={newCustomerData.city}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, city: e.target.value })}
+                  placeholder="Cochin"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase">Pincode</label>
+                <Input
+                  value={newCustomerData.zip_code}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, zip_code: e.target.value })}
+                  placeholder="682001"
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddCustomerModal(false)}
+              className="h-10 px-5 rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              loading={customerSubmitting}
+              onClick={handleSaveNewCustomer}
+              className="bg-primary text-white hover:bg-primary/95 h-10 px-6 rounded-full font-bold shadow-md shadow-primary/20"
+            >
+              <Save className="w-4 h-4 mr-2" /> Save & Select Customer
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
