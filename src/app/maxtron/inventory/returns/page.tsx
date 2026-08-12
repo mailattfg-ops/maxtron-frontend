@@ -119,15 +119,20 @@ export default function PurchaseReturnPage() {
   };
 
   const saveReturn = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.return_date > today) {
+      error('Return date cannot be in the future.');
+      return;
+    }
+
     if (!formData.purchase_entry_id || Number(formData.quantity_returned) <= 0) {
-      error('Please select GRN Entry and Quantity.');
+      error('Please select GRN Entry and specify a Return Quantity > 0.');
       return;
     }
 
     const linkedEntry = entries.find(e => e.id === formData.purchase_entry_id);
-    const maxQty = linkedEntry 
-      ? linkedEntry.purchase_entry_items?.reduce((acc: any, i: any) => acc + Number(i.received_quantity), 0) || 0 
-      : 0;
+    const linkedItem = linkedEntry?.purchase_entry_items?.find((i: any) => i.rm_id === formData.rm_id) || linkedEntry?.purchase_entry_items?.[0];
+    const maxQty = Number(linkedItem?.received_quantity || 0);
 
     if (maxQty > 0 && Number(formData.quantity_returned) > maxQty) {
       error(`Cannot return more than the received quantity (${maxQty}).`);
@@ -358,9 +363,9 @@ export default function PurchaseReturnPage() {
               </div>
 
               <div className="md:col-span-full space-y-4">
-                <div className="flex items-center space-x-2 text-primary-foreground bg-primary/10">
-                   <AlertTriangle className="w-4 h-4" />
-                   <h3 className="text-sm font-black uppercase tracking-widest">Return Item Details</h3>
+                <div className="flex items-center space-x-2 text-primary p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                   <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
+                   <h3 className="text-sm font-black uppercase tracking-widest text-primary">Return Item Details</h3>
                 </div>
                 
                 {formData.purchase_entry_id ? (
@@ -460,14 +465,14 @@ export default function PurchaseReturnPage() {
               </div>
             </div>
 
-            <div className="mt-10 flex justify-end space-x-4">
-              <Button onClick={() => setShowForm(false)} variant="ghost" className="px-8 h-11 rounded-full text-slate-500">
+            <div className="mt-10 flex flex-col sm:flex-row justify-end gap-3">
+              <Button onClick={() => setShowForm(false)} variant="ghost" className="w-full sm:w-auto px-8 h-11 rounded-full text-slate-500 font-bold">
                 Discard
               </Button>
               <Button 
                 onClick={saveReturn} 
                 loading={submitting}
-                className="bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/10 flex items-center font-bold"
+                className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white px-10 h-11 rounded-full shadow-lg shadow-primary/10 flex items-center justify-center font-bold"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {editingId ? 'Update' : 'Generate'}

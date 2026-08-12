@@ -313,19 +313,19 @@ export default function HCEServiceLedgerPage() {
                                             <div className="flex gap-2">
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-[8px] font-bold text-amber-600/70">Y</span>
-                                                    <div className="w-7 h-7 flex items-center justify-center bg-amber-50 text-amber-600 text-xs font-bold rounded-md border border-amber-100">{ent.yellow_bags}</div>
+                                                    <div className="w-7 h-7 flex items-center justify-center bg-amber-50 text-amber-600 text-xs font-bold rounded-md border border-amber-100">{ent.yellow_bags || 0}</div>
                                                 </div>
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-[8px] font-bold text-secondary/70">R</span>
-                                                    <div className="w-7 h-7 flex items-center justify-center bg-secondary/10 text-secondary text-xs font-bold rounded-md border border-secondary/10">{ent.red_bags}</div>
+                                                    <div className="w-7 h-7 flex items-center justify-center bg-secondary/10 text-secondary text-xs font-bold rounded-md border border-secondary/10">{ent.red_bags || 0}</div>
                                                 </div>
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-[8px] font-bold text-primary/40">W</span>
-                                                    <div className="w-7 h-7 flex items-center justify-center bg-primary/5 text-primary text-xs font-bold rounded-md border border-primary/10">{ent.white_containers}</div>
+                                                    <div className="w-7 h-7 flex items-center justify-center bg-primary/5 text-primary text-xs font-bold rounded-md border border-primary/10">{ent.white_containers || 0}</div>
                                                 </div>
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-[8px] font-bold text-secondary/40">B</span>
-                                                    <div className="w-7 h-7 flex items-center justify-center bg-secondary/10 text-secondary text-xs font-bold rounded-md border border-secondary/10">{ent.bottle_containers}</div>
+                                                    <div className="w-7 h-7 flex items-center justify-center bg-secondary/10 text-secondary text-xs font-bold rounded-md border border-secondary/10">{ent.bottle_containers || 0}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -341,8 +341,10 @@ export default function HCEServiceLedgerPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-foreground">{ent.start_time || '00:00'} - {ent.end_time || '00:00'}</span>
-                                                <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Station Time</span>
+                                                <span className="text-xs font-bold text-foreground whitespace-nowrap">
+                                                    {(ent.header?.start_time || '--').substring(0, 5)} – {(ent.header?.end_time || '--').substring(0, 5)}
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Session Time</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-[10px] font-medium text-muted-foreground italic max-w-[150px] truncate">

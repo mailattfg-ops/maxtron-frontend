@@ -201,6 +201,12 @@ export default function SupplierPage() {
       return;
     }
 
+    const codeExists = suppliers.some(s => s.supplier_code?.trim().toLowerCase() === formData.supplier_code?.trim().toLowerCase() && s.id !== editingId);
+    if (codeExists) {
+      error('Vendor Identity / Supplier Code already exists for another supplier.');
+      return;
+    }
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${SUPPLIER_API}/${editingId}` : SUPPLIER_API;
@@ -223,7 +229,7 @@ export default function SupplierPage() {
         fetchSuppliers();
         resetForm();
       } else {
-        error(data.message || 'Error occurred');
+        error(data.message || 'Error occurred while saving supplier');
       }
     } catch (err) {
       error('Network error.');
@@ -238,17 +244,17 @@ export default function SupplierPage() {
       info('Official address is empty.');
       return;
     }
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       billing_address: {
-        ...formData.billing_address,
+        ...prev.billing_address,
         street: off.street,
         city: off.city,
         state: off.state,
         zip_code: off.zip_code,
         country: off.country
       }
-    });
+    }));
     success('Address copied successfully!');
   };
 
@@ -555,22 +561,25 @@ export default function SupplierPage() {
 
               {/* Billing Address Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between text-slate-600 border-b border-slate-100 pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-slate-600 border-b border-slate-100 pb-2 gap-2">
                    <div className="flex items-center space-x-2">
                      <FileCheck className="w-4 h-4" />
                      <h3 className="text-sm font-black uppercase tracking-widest">
                        Billing Address {(!formData.billing_address.street && !formData.billing_address.city && !formData.billing_address.state) && <span className="text-[10px] text-muted-foreground ml-1 lowercase">(optional)</span>}
                      </h3>
                    </div>
-                   <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={copyOfficialAddress}
-                    className="h-7 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all"
-                  >
-                    <Copy className="w-3 h-3 mr-1" /> Same as Official
-                  </Button>
+                   <div className="flex items-center gap-2">
+                     <Checkbox
+                       id="billing-same-as-official"
+                       onCheckedChange={(checked) => {
+                         if (checked) copyOfficialAddress();
+                       }}
+                       className="border-primary data-[state=checked]:bg-primary"
+                     />
+                     <label htmlFor="billing-same-as-official" className="text-xs font-bold text-slate-600 cursor-pointer select-none">
+                       Same as Official Address
+                     </label>
+                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2 space-y-1">

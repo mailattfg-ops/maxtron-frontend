@@ -18,13 +18,13 @@ export default function AttendanceReportPage() {
 
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const { info, error, success } = useToast();
 
   useEffect(() => {
-
     fetchCompanyAndData();
   }, []);
 
@@ -60,7 +60,14 @@ export default function AttendanceReportPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setRecords(data.data);
+        const seen = new Set<string>();
+        const deduped = (data.data || []).filter((r: any) => {
+          const key = `${r.employee_id}_${r.date ? r.date.split('T')[0] : ''}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setRecords(deduped);
       }
     } catch (err) {
       error('Failed to fetch summary data.');
@@ -68,6 +75,8 @@ export default function AttendanceReportPage() {
       setLoading(false);
     }
   };
+
+  const displayedRecords = records.filter(r => statusFilter === 'ALL' || r.status === statusFilter);
 
   const stats = {
     total: records.length,
@@ -78,20 +87,30 @@ export default function AttendanceReportPage() {
   };
 
   const downloadExcel = async () => {
-    if (records.length === 0) {
+    if (displayedRecords.length === 0) {
       info('No records to export.');
       return;
     }
     const headers = ['Date', 'Emp Code', 'Name', 'In', 'Out', 'Status', 'Remarks'];
-    const rows = records.map(r => [
-      r.date.split('T')[0] || '',
-      r.users?.employee_code || '',
-      r.users?.name || '',
-      r.clock_in || '',
-      r.clock_out || '',
-      r.status || '',
-      r.remarks || ''
-    ]);
+    const rows = displayedRecords.map(r => {
+      const formatDate = (dateStr: any) => {
+        if (!dateStr || dateStr === 'null') return 'N/A';
+        try {
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+        } catch (e) { return dateStr; }
+      };
+      return [
+        formatDate(r.date),
+        r.users?.employee_code || '',
+        r.users?.name || '',
+        r.clock_in || '',
+        r.clock_out || '',
+        r.status || '',
+        r.remarks || ''
+      ];
+    });
     
     await exportToExcel({
       headers,
@@ -157,10 +176,10 @@ export default function AttendanceReportPage() {
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b">
           <CardTitle className="text-xl flex items-center text-primary font-bold">
             <CalendarDays className="w-5 h-5 mr-3 text-secondary" />
-            Filtered Attendance Logs
+            Attendance Overview
           </CardTitle>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-3 rounded-lg border w-full lg:w-auto">
-             <div className="grid grid-cols-1 md:flex gap-2 flex-grow">
+             <div className="grid grid-cols-1 sm:grid-cols-3 sm:flex sm:items-center gap-2 flex-grow">
                <div className="flex items-center gap-2">
                  <span className="text-[10px] font-bold text-slate-500 uppercase">From:</span>
                  <Input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="rounded-md w-full sm:w-36 h-9 text-[11px] border-primary/20" />
@@ -168,6 +187,20 @@ export default function AttendanceReportPage() {
                <div className="flex items-center gap-2">
                  <span className="text-[10px] font-bold text-slate-500 uppercase">To:</span>
                  <Input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="rounded-md w-full sm:w-36 h-9 text-[11px] border-primary/20" />
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase">Status:</span>
+                 <select 
+                   value={statusFilter} 
+                   onChange={(e) => setStatusFilter(e.target.value)}
+                   className="h-9 text-[11px] font-bold border border-primary/20 rounded-md bg-white px-2 focus:ring-primary/20"
+                 >
+                   <option value="ALL">All Statuses</option>
+                   <option value="PRESENT">Present</option>
+                   <option value="ABSENT">Absent</option>
+                   <option value="LATE">Late</option>
+                   <option value="HALF_DAY">Half Day</option>
+                 </select>
                </div>
              </div>
              <Button onClick={() => fetchSummary()} size="sm" className="bg-primary text-white hover:bg-primary/90 h-10 sm:h-9 px-6 rounded-md w-full sm:w-auto">
@@ -188,14 +221,14 @@ export default function AttendanceReportPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-medium">
-                {records.length === 0 ? (
+                {displayedRecords.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-muted-foreground italic">
                       {loading ? 'Crunching data...' : 'No logs found for this range.'}
                     </td>
                   </tr>
                 ) : (
-                  records.map(r => (
+                  displayedRecords.map(r => (
                     <tr key={r.id} className="hover:bg-primary/5 transition-colors">
                       <td className="p-4 font-mono text-xs">{new Date(r.date).toLocaleDateString()}</td>
                       <td className="p-4">
@@ -228,4 +261,5 @@ export default function AttendanceReportPage() {
     </div>
   );
 }
+
 

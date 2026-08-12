@@ -163,6 +163,12 @@ export default function ConsumptionPage() {
         const selectedMaterial = materials.find(m => m.id === formData.rm_id);
         const availableStock = Number(selectedMaterial?.balance || 0);
         
+        if (availableStock <= 0 && !editingId) {
+          setErrors(prev => ({ ...prev, rm_id: 'Material is out of stock' }));
+          error('Selected material is out of stock and cannot be issued.');
+          return;
+        }
+
         // If editing, we should account for the original quantity in the "budget"
         let limit = availableStock;
         if (editingId) {

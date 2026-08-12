@@ -27,6 +27,16 @@ import { useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import { exportToExcel } from '@/utils/export';
 
+const INDIAN_STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", 
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", 
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", 
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", 
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+  "Uttarakhand", "West Bengal"
+];
+
 const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
 export default function EmployeeInformationPage() {
@@ -44,6 +54,8 @@ export default function EmployeeInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
@@ -66,11 +78,7 @@ export default function EmployeeInformationPage() {
   
   // Page access check
   useEffect(() => {
-    // We check view permission, but if they are already on this page via sidebar, 
-    // it's likely they have it. This is a secondary layer.
     const canView = hasPermission('hr_employee_view', 'can_view');
-    // If the hook is still loading user data (user is null initially), we might want to wait.
-    // However, sidebar already handles the main gate.
   }, [hasPermission]);
   
   // Table Pagination and Filtering States
@@ -509,8 +517,12 @@ export default function EmployeeInformationPage() {
     if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      if (age < 18) newErrors.date_of_birth = 'Must be 18+ years old';
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      if (age < 18) newErrors.date_of_birth = 'Employee must be at least 18 years old';
     }
 
     const bankFields = ['bank_name', 'bank_account_no', 'bank_ifsc', 'bank_branch', 'bank_account_type'];
@@ -625,12 +637,17 @@ export default function EmployeeInformationPage() {
     setEditingId(emp.id);
     setEnableLogin(!!emp.username);
     
-    // Ensure we have at least one license/insurance entry if marked as a holder
+    // Ensure we have at least one license/insurance/passport entry if marked as a holder
     const hasLicense = !!emp.has_license;
+    const hasPassport = !!emp.has_passport;
     const hasInsurance = !!emp.has_insurance;
     const licenses = (emp.employee_licenses && emp.employee_licenses.length > 0) 
       ? emp.employee_licenses 
       : (hasLicense ? [{ license_number: '', expiry_date: '', class_of_vehicle: '' }] : []);
+
+    const passports = (emp.employee_passports && emp.employee_passports.length > 0) 
+      ? emp.employee_passports 
+      : (hasPassport ? [{ passport_no: '', issue_date: '', expiry_date: '' }] : []);
 
     const insurances = (emp.employee_insurances && emp.employee_insurances.length > 0) 
       ? emp.employee_insurances 
@@ -648,7 +665,7 @@ export default function EmployeeInformationPage() {
       ],
       company_id: emp.company_id || '',
       has_license: hasLicense,
-      has_passport: !!emp.has_passport,
+      has_passport: hasPassport,
       has_insurance: hasInsurance,
       phone: emp.phone || '',
       aadhaar: emp.aadhaar || '',
@@ -665,7 +682,7 @@ export default function EmployeeInformationPage() {
       employee_certificates: emp.employee_certificates || [],
       employee_licenses: licenses,
       employee_insurances: insurances,
-      employee_passports: emp.employee_passports || [],
+      employee_passports: passports,
       employee_loans: emp.employee_loans || []
     });
     setErrors({});
@@ -750,29 +767,29 @@ export default function EmployeeInformationPage() {
   return (
     <div className="space-y-6">
       {newEmployeePopup && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none bg-card">
-            <CardHeader className="bg-primary/10 pb-6 border-b border-border text-center rounded-t-xl">
-              <CheckCircle2 className="w-16 h-16 text-primary mx-auto mb-3" />
-              <CardTitle className="text-2xl text-primary">Employee Registered!</CardTitle>
-              <CardDescription className="text-primary/80 font-medium">System access credentials successfully configured.</CardDescription>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200">
+          <Card className="max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200 border border-primary/20 bg-card rounded-2xl">
+            <CardHeader className="bg-primary/10 pb-6 border-b border-border text-center rounded-t-2xl">
+              <CheckCircle2 className="w-14 h-14 text-primary mx-auto mb-3" />
+              <CardTitle className="text-xl sm:text-2xl text-primary font-bold">Employee Registered!</CardTitle>
+              <CardDescription className="text-primary/80 font-medium text-xs sm:text-sm">System access credentials successfully configured.</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="pt-6 space-y-4 px-4 sm:px-6">
               <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border space-y-3">
-                 <div className="flex justify-between items-center bg-card p-3 rounded-lg border border-border shadow-sm">
-                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Username</span>
-                   <span className="font-mono text-base font-bold text-foreground">{newEmployeePopup.username}</span>
+                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 bg-card p-3 rounded-lg border border-border shadow-sm">
+                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Username / Email</span>
+                   <span className="font-mono text-sm sm:text-base font-bold text-foreground break-all">{newEmployeePopup.username}</span>
                  </div>
-                 <div className="flex justify-between items-center bg-card p-3 rounded-lg border border-border shadow-sm">
+                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 bg-card p-3 rounded-lg border border-border shadow-sm">
                     <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Password</span>
                     <div className="flex items-center space-x-2">
-                      <span className="font-mono text-base font-bold tracking-wider text-foreground">
+                      <span className="font-mono text-sm sm:text-base font-bold tracking-wider text-foreground break-all">
                         {showTempPassword ? newEmployeePopup.password : '••••••••'}
                       </span>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 w-8 p-0 rounded-full hover:bg-muted"
+                        className="h-8 w-8 p-0 rounded-full hover:bg-muted shrink-0"
                         onClick={() => setShowTempPassword(!showTempPassword)}
                       >
                         {showTempPassword ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
@@ -785,20 +802,20 @@ export default function EmployeeInformationPage() {
                   navigator.clipboard.writeText(`Maxtron Login Credentials\nUsername: ${newEmployeePopup.username}\nPassword: ${newEmployeePopup.password}`);
                   info('Access credentials copied to clipboard.');
                 }}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" variant="outline"
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm rounded-xl font-bold py-2.5" variant="outline"
               >
                 <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
               </Button>
               
-              <div className="flex items-start p-4 bg-slate-50 rounded-xl border border-slate-200 mt-6 shadow-sm">
-                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-slate-500 flex-none" />
+              <div className="flex items-start p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 mt-4 shadow-sm">
+                 <AlertCircle className="w-5 h-5 mr-2 sm:mr-3 shrink-0 mt-0.5 text-slate-500" />
                  <p className="text-xs font-medium leading-relaxed text-slate-800">
                    <strong>Strict Security Notice:</strong> Please securely provide these initial credentials to the employee. They will be strictly required to change their password upon their immediate first login.
                  </p>
               </div>
             </CardContent>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl">
-              <Button onClick={() => { setNewEmployeePopup(null); setShowTempPassword(false); }} className="w-full bg-slate-800 hover:bg-slate-900 shadow-md">Acknowledge & Close</Button>
+            <div className="p-4 border-t bg-slate-50 rounded-b-2xl">
+              <Button onClick={() => { setNewEmployeePopup(null); setShowTempPassword(false); }} className="w-full bg-primary hover:bg-primary/95 text-white shadow-md rounded-xl font-bold py-2.5">Acknowledge & Close</Button>
             </div>
           </Card>
         </div>
@@ -895,7 +912,7 @@ export default function EmployeeInformationPage() {
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
                   <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">
-                    {employees.filter(e => e.employee_categories?.category_name === "Management").length}
+                    {employees.filter(e => (e.employee_categories?.category_name || e.category?.category_name || '').trim().toLowerCase() === "management").length}
                   </h3>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
@@ -911,7 +928,7 @@ export default function EmployeeInformationPage() {
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
                   <h3 className="text-3xl font-black text-slate-600 mt-1">
-                    {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
+                    {employees.filter(e => (e.employee_categories?.category_name || e.category?.category_name || '').trim().toLowerCase() !== "management").length}
                   </h3>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl shrink-0">
@@ -995,7 +1012,20 @@ export default function EmployeeInformationPage() {
                            </div>
                            <div className="space-y-2 text-sm">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
+                             <Select 
+                               value={formData.addresses[0]?.state || ''} 
+                               onValueChange={(val) => handleAddressChange(0, 'state', val)} 
+                               disabled={isViewMode}
+                             >
+                               <SelectTrigger className="h-10 w-full bg-white border-input text-sm">
+                                 <SelectValue placeholder="Select State" />
+                               </SelectTrigger>
+                               <SelectContent className="bg-white max-h-60">
+                                 {INDIAN_STATES.map((st) => (
+                                   <SelectItem key={st} value={st}>{st}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
                            </div>
                         </div>
                       </div>
@@ -1026,7 +1056,20 @@ export default function EmployeeInformationPage() {
                            </div>
                            <div className="space-y-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
+                             <Select 
+                               value={formData.addresses[1]?.state || ''} 
+                               onValueChange={(val) => handleAddressChange(1, 'state', val)} 
+                               disabled={isViewMode}
+                             >
+                               <SelectTrigger className="h-10 w-full bg-white border-input text-sm">
+                                 <SelectValue placeholder="Select State" />
+                               </SelectTrigger>
+                               <SelectContent className="bg-white max-h-60">
+                                 {INDIAN_STATES.map((st) => (
+                                   <SelectItem key={st} value={st}>{st}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
                            </div>
                         </div>
                       </div>
@@ -1141,9 +1184,15 @@ export default function EmployeeInformationPage() {
                         <SelectValue placeholder="Select System Role" />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-slate-200">
-                        {userTypes.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>{(role.name || '').toUpperCase()} - {role.description}</SelectItem>
-                        ))}
+                        {userTypes.map((role) => {
+                          const isRoleAdmin = (role.name || '').toLowerCase() === 'admin';
+                          const label = isRoleAdmin 
+                            ? 'SYSTEM ADMINISTRATOR WITH FULL ACCESS' 
+                            : `${(role.name || '').toUpperCase()} - ${role.description || ''}`;
+                          return (
+                            <SelectItem key={role.id} value={role.id}>{label}</SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     {errors.type && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.type}</p>}
@@ -1152,6 +1201,27 @@ export default function EmployeeInformationPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Tab 1 Navigation Footer */}
+        <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+            className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+          >
+            <X className="w-4 h-4 mr-2" /> Cancel
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => {
+              if (validatePersonalTab()) setActiveTab('qualifications');
+            }}
+            className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-6 shadow-md"
+          >
+            Next <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </TabsContent>
 
@@ -1252,6 +1322,37 @@ export default function EmployeeInformationPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Tab 2 Navigation Footer */}
+              <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+                <div className="flex space-x-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setActiveTab('personal')} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    if (validateQualificationsTab()) setActiveTab('financials');
+                  }}
+                  className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-6 shadow-md"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="financials">
@@ -1390,7 +1491,7 @@ export default function EmployeeInformationPage() {
                       {formData.has_license && (
                         <div className="animate-in slide-in-from-top-2 duration-300 space-y-3 mb-6 bg-muted/20 p-4 border border-border rounded-xl shadow-sm">
                            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Driver License / Kerala Permit Details</h4>
-                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div className="space-y-1">
                                  <label className="text-[10px] font-bold text-muted-foreground uppercase">License Number</label>
                                  <Input 
@@ -1411,8 +1512,8 @@ export default function EmployeeInformationPage() {
                                    disabled={isViewMode}
                                  />
                               </div>
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Vehicle Class (e.g. MCWG, LMV, HPMV, HGMV)</label>
+                              <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                                 <label className="text-[10px] font-bold text-muted-foreground uppercase">Vehicle Class (e.g. MCWG, LMV, HPMV)</label>
                                  <Input 
                                    placeholder="e.g. MCWG, LMV, HPMV" 
                                    className="h-10 text-sm font-bold bg-white"
@@ -1429,10 +1530,62 @@ export default function EmployeeInformationPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border">
                         <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
-                            <Checkbox checked={formData.has_passport} onCheckedChange={(checked) => !isViewMode && setFormData({...formData, has_passport: !!checked})} disabled={isViewMode} />
+                            <Checkbox 
+                              checked={formData.has_passport} 
+                              onCheckedChange={(checked) => {
+                                if (!isViewMode) {
+                                  const isChecked = !!checked;
+                                  const updates: any = { has_passport: isChecked };
+                                  if (isChecked && (!formData.employee_passports || formData.employee_passports.length === 0)) {
+                                    updates.employee_passports = [{ passport_no: '', issue_date: '', expiry_date: '' }];
+                                  }
+                                  setFormData({...formData, ...updates});
+                                }
+                              }} 
+                              disabled={isViewMode} 
+                            />
                             <span>Passport Holder (YES/NO)</span>
                         </label>
                       </div>
+
+                      {formData.has_passport && (
+                        <div className="animate-in slide-in-from-top-2 duration-300 space-y-3 mb-6">
+                           <div className="p-4 bg-white border border-border rounded-xl space-y-4 shadow-sm">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Passport Number *</label>
+                                    <Input 
+                                      placeholder="e.g. Z1234567" 
+                                      className="h-10 text-sm font-bold bg-white uppercase"
+                                      value={formData.employee_passports[0]?.passport_no || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_passports', 0, 'passport_no', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Issue Date</label>
+                                    <Input 
+                                      type="date" 
+                                      className="h-10 text-sm font-bold bg-white"
+                                      value={formData.employee_passports[0]?.issue_date?.split('T')[0] || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_passports', 0, 'issue_date', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Expiry Date</label>
+                                    <Input 
+                                      type="date" 
+                                      className="h-10 text-sm font-bold bg-white"
+                                      value={formData.employee_passports[0]?.expiry_date?.split('T')[0] || ''}
+                                      onChange={(e) => handleNestedRowChange('employee_passports', 0, 'expiry_date', e.target.value)}
+                                      disabled={isViewMode}
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border">
                           <label className="flex items-center space-x-2 font-semibold text-foreground/90 cursor-pointer">
@@ -1632,11 +1785,11 @@ export default function EmployeeInformationPage() {
 
                   <hr className="border-border" />
 
-                  {/* Financial loans & Targets */}
+                  {/* Financial loans & Advances */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                      <div>
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-foreground/90">Loan Amount</h3>
+                        <h3 className="font-semibold text-foreground/90">Advanced Loans & Receivables</h3>
                         {!isViewMode && (
                           <Button 
                             size="sm" 
@@ -1652,7 +1805,6 @@ export default function EmployeeInformationPage() {
                              <Plus className="w-4 h-4 mr-1" /> Add Row
                           </Button>
                         )}
-
                       </div>
                       <div className="space-y-3">
                         {formData.employee_loans.map((loan, idx) => (
@@ -1672,7 +1824,7 @@ export default function EmployeeInformationPage() {
                                 />
                               </div>
                                <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Received {!loan.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
+                                <label className="text-xs text-muted-foreground font-bold tracking-tight">Balance Receivable {!loan.balance_receivable && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
                                 <Input 
                                   type="number" 
                                   min="0" 
@@ -1699,18 +1851,60 @@ export default function EmployeeInformationPage() {
                               </div>
                            </div>
                         ))}
-     </div>
+                        {formData.employee_loans.length === 0 && <p className="text-sm text-foreground/50 border border-dashed rounded-lg p-3 text-center">No advanced loans recorded.</p>}
+                      </div>
                      </div>
                   </div>
 
                 </CardContent>
               </Card>
+
+              {/* Tab 3 Navigation Footer */}
+              <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+                <div className="flex space-x-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setActiveTab('qualifications')} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    if (isViewMode) {
+                      setShowForm(false);
+                      setIsViewMode(false);
+                      setActiveTab('personal');
+                    } else {
+                      saveEmployee();
+                    }
+                  }}
+                  loading={submitting}
+                  className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-8 shadow-md"
+                >
+                  {isViewMode ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Employee'}</>
+                  )}
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
       )}
 
-      {/* Existing Employees Table Section */}
       {!showForm && (
         <Card className="mt-8 border-border/40 shadow-sm overflow-hidden bg-card">
           <CardHeader className="grid md:flex flex-row items-center justify-between pb-6 border-b border-border">
@@ -1718,8 +1912,8 @@ export default function EmployeeInformationPage() {
             <CardTitle className="text-xl text-primary font-bold">Registered Employees</CardTitle>
             <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
-          <div className="grid grid-cols-1 md:flex gap-4 items-center">
-            <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-2 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
                <Checkbox 
                   id="showDeactivated"
                   checked={showDeactivated} 
@@ -1727,11 +1921,36 @@ export default function EmployeeInformationPage() {
                />
                <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
             </div>
-            <div className="relative">
+
+            <Select value={selectedRoleFilter} onValueChange={(val) => { setSelectedRoleFilter(val); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-36 sm:w-40 rounded-full border-border bg-muted/20 text-xs font-bold">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="ALL">All System Roles</SelectItem>
+                {userTypes.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{(r.name || '').toUpperCase()}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedCategoryFilter} onValueChange={(val) => { setSelectedCategoryFilter(val); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-36 sm:w-40 rounded-full border-border bg-muted/20 text-xs font-bold">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="ALL">All Categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.category_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="relative flex-1 sm:flex-none">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                 className="pl-9 w-full md:w-72 rounded-full border-border bg-muted/20" 
-                 placeholder="Search by name or code..." 
+                 className="pl-9 w-full sm:w-64 rounded-full border-border bg-muted/20 text-xs" 
+                 placeholder="Search name, code, phone, role..." 
                  value={searchQuery}
                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               />
@@ -1741,10 +1960,30 @@ export default function EmployeeInformationPage() {
         <CardContent className="px-0 md:px-6 pt-6">
           {(() => {
             const filteredEmployees = employees
-              .filter((emp) => 
-                 (emp.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
-                 (emp.employee_code?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-              )
+              .filter((emp) => {
+                const q = searchQuery.toLowerCase().trim();
+                const matchesSearch = !q || (
+                  (emp.name?.toLowerCase() || '').includes(q) || 
+                  (emp.employee_code?.toLowerCase() || '').includes(q) ||
+                  (emp.username?.toLowerCase() || '').includes(q) ||
+                  (emp.phone || '').includes(q) ||
+                  (emp.aadhaar || '').includes(q) ||
+                  (emp.user_types?.name?.toLowerCase() || '').includes(q) ||
+                  (emp.employee_categories?.category_name?.toLowerCase() || '').includes(q)
+                );
+
+                const matchesRole = selectedRoleFilter === 'ALL' || 
+                  emp.type === selectedRoleFilter || 
+                  emp.user_types?.id === selectedRoleFilter ||
+                  emp.user_types?.name?.toLowerCase() === selectedRoleFilter.toLowerCase();
+
+                const matchesCategory = selectedCategoryFilter === 'ALL' || 
+                  emp.category_id === selectedCategoryFilter || 
+                  emp.employee_categories?.id === selectedCategoryFilter ||
+                  emp.employee_categories?.category_name?.toLowerCase() === selectedCategoryFilter.toLowerCase();
+
+                return matchesSearch && matchesRole && matchesCategory;
+              })
               .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
             const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
             const currentEmployees = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);

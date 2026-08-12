@@ -19,25 +19,25 @@ export const exportToExcel = async ({
 
   // Add Headers
   const headerRow = worksheet.addRow(headers);
+  headerRow.height = 28;
 
   // Style the header row
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF1E40AF' } // Dark blue (Tailwind blue-800 equivalent)
+      fgColor: { argb: 'FF1E40AF' }, // Dark blue (Tailwind blue-800 equivalent)
+      bgColor: { argb: 'FF1E40AF' }
     };
     cell.alignment = { vertical: 'middle', horizontal: 'center' };
     cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
     };
   });
-
-  headerRow.height = 25;
 
   // Add data rows
   rows.forEach((row) => {

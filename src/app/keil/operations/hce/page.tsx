@@ -578,8 +578,8 @@ export default function HCERegistryPage() {
                                 <span className="text-[10px] font-black uppercase tracking-widest bg-secondary/10 text-secondary px-3 py-1.5 rounded-full border border-secondary/10 whitespace-nowrap">{h.collection_type}</span>
                             </td>
                             <td className="px-6 py-6 text-[11px] font-bold text-muted-foreground">
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10">
-                                    <Clock className="w-3 h-3 " /> {h.open_from} - {h.open_to}
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-lg w-fit border border-muted-foreground/10 whitespace-nowrap">
+                                    <Clock className="w-3 h-3 " /> {(h.open_from || '').substring(0, 5)} - {(h.open_to || '').substring(0, 5)}
                                 </div>
                             </td>
                              <td className="px-6 py-6 text-right">

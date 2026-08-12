@@ -69,7 +69,7 @@ export default function AttendancePage() {
   const [formData, setFormData] = useState({
     employee_id: '',
     date: new Date().toISOString().split('T')[0],
-    shift: 'GENERAL',
+    shift: 'DAY',
     clock_in: '',
     clock_out: '',
     status: 'PRESENT',
@@ -157,12 +157,12 @@ export default function AttendancePage() {
       employee_name: emp.name,
       employee_code: emp.employee_code,
       date: bulkDate,
-      shift: 'GENERAL',
+      shift: 'DAY',
       status: 'PRESENT',
       clock_in: '09:00',
       clock_out: '18:00',
       remarks: '',
-      company_id: currentCompanyId
+      company_id: currentCompanyId || emp.company_id
     }));
     setBulkData(initialBulk);
     setShowBulkForm(true);
@@ -179,15 +179,30 @@ export default function AttendancePage() {
   };
 
   const saveBulkAttendance = async () => {
+    if (bulkData.length === 0) {
+      error('No employees in bulk list.');
+      return;
+    }
     const token = localStorage.getItem('token');
     setSubmitting(true);
     try {
-      const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
-        ...rest
-      }));
-
+      // Time validation check
       for (const item of bulkData) {
+        if (item.date) {
+            const date = new Date(item.date);
+            const year = date.getFullYear();
+            if (year < 2020 || year > 2099) {
+                error(`Invalid year in bulk entry for ${item.employee_name}. Please enter a valid date.`);
+                setSubmitting(false);
+                return;
+            }
+        }
         if (item.status !== 'ABSENT') {
+          if (!item.clock_in || !item.clock_out) {
+            error(`Error for ${item.employee_name}: Clock-in and Clock-out times are required for ${item.status.toLowerCase()} status.`);
+            setSubmitting(false);
+            return;
+          }
           if (item.clock_out <= item.clock_in) {
             error(`Error for ${item.employee_name}: Clock-out time must be later than Clock-in time.`);
             setSubmitting(false);
@@ -195,6 +210,14 @@ export default function AttendancePage() {
           }
         }
       }
+
+      const cleanList = bulkData.map(({ employee_name, employee_code, ...rest }) => ({
+        ...rest,
+        date: rest.date ? rest.date.split('T')[0] : bulkDate,
+        clock_in: rest.status === 'ABSENT' ? null : (rest.clock_in || null),
+        clock_out: rest.status === 'ABSENT' ? null : (rest.clock_out || null),
+        company_id: rest.company_id || currentCompanyId || null
+      }));
 
       const res = await fetch(`${ATTENDANCE_API}/bulk`, {
         method: 'POST',
@@ -206,7 +229,8 @@ export default function AttendancePage() {
       });
       const data = await res.json();
       if (data.success) {
-        success('Bulk attendance marked successfully!');
+        const msg = data.message ? `Success. ${data.message}` : 'Bulk attendance marked successfully!';
+        success(msg);
         setShowBulkForm(false);
         fetchAttendance(currentCompanyId);
       } else {
@@ -241,9 +265,9 @@ export default function AttendancePage() {
       }
     }
 
-    const validShifts = ['DAY', 'NIGHT', 'GENERAL'];
+    const validShifts = ['DAY', 'NIGHT'];
     if (!record.shift || !validShifts.includes(record.shift.toUpperCase())) {
-      errors.push(`Invalid Shift: "${record.shift}"`);
+      errors.push(`Invalid Shift: "${record.shift}" (must be DAY or NIGHT)`);
     }
 
     const validStatus = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY'];
@@ -304,7 +328,7 @@ export default function AttendancePage() {
         { header: 'Employee Code', key: 'code', width: 15 },
         { header: 'Employee Name', key: 'name', width: 25 },
         { header: 'Date (YYYY-MM-DD)', key: 'date', width: 20 },
-        { header: 'Shift (DAY/NIGHT/GENERAL)', key: 'shift', width: 25 },
+        { header: 'Shift (DAY/NIGHT)', key: 'shift', width: 25 },
         { header: 'Clock In (HH:MM)', key: 'clock_in', width: 20 },
         { header: 'Clock Out (HH:MM)', key: 'clock_out', width: 20 },
         { header: 'Status (PRESENT/ABSENT/LATE/HALF_DAY)', key: 'status', width: 35 },
@@ -312,13 +336,23 @@ export default function AttendancePage() {
       ];
 
       const headerRow = worksheet.getRow(1);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: activeEntity === 'keil' ? 'FFB45309' : 'FF1E40AF' }
-      };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 28;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: activeEntity === 'keil' ? 'FFB45309' : 'FF1E40AF' },
+          bgColor: { argb: activeEntity === 'keil' ? 'FFB45309' : 'FF1E40AF' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
 
       const todayStr = new Date().toISOString().split('T')[0];
       employees.forEach(emp => {
@@ -326,7 +360,7 @@ export default function AttendancePage() {
           code: emp.employee_code || '',
           name: emp.name || '',
           date: todayStr,
-          shift: activeEntity === 'keil' ? 'GENERAL' : 'DAY',
+          shift: 'DAY',
           clock_in: '09:00',
           clock_out: '18:00',
           status: 'PRESENT',
@@ -462,7 +496,7 @@ export default function AttendancePage() {
               }
             }
 
-            const validShifts = ['DAY', 'NIGHT', 'GENERAL'];
+            const validShifts = ['DAY', 'NIGHT'];
             const normalizedShift = rawShift.toUpperCase().trim();
             const finalShift = validShifts.includes(normalizedShift) ? normalizedShift : 'DAY';
 
@@ -601,14 +635,41 @@ export default function AttendancePage() {
   };
 
   const saveAttendance = async () => {
+    if (submitting) return;
+
     if (!formData.employee_id || !formData.date || !formData.shift) {
       error('Please fill required fields.');
       return;
     }
 
     if (formData.status !== 'ABSENT') {
+      if (!formData.clock_in || !formData.clock_out) {
+        error('Clock-in and Clock-out times are required.');
+        return;
+      }
       if (formData.clock_out <= formData.clock_in) {
         error('Clock-out time must be later than Clock-in time.');
+        return;
+      }
+    }
+
+    const cleanDate = formData.date.split('T')[0];
+    if (cleanDate) {
+        const year = new Date(cleanDate).getFullYear();
+        if (year < 2020 || year > 2099) {
+            error("Invalid date selected. Year must be between 2020 and 2099.");
+            return;
+        }
+    }
+
+    // Client-side duplicate check
+    if (!editingId) {
+      const isDup = attendanceRecords.some(r => 
+        r.employee_id === formData.employee_id && 
+        (r.date.split('T')[0]) === cleanDate
+      );
+      if (isDup) {
+        error('Attendance already marked for this employee on this date.');
         return;
       }
     }
@@ -619,20 +680,28 @@ export default function AttendancePage() {
 
     setSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        date: cleanDate,
+        clock_in: formData.status === 'ABSENT' ? null : (formData.clock_in || null),
+        clock_out: formData.status === 'ABSENT' ? null : (formData.clock_out || null),
+        company_id: formData.company_id || currentCompanyId || null
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
         success(editingId ? 'Record updated!' : 'Record saved!');
         setShowForm(false);
         setEditingId(null);
-        setDateFilter(formData.date);
+        setDateFilter(cleanDate);
         fetchAttendance(currentCompanyId); 
         resetForm();
       } else {
@@ -650,7 +719,7 @@ export default function AttendancePage() {
     setFormData({
       employee_id: '',
       date: new Date().toISOString().split('T')[0],
-      shift: 'GENERAL',
+      shift: 'DAY',
       clock_in: '',
       clock_out: '',
       status: 'PRESENT',
@@ -685,6 +754,7 @@ export default function AttendancePage() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Attendance');
 
+      // Define columns
       worksheet.columns = [
         { header: 'Employee', key: 'name', width: 25 },
         { header: 'Code', key: 'code', width: 12 },
@@ -696,14 +766,25 @@ export default function AttendancePage() {
         { header: 'Remarks', key: 'remarks', width: 30 }
       ];
 
+      // Format Header Row
       const headerRow = worksheet.getRow(1);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF1E40AF' }
-      };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 28;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: activeEntity === 'keil' ? 'FFB45309' : 'FF1E40AF' },
+          bgColor: { argb: activeEntity === 'keil' ? 'FFB45309' : 'FF1E40AF' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
 
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -894,7 +975,6 @@ export default function AttendancePage() {
                       <SelectValue placeholder="Select Shift" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
-                      <SelectItem value="GENERAL">General Shift</SelectItem>
                       <SelectItem value="DAY">Day Shift</SelectItem>
                       <SelectItem value="NIGHT">Night Shift</SelectItem>
                     </SelectContent>
@@ -1068,9 +1148,8 @@ export default function AttendancePage() {
                              <SelectValue placeholder="Shift" />
                            </SelectTrigger>
                            <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
-                             <SelectItem value="GENERAL">General</SelectItem>
-                             <SelectItem value="DAY">Day</SelectItem>
-                             <SelectItem value="NIGHT">Night</SelectItem>
+                              <SelectItem value="DAY">Day</SelectItem>
+                              <SelectItem value="NIGHT">Night</SelectItem>
                            </SelectContent>
                          </Select>
                       </td>
@@ -1222,7 +1301,6 @@ export default function AttendancePage() {
                             <SelectValue placeholder="Shift" />
                           </SelectTrigger>
                           <SelectContent className="bg-white border-slate-200 rounded-lg shadow-lg">
-                            <SelectItem value="GENERAL">General</SelectItem>
                             <SelectItem value="DAY">Day</SelectItem>
                             <SelectItem value="NIGHT">Night</SelectItem>
                           </SelectContent>

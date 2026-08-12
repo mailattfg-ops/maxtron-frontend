@@ -85,6 +85,73 @@ export default function BatchDetailsPage() {
         weight: acc.weight + (parseFloat(curr.total_weight_kg) || 0)
     }), { yellow: 0, red: 0, white: 0, bottle: 0, weight: 0 });
 
+    // OR_08: Total bag count = DC + NW + RD quantities from session header
+    const totalBagCount = (batch.dc_qty || 0) + (batch.nw_qty || 0) + (batch.rd_qty || 0);
+
+    // OR_05: Print manifest in a dedicated print window
+    const handlePrintManifest = () => {
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        if (!printWindow) return;
+        const formatTime = (t: string) => t ? t.substring(0, 5) : '--:--';
+        printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Route Collection Manifest – ${batch.id?.slice(0, 8)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #1e293b; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 11px; color: #64748b; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .info-box { border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px; }
+    .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
+    .value { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #1e293b; color: #fff; padding: 8px 12px; text-align: left; font-size: 10px; text-transform: uppercase; }
+    td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+    .visited { background: #d1fae5; color: #065f46; }
+    .absent { background: #f1f5f9; color: #94a3b8; }
+    .bag-counts { display: flex; gap: 8px; }
+    .bag-item { font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Route Collection Manifest</h1>
+  <div class="sub">Manifest ID: ${batch.id?.slice(0, 8)} &nbsp;|&nbsp; Date: ${new Date(batch.collection_date).toLocaleDateString()} &nbsp;|&nbsp; Route: ${batch.route?.route_name || '--'} (${batch.route?.route_code || '--'})</div>
+  <div class="grid">
+    <div class="info-box"><div class="label">Vehicle</div><div class="value">${batch.registration_number || '--'}</div></div>
+    <div class="info-box"><div class="label">Driver</div><div class="value">${batch.driver_name || '--'}</div></div>
+    <div class="info-box"><div class="label">Supervisor</div><div class="value">${batch.supervisor_name || '--'}</div></div>
+    <div class="info-box"><div class="label">Session Time</div><div class="value">${formatTime(batch.start_time)} – ${formatTime(batch.end_time)}</div></div>
+    <div class="info-box"><div class="label">KM Run</div><div class="value">${batch.km_run || 0} KM</div></div>
+    <div class="info-box"><div class="label">Bag Counts (DC / NW / RB)</div><div class="value">${batch.dc_qty || 0} / ${batch.nw_qty || 0} / ${batch.rd_qty || 0} = ${totalBagCount} Total</div></div>
+    <div class="info-box"><div class="label">Coverage</div><div class="value">${batch.total_visited} / ${batch.total_hce_assigned} Facilities</div></div>
+  </div>
+  <table>
+    <tr><th>#</th><th>Facility</th><th>Code</th><th>Place</th><th>Status</th><th>Y</th><th>R</th><th>W</th><th>B</th><th>Remark</th></tr>
+    ${(batch.entries || []).map((e: any, i: number) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${e.hce?.hce_name || '--'}</td>
+      <td>${e.hce?.hce_code || '--'}</td>
+      <td>${e.hce?.hce_place || '--'}</td>
+      <td><span class="badge ${e.is_visited ? 'visited' : 'absent'}">${e.visit_status || (e.is_visited ? 'Visited' : 'Not Visited')}</span></td>
+      <td>${e.yellow_bags || 0}</td>
+      <td>${e.red_bags || 0}</td>
+      <td>${e.white_containers || 0}</td>
+      <td>${e.bottle_containers || 0}</td>
+      <td>${e.remarks || '-'}</td>
+    </tr>`).join('')}
+  </table>
+  <div style="margin-top:20px;font-size:10px;color:#94a3b8;text-align:center;">End of Logistical Manifest – Printed ${new Date().toLocaleString()}</div>
+</body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 400);
+    };
+
     return (
         <div className="p-6 space-y-8 animate-in fade-in slide-in-from-top-4 duration-700 max-w-7xl mx-auto">
             {/* Header Action Bar */}
@@ -107,7 +174,7 @@ export default function BatchDetailsPage() {
                     <Button 
                         variant="outline" 
                         className="rounded-full px-8 border-primary/20 text-primary hover:bg-primary/5 font-bold uppercase tracking-wider text-xs h-10 w-full md:w-auto shadow-sm" 
-                        onClick={() => window.print()}
+                        onClick={handlePrintManifest}
                     >
                         <Printer className="w-4 h-4 mr-2" /> Print Manifest
                     </Button>
@@ -171,13 +238,13 @@ export default function BatchDetailsPage() {
                     <div className="bg-secondary/60 h-1 w-full" />
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
-                            <div className="space-y-3 w-full">
+                            <div className="space-y-3 w-full min-w-0">
                                 <div className="p-2 bg-secondary/5 rounded-lg w-fit text-secondary">
                                     <User className="w-5 h-5" />
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 min-w-0">
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session Performance</p>
-                                    <p className="text-lg font-bold text-foreground truncate">{batch.start_time || '--'} - {batch.end_time || '--'}</p>
+                                    <p className="text-lg font-bold text-slate-800 whitespace-nowrap">{(batch.start_time || '--').substring(0, 5)} – {(batch.end_time || '--').substring(0, 5)}</p>
                                     <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">{batch.km_run || 0} KM Traversed</p>
                                 </div>
                             </div>
@@ -216,7 +283,7 @@ export default function BatchDetailsPage() {
                         <p className="text-4xl font-bold tracking-tight">{totals.white} <span className="text-xs font-medium text-muted-foreground/60">Units</span></p>
                     </div>
                     <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary/60">Operational Metric</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary/60">Bag Count (DC/NW/RB)</p>
                         <div className="flex gap-4">
                             <div>
                                 <p className="text-[9px] font-bold uppercase text-primary/60">DC</p>
@@ -229,6 +296,10 @@ export default function BatchDetailsPage() {
                             <div>
                                 <p className="text-[9px] font-bold uppercase text-secondary/60">RB</p>
                                 <p className="text-2xl font-bold text-white">{batch.rd_qty || 0}</p>
+                            </div>
+                            <div className="border-l border-white/20 pl-4">
+                                <p className="text-[9px] font-bold uppercase text-white/60">Total</p>
+                                <p className="text-2xl font-bold text-secondary">{totalBagCount}</p>
                             </div>
                         </div>
                     </div>

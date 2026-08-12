@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TableView } from '@/components/ui/table-view';
 import { 
   Warehouse, Package, TrendingDown, TrendingUp, 
-  ArrowRightLeft, AlertCircle, Download, FileText
+  ArrowRightLeft, AlertCircle, Download, FileText, Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -26,6 +26,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function StockListPage() {
   const [stock, setStock] = useState<any[]>([]);
+  const [inTransitOrders, setInTransitOrders] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const { success, error, info } = useToast();
   const { user } = usePermission();
@@ -61,12 +62,22 @@ export default function StockListPage() {
         coId = activeCo?.id || '';
       }
 
-      const res = await fetch(`${API_BASE}/api/maxtron/inventory/stock-summary?company_id=${coId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const [res, ordRes] = await Promise.all([
+        fetch(`${API_BASE}/api/maxtron/inventory/stock-summary?company_id=${coId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/api/maxtron/rm-orders?company_id=${coId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
       const data = await res.json();
+      const ordData = await ordRes.json();
       if (data.success) {
         setStock(data.data);
+      }
+      if (ordData.success) {
+        const pendingCount = (ordData.data || []).filter((o: any) => o.status === 'PENDING' || o.status === 'ORDERED').length;
+        setInTransitOrders(pendingCount);
       }
     } catch (err) {
       console.error('Error fetching stock:', err);
@@ -99,40 +110,12 @@ export default function StockListPage() {
 
   const handleEditClick = (s: any) => {
     setSelectedMaterial(s);
-    setAdminPassword('');
-    setIsVerifyModalOpen(true);
-  };
-
-  const handleVerifyPassword = async () => {
-    if (!adminPassword) return;
-    setIsVerifying(true);
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-admin-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: adminPassword })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsVerifyModalOpen(false);
-        setNewOpeningStock(String(selectedMaterial?.opening_stock || 0));
-        setIsEditModalOpen(true);
-      } else {
-        error('Invalid admin password.');
-      }
-    } catch (err) {
-      error('Verification failed.');
-    } finally {
-      setIsVerifying(false);
-    }
+    setNewOpeningStock(String(s?.opening_stock ?? 0));
+    setIsEditModalOpen(true);
   };
 
   const handleUpdateOpeningStock = async () => {
-    if (newOpeningStock === '') return;
+    if (newOpeningStock === '' || !selectedMaterial) return;
     setIsUpdating(true);
     const token = localStorage.getItem('token');
     try {
@@ -148,7 +131,7 @@ export default function StockListPage() {
       if (data.success) {
         success('Opening stock updated successfully.');
         setIsEditModalOpen(false);
-        window.location.reload();
+        fetchStock();
       } else {
         error(data.message || 'Update failed.');
       }
@@ -173,7 +156,7 @@ export default function StockListPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-in slide-in-from-bottom-4 duration-500">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 animate-in slide-in-from-bottom-4 duration-500">
         <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
@@ -183,6 +166,20 @@ export default function StockListPage() {
               </div>
               <div className="bg-primary/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
                 <Warehouse className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">In-Transit</p>
+                <h3 className="text-2xl md:text-3xl font-black text-amber-600 mt-1">{inTransitOrders}</h3>
+              </div>
+              <div className="bg-amber-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                <Truck className="w-5 h-5 text-amber-500" />
               </div>
             </div>
           </CardContent>
@@ -216,12 +213,12 @@ export default function StockListPage() {
           </CardContent>
         </Card>
  
-        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group">
+        <Card className="bg-white border-primary/10 shadow-sm hover:shadow-md transition-all group sm:col-span-2 lg:col-span-1">
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Valuation</p>
-                <h3 className="text-xl md:text-2xl font-black text-blue-600 mt-1">₹ {stock.reduce((acc, s) => acc + (Number(s.balance) * Number(s.rate_per_unit || 0)), 0).toLocaleString()}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Valuation</p>
+                <h3 className="text-xl md:text-2xl font-black text-blue-600 mt-1 truncate">₹ {stock.reduce((acc, s) => acc + (Number(s.balance) * Number(s.rate_per_unit || 0)), 0).toLocaleString()}</h3>
               </div>
               <div className="bg-blue-50 p-2.5 rounded-xl group-hover:scale-110 transition-transform">
                 <TrendingUp className="w-5 h-5 text-blue-500" />
@@ -299,46 +296,6 @@ export default function StockListPage() {
         )}
       />
 
-      {/* Password Verification Modal */}
-      <Dialog open={isVerifyModalOpen} onOpenChange={setIsVerifyModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white border-primary/20 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              Security Verification
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-2 space-y-4">
-            <p className="text-sm text-muted-foreground font-medium">
-              You are attempting to modify sensitive inventory records. Please enter your administrator password to proceed.
-            </p>
-            <div className="space-y-1.5">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Admin Password</label>
-              <Input 
-                type="password" 
-                value={adminPassword} 
-                onChange={(e) => setAdminPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
-                placeholder="••••••••"
-                className="h-11 border-slate-200 focus:border-primary/50 transition-all"
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter className="bg-slate-50 p-4 -m-6 mt-4 border-t border-slate-100">
-            <Button onClick={() => setIsVerifyModalOpen(false)} variant="ghost" className="rounded-full font-bold text-slate-500">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleVerifyPassword} 
-              disabled={isVerifying || !adminPassword}
-              className="bg-primary hover:bg-primary/95 text-white rounded-full px-8 font-bold shadow-lg shadow-primary/20"
-            >
-              {isVerifying ? 'Verifying...' : 'Unlock Field'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Opening Stock Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

@@ -342,11 +342,29 @@ export default function ExtrusionPage() {
     }
   };
 
+  const operators = useMemo(() => {
+    const op = employees.filter(e => {
+      const role = (e.user_types?.name || '').toLowerCase();
+      const cat = (e.employee_categories?.category_name || '').toLowerCase();
+      return role.includes('operator') || cat.includes('operator') || role.includes('worker') || cat.includes('worker') || role.includes('production') || cat.includes('production');
+    });
+    return op.length > 0 ? op : employees;
+  }, [employees]);
+
+  const supervisors = useMemo(() => {
+    const sup = employees.filter(e => {
+      const role = (e.user_types?.name || '').toLowerCase();
+      const cat = (e.employee_categories?.category_name || '').toLowerCase();
+      return role.includes('supervisor') || cat.includes('supervisor') || role.includes('manager') || cat.includes('manager') || role.includes('lead') || cat.includes('lead');
+    });
+    return sup.length > 0 ? sup : employees;
+  }, [employees]);
+
   const availableConsumptions = useMemo(() => {
-    const otherBatches = batches.filter(b => b.id !== editingId);
-    const usedConsumptionIds = otherBatches.flatMap(b => {
-      if (Array.isArray(b.material_consumptions)) {
-        return b.material_consumptions.map((mc: any) => mc.id);
+    const usedConsumptionIds = batches.flatMap(b => {
+      if (editingId && b.id === editingId) return [];
+      if (b.consumption_ids && Array.isArray(b.consumption_ids)) {
+        return b.consumption_ids;
       }
       return b.consumption_id ? [b.consumption_id] : [];
     }).filter(id => !!id);
@@ -394,17 +412,18 @@ export default function ExtrusionPage() {
             </CardTitle>
             <CardDescription>{editingId ? 'Update details for the existing batch.' : 'Enter extrusion output and machine details for the current shift.'}</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-6">
+            {/* Row 1: Core Batch Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Batch Number</label>
-                <Input value={formData.batch_number} readOnly className="bg-muted cursor-not-allowed" />
+                <Input value={formData.batch_number} readOnly className="h-11 bg-muted cursor-not-allowed font-bold" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                   <Calendar className="w-4 h-4 text-primary" /> Production Date <span className="text-rose-500">*</span>
                 </label>
-                <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                <Input type="date" className="h-11 font-bold" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
@@ -419,7 +438,7 @@ export default function ExtrusionPage() {
                     setFormData({ ...formData, product_id: val, requires_printing: requiresPrinting });
                   }}
                 >
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
                     <SelectValue placeholder="Select Finished Product" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
@@ -429,29 +448,16 @@ export default function ExtrusionPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-4 grid items-end mb-0 gap-2 pb-0">
-                <label htmlFor="requires_printing" className="text-sm flex font-semibold text-slate-700 cursor-pointer flex-1 mb-0 pb-0 items-center gap-2">
-                    <SquareCheck className="w-4 h-4 text-primary" /> Printing
-                </label>
-                <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 h-10 w-full">
-                  <input 
-                    type="checkbox" 
-                    id="requires_printing"
-                    className="w-4 h-4 accent-primary"
-                    checked={formData.requires_printing}
-                    onChange={e => setFormData({ ...formData, requires_printing: e.target.checked })}
-                  />
-                  <label htmlFor="requires_printing" className="text-sm font-bold text-slate-700 cursor-pointer flex-1">
-                    Requires Printing Process?
-                  </label>
-                </div>
-              </div>
+            </div>
+
+            {/* Row 2: Shift, Machine, Printing Toggle */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                    <Clock className="w-4 h-4 text-primary" /> Shift <span className="text-rose-500">*</span>
                 </label>
                 <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
                     <SelectValue placeholder="Select Shift" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
@@ -467,6 +473,7 @@ export default function ExtrusionPage() {
                 </label>
                 <Input 
                   placeholder="e.g. EX-01" 
+                  className="h-11 font-bold"
                   value={formData.machine_no} 
                   onChange={e => {
                     const val = e.target.value.replace(/[^a-zA-Z0-9\-_ ]/g, '').toUpperCase();
@@ -474,84 +481,110 @@ export default function ExtrusionPage() {
                   }} 
                 />
               </div>
-              <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-3">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <Layers className="w-4 h-4 text-primary" /> Select Consumption Records (Multiple) <span className="text-rose-500">*</span>
-                </label>
-                <div className="border border-input rounded-xl p-3 bg-white max-h-48 overflow-y-auto space-y-2 shadow-sm">
-                  {availableConsumptions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2 text-center">No unused consumption records available.</p>
-                  ) : (
-                    availableConsumptions.map(c => {
-                      const isChecked = (formData.consumption_ids || []).includes(c.id);
-                      return (
-                        <div 
-                          key={c.id} 
-                          onClick={() => handleToggleConsumption(c.id)}
-                          className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${
-                            isChecked ? 'border-primary bg-primary/5' : 'border-slate-100'
-                          }`}
-                        >
-                          <input 
-                            type="checkbox" 
-                            className="w-4 h-4 accent-primary" 
-                            checked={isChecked}
-                            onChange={() => {}} 
-                          />
-                          <div className="flex-1 text-xs">
-                            <span className="font-bold text-slate-800">{c.raw_materials?.rm_name}</span>
-                            <span className="mx-2 text-slate-400">|</span>
-                            <span className="font-mono font-bold text-primary">{c.quantity_used} Kg</span>
-                            <span className="mx-2 text-slate-400">|</span>
-                            <span className="text-slate-500">{new Date(c.consumption_date).toLocaleDateString()}</span>
-                            {c.machine_no && (
-                              <>
-                                <span className="mx-2 text-slate-400">|</span>
-                                <span className="text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{c.machine_no}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <User className="w-4 h-4 text-primary" /> Employee <span className="text-rose-500">*</span>
+                    <SquareCheck className="w-4 h-4 text-primary" /> Printing Requirement
+                </label>
+                <div className="flex items-center gap-3 bg-slate-50 px-4 rounded-md border border-slate-200 h-11 w-full">
+                  <input 
+                    type="checkbox" 
+                    id="requires_printing"
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                    checked={formData.requires_printing}
+                    onChange={e => setFormData({ ...formData, requires_printing: e.target.checked })}
+                  />
+                  <label htmlFor="requires_printing" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                    Requires Printing Process?
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Material Consumptions */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                 <Layers className="w-4 h-4 text-primary" /> Select Consumption Records (Multiple) <span className="text-rose-500">*</span>
+              </label>
+              <div className="border border-input rounded-xl p-3 bg-white max-h-48 overflow-y-auto space-y-2 shadow-sm">
+                {availableConsumptions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">No unused consumption records available.</p>
+                ) : (
+                  availableConsumptions.map(c => {
+                    const isChecked = (formData.consumption_ids || []).includes(c.id);
+                    return (
+                      <div 
+                        key={c.id} 
+                        onClick={() => handleToggleConsumption(c.id)}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${
+                          isChecked ? 'border-primary bg-primary/5' : 'border-slate-100'
+                        }`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 accent-primary" 
+                          checked={isChecked}
+                          onChange={() => {}} 
+                        />
+                        <div className="flex-1 text-xs">
+                          <span className="font-bold text-slate-800">{c.raw_materials?.rm_name}</span>
+                          <span className="mx-2 text-slate-400">|</span>
+                          <span className="font-mono font-bold text-primary">{c.quantity_used} Kg</span>
+                          <span className="mx-2 text-slate-400">|</span>
+                          <span className="text-slate-500">{new Date(c.consumption_date).toLocaleDateString()}</span>
+                          {c.machine_no && (
+                            <>
+                              <span className="mx-2 text-slate-400">|</span>
+                              <span className="text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{c.machine_no}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Row 4: Personnel & Yield Quantities */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2 border-t">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                   <User className="w-4 h-4 text-primary" /> Operator <span className="text-rose-500">*</span>
                 </label>
                 <Select value={formData.operator_id} onValueChange={(val) => setFormData({ ...formData, operator_id: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
-                    <SelectValue placeholder="Select Employee" />
+                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
+                    <SelectValue placeholder="Select Operator" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
-                    {employees.map(e => (
-                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    {operators.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code || e.user_types?.name || 'Operator'})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                    <User className="w-4 h-4 text-primary" /> Supervisor
                 </label>
                 <Select value={formData.supervisor_id || 'none'} onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}>
-                  <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm">
+                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
                     <SelectValue placeholder="Select Supervisor" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
                     <SelectItem value="none">Select Supervisor</SelectItem>
-                    {employees.map(e => (
-                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code})</SelectItem>
+                    {supervisors.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_code || e.user_types?.name || 'Supervisor'})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>
-                <Input type="number" readOnly className="bg-muted cursor-not-allowed font-bold" value={formData.raw_material_consumed_qty} />
+                <Input type="number" readOnly className="h-11 bg-muted cursor-not-allowed font-bold" value={formData.raw_material_consumed_qty} />
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                   <Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg) <span className="text-rose-500">*</span>
@@ -561,6 +594,7 @@ export default function ExtrusionPage() {
                   min={0.01} 
                   step="0.01"
                   placeholder="0.00" 
+                  className="h-11 font-bold text-primary"
                   value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} 
                   onChange={e => {
                     const val = parseFloat(e.target.value);
@@ -569,6 +603,7 @@ export default function ExtrusionPage() {
                 />
               </div>
             </div>
+
             <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 border-t pt-6 px-4 md:px-0">
                <div className="mr-auto hidden md:flex items-center gap-4">
                   <div className="flex flex-col">
@@ -589,13 +624,13 @@ export default function ExtrusionPage() {
                <Button 
                  variant="outline" 
                  onClick={() => setShowForm(false)} 
-                 className="flex-1 md:flex-none px-8 rounded-full h-12 order-2 md:order-1"
+                 className="flex-1 md:flex-none px-8 rounded-full h-11 font-bold order-2 md:order-1"
                >
                  Cancel Entry
                </Button>
                <Button 
                  onClick={saveBatch} 
-                 className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-12 transition-all hover:scale-105 active:scale-95 order-1 md:order-2"
+                 className="flex-1 md:flex-none bg-primary hover:bg-primary/95 text-white px-10 rounded-full shadow-lg shadow-primary/20 h-11 transition-all hover:scale-105 active:scale-95 order-1 md:order-2 font-bold"
                >
                  <Save className="w-4 h-4 mr-2" /> Save Batch Entry
                </Button>
@@ -608,7 +643,7 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Employee', 'Actions']}
+          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator', 'Actions']}
           data={batches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}

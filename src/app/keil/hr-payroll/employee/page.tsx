@@ -25,6 +25,16 @@ import { useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import { exportToExcel } from '@/utils/export';
 
+const INDIAN_STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", 
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", 
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", 
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", 
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+  "Uttarakhand", "West Bengal"
+];
+
 const API_URL = (activeEntity: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/employees`;
 
 export default function EmployeeInformationPage() {
@@ -42,6 +52,8 @@ export default function EmployeeInformationPage() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -515,13 +527,15 @@ export default function EmployeeInformationPage() {
     }
 
     if (!formData.date_of_birth) newErrors.date_of_birth = 'Date of Birth is required';
-    else {
+    else if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
-      const isOver18 = (age > 18) || (age === 18 && (monthDiff > 0 || (monthDiff === 0 && today.getDate() >= dob.getDate())));
-      if (!isOver18) newErrors.date_of_birth = 'Employee must be 18+ years old';
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      if (age < 18) newErrors.date_of_birth = 'Employee must be at least 18 years old';
     }
 
     if (!formData.category_id) newErrors.category_id = 'Employee Category is required';
@@ -777,55 +791,55 @@ export default function EmployeeInformationPage() {
   return (
     <div className="space-y-6">
       {newEmployeePopup && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <Card className="max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border-none">
-            <CardHeader className="bg-emerald-50/80 pb-6 border-b text-center rounded-t-xl">
-              <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
-              <CardTitle className="text-2xl text-emerald-800">Employee Registered!</CardTitle>
-              <CardDescription className="text-emerald-600/80 font-medium">System access credentials successfully configured.</CardDescription>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto animate-in fade-in duration-200">
+          <Card className="max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200 border border-primary/20 bg-card rounded-2xl">
+            <CardHeader className="bg-primary/10 pb-6 border-b border-border text-center rounded-t-2xl">
+              <CheckCircle2 className="w-14 h-14 text-primary mx-auto mb-3" />
+              <CardTitle className="text-xl sm:text-2xl text-primary font-bold">Employee Registered!</CardTitle>
+              <CardDescription className="text-primary/80 font-medium text-xs sm:text-sm">System access credentials successfully configured.</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="bg-slate-50 p-4 rounded-xl text-sm border border-slate-200 space-y-3">
-                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                   <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Username</span>
-                   <span className="font-mono text-base font-bold text-slate-800">{newEmployeePopup.username}</span>
+            <CardContent className="pt-6 space-y-4 px-4 sm:px-6">
+              <div className="bg-muted/30 p-4 rounded-xl text-sm border border-border space-y-3">
+                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 bg-card p-3 rounded-lg border border-border shadow-sm">
+                   <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Username / Email</span>
+                   <span className="font-mono text-sm sm:text-base font-bold text-foreground break-all">{newEmployeePopup.username}</span>
                  </div>
-                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                    <span className="text-slate-500 font-semibold tracking-wide uppercase text-xs">Password</span>
+                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 bg-card p-3 rounded-lg border border-border shadow-sm">
+                    <span className="text-muted-foreground font-semibold tracking-wide uppercase text-xs">Password</span>
                     <div className="flex items-center space-x-2">
-                      <span className="font-mono text-base font-bold tracking-wider text-slate-800">
+                      <span className="font-mono text-sm sm:text-base font-bold tracking-wider text-foreground break-all">
                         {showTempPassword ? newEmployeePopup.password : '••••••••'}
                       </span>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 w-8 p-0 rounded-full hover:bg-slate-100"
+                        className="h-8 w-8 p-0 rounded-full hover:bg-muted shrink-0"
                         onClick={() => setShowTempPassword(!showTempPassword)}
                       >
-                        {showTempPassword ? <EyeOff className="w-4 h-4 text-slate-500" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                        {showTempPassword ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                       </Button>
                     </div>
                   </div>
               </div>
 
                <Button onClick={() => {
-                  navigator.clipboard.writeText(`Maxtron Login Credentials\nUsername: ${newEmployeePopup.username}\nPassword: ${newEmployeePopup.password}`);
+                  navigator.clipboard.writeText(`KEIL Login Credentials\nUsername: ${newEmployeePopup.username}\nPassword: ${newEmployeePopup.password}`);
                   info('Access credentials copied to clipboard.');
                 }}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm" variant="outline"
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm rounded-xl font-bold py-2.5" variant="outline"
               >
                 <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
               </Button>
               
-              <div className="flex items-start p-4 bg-amber-50 rounded-xl border border-amber-200 mt-6 shadow-sm">
-                 <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5 text-amber-550 flex-none" />
-                 <p className="text-xs font-medium leading-relaxed text-amber-800">
+              <div className="flex items-start p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 mt-4 shadow-sm">
+                 <AlertCircle className="w-5 h-5 mr-2 sm:mr-3 shrink-0 mt-0.5 text-slate-500" />
+                 <p className="text-xs font-medium leading-relaxed text-slate-800">
                    <strong>Strict Security Notice:</strong> Please securely provide these initial credentials to the employee. They will be strictly required to change their password upon their immediate first login.
                  </p>
               </div>
             </CardContent>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl">
-              <Button onClick={() => { setNewEmployeePopup(null); setShowTempPassword(false); }} className="w-full bg-slate-800 hover:bg-slate-900 shadow-md">Acknowledge & Close</Button>
+            <div className="p-4 border-t bg-slate-50 rounded-b-2xl">
+              <Button onClick={() => { setNewEmployeePopup(null); setShowTempPassword(false); }} className="w-full bg-primary hover:bg-primary/95 text-white shadow-md rounded-xl font-bold py-2.5">Acknowledge & Close</Button>
             </div>
           </Card>
         </div>
@@ -941,12 +955,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Management</p>
-                  <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
-                    {employees.filter(e => e.employee_categories?.category_name === "Management").length}
+                  <h3 className="text-2xl md:text-3xl font-black text-primary mt-1">
+                    {employees.filter(e => (e.employee_categories?.category_name || e.category?.category_name || '').trim().toLowerCase() === "management").length}
                   </h3>
                 </div>
-                <div className="bg-rose-50 p-3 rounded-2xl shrink-0">
-                  <Briefcase className="w-6 h-6 text-rose-500" />
+                <div className="bg-primary/5 p-3 rounded-2xl shrink-0">
+                  <Briefcase className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -957,12 +971,12 @@ export default function EmployeeInformationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operational</p>
-                  <h3 className="text-3xl font-black text-blue-500 mt-1">
-                    {employees.filter(e => !e.user_types?.name?.includes('ADMIN')).length}
+                  <h3 className="text-3xl font-black text-slate-600 mt-1">
+                    {employees.filter(e => (e.employee_categories?.category_name || e.category?.category_name || '').trim().toLowerCase() !== "management").length}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl shrink-0">
-                  <TrendingUp className="w-6 h-6 text-blue-500" />
+                <div className="bg-slate-50 p-3 rounded-2xl shrink-0">
+                  <TrendingUp className="w-6 h-6 text-slate-400" />
                 </div>
               </div>
             </CardContent>
@@ -1011,7 +1025,6 @@ export default function EmployeeInformationPage() {
                         <Input 
                            type="date" 
                            name="date_of_birth" 
-                           max={maxDobDate}
                            value={formData.date_of_birth} 
                            onChange={handleInputChange} 
                            disabled={isViewMode} 
@@ -1042,7 +1055,20 @@ export default function EmployeeInformationPage() {
                            </div>
                            <div className="space-y-2 text-sm">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[0]?.state} onChange={(e) => handleAddressChange(0, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
+                             <Select 
+                               value={formData.addresses[0]?.state || ''} 
+                               onValueChange={(val) => handleAddressChange(0, 'state', val)} 
+                               disabled={isViewMode}
+                             >
+                               <SelectTrigger className="h-10 w-full bg-white border-input text-sm">
+                                 <SelectValue placeholder="Select State" />
+                               </SelectTrigger>
+                               <SelectContent className="bg-white max-h-60">
+                                 {INDIAN_STATES.map((st) => (
+                                   <SelectItem key={st} value={st}>{st}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
                            </div>
                         </div>
                       </div>
@@ -1073,7 +1099,20 @@ export default function EmployeeInformationPage() {
                            </div>
                            <div className="space-y-2">
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">State</label>
-                             <Input value={formData.addresses[1]?.state} onChange={(e) => handleAddressChange(1, 'state', e.target.value)} disabled={isViewMode} placeholder="State" className="h-10" />
+                             <Select 
+                               value={formData.addresses[1]?.state || ''} 
+                               onValueChange={(val) => handleAddressChange(1, 'state', val)} 
+                               disabled={isViewMode}
+                             >
+                               <SelectTrigger className="h-10 w-full bg-white border-input text-sm">
+                                 <SelectValue placeholder="Select State" />
+                               </SelectTrigger>
+                               <SelectContent className="bg-white max-h-60">
+                                 {INDIAN_STATES.map((st) => (
+                                   <SelectItem key={st} value={st}>{st}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
                            </div>
                         </div>
                       </div>
@@ -1241,6 +1280,27 @@ export default function EmployeeInformationPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Tab 1 Navigation Footer */}
+        <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+            className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+          >
+            <X className="w-4 h-4 mr-2" /> Cancel
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => {
+              if (validatePersonalTab()) setActiveTab('qualifications');
+            }}
+            className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-6 shadow-md"
+          >
+            Next <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </TabsContent>
 
             <TabsContent value="qualifications">
@@ -1317,11 +1377,11 @@ export default function EmployeeInformationPage() {
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">From</label>
-                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" value={exp.from_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'from_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-1 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">To</label>
-                                <Input type="date" max={new Date().toISOString().split('T')[0]} value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
+                                <Input type="date" value={exp.to_period?.split('T')[0] || ''} onChange={(e) => handleNestedRowChange('employee_experiences', idx, 'to_period', e.target.value)} disabled={isViewMode} />
                               </div>
                               <div className="col-span-2 md:col-span-2 space-y-1">
                                 <label className="text-xs text-muted-foreground">Post/Job Title</label>
@@ -1344,6 +1404,37 @@ export default function EmployeeInformationPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Tab 2 Navigation Footer */}
+              <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+                <div className="flex space-x-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setActiveTab('personal')} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    if (validateQualificationsTab()) setActiveTab('financials');
+                  }}
+                  className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-6 shadow-md"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="financials">
@@ -1485,7 +1576,7 @@ export default function EmployeeInformationPage() {
                            
                            {/* Show exactly one license record */}
                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-4 shadow-sm">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                  <div className="space-y-1">
                                     <label className="text-[9px] font-bold text-slate-500 uppercase">License Number</label>
                                     <Input 
@@ -1506,16 +1597,16 @@ export default function EmployeeInformationPage() {
                                       disabled={isViewMode}
                                     />
                                  </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase">Vehicle Class (e.g. MCWG, LMV, HPMV, HGMV)</label>
-                                <Input 
-                                  placeholder="e.g. MCWG, LMV, HPMV" 
-                                  className="h-10 text-sm font-bold"
-                                  value={formData.employee_licenses[0]?.class_of_vehicle || ''}
-                                  onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'class_of_vehicle', e.target.value)}
-                                  disabled={isViewMode}
-                                />
+                                 <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                                   <label className="text-[9px] font-bold text-slate-500 uppercase">Vehicle Class (e.g. MCWG, LMV, HPMV)</label>
+                                   <Input 
+                                     placeholder="e.g. MCWG, LMV, HPMV" 
+                                     className="h-10 text-sm font-bold"
+                                     value={formData.employee_licenses[0]?.class_of_vehicle || ''}
+                                     onChange={(e) => handleNestedRowChange('employee_licenses', 0, 'class_of_vehicle', e.target.value)}
+                                     disabled={isViewMode}
+                                   />
+                                 </div>
                               </div>
                            </div>
                         </div>
@@ -1807,6 +1898,48 @@ export default function EmployeeInformationPage() {
 
                 </CardContent>
               </Card>
+
+              {/* Tab 3 Navigation Footer */}
+              <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
+                <div className="flex space-x-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => { setShowForm(false); setEditingId(null); setIsViewMode(false); setActiveTab('personal'); }} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setActiveTab('qualifications')} 
+                    className="rounded-full px-6 border-primary/20 hover:bg-primary/5 font-bold"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    if (isViewMode) {
+                      setShowForm(false);
+                      setIsViewMode(false);
+                      setActiveTab('personal');
+                    } else {
+                      saveEmployee();
+                    }
+                  }}
+                  loading={submitting}
+                  className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-8 shadow-md"
+                >
+                  {isViewMode ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" /> {editingId ? 'Update Record' : 'Save Employee'}</>
+                  )}
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
@@ -1814,14 +1947,14 @@ export default function EmployeeInformationPage() {
 
       {/* Existing Employees Table Section */}
       {!showForm && (
-        <Card className="mt-8">
-          <CardHeader className="grid md:flex flex-row items-center justify-between pb-2 border-b">
+        <Card className="mt-8 border-border/40 shadow-sm overflow-hidden bg-card">
+          <CardHeader className="grid md:flex flex-row items-center justify-between pb-6 border-b border-border">
           <div>
-            <CardTitle className="text-xl text-primary">Registered Employees</CardTitle>
-            <CardDescription>View, edit, or remove authenticated employee records.</CardDescription>
+            <CardTitle className="text-xl text-primary font-bold">Registered Employees</CardTitle>
+            <CardDescription className="text-muted-foreground">View, edit, or remove authenticated employee records.</CardDescription>
           </div>
-          <div className="grid grid-cols-1 md:flex gap-4 items-center">
-            <div className="hidden md:flex items-center space-x-2 mr-4 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-2 bg-muted/30 px-3 py-1.5 rounded-full border border-border/50">
                <Checkbox 
                   id="showDeactivated"
                   checked={showDeactivated} 
@@ -1829,11 +1962,36 @@ export default function EmployeeInformationPage() {
                />
                <label htmlFor="showDeactivated" className="text-[11px] font-black uppercase tracking-wider text-muted-foreground cursor-pointer select-none">Show Deactivated</label>
             </div>
-            <div className="relative">
+
+            <Select value={selectedRoleFilter} onValueChange={(val) => { setSelectedRoleFilter(val); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-36 sm:w-40 rounded-full border-border bg-muted/20 text-xs font-bold">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="ALL">All System Roles</SelectItem>
+                {userTypes.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{(r.name || '').toUpperCase()}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedCategoryFilter} onValueChange={(val) => { setSelectedCategoryFilter(val); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-36 sm:w-40 rounded-full border-border bg-muted/20 text-xs font-bold">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="ALL">All Categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.category_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="relative flex-1 sm:flex-none">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                 className="pl-9 w-72 rounded-full border-primary/20" 
-                 placeholder="Search by name or code..." 
+                 className="pl-9 w-full sm:w-64 rounded-full border-border bg-muted/20 text-xs" 
+                 placeholder="Search name, code, phone, role..." 
                  value={searchQuery}
                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               />
@@ -1843,10 +2001,30 @@ export default function EmployeeInformationPage() {
         <CardContent className="px-0 md:px-6 pt-6">
           {(() => {
             const filteredEmployees = employees
-              .filter((emp) => 
-                 (emp.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
-                 (emp.employee_code?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-              )
+              .filter((emp) => {
+                const q = searchQuery.toLowerCase().trim();
+                const matchesSearch = !q || (
+                  (emp.name?.toLowerCase() || '').includes(q) || 
+                  (emp.employee_code?.toLowerCase() || '').includes(q) ||
+                  (emp.username?.toLowerCase() || '').includes(q) ||
+                  (emp.phone || '').includes(q) ||
+                  (emp.aadhaar || '').includes(q) ||
+                  (emp.user_types?.name?.toLowerCase() || '').includes(q) ||
+                  (emp.employee_categories?.category_name?.toLowerCase() || '').includes(q)
+                );
+
+                const matchesRole = selectedRoleFilter === 'ALL' || 
+                  emp.type === selectedRoleFilter || 
+                  emp.user_types?.id === selectedRoleFilter ||
+                  emp.user_types?.name?.toLowerCase() === selectedRoleFilter.toLowerCase();
+
+                const matchesCategory = selectedCategoryFilter === 'ALL' || 
+                  emp.category_id === selectedCategoryFilter || 
+                  emp.employee_categories?.id === selectedCategoryFilter ||
+                  emp.employee_categories?.category_name?.toLowerCase() === selectedCategoryFilter.toLowerCase();
+
+                return matchesSearch && matchesRole && matchesCategory;
+              })
               .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
             const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
             const currentEmployees = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
