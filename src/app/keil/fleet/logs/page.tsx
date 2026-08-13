@@ -204,10 +204,7 @@ export default function VehicleDailyLogPage() {
             return;
         }
 
-        if (formData.fuel_qty === '' || parseFloat(formData.fuel_qty) < 0) {
-            error("Diesel quantity is required (can be 0 if not filled).");
-            return;
-        }
+        // fuel_qty is optional — skip if empty, default to 0
 
         if (formData.has_complaint) {
             if (!formData.complaint_type) {
@@ -669,7 +666,7 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                                 <label className="text-xs font-bold text-amber-700 flex items-center gap-2 uppercase tracking-widest">
-                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr) *
+                                    <Fuel className="w-3 h-3" /> Diesel Filled (Ltr) <span className="text-amber-400 font-medium normal-case tracking-normal">(optional)</span>
                                 </label>
                                 <Input type="number" min={0} step="0.01" className="h-10 rounded-md border-amber-200 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-amber-200 focus:outline-none" value={formData.fuel_qty} onChange={e => setFormData({ ...formData, fuel_qty: e.target.value })} />
                             </div>
