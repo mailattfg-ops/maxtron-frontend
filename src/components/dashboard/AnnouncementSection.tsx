@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
 
 interface Announcement {
     id: string;
@@ -80,12 +80,21 @@ export function AnnouncementSection({ tenant }: AnnouncementSectionProps) {
             const res = await fetch(`${API_BASE}/api/${tenant}/announcements?tenant=${tenant}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
+            if (!res.ok) {
+                console.warn(`Announcements fetch returned ${res.status}`);
+                setAnnouncements([]);
+                return;
+            }
             const result = await res.json();
             if (result.success) {
                 setAnnouncements(result.data);
+            } else {
+                setAnnouncements([]);
             }
-        } catch (error) {
-            console.error('Failed to fetch announcements', error);
+        } catch (err) {
+            // Network error (API unreachable) — fail silently, show empty state
+            console.warn('Announcements API unreachable:', err);
+            setAnnouncements([]);
         } finally {
             setLoading(false);
         }
