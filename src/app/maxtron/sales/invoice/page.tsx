@@ -971,7 +971,7 @@ export default function SalesInvoiceEntry() {
     <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto min-w-0">
       {/* Alert Dialog */}
       {alert.show && (
-        <div className="fixed inset-0 z-[1200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[1500] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
           <Card className="w-full max-w-md bg-white border-none shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95">
             <CardContent className="p-8 text-center">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${alert.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
