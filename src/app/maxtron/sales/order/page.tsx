@@ -900,6 +900,7 @@ export default function CustomerOrderEntry() {
                                         <Input 
                                             type="number" 
                                             min={0}
+                                            step="any"
                                             max={products.find(p => p.id === item.product_id)?.balance || 0}
                                             value={item.quantity === 0 ? '' : item.quantity} 
                                             onChange={e => handleItemChange(index, 'quantity', e.target.value)}
@@ -911,6 +912,7 @@ export default function CustomerOrderEntry() {
                                         <Input 
                                             type="number" 
                                             min={0}
+                                            step="any"
                                             value={item.rate === 0 ? '' : item.rate} 
                                             onChange={e => handleItemChange(index, 'rate', e.target.value)}
                                             className="text-center font-bold border-none bg-transparent focus:ring-0 text-xs md:text-sm"

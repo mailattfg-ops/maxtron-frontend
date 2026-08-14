@@ -837,7 +837,7 @@ export default function SalesInvoiceEntry() {
         }
       });
       const result = await res.json();
-      if (result.success) {
+      if (result.success && result.data?.einvoice_status === 'GENERATED') {
         setAlert({
           show: true,
           type: 'success',
@@ -846,11 +846,12 @@ export default function SalesInvoiceEntry() {
         });
         fetchInvoices();
       } else {
+        const errMsg = result.data?.einvoice_error || result.message || 'Could not generate E-Invoice.';
         setAlert({
           show: true,
           type: 'error',
           title: 'E-Invoice Failed',
-          message: result.message || 'Could not generate E-Invoice.'
+          message: errMsg
         });
         fetchInvoices();
       }
@@ -1241,11 +1242,11 @@ export default function SalesInvoiceEntry() {
                             <td className="p-4 text-center font-mono text-xs font-bold text-slate-600">
                               {prod?.hsn_code || '-'}
                             </td>
-                            <td className="p-4">
-                              <Input type="number" min="0" placeholder="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                             <td className="p-4">
+                              <Input type="number" min="0" step="any" placeholder="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
                             </td>
                             <td className="p-4">
-                              <Input type="number" min="0" placeholder="₹ 0" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
+                              <Input type="number" min="0" step="any" placeholder="₹ 0" value={item.rate === 0 ? '' : item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} className="text-center font-bold border-slate-200 text-xs md:text-sm h-8" />
                             </td>
                             <td className="p-4">
                               <Select value={String(item.gst_percent !== undefined ? item.gst_percent : 18)} onValueChange={val => handleItemChange(index, 'gst_percent', val)}>
@@ -1338,6 +1339,7 @@ export default function SalesInvoiceEntry() {
                           type="number"
                           placeholder="₹ 0"
                           min="0"
+                          step="any"
                           value={formData.tax_amount === 0 ? '' : formData.tax_amount}
                           onChange={e => setFormData({ ...formData, tax_amount: Math.max(0, parseFloat(e.target.value) || 0) })}
                           className="w-32 h-8 text-right font-mono font-bold"
@@ -1370,7 +1372,7 @@ export default function SalesInvoiceEntry() {
 
                     <div className="flex justify-between text-sm items-center gap-4">
                       <span className="text-slate-500">Discount (-)</span>
-                      <Input type="number" placeholder="₹ 0" min="0" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({ ...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0) })} className="w-32 h-8 text-right font-mono font-bold" />
+                      <Input type="number" placeholder="₹ 0" min="0" step="any" value={formData.discount_amount === 0 ? '' : formData.discount_amount} onChange={e => setFormData({ ...formData, discount_amount: Math.max(0, parseFloat(e.target.value) || 0) })} className="w-32 h-8 text-right font-mono font-bold" />
                     </div>
 
                     <div className="flex justify-between text-sm items-center gap-4">

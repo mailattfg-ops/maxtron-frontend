@@ -967,7 +967,7 @@ export default function PurchaseEntryPage() {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Unloading Fees {!formData.unloading_charges && <span className="text-[10px] font-medium lowercase">(₹)</span>}</label>
-                <Input type="number" min="0" value={formData.unloading_charges === 0 ? '' : formData.unloading_charges} onChange={(e) => setFormData({ ...formData, unloading_charges: e.target.value })} className="h-11 font-black text-primary" />
+                <Input type="number" min="0" step="any" value={formData.unloading_charges === 0 ? '' : formData.unloading_charges} onChange={(e) => setFormData({ ...formData, unloading_charges: e.target.value })} className="h-11 font-black text-primary" />
               </div>
             </div>
 
@@ -1043,6 +1043,7 @@ export default function PurchaseEntryPage() {
                             <Input
                               type="number"
                               min="0"
+                              step="any"
                               value={item.ordered_quantity === 0 ? '' : item.ordered_quantity}
                               onChange={(e) => updateItem(idx, 'ordered_quantity', e.target.value)}
                               className="h-10 text-center font-bold text-slate-500 bg-slate-50"
@@ -1052,6 +1053,7 @@ export default function PurchaseEntryPage() {
                             <Input
                               type="number"
                               min="0"
+                              step="any"
                               max={item.ordered_quantity || undefined}
                               value={item.received_quantity === 0 ? '' : item.received_quantity}
                               onChange={(e) => {
@@ -1070,6 +1072,7 @@ export default function PurchaseEntryPage() {
                             <Input
                               type="number"
                               min="0"
+                              step="any"
                               value={item.rate === 0 ? '' : item.rate}
                               onChange={(e) => updateItem(idx, 'rate', e.target.value)}
                               className="h-10 text-right font-bold text-slate-600 bg-slate-50"
@@ -1102,6 +1105,7 @@ export default function PurchaseEntryPage() {
                             <Input
                               type="number"
                               min="0"
+                              step="any"
                               value={item.amount === 0 ? '' : item.amount}
                               onChange={(e) => updateItem(idx, 'amount', e.target.value)}
                               className="h-10 text-right font-mono font-black text-slate-900 bg-slate-100"
