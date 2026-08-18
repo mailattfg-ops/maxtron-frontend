@@ -11,7 +11,7 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin,
   CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer,
-  Download, FileDown, ChevronDown, Loader2
+  Download, FileDown, ChevronDown, Loader2, Sliders, Settings2, SlidersHorizontal
 } from 'lucide-react';
 import {
   Select,
@@ -26,7 +26,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   downloadAllInvoiceDocs,
   downloadSingleTaxInvoice,
-  downloadSingleEWayBill
+  downloadSingleEWayBill,
+  type InvoiceLayoutOptions
 } from '@/utils/invoicePdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
@@ -154,28 +155,106 @@ export default function SalesInvoiceEntry() {
     setShowEInvoiceViewModal(true);
   };
 
-  // Download States & Handlers
+  // Download & Layout Sizing Customization States
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadDropdownInvId, setDownloadDropdownInvId] = useState<string | null>(null);
+  const [showLayoutSettingsModal, setShowLayoutSettingsModal] = useState(false);
+  const [layoutPreset, setLayoutPreset] = useState<'A4' | 'HalfA4' | 'A5' | 'DotMatrix' | 'Letter' | 'Custom'>('A4');
+  const [customWidth, setCustomWidth] = useState<number>(210);
+  const [customHeight, setCustomHeight] = useState<number>(297);
+  const [layoutDensity, setLayoutDensity] = useState<'compact' | 'standard' | 'spacious'>('standard');
+  const [autoFitSinglePage, setAutoFitSinglePage] = useState<boolean>(true);
+  const [fontSizeScale, setFontSizeScale] = useState<number>(1.0);
+  const [targetInvoiceForCustomPdf, setTargetInvoiceForCustomPdf] = useState<any>(null);
 
-  const handleDownloadAllDocs = async (inv: any) => {
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('maxtron_invoice_layout_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.layoutPreset) setLayoutPreset(parsed.layoutPreset);
+        if (parsed.customWidth) setCustomWidth(parsed.customWidth);
+        if (parsed.customHeight) setCustomHeight(parsed.customHeight);
+        if (parsed.layoutDensity) setLayoutDensity(parsed.layoutDensity);
+        if (parsed.autoFitSinglePage !== undefined) setAutoFitSinglePage(parsed.autoFitSinglePage);
+        if (parsed.fontSizeScale) setFontSizeScale(parsed.fontSizeScale);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  const getEffectiveLayoutOptions = (override?: Partial<InvoiceLayoutOptions>): InvoiceLayoutOptions => {
+    let w = customWidth;
+    let h = customHeight;
+    if (layoutPreset === 'A4') {
+      w = 210;
+      h = 297;
+    } else if (layoutPreset === 'HalfA4') {
+      w = 210;
+      h = 148;
+    } else if (layoutPreset === 'A5') {
+      w = 148;
+      h = 210;
+    } else if (layoutPreset === 'DotMatrix') {
+      w = 215.9;
+      h = 139.7;
+    } else if (layoutPreset === 'Letter') {
+      w = 215.9;
+      h = 279.4;
+    }
+    return {
+      pageWidth: w,
+      pageHeight: h,
+      density: layoutDensity,
+      autoFitSinglePage: autoFitSinglePage,
+      fontSizeScale: fontSizeScale,
+      ...override
+    };
+  };
+
+  const handleSaveLayoutSettings = () => {
+    try {
+      localStorage.setItem('maxtron_invoice_layout_settings', JSON.stringify({
+        layoutPreset,
+        customWidth,
+        customHeight,
+        layoutDensity,
+        autoFitSinglePage,
+        fontSizeScale
+      }));
+      success('Page setup and layout preferences saved!');
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const openCustomLayoutModalForInvoice = (inv: any) => {
+    setTargetInvoiceForCustomPdf(inv);
+    setShowLayoutSettingsModal(true);
+    setDownloadDropdownInvId(null);
+  };
+
+  const handleDownloadAllDocs = async (inv: any, customOptions?: InvoiceLayoutOptions) => {
     setDownloadingId(inv.id);
     const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
+    const layoutOpts = customOptions || getEffectiveLayoutOptions();
     try {
       await downloadAllInvoiceDocs(
         inv,
         activeTenant,
         () => {
           if (isEwbGenerated) {
-            success(`Official 5-page PDF document bundle (Invoice + e-Way Bill) for ${inv.invoice_number || 'Invoice'} downloaded!`);
+            success(`Official 5-page PDF document bundle for ${inv.invoice_number || 'Invoice'} downloaded!`);
           } else {
-            success(`Tax Invoice 4-page bundle for ${inv.invoice_number || 'Invoice'} downloaded (e-Way Bill excluded as it is not generated).`);
+            success(`Tax Invoice 4-page bundle for ${inv.invoice_number || 'Invoice'} downloaded.`);
           }
         },
         (err) => {
           console.error(err);
           error('Could not generate PDF documents.');
-        }
+        },
+        layoutOpts
       );
     } catch (err) {
       console.error(err);
@@ -186,7 +265,7 @@ export default function SalesInvoiceEntry() {
     }
   };
 
-  const handleDownloadSingleDoc = async (inv: any, type: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE' | 'EXTRA' | 'EWB') => {
+  const handleDownloadSingleDoc = async (inv: any, type: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE' | 'EXTRA' | 'EWB', customOptions?: InvoiceLayoutOptions) => {
     const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
 
     if (type === 'EWB' && !isEwbGenerated) {
@@ -195,15 +274,16 @@ export default function SalesInvoiceEntry() {
     }
 
     setDownloadingId(inv.id);
+    const layoutOpts = customOptions || getEffectiveLayoutOptions();
     try {
       if (type === 'EWB') {
-        await downloadSingleEWayBill(inv, activeTenant);
+        await downloadSingleEWayBill(inv, activeTenant, layoutOpts);
         success(`e-Way Bill document for ${inv.invoice_number || ''} downloaded.`);
       } else {
         const copyLabel = type === 'ORIGINAL' ? '(ORIGINAL FOR RECIPIENT)' :
           type === 'DUPLICATE' ? '(DUPLICATE FOR TRANSPORTER)' :
             type === 'TRIPLICATE' ? '(TRIPLICATE FOR SUPPLIER)' : '(EXTRA COPY)';
-        await downloadSingleTaxInvoice(inv, activeTenant, copyLabel);
+        await downloadSingleTaxInvoice(inv, activeTenant, copyLabel, layoutOpts);
         success(`Tax Invoice ${copyLabel} downloaded.`);
       }
     } catch (err) {
@@ -1727,6 +1807,22 @@ export default function SalesInvoiceEntry() {
                                 <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                 <span>Extra Copy</span>
                               </button>
+
+                              <div className="my-1 border-t border-slate-100" />
+
+                              <button
+                                type="button"
+                                onClick={() => openCustomLayoutModalForInvoice(inv)}
+                                className="w-full px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-2 transition-colors rounded-b-xl"
+                              >
+                                <Sliders className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                <div className="flex flex-col text-left">
+                                  <span>Customize Size & Page Setup</span>
+                                  <span className="text-[10px] text-indigo-500/80 font-normal">
+                                    Single-page fit, A4/A5, custom width/height
+                                  </span>
+                                </div>
+                              </button>
                             </div>
                           );
                         })()}
@@ -1938,44 +2034,55 @@ export default function SalesInvoiceEntry() {
       {showEwbViewModal && viewEwbInvoice && (
         <div className="fixed inset-0 z-[1300] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
           <Card className="w-full max-w-3xl bg-white shadow-2xl border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
-            <CardHeader className="bg-slate-900 text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
-                  <Truck className="w-6 h-6" />
+            <CardHeader className="bg-slate-900 text-white p-4 md:p-5 shrink-0 flex flex-col gap-3 w-full">
+              {/* Row 1: Title & Close Button */}
+              <div className="w-full flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
+                    <Truck className="w-5 h-5 md:w-6 md:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate">
+                      E-Way Bill Slip #{viewEwbInvoice.ewb_no || '121049284910'}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-300 truncate">
+                      Official e-Way Bill for Tax Invoice {viewEwbInvoice.invoice_number}
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg font-black text-white flex items-center gap-2">
-                    E-Way Bill Slip #{viewEwbInvoice.ewb_no || '121049284910'}
-                  </CardTitle>
-                  <CardDescription className="text-xs text-slate-300">
-                    Official e-Way Bill for Tax Invoice {viewEwbInvoice.invoice_number}
-                  </CardDescription>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowEwbViewModal(false)}
+                  className="hover:bg-slate-800 text-slate-400 hover:text-white rounded-full shrink-0 ml-auto"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Row 2: Action Buttons Filling the Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full pt-2 border-t border-slate-800">
                 <Button
                   type="button"
                   onClick={() => handleDownloadAllDocs(viewEwbInvoice)}
-                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                  className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
                 >
-                  <FileDown className="w-4 h-4" /> Download All Docs (PDF)
+                  <FileDown className="w-3.5 h-3.5 shrink-0" /> All Docs (5P)
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant, getEffectiveLayoutOptions())}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
                 >
-                  <Download className="w-4 h-4" /> Download EWB
+                  <Download className="w-3.5 h-3.5 shrink-0" /> Download EWB
                 </Button>
                 <Button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
                 >
-                  <Printer className="w-4 h-4" /> Print
-                </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setShowEwbViewModal(false)} className="hover:bg-slate-800 text-slate-400 hover:text-white rounded-full">
-                  <X className="w-5 h-5" />
+                  <Printer className="w-3.5 h-3.5 shrink-0" /> Print Slip
                 </Button>
               </div>
             </CardHeader>
@@ -2126,7 +2233,7 @@ export default function SalesInvoiceEntry() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant)}
+                  onClick={() => downloadSingleEWayBill(viewEwbInvoice, activeTenant, getEffectiveLayoutOptions())}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <Download className="w-4 h-4" /> Download EWB
@@ -2144,44 +2251,64 @@ export default function SalesInvoiceEntry() {
       {showEInvoiceViewModal && viewEInvoice && (
         <div className="fixed inset-0 z-[1300] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
           <Card className="w-full max-w-3xl bg-white shadow-2xl border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
-            <CardHeader className="bg-emerald-950 text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
-                  <CheckCircle2 className="w-6 h-6" />
+            <CardHeader className="bg-emerald-950 text-white p-4 md:p-5 shrink-0 flex flex-col gap-3 w-full">
+              {/* Row 1: Title & Close Button */}
+              <div className="w-full flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
+                    <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate">
+                      e-Invoice (IRN Slip) - {viewEInvoice.invoice_number}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-emerald-300 truncate">
+                      Registered Tax Invoice & IRN Details
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg font-black text-white flex items-center gap-2">
-                    e-Invoice (IRN Slip) - {viewEInvoice.invoice_number}
-                  </CardTitle>
-                  <CardDescription className="text-xs text-emerald-300">
-                    Registered Tax Invoice & IRN Details
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  onClick={() => handleDownloadAllDocs(viewEInvoice)}
-                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowEInvoiceViewModal(false)}
+                  className="hover:bg-emerald-900 text-emerald-300 hover:text-white rounded-full shrink-0 ml-auto"
                 >
-                  <FileDown className="w-4 h-4" /> Download All Docs
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Row 2: Action Buttons Filling the Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full pt-2 border-t border-emerald-900/60">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openCustomLayoutModalForInvoice(viewEInvoice)}
+                  className="w-full border-emerald-700 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 hover:text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
+                  title="Customize Dimensions & 1-Page Layout"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Page Setup
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                  onClick={() => handleDownloadAllDocs(viewEInvoice)}
+                  className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
                 >
-                  <Download className="w-4 h-4" /> Download Invoice
+                  <FileDown className="w-3.5 h-3.5 shrink-0" /> All Docs (5P)
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)', getEffectiveLayoutOptions())}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" /> Invoice PDF
                 </Button>
                 <Button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-slate-800 hover:bg-slate-700 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md hidden sm:inline-flex"
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
                 >
-                  <Printer className="w-4 h-4" /> Print
-                </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setShowEInvoiceViewModal(false)} className="hover:bg-emerald-900 text-emerald-300 hover:text-white rounded-full">
-                  <X className="w-5 h-5" />
+                  <Printer className="w-3.5 h-3.5 shrink-0" /> Print
                 </Button>
               </div>
             </CardHeader>
@@ -2334,7 +2461,7 @@ export default function SalesInvoiceEntry() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)')}
+                  onClick={() => downloadSingleTaxInvoice(viewEInvoice, activeTenant, '(ORIGINAL FOR RECIPIENT)', getEffectiveLayoutOptions())}
                   className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <Download className="w-4 h-4" /> Download Invoice
@@ -2701,6 +2828,283 @@ export default function SalesInvoiceEntry() {
                 </Button>
               </div>
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Invoice Size & Single-Page Layout Setup Modal */}
+      {showLayoutSettingsModal && (
+        <div className="fixed inset-0 z-[1400] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-xl bg-white shadow-2xl border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
+            <CardHeader className="bg-slate-900 text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                  <Sliders className="w-5 h-5 text-indigo-300" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-black text-white flex items-center gap-2">
+                    Invoice Size & Single-Page Setup
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-300">
+                    Adjust dimensions, margins, and auto-fit to print/save on a single page
+                  </CardDescription>
+                </div>
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setShowLayoutSettingsModal(false)} className="hover:bg-slate-800 text-slate-400 hover:text-white rounded-full">
+                <X className="w-5 h-5" />
+              </Button>
+            </CardHeader>
+
+            <CardContent className="p-6 overflow-y-auto space-y-6 text-slate-800 font-sans">
+              {/* Target Invoice Indicator if opened from an invoice */}
+              {targetInvoiceForCustomPdf && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold text-indigo-950">
+                      Invoice: {targetInvoiceForCustomPdf.invoice_number || 'INV'}
+                    </span>
+                    <span className="text-indigo-600 font-medium">
+                      ({(targetInvoiceForCustomPdf.items || []).length} {((targetInvoiceForCustomPdf.items || []).length === 1 ? 'item' : 'items')})
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-md">
+                    Custom Download
+                  </span>
+                </div>
+              )}
+
+              {/* 1. Page Size Presets */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 block">
+                    1. Standard Printing Profiles
+                  </label>
+                  <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                    Auto-Configures Dimensions & Margins
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {[
+                    { id: 'A4', label: 'Standard A4 (Full Page)', size: '210 × 297 mm (Portrait)', desc: 'Official GST standard (1–10 items)' },
+                    { id: 'HalfA4', label: 'Half A4 (Single Page)', size: '210 × 148 mm (Landscape)', desc: 'Saves 50% paper (1–4 items)' },
+                    { id: 'A5', label: 'Compact A5 (Slip)', size: '148 × 210 mm (Portrait)', desc: 'Small invoice books' },
+                    { id: 'DotMatrix', label: 'Dot Matrix / Continuous', size: '215.9 × 139.7 mm (8.5×5.5")', desc: 'Pre-printed tractor-feed stationery' },
+                    { id: 'Letter', label: 'US Letter Standard', size: '215.9 × 279.4 mm', desc: 'Standard North American format' },
+                    { id: 'Custom', label: 'Custom Dimensions', size: 'Enter exact mm below', desc: 'User-defined width & height' },
+                  ].map((p) => {
+                    const isSel = layoutPreset === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setLayoutPreset(p.id as any);
+                          if (p.id === 'A4') {
+                            setCustomWidth(210);
+                            setCustomHeight(297);
+                            setFontSizeScale(1.0);
+                          } else if (p.id === 'HalfA4') {
+                            setCustomWidth(210);
+                            setCustomHeight(148);
+                            setFontSizeScale(0.95);
+                          } else if (p.id === 'A5') {
+                            setCustomWidth(148);
+                            setCustomHeight(210);
+                            setFontSizeScale(0.90);
+                          } else if (p.id === 'DotMatrix') {
+                            setCustomWidth(215.9);
+                            setCustomHeight(139.7);
+                            setFontSizeScale(0.95);
+                          } else if (p.id === 'Letter') {
+                            setCustomWidth(215.9);
+                            setCustomHeight(279.4);
+                            setFontSizeScale(1.0);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          isSel
+                            ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20 shadow-sm'
+                            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-black ${isSel ? 'text-indigo-950' : 'text-slate-800'}`}>
+                            {p.label}
+                          </span>
+                          {isSel && <Check className="w-3.5 h-3.5 text-indigo-600 font-bold" />}
+                        </div>
+                        <span className="text-[10px] text-slate-500 block mt-1 font-mono">
+                          {p.size}
+                        </span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5">
+                          {p.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Custom Dimensions (Width & Height) */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700">
+                    2. Exact Dimensions (mm)
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Aspect Ratio: {(customWidth / (customHeight || 1)).toFixed(2)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-600 block mb-1">Page Width (mm):</span>
+                    <Input
+                      type="number"
+                      min={100}
+                      max={400}
+                      step={1}
+                      value={customWidth}
+                      onChange={(e) => {
+                        setCustomWidth(Number(e.target.value) || 210);
+                        setLayoutPreset('Custom');
+                      }}
+                      className="h-9 text-xs font-mono font-bold bg-white"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-600 block mb-1">Page Height (mm):</span>
+                    <Input
+                      type="number"
+                      min={100}
+                      max={600}
+                      step={1}
+                      value={customHeight}
+                      onChange={(e) => {
+                        setCustomHeight(Number(e.target.value) || 297);
+                        setLayoutPreset('Custom');
+                      }}
+                      className="h-9 text-xs font-mono font-bold bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Single-Page Auto-Fitting Engine */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 block">
+                      3. Single Page Auto-Fit Engine
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Dynamically optimizes row heights & fonts to guarantee 1 single page
+                    </span>
+                  </div>
+                  <Checkbox
+                    checked={autoFitSinglePage}
+                    onCheckedChange={(c) => setAutoFitSinglePage(Boolean(c))}
+                    className="data-[state=checked]:bg-indigo-600"
+                  />
+                </div>
+
+                {/* Density selector */}
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {[
+                    { id: 'compact', title: 'Compact', desc: 'Dense (4+ items)' },
+                    { id: 'standard', title: 'Standard', desc: 'Balanced (1-4 items)' },
+                    { id: 'spacious', title: 'Spacious', desc: 'Relaxed (1-2 items)' },
+                  ].map((d) => {
+                    const isSel = layoutDensity === d.id;
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setLayoutDensity(d.id as any)}
+                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                          isSel
+                            ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-500 text-indigo-950 font-bold'
+                            : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium'
+                        }`}
+                      >
+                        <div className="text-xs">{d.title}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">{d.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Font Scaling Multiplier */}
+              <div className="space-y-2 border-t pt-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-700">Typography Scale:</span>
+                  <span className="font-mono font-bold text-indigo-600">{Math.round(fontSizeScale * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-slate-400">85%</span>
+                  <input
+                    type="range"
+                    min="0.85"
+                    max="1.15"
+                    step="0.05"
+                    value={fontSizeScale}
+                    onChange={(e) => setFontSizeScale(parseFloat(e.target.value))}
+                    className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                  />
+                  <span className="text-[10px] text-slate-400">115%</span>
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-4 border-t flex flex-wrap justify-between items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveLayoutSettings}
+                className="rounded-full text-xs font-bold text-slate-700 hover:text-indigo-600"
+              >
+                Save as Default
+              </Button>
+
+              <div className="flex items-center gap-2">
+                {targetInvoiceForCustomPdf ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        handleDownloadSingleDoc(targetInvoiceForCustomPdf, 'ORIGINAL', getEffectiveLayoutOptions());
+                        setShowLayoutSettingsModal(false);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download 1-Page PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        handleDownloadAllDocs(targetInvoiceForCustomPdf, getEffectiveLayoutOptions());
+                        setShowLayoutSettingsModal(false);
+                      }}
+                      className="bg-primary hover:bg-primary/90 text-white rounded-full px-4 h-9 text-xs font-bold gap-1.5 shadow-md"
+                    >
+                      <FileDown className="w-3.5 h-3.5" /> Download All Docs
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      handleSaveLayoutSettings();
+                      setShowLayoutSettingsModal(false);
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 h-9 text-xs font-bold shadow-md"
+                  >
+                    Apply & Close
+                  </Button>
+                )}
+              </div>
+            </CardFooter>
           </Card>
         </div>
       )}
