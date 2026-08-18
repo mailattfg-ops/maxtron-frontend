@@ -668,20 +668,16 @@ export async function renderTaxInvoicePage(
   // Bottom divider under entire parties & metadata section
   doc.line(startX, partiesEndY, endX, partiesEndY);
 
-  // Right Section: Metadata Grid (6 balanced rows)
-  const rRowStep = partiesHeight / 6;
+  // Right Section: Metadata Grid (4 clean, balanced rows)
+  const rRowStep = partiesHeight / 4;
   const rRow1Y = tableStartY + rRowStep;
   const rRow2Y = tableStartY + (rRowStep * 2);
   const rRow3Y = tableStartY + (rRowStep * 3);
-  const rRow4Y = tableStartY + (rRowStep * 4);
-  const rRow5Y = tableStartY + (rRowStep * 5);
-  const rRow6Y = partiesEndY;
+  const rRow4Y = partiesEndY;
 
   doc.line(metaSplitX, rRow1Y, endX, rRow1Y);
   doc.line(metaSplitX, rRow2Y, endX, rRow2Y);
   doc.line(metaSplitX, rRow3Y, endX, rRow3Y);
-  doc.line(metaSplitX, rRow4Y, endX, rRow4Y);
-  doc.line(metaSplitX, rRow5Y, endX, rRow5Y);
 
   // Row 1: 3 Columns (Invoice No | e-Way Bill No | Dated)
   const rCol1X = metaSplitX + (metaW * 0.33);
@@ -709,76 +705,59 @@ export async function renderTaxInvoicePage(
   doc.setFont('helvetica', 'bold');
   doc.text(invoiceDate, rCol2X + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (endX - rCol2X) - rPad });
 
-  // Middle vertical column divider for Rows 2 to 6
+  // Middle vertical column divider for Rows 2 to 4
   const rColMidX = metaSplitX + (metaW * 0.50);
   const rSubW = (rColMidX - metaSplitX) - 2;
-  doc.line(rColMidX, rRow1Y, rColMidX, rRow6Y);
+  doc.line(rColMidX, rRow1Y, rColMidX, rRow4Y);
 
-  // Row 2: Delivery Note | Mode/Terms of Payment
+  // Row 2: Buyer's Order No. | Order Date
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(fs(5.8));
-  doc.text('Delivery Note', metaSplitX + 1.5, rRow1Y + (rRowStep * 0.36));
-  doc.text('Mode/Terms of Payment', rColMidX + 1.5, rRow1Y + (rRowStep * 0.36));
+  doc.text("Buyer's Order No.", metaSplitX + 1.5, rRow1Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(inv.payment_terms || 'Credit / 30 Days', rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+  doc.text(orderNo || 'N/A', metaSplitX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
-  // Row 3: Reference No. & Date | Other References
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(fs(5.8));
-  doc.text('Reference No. & Date.', metaSplitX + 1.5, rRow2Y + (rRowStep * 0.36));
-  doc.text('Other References', rColMidX + 1.5, rRow2Y + (rRowStep * 0.36));
-
-  // Row 4: Buyer's Order No. | Dated
-  doc.text("Buyer's Order No.", metaSplitX + 1.5, rRow3Y + (rRowStep * 0.36));
-  if (orderNo) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fs(6.8));
-    doc.text(orderNo, metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
-    doc.setFont('helvetica', 'normal');
-  }
-  doc.setFontSize(fs(5.8));
-  doc.text('Dated', rColMidX + 1.5, rRow3Y + (rRowStep * 0.36));
-  if (orderDate) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fs(6.8));
-    doc.text(orderDate, rColMidX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
-    doc.setFont('helvetica', 'normal');
-  }
-
-  // Row 5: Dispatch Doc No. | Delivery Note Date
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Dispatch Doc No.', metaSplitX + 1.5, rRow4Y + (rRowStep * 0.36));
-  if (inv.trans_doc_no) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fs(6.8));
-    doc.text(inv.trans_doc_no, metaSplitX + 1.5, rRow4Y + (rRowStep * 0.82), { maxWidth: rSubW });
-    doc.setFont('helvetica', 'normal');
-  }
-  doc.setFontSize(fs(5.8));
-  doc.text('Delivery Note Date', rColMidX + 1.5, rRow4Y + (rRowStep * 0.36));
-  if (inv.trans_doc_date) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fs(6.8));
-    doc.text(formatInvoiceDate(inv.trans_doc_date), rColMidX + 1.5, rRow4Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
-    doc.setFont('helvetica', 'normal');
-  }
-
-  // Row 6: Dispatched through | Destination
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Dispatched through', metaSplitX + 1.5, rRow5Y + (rRowStep * 0.36));
+  doc.text('Order Date', rColMidX + 1.5, rRow1Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(inv.transporter_name || 'Direct Road Transport', metaSplitX + 1.5, rRow5Y + (rRowStep * 0.82), { maxWidth: rSubW });
+  doc.text(orderDate || invoiceDate, rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+
+  // Row 3: Dispatched through | Destination
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fs(5.8));
+  doc.text('Dispatched through', metaSplitX + 1.5, rRow2Y + (rRowStep * 0.36));
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(fs(6.8));
+  const dispatchThrough = inv.transporter_name || inv.vehicle_no || 'Direct Road Transport';
+  doc.text(dispatchThrough, metaSplitX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(fs(5.8));
-  doc.text('Destination', rColMidX + 1.5, rRow5Y + (rRowStep * 0.36));
+  doc.text('Destination', rColMidX + 1.5, rRow2Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(billingAddrObj.city || buyerState || 'Kerala', rColMidX + 1.5, rRow5Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+  doc.text(billingAddrObj.city || buyerState || 'Kerala', rColMidX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+
+  // Row 4: Mode/Terms of Payment | Terms of Delivery
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fs(5.8));
+  doc.text('Mode/Terms of Payment', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.36));
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(fs(6.8));
+  doc.text(inv.payment_terms || 'Credit / 30 Days', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fs(5.8));
+  doc.text('Terms of Delivery', rColMidX + 1.5, rRow3Y + (rRowStep * 0.36));
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(fs(6.8));
+  const deliveryTerms = inv.scheduled_delivery_date
+    ? `Exp: ${formatInvoiceDate(inv.scheduled_delivery_date)}`
+    : (inv.remarks || 'Standard Delivery');
+  doc.text(deliveryTerms, rColMidX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
   // ----------------------------------------------------
   // Section 2: Goods Items Table
