@@ -345,7 +345,7 @@ export default function SalesReturns() {
                   >
                     <option value="">Select Invoice...</option>
                     {invoices.map(i => (
-                      <option key={i.id} value={i.id}>{i.invoice_number} - {i.customers?.customer_name}</option>
+                      <option key={i.id} value={i.id}>{i.invoice_number}{i.einvoice_ack_no ? ` (e-Inv ${i.einvoice_ack_no})` : ''} - {i.customers?.customer_name}</option>
                     ))}
                   </select>
                   {errors.customer_id && <p className="text-[9px] text-rose-500 font-bold px-1 mt-0.5">{errors.customer_id}</p>}
@@ -418,6 +418,10 @@ export default function SalesReturns() {
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Invoice Date</span><span className="text-sm font-bold text-blue-900">{new Date(selectedInvoice.invoice_date).toLocaleDateString()}</span></div>
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Order Ref</span><span className="text-sm font-bold text-blue-900">{selectedInvoice.orders?.order_number || 'N/A'}</span></div>
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Billed Total Value</span><span className="text-sm font-bold text-blue-900">₹ {selectedInvoice.net_amount?.toLocaleString() || '0'}</span></div>
+                                        <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">e-Invoice No</span><span className={`text-sm font-bold font-mono ${!selectedInvoice.einvoice_ack_no ? 'text-blue-400' : selectedInvoice.einvoice_status === 'CANCELLED' ? 'text-rose-600' : 'text-blue-900'}`}>{selectedInvoice.einvoice_ack_no || 'Not generated'}</span>{selectedInvoice.einvoice_status === 'CANCELLED' && <span className="text-[9px] font-bold text-rose-500 uppercase">Cancelled</span>}</div>
+                                        {selectedInvoice.einvoice_irn && (
+                                          <div className="col-span-2 md:col-span-4 flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">IRN</span><span className="text-[11px] font-mono font-semibold text-blue-900 break-all">{selectedInvoice.einvoice_irn}</span></div>
+                                        )}
                                      </>
                                  )
                              })()}
@@ -499,12 +503,17 @@ export default function SalesReturns() {
           headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Actions']}
           data={returns}
           loading={loading}
-          searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number']}
+          searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number', 'invoices.einvoice_ack_no', 'invoices.einvoice_irn']}
           renderRow={(ret: any) => (
             <tr key={ret.id} className="hover:bg-rose-50 transition-all border-b last:border-0">
               <td className="px-6 py-4 font-mono font-black text-rose-600">
                 <div>{ret.return_number}</div>
                 <div className="text-[10px] font-medium text-slate-400">Inv: {ret.invoices?.invoice_number || 'N/A'}</div>
+                {ret.invoices?.einvoice_ack_no && (
+                  <div className={`text-[10px] font-medium ${ret.invoices.einvoice_status === 'CANCELLED' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                    e-Inv: {ret.invoices.einvoice_ack_no}{ret.invoices.einvoice_status === 'CANCELLED' ? ' (cancelled)' : ''}
+                  </div>
+                )}
               </td>
               <td className="px-6 py-4 text-xs font-semibold">{new Date(ret.return_date).toLocaleDateString()}</td>
               <td className="px-6 py-4 font-bold">{ret.customers?.customer_name}</td>
