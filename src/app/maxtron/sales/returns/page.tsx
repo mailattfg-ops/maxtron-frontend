@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   RotateCcw, Plus, Trash2, Save, X, Search, 
   User, Calendar, Package, Info, Edit2, 
-  CheckCircle2, XCircle, AlertCircle, FileText
+  CheckCircle2, XCircle, AlertCircle, FileText,
+  BadgeCheck, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { 
   Select, 
@@ -26,6 +27,43 @@ const CUSTOMERS_API = `${API_BASE}/api/maxtron/customers`;
 const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
+// ─── Credit Note Status Badge ─────────────────────────────────────────────────
+const CreditNoteBadge = ({ status, irn }: { status?: string; irn?: string }) => {
+  if (!status || status === 'NOT_APPLICABLE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400">
+        N/A
+      </span>
+    );
+  }
+  if (status === 'GENERATED') {
+    return (
+      <div className="space-y-0.5">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <BadgeCheck className="w-3 h-3" /> CRN Generated
+        </span>
+        {irn && (
+          <div className="text-[9px] font-mono text-slate-400 px-1 truncate max-w-[120px]" title={irn}>
+            IRN: {irn.substring(0, 10)}...
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (status === 'FAILED') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+        <AlertTriangle className="w-3 h-3" /> CRN Failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+      <AlertCircle className="w-3 h-3" /> {status}
+    </span>
+  );
+};
+
 export default function SalesReturns() {
   const [returns, setReturns] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -37,6 +75,7 @@ export default function SalesReturns() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [crnLoading, setCrnLoading] = useState<string | null>(null);
   
   const [alert, setAlert] = useState<{
     show: boolean, 
@@ -132,7 +171,6 @@ export default function SalesReturns() {
   const handleInvoiceSelect = (invId: string) => {
       const inv = invoices.find(i => i.id === invId);
       if (inv) {
-          // Default to the first item from the invoice if available
           const initialItems = inv.items && inv.items.length > 0 
             ? [{ 
                 product_id: inv.items[0].product_id, 
@@ -155,14 +193,12 @@ export default function SalesReturns() {
     const newItems = [...formData.items];
     const item = { ...newItems[index] } as any;
     
-    // Update the field
     if (field === 'quantity' || field === 'rate') {
         item[field] = value === '' ? 0 : parseFloat(value) || 0;
     } else {
         item[field] = value;
     }
 
-    // Recalculate value
     const qty = Number(item.quantity || 0);
     const rate = Number(item.rate || 0);
     item.value = qty * rate;
@@ -176,7 +212,6 @@ export default function SalesReturns() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     const newErrors: Record<string, string> = {};
     if (!formData.customer_id) newErrors.customer_id = 'Required';
     if (formData.return_through === 'DIRECT' && !formData.return_employee_id) newErrors.return_employee_id = 'Required';
@@ -210,7 +245,7 @@ export default function SalesReturns() {
 
       const result = await res.json();
       if (result.success) {
-        setAlert({ show: true, type: 'success', title: 'Return Processed', message: 'The sales return has been recorded.' });
+        setAlert({ show: true, type: 'success', title: 'Return Processed', message: 'The sales return has been recorded. Credit Note (e-Invoice) will be generated automatically if applicable.' });
         setShowForm(false);
         setEditingId(null);
         setFormData({
@@ -276,9 +311,40 @@ export default function SalesReturns() {
     });
   };
 
+  const handleGenerateCreditNote = async (ret: any) => {
+    setCrnLoading(ret.id);
+    try {
+      const res = await fetch(`${RETURNS_API}/${ret.id}/credit-note`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        }
+      });
+      const result = await res.json();
+      if (result.success) {
+        setAlert({ 
+          show: true, type: 'success', 
+          title: 'Credit Note Generated', 
+          message: `CRN IRN: ${result.data?.credit_note_irn || 'Generated successfully'}` 
+        });
+        fetchReturns();
+      } else {
+        setAlert({ show: true, type: 'error', title: 'CRN Failed', message: result.message });
+      }
+    } catch {
+      setAlert({ show: true, type: 'error', title: 'Error', message: 'Failed to generate Credit Note.' });
+    } finally {
+      setCrnLoading(null);
+    }
+  };
+
+  // Determine if selected invoice has an e-Invoice IRN
+  const selectedInvoice = invoices.find(i => i.id === formData.invoice_id);
+  const selectedInvoiceHasEInvoice = !!(selectedInvoice?.einvoice_irn);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Alert Component logic omitted for brevity, same as Delivery */}
       {alert.show && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setAlert({...alert, show: false})} />
@@ -407,21 +473,36 @@ export default function SalesReturns() {
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-5">
                     <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div className="flex-1 space-y-2">
-                        <div className="text-sm font-bold text-blue-900 border-b border-blue-200 pb-2">Original Invoice Details Overview</div>
+                        <div className="text-sm font-bold text-blue-900 border-b border-blue-200 pb-2">Original Invoice Details</div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                              {(() => {
-                                 const selectedInvoice = invoices.find(i => i.id === formData.invoice_id);
                                  if (!selectedInvoice) return null;
                                  return (
                                      <>
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Customer</span><span className="text-sm font-bold text-blue-900">{selectedInvoice.customers?.customer_name}</span></div>
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Invoice Date</span><span className="text-sm font-bold text-blue-900">{new Date(selectedInvoice.invoice_date).toLocaleDateString()}</span></div>
                                         <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Order Ref</span><span className="text-sm font-bold text-blue-900">{selectedInvoice.orders?.order_number || 'N/A'}</span></div>
-                                        <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Billed Total Value</span><span className="text-sm font-bold text-blue-900">₹ {selectedInvoice.net_amount?.toLocaleString() || '0'}</span></div>
+                                        <div className="flex flex-col"><span className="text-[10px] font-bold text-blue-500 uppercase">Billed Total</span><span className="text-sm font-bold text-blue-900">₹ {selectedInvoice.net_amount?.toLocaleString() || '0'}</span></div>
                                      </>
                                  )
                              })()}
                         </div>
+                        {/* Credit Note Info Banner */}
+                        {selectedInvoiceHasEInvoice ? (
+                          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div className="text-xs font-semibold text-emerald-800">
+                              This invoice has an e-Invoice (IRN). A <span className="font-black">Credit Note (CRN)</span> will be auto-generated on saving this return.
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <div className="text-xs font-semibold text-amber-800">
+                              Original invoice has no e-Invoice IRN. Credit Note will not be generated.
+                            </div>
+                          </div>
+                        )}
                     </div>
                 </div>
               )}
@@ -451,14 +532,11 @@ export default function SalesReturns() {
                                         >
                                           <option value="">Choose Product...</option>
                                           {(() => {
-                                            const selectedInvoice = invoices.find(i => i.id === formData.invoice_id);
-                                            // Filter only if we have invoice items with valid product IDs
-                                            const invoiceProductIds = selectedInvoice?.items?.map((ii: any) => ii.product_id).filter(Boolean) || [];
-                                            
+                                            const selInv = invoices.find(i => i.id === formData.invoice_id);
+                                            const invoiceProductIds = selInv?.items?.map((ii: any) => ii.product_id).filter(Boolean) || [];
                                             const availableProducts = (invoiceProductIds.length > 0)
                                               ? products.filter(p => invoiceProductIds.includes(p.id))
                                               : products;
-                                            
                                             return availableProducts.map(p => (
                                               <option key={p.id} value={p.id}>{p.product_name}</option>
                                             ));
@@ -495,8 +573,8 @@ export default function SalesReturns() {
       {!showForm && (
         <TableView
           title="Return History"
-          description="Log of all customer returns and reversals."
-          headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Actions']}
+          description="Log of all customer returns with Credit Note (e-Invoice) status."
+          headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Credit Note', 'Actions']}
           data={returns}
           loading={loading}
           searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number']}
@@ -513,6 +591,41 @@ export default function SalesReturns() {
                 <div className="text-[10px] text-slate-500 uppercase">{ret.return_through === 'DIRECT' ? ret.return_employee?.name || 'Unassigned' : ret.courier_name || 'N/A'}</div>
               </td>
               <td className="px-6 py-4 font-black">₹ {ret.total_return_value?.toLocaleString()}</td>
+              <td className="px-6 py-4">
+                <div className="flex flex-col gap-1.5">
+                  <CreditNoteBadge status={ret.credit_note_status} irn={ret.credit_note_irn} />
+                  {/* Show retry button if invoice had e-invoice but CRN failed */}
+                  {ret.invoices?.einvoice_irn && ret.credit_note_status !== 'GENERATED' && ret.credit_note_status !== 'NOT_APPLICABLE' && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleGenerateCreditNote(ret)}
+                      disabled={crnLoading === ret.id}
+                      className="h-6 px-2 text-[10px] font-bold text-violet-700 border border-violet-200 hover:bg-violet-50 w-fit"
+                    >
+                      {crnLoading === ret.id 
+                        ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
+                        : <><RefreshCw className="w-3 h-3 mr-1" /> Retry CRN</>
+                      }
+                    </Button>
+                  )}
+                  {/* Show Generate button if invoice has e-invoice but no CRN attempt yet */}
+                  {ret.invoices?.einvoice_irn && !ret.credit_note_status && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleGenerateCreditNote(ret)}
+                      disabled={crnLoading === ret.id}
+                      className="h-6 px-2 text-[10px] font-bold text-emerald-700 border border-emerald-200 hover:bg-emerald-50 w-fit"
+                    >
+                      {crnLoading === ret.id 
+                        ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
+                        : <><FileText className="w-3 h-3 mr-1" /> Gen CRN</>
+                      }
+                    </Button>
+                  )}
+                </div>
+              </td>
               <td className="px-2 py-4">
                   <div className="flex justify-end items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(ret)} className="h-8 w-8 p-0 text-primary border"><Edit2 className="w-4 h-4" /></Button>
