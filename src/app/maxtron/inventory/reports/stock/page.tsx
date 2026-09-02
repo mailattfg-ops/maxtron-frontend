@@ -296,49 +296,104 @@ export default function StockListPage() {
         )}
       />
 
-
       {/* Edit Opening Stock Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white border-primary/20 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
-              <Package className="w-5 h-5 text-emerald-500" />
-              Adjust Opening Stock
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-2 space-y-4">
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-               <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1">Current Material</p>
-               <h4 className="text-lg font-black text-emerald-900">{selectedMaterial?.rm_name}</h4>
-               <p className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">Code: {selectedMaterial?.rm_code} | Grade: {selectedMaterial?.grade}</p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">New Opening Balance ({selectedMaterial?.unit_type})</label>
-              <Input 
-                type="number" 
-                value={newOpeningStock} 
-                onChange={(e) => setNewOpeningStock(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUpdateOpeningStock()}
-                placeholder="0.00"
-                className="h-12 text-2xl font-black text-primary border-slate-200 focus:border-emerald-500 transition-all text-right pr-4"
-              />
-              <p className="text-[10px] text-muted-foreground font-medium mt-2 italic px-1">
-                * Changing this value will recalculate the "Total Arrivals" and "Balance Stock" for this material across all reports.
-              </p>
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-0 overflow-hidden border border-slate-200/80 shadow-2xl">
+          {/* Header */}
+          <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-900 tracking-tight">
+                  Adjust Opening Stock
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Update initial inventory count for this material
+                </p>
+              </div>
             </div>
           </div>
-          <DialogFooter className="bg-slate-50 p-4 -m-6 mt-4 border-t border-slate-100">
-            <Button onClick={() => setIsEditModalOpen(false)} variant="ghost" className="rounded-full font-bold text-slate-500">
+
+          <div className="p-6 space-y-5">
+            {/* Current Material Card */}
+            <div className="bg-gradient-to-br from-slate-50 to-emerald-50/40 p-4 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Current Material
+                </span>
+                <span className="px-2.5 py-0.5 text-[10px] font-mono font-bold bg-white text-emerald-700 rounded-md border border-emerald-200 shadow-2xs">
+                  {selectedMaterial?.rm_code || 'N/A'}
+                </span>
+              </div>
+              <h4 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                {selectedMaterial?.rm_name}
+              </h4>
+              <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
+                {selectedMaterial?.grade && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Grade: <strong className="text-slate-800">{selectedMaterial?.grade}</strong>
+                  </span>
+                )}
+                {selectedMaterial?.unit_type && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                    Unit: <strong className="text-slate-800">{selectedMaterial?.unit_type}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Input Section */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>New Opening Balance</span>
+                <span className="text-[11px] text-slate-400 font-normal normal-case">In {selectedMaterial?.unit_type || 'KG'}</span>
+              </label>
+
+              <div className="relative flex items-center">
+                <Input 
+                  type="number" 
+                  value={newOpeningStock} 
+                  onChange={(e) => setNewOpeningStock(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateOpeningStock()}
+                  placeholder="0.00"
+                  autoFocus
+                  className="h-14 text-2xl font-black text-slate-900 border-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all rounded-xl pl-4 pr-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-mono shadow-inner bg-white"
+                />
+                <div className="absolute right-3 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 uppercase pointer-events-none select-none">
+                  {selectedMaterial?.unit_type || 'KG'}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 pt-1 text-[11px] text-slate-500 leading-normal">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <span>
+                  Changing this value will recalculate <strong>Total Arrivals</strong> and <strong>Balance Stock</strong> across all inventory reports.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <Button 
+              onClick={() => setIsEditModalOpen(false)} 
+              variant="outline" 
+              className="rounded-xl font-semibold text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            >
               Discard Changes
             </Button>
             <Button 
               onClick={handleUpdateOpeningStock} 
               disabled={isUpdating || newOpeningStock === ''}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-8 font-bold shadow-lg shadow-emerald-200"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 h-10 font-semibold shadow-md shadow-emerald-600/20 hover:shadow-lg hover:shadow-emerald-600/30 transition-all disabled:opacity-50"
             >
               {isUpdating ? 'Saving...' : 'Update Balance'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
