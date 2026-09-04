@@ -89,14 +89,14 @@ export default function CustomersPage() {
   };
 
   useEffect(() => {
-    // Sync code if customers list updates while form is open (and not editing)
-    if (showForm && !editingId && customers.length > 0) {
+    // Sync code if customers list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentCode = formData.customer_code;
        if (!currentCode || currentCode === 'CUST-000001' || currentCode === 'GENERATING...') {
           resetForm(customers);
        }
     }
-  }, [customers, showForm, editingId]);
+  }, [customers, showForm, editingId, loading]);
 
   const fetchCustomers = async (coId?: string) => {
     const token = localStorage.getItem('token');

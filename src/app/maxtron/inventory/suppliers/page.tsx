@@ -120,14 +120,14 @@ export default function SupplierPage() {
   };
 
   useEffect(() => {
-    // Sync code if suppliers list updates while form is open (and not editing)
-    if (showForm && !editingId && suppliers.length > 0) {
+    // Sync code if suppliers list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentCode = formData.supplier_code;
        if (!currentCode || currentCode === 'VEN-000001' || currentCode === 'GENERATING...') {
           resetForm(suppliers);
        }
     }
-  }, [suppliers, showForm, editingId]);
+  }, [suppliers, showForm, editingId, loading]);
 
   const checkGstExistence = (gst: string) => {
     if (!gst || gst.trim() === '') {
