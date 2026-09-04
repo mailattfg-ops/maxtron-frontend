@@ -131,14 +131,14 @@ export default function ExtrusionPage() {
   };
 
   useEffect(() => {
-    // Sync batch number if batches list updates while form is open (and not editing)
-    if (showForm && !editingId && batches.length > 0) {
+    // Sync batch number if batches list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentNo = formData.batch_number;
-       if (!currentNo || currentNo.includes('BAT-') && currentNo.length < 10 || currentNo === 'GENERATING...') {
+       if (!currentNo || (currentNo.includes('BAT-') && currentNo.length < 10) || currentNo === 'GENERATING...') {
           resetForm(batches);
        }
     }
-  }, [batches, showForm, editingId]);
+  }, [batches, showForm, editingId, loading]);
 
   const handleToggleConsumption = (id: string) => {
     const currentIds = formData.consumption_ids || [];

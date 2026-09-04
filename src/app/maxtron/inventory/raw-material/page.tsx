@@ -103,14 +103,14 @@ export default function RawMaterialPage() {
   };
 
   useEffect(() => {
-    // Sync code if materials list updates while form is open (and not editing)
-    if (showForm && !editingId && materials.length > 0) {
+    // Sync code if materials list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentCode = formData.rm_code;
        if (!currentCode || currentCode === 'RM-000001' || currentCode === 'GENERATING...') {
           resetForm(materials);
        }
     }
-  }, [materials, showForm, editingId]);
+  }, [materials, showForm, editingId, loading]);
 
   const fetchMaterials = async (coId?: string) => {
     const token = localStorage.getItem('token');

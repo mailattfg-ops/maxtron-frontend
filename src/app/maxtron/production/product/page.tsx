@@ -87,14 +87,14 @@ export default function FinishedProductPage() {
   };
 
   useEffect(() => {
-    // Sync code if products list updates while form is open (and not editing)
-    if (showForm && !editingId && products.length > 0) {
+    // Sync code if products list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentCode = formData.product_code;
        if (!currentCode || currentCode === 'FP-000001' || currentCode === 'GENERATING...') {
           resetForm(products);
        }
     }
-  }, [products, showForm, editingId]);
+  }, [products, showForm, editingId, loading]);
 
   const fetchProducts = async (coId?: string) => {
     const token = localStorage.getItem('token');

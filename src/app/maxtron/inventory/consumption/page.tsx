@@ -105,14 +105,14 @@ export default function ConsumptionPage() {
   };
 
   useEffect(() => {
-    // Sync slip number if consumptions list updates while form is open (and not editing)
-    if (showForm && !editingId && consumptions.length > 0) {
+    // Sync slip number if consumptions list updates or loading completes while form is open (and not editing)
+    if (showForm && !editingId && !loading) {
        const currentNo = formData.consumption_slip_no;
        if (!currentNo || currentNo === 'CSN-000001' || currentNo === 'GENERATING...') {
           resetForm(consumptions);
        }
     }
-  }, [consumptions, showForm, editingId]);
+  }, [consumptions, showForm, editingId, loading]);
 
   const fetchConsumptions = async (coId?: string) => {
     const token = localStorage.getItem('token');

@@ -44,14 +44,14 @@ export default function PettyCashPage() {
     });
 
     useEffect(() => {
-        // Sync voucher number if records update while modal is open (and not editing)
-        if (isModalOpen && !editingId && records.length > 0) {
+        // Sync voucher number if records update or loading completes while modal is open (and not editing)
+        if (isModalOpen && !editingId && !loading) {
             const currentNo = formData.voucher_no;
             if (!currentNo || currentNo === 'PCV-000001' || currentNo === 'GENERATING...') {
                 resetForm(records);
             }
         }
-    }, [records, isModalOpen, editingId]);
+    }, [records, isModalOpen, editingId, loading]);
 
     const handleScroll = () => {
         if (scrollRef.current) {
