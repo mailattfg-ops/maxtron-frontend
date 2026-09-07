@@ -50,6 +50,7 @@ export default function ExtrusionPage() {
   const [formData, setFormData] = useState<any>({
     batch_number: `BAT-${Date.now().toString().slice(-6)}`,
     product_id: '',
+    items: [{ product_id: '', output_qty: 0 }],
     shift: 'Morning',
     operator_id: '',
     supervisor_id: '',
@@ -104,20 +105,16 @@ export default function ExtrusionPage() {
       
       if (prodData.success) setProducts(prodData.data);
       if (conData.success) {
-        // Only show Unlinked or Extrusion process type if needed, but for now all
         setConsumptions(conData.data);
       }
       
       if (empData.success && Array.isArray(empData.data)) {
-        console.log("Raw fetched employees:", empData.data);
-        console.log("activeTenant:", activeTenant);
         const filtered = empData.data.filter((e: any) => 
           (e.companies?.company_name?.toUpperCase() === activeTenant ||
           e.companies?.company_name?.toUpperCase().includes(activeTenant)) &&
           e.user_types?.name?.toLowerCase() !== 'admin' &&
           e.username?.toLowerCase() !== 'admin@maxtron.com'
         );
-        console.log("Filtered employees:", filtered);
         setEmployees(filtered);
       }
 
@@ -131,7 +128,6 @@ export default function ExtrusionPage() {
   };
 
   useEffect(() => {
-    // Sync batch number if batches list updates or loading completes while form is open (and not editing)
     if (showForm && !editingId && !loading) {
        const currentNo = formData.batch_number;
        if (!currentNo || (currentNo.includes('BAT-') && currentNo.length < 10) || currentNo === 'GENERATING...') {
@@ -163,6 +159,54 @@ export default function ExtrusionPage() {
     });
   };
 
+  const addItem = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      items: [...(prev.items || []), { product_id: '', output_qty: 0 }]
+    }));
+  };
+
+  const removeItem = (index: number) => {
+    const newItems = [...(formData.items || [])];
+    newItems.splice(index, 1);
+    const totalOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+
+    const reqPrinting = newItems.some((it: any) => {
+      const p = products.find(prod => prod.id === it.product_id);
+      const color = (p?.color || '').toUpperCase();
+      return !(color === 'BLACK' || color === 'GREEN');
+    });
+
+    setFormData({
+      ...formData,
+      items: newItems,
+      extrusion_output_qty: totalOutput,
+      product_id: newItems[0]?.product_id || '',
+      requires_printing: newItems.length > 0 ? reqPrinting : formData.requires_printing
+    });
+  };
+
+  const handleItemChange = (index: number, field: string, value: any) => {
+    const newItems = [...(formData.items || [])];
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    const totalOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+
+    const reqPrinting = newItems.some((it: any) => {
+      const p = products.find(prod => prod.id === it.product_id);
+      const color = (p?.color || '').toUpperCase();
+      return !(color === 'BLACK' || color === 'GREEN');
+    });
+
+    setFormData({
+      ...formData,
+      items: newItems,
+      extrusion_output_qty: totalOutput,
+      product_id: newItems[0]?.product_id || '',
+      requires_printing: reqPrinting
+    });
+  };
+
   const fetchBatches = async (coId?: string) => {
     const token = localStorage.getItem('token');
     const targetCoId = coId || currentCompanyId;
@@ -177,7 +221,6 @@ export default function ExtrusionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Sort by date descending
         const sorted = (data.data || []).sort((a: any, b: any) => 
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
@@ -213,6 +256,7 @@ export default function ExtrusionPage() {
     setFormData({
       batch_number: nextBatchNo,
       product_id: '',
+      items: [{ product_id: '', output_qty: 0 }],
       shift: 'Morning',
       operator_id: '',
       supervisor_id: '',
@@ -228,9 +272,14 @@ export default function ExtrusionPage() {
 
   const handleEdit = (b: any) => {
     setEditingId(b.id);
+    const existingItems = Array.isArray(b.items) && b.items.length > 0
+      ? b.items.map((i: any) => ({ product_id: i.product_id, output_qty: Number(i.output_qty) || 0 }))
+      : [{ product_id: b.product_id || '', output_qty: Number(b.extrusion_output_qty) || 0 }];
+
     setFormData({
       batch_number: b.batch_number,
-      product_id: b.product_id,
+      product_id: b.product_id || existingItems[0]?.product_id || '',
+      items: existingItems,
       shift: b.shift,
       operator_id: b.operator_id,
       supervisor_id: b.supervisor_id,
@@ -276,7 +325,6 @@ export default function ExtrusionPage() {
   const saveBatch = async () => {
     const requiredFields = [
       { field: 'date', label: 'Production Date' },
-      { field: 'product_id', label: 'Finished Product' },
       { field: 'shift', label: 'Shift' },
       { field: 'machine_no', label: 'Machine Number' },
       { field: 'operator_id', label: 'Employee' }
@@ -289,12 +337,21 @@ export default function ExtrusionPage() {
       }
     }
 
+    if (!formData.items || formData.items.length === 0 || formData.items.some((it: any) => !it.product_id)) {
+      error("Please select at least one Finished Product.");
+      return;
+    }
+
+    if (formData.items.some((it: any) => Number(it.output_qty) <= 0)) {
+      error("Output quantity for each finished product must be greater than zero.");
+      return;
+    }
+
     if (!formData.consumption_ids || formData.consumption_ids.length === 0) {
       error("At least one Consumption Record is required.");
       return;
     }
 
-    // Alphanumeric, spaces, dashes, and underscores only for Machine No
     const machineRegex = /^[a-zA-Z0-9\-_ ]+$/;
     if (!machineRegex.test(formData.machine_no)) {
       error('Machine No contains invalid characters. Use only letters, numbers, dashes, or underscores.');
@@ -303,11 +360,6 @@ export default function ExtrusionPage() {
 
     if (formData.raw_material_consumed_qty <= 0) {
       error('Raw material consumed quantity must be greater than zero.');
-      return;
-    }
-
-    if (formData.extrusion_output_qty <= 0) {
-      error('Extrusion output quantity must be greater than zero.');
       return;
     }
 
@@ -324,6 +376,7 @@ export default function ExtrusionPage() {
         },
         body: JSON.stringify({
           ...formData,
+          product_id: formData.items[0]?.product_id || formData.product_id,
           supervisor_id: formData.supervisor_id === 'none' ? '' : formData.supervisor_id
         })
       });
@@ -374,10 +427,13 @@ export default function ExtrusionPage() {
     );
   }, [consumptions, batches, formData.consumption_ids, editingId]);
 
-  const filteredBatches = batches.filter(b => 
-    b.batch_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.finished_products?.product_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredBatches = batches.filter(b => {
+    const q = searchQuery.toLowerCase();
+    const batchNoMatch = b.batch_number?.toLowerCase().includes(q);
+    const prodMatch = b.finished_products?.product_name?.toLowerCase().includes(q) ||
+      (b.items && b.items.some((it: any) => it.finished_products?.product_name?.toLowerCase().includes(q)));
+    return batchNoMatch || prodMatch;
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
@@ -413,7 +469,7 @@ export default function ExtrusionPage() {
             <CardDescription>{editingId ? 'Update details for the existing batch.' : 'Enter extrusion output and machine details for the current shift.'}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            {/* Row 1: Core Batch Info */}
+            {/* Row 1: Batch Number & Production Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Hash className="w-4 h-4 text-primary" /> Batch Number</label>
@@ -427,46 +483,95 @@ export default function ExtrusionPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <Box className="w-4 h-4 text-primary" /> Finished Product <span className="text-rose-500">*</span>
+                   <Clock className="w-4 h-4 text-primary" /> Shift <span className="text-rose-500">*</span>
                 </label>
-                <Select 
-                  value={formData.product_id} 
-                  onValueChange={(val) => {
-                    const product = products.find(p => p.id === val);
-                    const color = (product?.color || '').toUpperCase();
-                    const requiresPrinting = !(color === 'BLACK' || color === 'GREEN');
-                    setFormData({ ...formData, product_id: val, requires_printing: requiresPrinting });
-                  }}
-                >
-                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
-                    <SelectValue placeholder="Select Finished Product" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-input">
-                    {products.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.product_name} ({p.product_code})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input 
+                  placeholder="e.g. Morning, General, Shift A..." 
+                  className="h-11 font-bold"
+                  value={formData.shift} 
+                  onChange={e => setFormData({ ...formData, shift: e.target.value })} 
+                />
               </div>
             </div>
 
-            {/* Row 2: Shift, Machine, Printing Toggle */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
+            {/* Finished Products Section (Multiple Products Supported) */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                   <Clock className="w-4 h-4 text-primary" /> Shift <span className="text-rose-500">*</span>
+                  <Box className="w-4 h-4 text-primary" /> Finished Products Produced (Multiple Products) <span className="text-rose-500">*</span>
                 </label>
-                <Select value={formData.shift} onValueChange={(val) => setFormData({ ...formData, shift: val })}>
-                  <SelectTrigger className="h-11 w-full border-input bg-background shadow-sm font-bold">
-                    <SelectValue placeholder="Select Shift" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-input">
-                    <SelectItem value="Morning">Morning (6AM - 2PM)</SelectItem>
-                    <SelectItem value="Afternoon">Afternoon (2PM - 10PM)</SelectItem>
-                    <SelectItem value="Night">Night (10PM - 6AM)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button
+                  type="button"
+                  onClick={addItem}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs font-bold text-primary border-primary/30 hover:bg-primary/5 rounded-lg flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Finished Product
+                </Button>
               </div>
+
+              <div className="border border-input rounded-xl overflow-hidden shadow-xs bg-white">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-primary/5 text-slate-700 font-bold border-b border-primary/10">
+                    <tr>
+                      <th className="px-4 py-2.5 w-12 text-center">#</th>
+                      <th className="px-4 py-2.5">Finished Product *</th>
+                      <th className="px-4 py-2.5 text-right w-44">Output Qty (Kg) *</th>
+                      <th className="px-4 py-2.5 text-center w-16">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(formData.items || []).map((item: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-center font-semibold text-slate-400">{idx + 1}</td>
+                        <td className="px-4 py-3">
+                          <Select 
+                            value={item.product_id} 
+                            onValueChange={(val) => handleItemChange(idx, 'product_id', val)}
+                          >
+                            <SelectTrigger className="h-9 w-full border-input bg-background shadow-xs font-bold text-xs">
+                              <SelectValue placeholder="Choose Finished Product..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-input">
+                              {products.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.product_name} ({p.product_code})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Input 
+                            type="number"
+                            min={0.01}
+                            step="0.01"
+                            placeholder="0.00"
+                            className="h-9 text-right font-bold text-primary text-xs"
+                            value={item.output_qty === 0 ? '' : item.output_qty}
+                            onChange={e => handleItemChange(idx, 'output_qty', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={formData.items.length === 1}
+                            onClick={() => removeItem(idx)}
+                            className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer disabled:opacity-30"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Row 2: Machine & Printing Toggle */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                   <Settings className="w-4 h-4 text-primary" /> Machine No <span className="text-rose-500">*</span>
@@ -587,19 +692,14 @@ export default function ExtrusionPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                  <Activity className="w-4 h-4 text-primary" /> Extrusion Output (Kg) <span className="text-rose-500">*</span>
+                  <Activity className="w-4 h-4 text-primary" /> Total Output (Kg) <span className="text-rose-500">*</span>
                 </label>
                 <Input 
                   type="number" 
-                  min={0.01} 
-                  step="0.01"
+                  readOnly
                   placeholder="0.00" 
-                  className="h-11 font-bold text-primary"
-                  value={formData.extrusion_output_qty === 0 ? '' : formData.extrusion_output_qty} 
-                  onChange={e => {
-                    const val = parseFloat(e.target.value);
-                    setFormData({ ...formData, extrusion_output_qty: isNaN(val) ? 0 : val });
-                  }} 
+                  className="h-11 bg-muted cursor-not-allowed font-bold text-primary"
+                  value={formData.extrusion_output_qty} 
                 />
               </div>
             </div>
@@ -643,8 +743,8 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Product', 'Shift', 'Machine', 'Material Used', 'Output (Kg)', 'Operator', 'Actions']}
-          data={batches}
+          headers={['Date', 'Batch #', 'Finished Products Produced', 'Shift', 'Machine', 'Material Used', 'Total Output', 'Operator', 'Actions']}
+          data={filteredBatches}
           loading={loading}
           searchFields={['batch_number', 'finished_products.product_name']}
           searchPlaceholder="Search batches or products..."
@@ -657,9 +757,20 @@ export default function ExtrusionPage() {
                 <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{new Date(b.date).toLocaleDateString()}</td>
                 <td className="px-6 py-4 font-mono font-bold text-foreground/80">{b.batch_number}</td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-primary">{product?.product_name || 'N/A'}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{product?.product_code || ''}</span>
+                  <div className="flex flex-col gap-1 max-w-[220px]">
+                    {b.items && b.items.length > 0 ? (
+                      b.items.map((it: any, idx: number) => (
+                        <div key={idx} className="flex flex-col bg-slate-50 p-1.5 rounded border border-slate-100 text-xs">
+                          <span className="font-bold text-primary">{it.finished_products?.product_name || 'N/A'}</span>
+                          <span className="text-[10px] text-slate-600 font-mono font-black">{it.output_qty} Kg</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="font-bold text-primary">{product?.product_name || 'N/A'}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{product?.product_code || ''}</span>
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4">
