@@ -580,8 +580,11 @@ export default function EmployeeInformationPage() {
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
-      const sanitizedData = {
+      const sanitizedData: any = {
         ...formData,
+        type: formData.type || null,
+        company_id: formData.company_id || null,
+        category_id: formData.category_id || null,
         basic_salary: Number(formData.basic_salary) || 0,
         employee_loans: formData.employee_loans.map(l => ({
           ...l,
@@ -589,6 +592,16 @@ export default function EmployeeInformationPage() {
           balance_receivable: Number(l.balance_receivable) || 0
         }))
       };
+
+      if (editingId && (!formData.password || formData.password.trim() === '')) {
+        delete sanitizedData.password;
+      }
+
+      if (!enableLogin) {
+        sanitizedData.username = null;
+        sanitizedData.password = null;
+        sanitizedData.type = null;
+      }
 
       const res = await fetch(url, {
         method,
@@ -1146,7 +1159,17 @@ export default function EmployeeInformationPage() {
                 <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground/80">Login Email {!formData.username && <span className="text-muted-foreground/50 text-[10px]">(Username)</span>}</label>
-                    <Input name="username" value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@maxtron.com" className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} />
+                    <Input 
+                      name="employee_login_email" 
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      value={formData.username} 
+                      onChange={(e) => updateFormData('username', e.target.value)} 
+                      disabled={isViewMode} 
+                      placeholder="john@maxtron.com" 
+                      className={`${errors.username ? 'border-destructive bg-amber-50' : ''}`} 
+                    />
                     {errors.username && <p className="text-[10px] font-bold text-destructive mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{errors.username}</p>}
                   </div>
 
@@ -1155,9 +1178,12 @@ export default function EmployeeInformationPage() {
                     <div className="relative">
                       <Input 
                         type={showFormPassword ? "text" : "password"} 
-                        name="password" 
+                        name="employee_new_password" 
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         value={formData.password} 
-                        onChange={handleInputChange} 
+                        onChange={(e) => updateFormData('password', e.target.value)} 
                         disabled={isViewMode} 
                         placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : '••••••••'} 
                         className={`${errors.password ? 'border-destructive bg-amber-50' : ''}`}

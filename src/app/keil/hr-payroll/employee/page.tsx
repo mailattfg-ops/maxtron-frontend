@@ -595,8 +595,12 @@ export default function EmployeeInformationPage() {
       const url = editingId ? `${API_URL(activeEntity)}/${editingId}` : API_URL(activeEntity);
       const method = editingId ? 'PUT' : 'POST';
 
-      const sanitizedData = {
+      const sanitizedData: any = {
         ...formData,
+        branch_id: formData.branch_id || null,
+        type: formData.type || null,
+        company_id: formData.company_id || null,
+        category_id: formData.category_id || null,
         basic_salary: Number(formData.basic_salary) || 0,
         employee_loans: formData.employee_loans.map(l => ({
           ...l,
@@ -604,6 +608,16 @@ export default function EmployeeInformationPage() {
           balance_receivable: Number(l.balance_receivable) || 0
         }))
       };
+
+      if (editingId && (!formData.password || formData.password.trim() === '')) {
+        delete sanitizedData.password;
+      }
+
+      if (!enableLogin) {
+        sanitizedData.username = null;
+        sanitizedData.password = null;
+        sanitizedData.type = null;
+      }
 
       const res = await fetch(url, {
         method,
@@ -1196,7 +1210,17 @@ export default function EmployeeInformationPage() {
                   <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Login Email {!formData.username && <span className="text-[10px] font-medium lowercase">(Username)</span>}</label>
-                      <Input name="username" className={`w-full h-10 md:h-11 ${errors.username ? 'border-amber-400 bg-amber-50/30' : ''}`} value={formData.username} onChange={handleInputChange} disabled={isViewMode} placeholder="john@keil.com" />
+                      <Input 
+                        name="employee_login_email" 
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        className={`w-full h-10 md:h-11 ${errors.username ? 'border-amber-400 bg-amber-50/30' : ''}`} 
+                        value={formData.username} 
+                        onChange={(e) => updateFormData('username', e.target.value)} 
+                        disabled={isViewMode} 
+                        placeholder="john@keil.com" 
+                      />
                       {errors.username && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.username}</p>}
                     </div>
 
@@ -1205,10 +1229,13 @@ export default function EmployeeInformationPage() {
                       <div className="relative">
                         <Input 
                           type={showFormPassword ? "text" : "password"} 
+                          name="employee_new_password" 
+                          autoComplete="new-password"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           className={`w-full h-10 md:h-11 pr-10 ${errors.password ? 'border-amber-400 bg-amber-50/30' : ''}`}
-                          name="password" 
                           value={formData.password} 
-                          onChange={handleInputChange} 
+                          onChange={(e) => updateFormData('password', e.target.value)} 
                           disabled={isViewMode} 
                           placeholder={isViewMode ? '••••••••' : editingId ? 'Leave blank to keep unchanged' : 'Minimum 8 chars'} 
                         />
