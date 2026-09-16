@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
-  FileText, Plus, Trash2, Save, X, Search,
+  FileText, Plus, Trash2, Save, X, Search, Eye,
   User, Calendar, DollarSign, Package, Briefcase,
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin,
@@ -27,6 +27,7 @@ import {
   downloadAllInvoiceDocs,
   downloadSingleTaxInvoice,
   downloadSingleEWayBill,
+  numberToWordsINR,
   type InvoiceLayoutOptions
 } from '@/utils/invoicePdfGenerator';
 
@@ -47,6 +48,7 @@ export default function SalesInvoiceEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
+  const [currentCompany, setCurrentCompany] = useState<any>(null);
   const [companyState, setCompanyState] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [roundOff, setRoundOff] = useState(false);
@@ -154,6 +156,11 @@ export default function SalesInvoiceEntry() {
     setViewEInvoice(inv);
     setShowEInvoiceViewModal(true);
   };
+
+  // Pre-e-Invoice Draft Preview Modal States
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewSource, setPreviewSource] = useState<'FORM' | 'TABLE'>('FORM');
 
   // Download & Layout Sizing Customization States
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -365,6 +372,7 @@ export default function SalesInvoiceEntry() {
         if (activeCo) {
           coId = activeCo.id;
           setCurrentCompanyId(coId);
+          setCurrentCompany(activeCo);
           setFormData(prev => ({ ...prev, company_id: coId }));
           fetchNextInvoiceNumber(coId);
           const companyAddr = (activeCo.addresses || []).find((a: any) => a.address_type === 'registered' || a.address_type === 'billing') || (activeCo.addresses || [])[0];
@@ -942,6 +950,101 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  const handleOpenFormPreview = () => {
+    if (!formData.customer_id) {
+      setAlert({
+        show: true,
+        type: 'warning',
+        title: 'Customer Required',
+        message: 'Please select a customer first to preview the invoice.'
+      });
+      return;
+    }
+
+    const validItems = formData.items.filter(i => i.product_id || (i.quantity > 0 && i.rate > 0));
+    if (validItems.length === 0) {
+      setAlert({
+        show: true,
+        type: 'warning',
+        title: 'Items Required',
+        message: 'Please add at least one line item with quantity and rate to preview.'
+      });
+      return;
+    }
+
+    const cust = customers.find(c => c.id === formData.customer_id);
+    const exec = executives.find(e => e.id === formData.executive_id);
+    const billingAddr = (cust?.addresses || []).find((a: any) => a.address_type?.toLowerCase() === 'billing' || a.address_type?.toLowerCase() === 'customer') || (cust?.addresses || [])[0];
+
+    const previewItems = formData.items.map((item, index) => {
+      const prod = products.find(p => p.id === item.product_id);
+      const qty = Number(item.quantity) || 0;
+      const rate = Number(item.rate) || 0;
+      const taxable = qty * rate;
+      const gstP = Number(item.gst_percent) !== undefined ? Number(item.gst_percent) : 18;
+      const gstAmt = item.gst_amount || ((taxable * gstP) / 100);
+      const totalAmt = item.amount || (taxable + gstAmt);
+
+      return {
+        ...item,
+        id: `preview-item-${index}`,
+        product_name: prod?.product_name || `Product #${index + 1}`,
+        product_code: prod?.product_code || '',
+        hsn_code: prod?.hsn_code || '392011',
+        thickness_microns: prod?.thickness_microns,
+        size: prod?.size,
+        color: prod?.color,
+        finished_products: prod || {
+          product_name: prod?.product_name || `Product #${index + 1}`,
+          hsn_code: prod?.hsn_code || '392011'
+        },
+        quantity: qty,
+        rate: rate,
+        taxable_amount: taxable,
+        gst_percent: gstP,
+        gst_amount: gstAmt,
+        amount: totalAmt
+      };
+    });
+
+    setPreviewData({
+      invoice_number: formData.invoice_number || 'DRAFT-INVOICE',
+      invoice_date: formData.invoice_date || new Date().toISOString().split('T')[0],
+      invoice_type: formData.invoice_type || (cust?.gst_no ? 'B2B' : 'B2C'),
+      customer_id: formData.customer_id,
+      customers: cust ? {
+        ...cust,
+        addresses: cust.addresses?.length ? cust.addresses : (billingAddr ? [billingAddr] : [])
+      } : null,
+      executive: exec,
+      scheduled_delivery_date: formData.scheduled_delivery_date,
+      remarks: formData.remarks,
+      transporter_name: formData.transporter_name,
+      transporter_id: formData.transporter_id,
+      vehicle_no: formData.vehicle_no,
+      trans_doc_no: formData.trans_doc_no,
+      trans_doc_date: formData.trans_doc_date,
+      items: previewItems,
+      total_amount: totals.subtotal,
+      tax_amount: totals.tax,
+      discount_amount: totals.discount,
+      roundoff_amount: totals.roundoffAmount,
+      net_amount: totals.net,
+      is_preview: true
+    });
+    setPreviewSource('FORM');
+    setShowPreviewModal(true);
+  };
+
+  const handleOpenTablePreview = (inv: any) => {
+    setPreviewData({
+      ...inv,
+      is_preview: true
+    });
+    setPreviewSource('TABLE');
+    setShowPreviewModal(true);
+  };
+
   const openEwbModal = (inv: any) => {
     setEwbTargetInvoice(inv);
     setEwbTransportForm({
@@ -1137,7 +1240,7 @@ export default function SalesInvoiceEntry() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 md:px-6 md:p-8 w-full max-w-full min-w-0 overflow-hidden">
-            <form onSubmit={handleSubmit} className="space-y-8 w-full max-w-full min-w-0 overflow-hidden">
+            <form id="sales-invoice-form" onSubmit={handleSubmit} className="space-y-8 w-full max-w-full min-w-0 overflow-hidden">
               <div className="space-y-6">
                 {/* Row 1: Inv No, Date of Sale, Link Order, Customer */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1477,7 +1580,17 @@ export default function SalesInvoiceEntry() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 px-4 md:px-0">
+              <div className="flex flex-wrap items-center justify-end gap-3 px-4 md:px-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleOpenFormPreview}
+                  className="h-12 px-6 rounded-xl border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 hover:text-amber-950 font-bold flex items-center gap-2 shadow-sm transition-all"
+                  title="Preview invoice draft before generating e-Invoice"
+                >
+                  <Eye className="w-5 h-5 text-amber-600" />
+                  Preview Invoice (Draft)
+                </Button>
                 <Button
                   type="submit"
                   loading={submitting}
@@ -1586,15 +1699,27 @@ export default function SalesInvoiceEntry() {
                         )}
 
                         {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleGenerateEInvoice(inv.id)}
-                            className="h-7 text-[10px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2 rounded-lg"
-                          >
-                            Generate IRN
-                          </Button>
+                          <div className="flex items-center gap-1.5 pt-0.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenTablePreview(inv)}
+                              className="h-7 text-[10px] font-bold border-amber-300 text-amber-800 bg-amber-50/60 hover:bg-amber-100 px-2 rounded-lg flex items-center gap-1"
+                              title="Preview invoice draft before generating e-Invoice IRN"
+                            >
+                              <Eye className="w-3 h-3 text-amber-600" /> Preview
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleGenerateEInvoice(inv.id)}
+                              className="h-7 text-[10px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2 rounded-lg"
+                            >
+                              Generate IRN
+                            </Button>
+                          </div>
                         )}
                         {einvStatus === 'GENERATED' && (
                           <div className="flex items-center gap-1.5 pt-0.5">
@@ -2469,6 +2594,359 @@ export default function SalesInvoiceEntry() {
                 <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 font-bold gap-2">
                   <Printer className="w-4 h-4" /> Print
                 </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* Pre-e-Invoice Draft Preview Modal */}
+      {showPreviewModal && previewData && (
+        <div className="fixed inset-0 z-[1300] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 overflow-y-auto animate-in fade-in">
+          <Card className="w-full max-w-4xl bg-white shadow-2xl border-amber-300 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 relative">
+            <CardHeader className="bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 text-white p-4 md:p-5 shrink-0 flex flex-col gap-3 w-full border-b border-amber-800">
+              <div className="w-full flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-amber-500/20 text-amber-300 rounded-xl border border-amber-400/30 shrink-0">
+                    <AlertTriangle className="w-5 h-5 md:w-6 md:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 border border-amber-300">
+                        DRAFT PREVIEW
+                      </span>
+                      <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">
+                        Pre-e-Invoice Verification
+                      </span>
+                    </div>
+                    <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate mt-0.5">
+                      Preview Before e-Invoice Generation — {previewData.invoice_number || 'DRAFT'}
+                    </CardTitle>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="hover:bg-amber-900 text-amber-300 hover:text-white rounded-full shrink-0 ml-auto"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Action buttons header row */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full pt-2 border-t border-amber-800/80">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.print()}
+                  className="w-full border-amber-700 bg-amber-900/60 hover:bg-amber-800 text-amber-200 hover:text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-300 shrink-0" /> Print Preview
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleTaxInvoice(previewData, activeTenant, '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)', getEffectiveLayoutOptions())}
+                  className="w-full bg-amber-600 hover:bg-amber-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" /> Download Draft PDF
+                </Button>
+                {previewSource === 'FORM' ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      const formEl = document.getElementById('sales-invoice-form') as HTMLFormElement;
+                      if (formEl) formEl.requestSubmit();
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center col-span-2 sm:col-span-1"
+                  >
+                    <Save className="w-3.5 h-3.5 shrink-0" /> {editingId ? "Update Invoice" : "Generate Invoice"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      if (previewData?.id) handleGenerateEInvoice(previewData.id);
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center col-span-2 sm:col-span-1"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Generate IRN Now
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-4 md:p-6 overflow-y-auto space-y-6 text-slate-800 font-sans print:p-0 relative">
+              {/* Large Watermark */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.04] select-none rotate-[-25deg] text-6xl md:text-8xl font-black text-slate-900 uppercase">
+                PREVIEW ONLY - NOT AN E-INVOICE
+              </div>
+
+              {/* Warning Banner */}
+              <div className="p-4 bg-amber-50/90 border-2 border-amber-300 rounded-xl flex items-start gap-3 shadow-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="text-xs font-black uppercase text-amber-950 tracking-wider flex items-center gap-2">
+                    <span>PREVIEW ONLY — NOT AN OFFICIAL E-INVOICE / TAX INVOICE</span>
+                    <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">DRAFT</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    This document is an uncertified preview generated for verification purposes before e-Invoice (IRN) generation.
+                    It does <strong>NOT</strong> constitute a legally binding tax invoice under GST Rules and does not contain a verified Government IRN or digitally signed QR code.
+                  </p>
+                </div>
+              </div>
+
+              {/* e-Invoice Registration Pending Box */}
+              <div className="border-2 border-dashed border-amber-300 rounded-xl p-4 bg-amber-50/40 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
+                  <div>
+                    <div className="text-[10px] uppercase font-black tracking-widest text-amber-800">GST e-Invoice System (IRP)</div>
+                    <div className="text-lg font-black text-amber-950">TAX INVOICE (PRE-GENERATION DRAFT)</div>
+                  </div>
+                  <div>
+                    <span className="px-3 py-1 bg-amber-200/80 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 w-fit">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-700" /> IRN PENDING / NOT GENERATED
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[11px] font-bold text-slate-500">Invoice Reference Number (IRN):</div>
+                  <div className="font-mono text-xs font-bold bg-white p-2.5 rounded-lg border border-amber-200 text-amber-900 select-all shadow-sm">
+                    [PENDING REGISTRATION - Will be assigned by GST e-Invoice Portal upon generation]
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-slate-500 font-medium block text-[10px]">Ack No:</span>
+                    <span className="font-mono font-bold text-slate-600">NOT GENERATED</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block text-[10px]">Ack Date:</span>
+                    <span className="font-bold text-slate-600">DRAFT (Pending)</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block text-[10px]">Document Type:</span>
+                    <span className="font-bold text-slate-800">Tax Invoice (INV)</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium block text-[10px]">Preview Mode:</span>
+                    <span className="font-bold text-amber-700">Pre-IRN Validation</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seller & Buyer Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                {/* Seller */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
+                  <div className="font-bold text-sm text-slate-900">{currentCompany?.company_name || (activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries')}</div>
+                  <div className="text-slate-700 font-mono text-[11px] font-bold">
+                    GSTIN: {currentCompany?.gst_no || (activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2')}
+                  </div>
+                  <div className="text-slate-500 pt-1">
+                    Address: {currentCompany?.addresses?.[0]?.street || (activeTenant === 'KEIL' ? 'KEIL Industrial Complex, Kochi, Kerala - 682001' : 'Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001')}
+                  </div>
+                </div>
+
+                {/* Buyer */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Buyer (Consignee)</span>
+                  <div className="font-bold text-sm text-slate-900">{previewData.customers?.customer_name || 'Customer Name'}</div>
+                  <div className="text-slate-700 font-mono text-[11px] font-bold">
+                    GSTIN: {previewData.customers?.gst_no || 'URP (Unregistered)'}
+                  </div>
+                  <div className="text-slate-500 pt-1">
+                    Address: {previewData.customers?.addresses?.[0]?.street || 'Address not specified'}, {previewData.customers?.addresses?.[0]?.city || ''} {previewData.customers?.addresses?.[0]?.state || ''} {previewData.customers?.addresses?.[0]?.zip_code ? `- ${previewData.customers?.addresses?.[0]?.zip_code}` : ''}
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Metadata Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-100 p-3.5 rounded-xl border border-slate-200 font-mono">
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Draft Invoice No:</span>
+                  <span className="font-bold text-slate-900 text-sm">{previewData.invoice_number || 'DRAFT'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Invoice Date:</span>
+                  <span className="font-bold text-slate-900">{previewData.invoice_date ? new Date(previewData.invoice_date).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Transporter / Vehicle:</span>
+                  <span className="font-bold text-slate-900">{previewData.vehicle_no || previewData.transporter_name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Total Invoice Value:</span>
+                  <span className="font-black text-amber-900 text-sm">₹ {Number(previewData.net_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                  <span>Item Details & Pre-Tax Values</span>
+                  <span className="text-[10px] font-semibold text-slate-400">({(previewData.items || []).length} items)</span>
+                </h4>
+                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="p-2.5">#</th>
+                        <th className="p-2.5">Item Description</th>
+                        <th className="p-2.5 text-center">HSN</th>
+                        <th className="p-2.5 text-center">Qty</th>
+                        <th className="p-2.5 text-right">Rate (₹)</th>
+                        <th className="p-2.5 text-right">Taxable Value</th>
+                        <th className="p-2.5 text-right">GST %</th>
+                        <th className="p-2.5 text-right">Line Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {(previewData.items || []).map((item: any, idx: number) => {
+                        const qty = Number(item.quantity) || 0;
+                        const rate = Number(item.rate) || 0;
+                        const taxable = qty * rate;
+                        const gstP = Number(item.gst_percent) !== undefined ? Number(item.gst_percent) : 18;
+                        const lineTotal = Number(item.amount) || (taxable + (taxable * gstP / 100));
+                        const prodName = item.product_name || item.finished_products?.product_name || 'Product';
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="p-2.5 font-bold text-slate-900">
+                              {prodName}
+                              {item.thickness_microns && <span className="ml-1 text-[10px] font-normal text-slate-500">({item.thickness_microns}µ)</span>}
+                            </td>
+                            <td className="p-2.5 text-center font-mono text-slate-600">{item.hsn_code || item.finished_products?.hsn_code || '392011'}</td>
+                            <td className="p-2.5 text-center font-mono font-bold">{qty}</td>
+                            <td className="p-2.5 text-right font-mono">₹ {rate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2.5 text-right font-mono font-semibold">₹ {taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2.5 text-right font-mono">{gstP}%</td>
+                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">₹ {lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Aggregates Breakdown */}
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pt-2">
+                <div className="text-xs text-slate-500 space-y-1 max-w-sm">
+                  <div className="font-bold text-slate-700">Amount in Words:</div>
+                  <div className="italic font-medium text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    {numberToWordsINR(Number(previewData.net_amount || 0))}
+                  </div>
+                  {previewData.remarks && (
+                    <div className="pt-2">
+                      <span className="font-bold text-slate-700">Remarks: </span>
+                      <span className="italic">{previewData.remarks}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full sm:w-80 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxable Subtotal:</span>
+                    <span className="font-mono font-bold">₹ {Number(previewData.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  {/* GST Tax Breakdown */}
+                  {Number(previewData.tax_amount || 0) > 0 && (
+                    <div className="pt-1 pb-1 border-t border-dashed border-slate-200 space-y-1 font-mono text-[11px]">
+                      {previewData.customer_id && getGstType(previewData.customer_id) === 'IGST' ? (
+                        <div className="flex justify-between text-amber-700 font-medium">
+                          <span>IGST (18%)</span>
+                          <span>₹ {Number(previewData.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-emerald-700 font-medium">
+                            <span>CGST (9%)</span>
+                            <span>₹ {(Number(previewData.tax_amount) / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-emerald-700 font-medium">
+                            <span>SGST (9%)</span>
+                            <span>₹ {(Number(previewData.tax_amount) / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {Number(previewData.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Discount (-):</span>
+                      <span className="font-mono font-bold text-rose-600">- ₹ {Number(previewData.discount_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+
+                  {previewData.roundoff_amount !== undefined && previewData.roundoff_amount !== 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Round Off:</span>
+                      <span className="font-mono font-bold">₹ {Number(previewData.roundoff_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="h-px bg-slate-200 my-1" />
+                  <div className="flex justify-between font-black text-slate-900 text-sm">
+                    <span>Net Invoice Value:</span>
+                    <span className="font-mono text-amber-900">₹ {Number(previewData.net_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-4 border-t flex flex-wrap justify-between items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 text-[11px] text-amber-800 font-semibold">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                <span>Draft preview copy for verification only prior to e-Invoice registration.</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowPreviewModal(false)} className="rounded-full px-5 font-bold text-slate-600">
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => downloadSingleTaxInvoice(previewData, activeTenant, '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)', getEffectiveLayoutOptions())}
+                  className="bg-amber-700 hover:bg-amber-800 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Draft PDF
+                </Button>
+                <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-5 font-bold gap-2 text-xs">
+                  <Printer className="w-3.5 h-3.5" /> Print Preview
+                </Button>
+                {previewSource === 'FORM' ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      const formEl = document.getElementById('sales-invoice-form') as HTMLFormElement;
+                      if (formEl) formEl.requestSubmit();
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 font-bold gap-2 text-xs shadow-md"
+                  >
+                    <Save className="w-4 h-4" /> {editingId ? "Update & Save Invoice" : "Confirm & Generate Invoice"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      if (previewData?.id) handleGenerateEInvoice(previewData.id);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 font-bold gap-2 text-xs shadow-md"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Proceed to Generate IRN
+                  </Button>
+                )}
               </div>
             </CardFooter>
           </Card>
