@@ -5,11 +5,15 @@ import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, CalendarDays, LineChart, Loader2 } from 'lucide-react';
+import { Download, CalendarDays, LineChart, Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { exportToExcel } from '@/utils/export';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function AttendanceReportPage() {
+  const { hasPermission, loading: permissionLoading } = usePermission();
+  const canView = hasPermission('hr_attendance_summary_view', 'view');
+
   const pathname = usePathname();
   const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
   const activeTenant = activeEntity.toUpperCase();
@@ -120,6 +124,18 @@ export default function AttendanceReportPage() {
     });
     success('Report downloaded.');
   };
+
+  if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+
+  if (!canView) return (
+    <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+      <div className="p-6 rounded-full bg-primary/5 text-primary">
+        <Lock className="w-12 h-12" />
+      </div>
+      <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+      <p className="text-muted-foreground font-medium">You do not have permission to view Attendance Summary.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

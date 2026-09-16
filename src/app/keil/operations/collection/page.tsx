@@ -155,7 +155,6 @@ export default function DailyCollectionEntryPage() {
                     initialEntries[a.hce_id] = {
                         hce_id: a.hce_id,
                         is_visited: false,
-                        collection_amount: '',
                         note: '',
                         remark: '',
                         visit_status: 'Not Visited'
@@ -190,11 +189,6 @@ export default function DailyCollectionEntryPage() {
 
     const calculateTotals = () => {
         const visitedList = Object.values(entries).filter(e => e.is_visited);
-        
-        let totalAmount = 0;
-        visitedList.forEach(e => {
-            totalAmount += (parseFloat(e.collection_amount) || 0);
-        });
 
         const total_assigned = assignedHces.length;
         const total_visited = visitedList.length;
@@ -220,8 +214,7 @@ export default function DailyCollectionEntryPage() {
             visited_bedded,
             visited_others,
             missed_bedded,
-            missed_others,
-            totalAmount
+            missed_others
         };
     };
 
@@ -297,7 +290,7 @@ export default function DailyCollectionEntryPage() {
         }
 
         const routeData = routes.find(r => r.id === selectedRouteId);
-        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Collection Amount', 'Remark'];
+        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Remark'];
         
         const rows = assignedHces.map(a => {
             const entry = entries[a.hce_id] || {};
@@ -307,7 +300,6 @@ export default function DailyCollectionEntryPage() {
                 a.keil_hces?.hce_place || 'N/A',
                 entry.is_visited ? 'YES' : 'NO',
                 entry.visit_status || 'Not Visited',
-                entry.collection_amount || 0,
                 entry.remark || '-'
             ];
         });
@@ -508,16 +500,6 @@ export default function DailyCollectionEntryPage() {
             {/* HCE Entries Table */}
             {selectedRouteId ? (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-primary/5 border border-primary/10 p-5 rounded-2xl flex items-center justify-between shadow-sm">
-                            <div>
-                                <span className="text-[10px] font-black uppercase text-primary/60 tracking-wider">Gross Collection Amount</span>
-                                <h3 className="text-2xl font-black text-primary mt-1">₹ {totals.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
-                            </div>
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg">₹</div>
-                        </div>
-                    </div>
-
                     <Card className="border-primary/10 shadow-sm overflow-hidden bg-white rounded-xl">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left border-collapse">
@@ -526,7 +508,6 @@ export default function DailyCollectionEntryPage() {
                                         <th className="px-6 py-4 text-center">Visit</th>
                                         <th className="px-6 py-4">Managed Facility Detail</th>
                                         <th className="px-6 py-4">Visit Status</th>
-                                        <th className="px-6 py-4">Collection Amount</th>
                                         <th className="px-6 py-4">Remark</th>
                                     </tr>
                                 </thead>
@@ -581,18 +562,6 @@ export default function DailyCollectionEntryPage() {
                                                             <SelectItem value="Visited – Road Block">Visited – Road Block</SelectItem>
                                                         </SelectContent>
                                                     </Select>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Input 
-                                                        type="number" 
-                                                        min={0} 
-                                                        step="0.01" 
-                                                        disabled={!isVisited} 
-                                                        placeholder="Amount (₹)" 
-                                                        className="w-full h-8 text-xs font-bold bg-background border-primary/20 rounded-md focus:ring-1 ring-primary" 
-                                                        value={entries[a.hce_id]?.collection_amount ?? ''} 
-                                                        onChange={e => updateEntry(a.hce_id, 'collection_amount', e.target.value === '' ? '' : parseFloat(e.target.value))} 
-                                                    />
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <textarea 
