@@ -24,7 +24,7 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Employee Management", path: "/maxtron/hr-payroll/employee", permissionKey: "hr_employee_view" },
             { title: "Company Information", path: "/maxtron/hr-payroll/company", permissionKey: "hr_company_view" },
             { title: "Attendance Details", path: "/maxtron/hr-payroll/attendance", permissionKey: "hr_attendance_view" },
-            { title: "Attendance Summary", path: "/maxtron/hr-payroll/reports/attendance", permissionKey: "hr_attendance_view" },
+            { title: "Attendance Summary", path: "/maxtron/hr-payroll/reports/attendance", permissionKey: "hr_attendance_summary_view" },
         ]
     },
     {
@@ -46,6 +46,7 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Raw Material Order", path: "/maxtron/inventory/order", permissionKey: "inv_order_view" },
             { title: "Purchase Entry", path: "/maxtron/inventory/purchase", permissionKey: "inv_purchase_view" },
             { title: "Purchase Returns", path: "/maxtron/inventory/returns", permissionKey: "inv_purchase_view" },
+            { title: "Trading Goods Inward", path: "/maxtron/inventory/trading-goods", permissionKey: "inv_trading_view" },
             { title: "Material Consumption", path: "/maxtron/inventory/consumption", permissionKey: "inv_consumption_view" },
             { title: "Stock List", path: "/maxtron/inventory/reports/stock", permissionKey: "inv_rm_view" },
             { title: "Purchase Report", path: "/maxtron/inventory/reports/purchase", permissionKey: "inv_purchase_view" },

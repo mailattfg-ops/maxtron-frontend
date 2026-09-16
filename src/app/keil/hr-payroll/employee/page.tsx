@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, Save, Upload, Search, Edit, Trash2, Plus, X, Briefcase, FileText, ChevronRight, ChevronLeft, CheckCircle2, 
     DollarSign,
-    Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2, CreditCard
+    Copy, AlertCircle, Users, TrendingUp, FileDown, Download, Eye, EyeOff, Lock, Loader2, CreditCard,
+    Globe, ChevronDown, MapPin, Check
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -125,6 +126,8 @@ export default function EmployeeInformationPage() {
     category_id: '',
     basic_salary: 0,
     branch_id: '',
+    branch_ids: [] as string[],
+    is_all_branches: false,
     bank_account_no: '',
     bank_ifsc: '',
     bank_branch: '',
@@ -141,6 +144,56 @@ export default function EmployeeInformationPage() {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(event.target as Node)) {
+        setBranchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleAllBranches = () => {
+    if (formData.is_all_branches) {
+      setFormData(prev => ({
+        ...prev,
+        is_all_branches: false,
+        branch_ids: [],
+        branch_id: ''
+      }));
+    } else {
+      const allIds = branches.map(b => b.id);
+      setFormData(prev => ({
+        ...prev,
+        is_all_branches: true,
+        branch_ids: allIds,
+        branch_id: allIds[0] || ''
+      }));
+    }
+  };
+
+  const toggleBranchSelection = (branchId: string) => {
+    setFormData(prev => {
+      const current = prev.branch_ids || [];
+      let updated: string[];
+      if (current.includes(branchId)) {
+        updated = current.filter(id => id !== branchId);
+      } else {
+        updated = [...current, branchId];
+      }
+      const isAll = branches.length > 0 && updated.length === branches.length;
+      return {
+        ...prev,
+        branch_ids: updated,
+        is_all_branches: isAll,
+        branch_id: updated[0] || ''
+      };
+    });
+  };
 
   const fetchCategories = async (coId?: string) => {
     try {
@@ -597,7 +650,9 @@ export default function EmployeeInformationPage() {
 
       const sanitizedData: any = {
         ...formData,
-        branch_id: formData.branch_id || null,
+        branch_id: formData.branch_id || (formData.branch_ids?.[0] || null),
+        branch_ids: formData.branch_ids || [],
+        is_all_branches: !!formData.is_all_branches,
         type: formData.type || null,
         company_id: formData.company_id || null,
         category_id: formData.category_id || null,
@@ -648,6 +703,8 @@ export default function EmployeeInformationPage() {
           company_id: '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '',
           category_id: '', basic_salary: 0,
           branch_id: '',
+          branch_ids: [],
+          is_all_branches: false,
           bank_account_no: '', bank_ifsc: '', bank_branch: '', bank_account_type: '', bank_name: '',
           employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: []
         });
@@ -709,7 +766,11 @@ export default function EmployeeInformationPage() {
       employee_insurances: insurances,
       employee_passports: emp.employee_passports || [],
       employee_loans: emp.employee_loans || [],
-      branch_id: emp.branch_id || ''
+      branch_id: emp.branch_id || '',
+      branch_ids: Array.isArray(emp.branch_ids) && emp.branch_ids.length > 0
+        ? emp.branch_ids 
+        : (emp.branch_id ? [emp.branch_id] : []),
+      is_all_branches: !!emp.is_all_branches
     });
     setIsViewMode(false);
     setActiveTab('personal');
@@ -887,7 +948,8 @@ export default function EmployeeInformationPage() {
                         { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                         { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
                       ],
-                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', category_id: '', basic_salary: 0, branch_id: '', 
+                      company_id: defaultCompany ? defaultCompany.id : '', has_license: false, has_passport: false, has_insurance: false, phone: '', aadhaar: '', type: '', category_id: '', basic_salary: 0, 
+                      branch_id: '', branch_ids: [], is_all_branches: false,
                       bank_account_no: '', bank_ifsc: '', bank_branch: '', bank_account_type: '', bank_name: '',
                       employee_qualifications: [], employee_experiences: [], employee_certificates: [], employee_licenses: [], employee_insurances: [], employee_passports: [], employee_loans: [] 
                     });
@@ -1276,32 +1338,193 @@ export default function EmployeeInformationPage() {
                 )}
                 
                 <div className="space-y-4 pt-6 border-t border-slate-100">
-                  <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-2" /> Branch & Location Assignment
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Assigned Branch (Operational)</label>
-                    <Select 
-                      value={formData.branch_id} 
-                      onValueChange={(val) => updateFormData('branch_id', val)}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center">
+                      <TrendingUp className="w-4 h-4 mr-2" /> Branch & Location Assignment
+                    </h3>
+                    {formData.is_all_branches ? (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200 flex items-center">
+                        <Globe className="w-3 h-3 mr-1" /> All Branches
+                      </span>
+                    ) : (formData.branch_ids?.length || 0) > 0 ? (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        {formData.branch_ids.length} Branch{formData.branch_ids.length > 1 ? 'es' : ''} Selected
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        None Assigned
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 relative" ref={branchDropdownRef}>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Assigned Branch (Operational)
+                    </label>
+
+                    {/* Multiselect Trigger Button */}
+                    <button
+                      type="button"
                       disabled={isViewMode}
+                      onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+                      className={`w-full min-h-[44px] px-3 py-2 border border-slate-200 bg-white rounded-md shadow-sm text-left flex items-center justify-between transition-colors ${
+                        isViewMode ? 'opacity-70 cursor-not-allowed bg-slate-50' : 'hover:border-blue-300 focus:ring-2 focus:ring-blue-100'
+                      }`}
                     >
-                      <SelectTrigger className="w-full h-10 md:h-11 border-slate-200 bg-white shadow-sm font-bold text-slate-700">
-                        <SelectValue placeholder={branches.length === 0 ? "No Branches Found (Setup Registry)" : "Select Operational Branch"} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border-slate-200">
-                        {branches.length > 0 ? (
-                           branches.map((b) => (
-                             <SelectItem key={b.id} value={b.id}>{b.branch_name} ({b.branch_code})</SelectItem>
-                           ))
+                      <div className="flex flex-wrap gap-1.5 items-center flex-1 pr-2">
+                        {formData.is_all_branches ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <Globe className="w-3.5 h-3.5" />
+                            All Branches (Global Access)
+                          </span>
+                        ) : (formData.branch_ids?.length || 0) > 0 ? (
+                          branches
+                            .filter(b => formData.branch_ids.includes(b.id))
+                            .map(b => (
+                              <span
+                                key={b.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200"
+                              >
+                                <MapPin className="w-3 h-3 text-slate-500" />
+                                {b.branch_name} ({b.branch_code})
+                                {!isViewMode && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleBranchSelection(b.id);
+                                    }}
+                                    className="ml-1 hover:text-rose-600 cursor-pointer"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </span>
+                                )}
+                              </span>
+                            ))
                         ) : (
-                           <div className="p-4 text-center space-y-2">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase">Registry Empty</p>
-                              <p className="text-[9px] text-muted-foreground italic">Please register branches in <br/> Operations &gt; Branch Registry first.</p>
-                           </div>
+                          <span className="text-xs font-medium text-slate-400">
+                            {branches.length === 0 ? "No Branches Found (Setup Registry)" : "Select Operational Branch(es)..."}
+                          </span>
                         )}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${branchDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Multiselect Dropdown Popover */}
+                    {branchDropdownOpen && !isViewMode && (
+                      <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-1">
+                        {branches.length === 0 ? (
+                          <div className="p-4 text-center space-y-1">
+                            <p className="text-xs font-bold text-muted-foreground uppercase">Registry Empty</p>
+                            <p className="text-[10px] text-muted-foreground">Please register branches in Operations &gt; Branch Registry first.</p>
+                          </div>
+                        ) : (
+                          <>
+                            {/* All Branches Option */}
+                            <div
+                              onClick={toggleAllBranches}
+                              className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors border ${
+                                formData.is_all_branches
+                                  ? 'bg-blue-50/80 border-blue-200 text-blue-900 font-bold'
+                                  : 'hover:bg-slate-50 border-transparent text-slate-700 font-semibold'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2.5">
+                                <Checkbox
+                                  id="all-branches-option"
+                                  checked={formData.is_all_branches}
+                                  onCheckedChange={toggleAllBranches}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div>
+                                  <div className="text-xs font-bold flex items-center">
+                                    <Globe className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                                    All Branches
+                                  </div>
+                                  <div className="text-[10px] font-medium text-slate-500">
+                                    Grants complete access across all operational branches
+                                  </div>
+                                </div>
+                              </div>
+                              {formData.is_all_branches && (
+                                <span className="text-[10px] uppercase font-black tracking-wider text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded">
+                                  Global
+                                </span>
+                              )}
+                            </div>
+
+                            <hr className="my-1.5 border-slate-100" />
+
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400 px-2.5 py-1">
+                              Individual Regional Branches
+                            </div>
+
+                            {/* Individual Branches */}
+                            <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                              {branches.map((b) => {
+                                const isSelected = formData.branch_ids?.includes(b.id);
+                                return (
+                                  <div
+                                    key={b.id}
+                                    onClick={() => toggleBranchSelection(b.id)}
+                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                                      isSelected
+                                        ? 'bg-slate-100 text-slate-900 font-bold'
+                                        : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center space-x-2.5">
+                                      <Checkbox
+                                        id={`branch-${b.id}`}
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleBranchSelection(b.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      <label
+                                        htmlFor={`branch-${b.id}`}
+                                        className="text-xs cursor-pointer select-none"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {b.branch_name}
+                                        {b.district ? <span className="text-[10px] font-normal text-slate-400 ml-1.5">({b.district})</span> : null}
+                                      </label>
+                                    </div>
+                                    <span className="text-[10px] font-black tracking-wider px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 shadow-2xs">
+                                      {b.branch_code}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Bottom Actions */}
+                            <div className="pt-2 mt-1 border-t border-slate-100 flex items-center justify-between px-1">
+                              <div className="text-[10px] text-slate-500 font-medium">
+                                {formData.is_all_branches
+                                  ? 'All branches enabled'
+                                  : `${formData.branch_ids?.length || 0} of ${branches.length} selected`}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setBranchDropdownOpen(false)}
+                                className="h-7 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md px-3"
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-slate-500 font-medium ml-1">
+                      {formData.is_all_branches
+                        ? 'Employee will have visibility and operations access to all branches.'
+                        : (formData.branch_ids?.length || 0) > 0
+                        ? `Employee can only see and manage records for the ${formData.branch_ids.length} selected branch(es).`
+                        : 'Please assign at least one branch for operational access in KEIL.'}
+                    </p>
                   </div>
                 </div>
             </CardContent>
@@ -2089,6 +2312,15 @@ export default function EmployeeInformationPage() {
                         }`}>
                           {emp.user_types?.name || 'User'}
                         </span>
+                        {emp.is_all_branches ? (
+                          <span className="ml-1.5 px-2 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center">
+                            <Globe className="w-2.5 h-2.5 mr-1" /> All Branches
+                          </span>
+                        ) : emp.branch_ids && emp.branch_ids.length > 0 ? (
+                          <span className="ml-1.5 px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {emp.branch_ids.length} {emp.branch_ids.length === 1 ? 'Branch' : 'Branches'}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
                       <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>

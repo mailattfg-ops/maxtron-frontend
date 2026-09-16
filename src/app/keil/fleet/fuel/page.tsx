@@ -45,6 +45,11 @@ export default function FuelFillingPage() {
     const { confirm } = useConfirm();
     const { hasPermission, loading: permissionLoading } = usePermission();
 
+    const canView = hasPermission('fleet_fuel_view', 'view');
+    const canCreate = hasPermission('fleet_fuel_view', 'create');
+    const canEdit = hasPermission('fleet_fuel_view', 'edit');
+    const canDelete = hasPermission('fleet_fuel_view', 'delete');
+
     const [fillings, setFillings] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -233,7 +238,7 @@ export default function FuelFillingPage() {
         worksheet.addRow([]);
 
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'LITERS (LTR)', 'RATE', 'TOTAL AMOUNT', 'EFFICIENCY (EQ)', 'DIFFERENCE (DIFF)', 'REMARKS'
+            'DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'LITERS (LTR)', 'RATE', 'TOTAL AMOUNT', 'REMARKS'
         ]);
 
         headerRow.eachCell((cell) => {
@@ -250,8 +255,6 @@ export default function FuelFillingPage() {
                 f.liters,
                 f.rate,
                 f.amount,
-                f.efficiency || '-',
-                f.difference || '-',
                 f.remarks || ''
             ]);
         });
@@ -262,7 +265,7 @@ export default function FuelFillingPage() {
         
         worksheet.addRow([]); // Empty row
         const footerRow = worksheet.addRow([
-            'TOTAL', '', '', totalLiters, '', totalAmount, '', '', ''
+            'TOTAL', '', '', '', totalLiters, '', totalAmount, ''
         ]);
         
         footerRow.eachCell((cell: any) => {
@@ -279,6 +282,16 @@ export default function FuelFillingPage() {
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
+    if (!canView) return (
+        <div className="h-[70vh] flex flex-col items-center justify-center space-y-4">
+            <div className="p-6 rounded-full bg-primary/5 text-primary">
+                <Lock className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-muted-foreground font-medium">You do not have permission to view Fuel Filling Management.</p>
+        </div>
+    );
+
     return (
         <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-primary/10">
@@ -290,13 +303,15 @@ export default function FuelFillingPage() {
                     <p className="text-muted-foreground text-sm font-medium italic">Logistics Telemetry - Fuel Consumption & Efficiency tracking</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button 
-                        onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
-                        className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 font-bold uppercase tracking-wider"
-                    >
-                        {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        {showForm ? 'Cancel' : 'New Fuel Entry'}
-                    </Button>
+                    {canCreate && (
+                        <Button 
+                            onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
+                            className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 font-bold uppercase tracking-wider"
+                        >
+                            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                            {showForm ? 'Cancel' : 'New Fuel Entry'}
+                        </Button>
+                    )}
                     <Button 
                         variant="outline"
                         onClick={handleExport}
@@ -462,29 +477,33 @@ export default function FuelFillingPage() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="w-8 h-8 rounded-full border-primary/10 text-primary hover:bg-primary/5"
-                                                onClick={() => {
-                                                    setEditingId(f.id);
-                                                    setFormData({
-                                                        ...f,
-                                                        log_date: new Date(f.log_date).toISOString().split('T')[0]
-                                                    });
-                                                    setShowForm(true);
-                                                }}
-                                            >
-                                                <Edit className="w-3.5 h-3.5" />
-                                            </Button>
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="w-8 h-8 rounded-full border-rose-100 text-rose-500 hover:bg-rose-50"
-                                                onClick={() => handleDelete(f.id)}
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="icon" 
+                                                    className="w-8 h-8 rounded-full border-primary/10 text-primary hover:bg-primary/5"
+                                                    onClick={() => {
+                                                        setEditingId(f.id);
+                                                        setFormData({
+                                                            ...f,
+                                                            log_date: new Date(f.log_date).toISOString().split('T')[0]
+                                                        });
+                                                        setShowForm(true);
+                                                    }}
+                                                >
+                                                    <Edit className="w-3.5 h-3.5" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="icon" 
+                                                    className="w-8 h-8 rounded-full border-rose-100 text-rose-500 hover:bg-rose-50"
+                                                    onClick={() => handleDelete(f.id)}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

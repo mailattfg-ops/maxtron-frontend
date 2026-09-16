@@ -7,7 +7,7 @@ import { TableView } from '@/components/ui/table-view';
 import { 
   Warehouse, Package, TrendingDown, TrendingUp, 
   ArrowRightLeft, AlertCircle, Download, FileText, CheckCircle2,
-  Pencil, Check, X
+  Pencil, Check, X, ArrowDownToLine
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -89,7 +89,7 @@ export default function FGStockListPage() {
 
   const downloadStockReport = async () => {
     if (stock.length === 0) return;
-    const headers = ['Product Code', 'Product Name', 'Size', 'Color', 'Opening Stock', 'Produced', 'Sold', 'Total Balance', 'Unit'];
+    const headers = ['Product Code', 'Product Name', 'Size', 'Color', 'Opening Stock', 'Produced', 'Trading Inward', 'Sold', 'Total Balance', 'Unit'];
     const rows = stock.map(s => [
       s.product_code || '',
       s.product_name || '',
@@ -97,6 +97,7 @@ export default function FGStockListPage() {
       s.color || '',
       Number(s.opening_stock || 0),
       Number(s.produced || 0),
+      Number(s.trading_inward || 0),
       Number(s.sold || 0),
       Number(s.balance || 0),
       'Kg'
@@ -181,8 +182,8 @@ export default function FGStockListPage() {
 
       <TableView
         title="Live Finished Goods Dashboard"
-        description="Consolidated view of production, sales, and closing stock balance."
-        headers={['Product Specification', 'Net Opening Stock', 'Produced Qty', 'Invoiced Qty', 'Closing Balance', 'Stock Status']}
+        description="Consolidated view of production, trading inward, sales, and closing stock balance."
+        headers={['Product Specification', 'Net Opening Stock', 'Produced Qty', 'Trading Inward', 'Invoiced Qty', 'Closing Balance', 'Stock Status']}
         data={stock}
         loading={loading}
         searchFields={['product_name', 'product_code']}
@@ -249,6 +250,12 @@ export default function FGStockListPage() {
                  <TrendingUp className="w-3.5 h-3.5 mr-1" /> {Number(s.produced).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
                </div>
                <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TOTAL PRODUCTION</div>
+            </td>
+            <td className="px-6 py-4">
+               <div className="flex items-center text-blue-700 font-black">
+                 <ArrowDownToLine className="w-3.5 h-3.5 mr-1 text-blue-600" /> +{Number(s.trading_inward || 0).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
+               </div>
+               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TRADING INWARD</div>
             </td>
             <td className="px-6 py-4 text-rose-500 font-black">
                <div className="flex items-center">
