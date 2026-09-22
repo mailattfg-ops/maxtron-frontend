@@ -49,6 +49,7 @@ export default function PrintingSectionPage() {
 
   const [formData, setFormData] = useState({
     batch_id: '',
+    batch_item_id: '',
     input_qty: 0,
     output_qty: 0,
     wastage_qty: 0,
@@ -60,6 +61,9 @@ export default function PrintingSectionPage() {
     company_id: '',
     printing_number: ''
   });
+  // The roll's printing_available_qty from the server already has this job's
+  // own draw subtracted, so while editing the cap is available + what it drew.
+  const [editingInputQty, setEditingInputQty] = useState(0);
 
   useEffect(() => {
     fetchInitialData();
@@ -92,20 +96,25 @@ export default function PrintingSectionPage() {
       const empData = await empRes.json();
       
       if (batchData.success) {
-        // Filter batches that require printing based on color
-        const printableBatches = batchData.data.filter((b: any) => {
-           const color = (b.finished_products?.color || '').toUpperCase();
-           // Respect manual override from extrusion, otherwise fallback to old behavior
-           return b.requires_printing ?? ['BLUE', 'RED', 'YELLOW'].includes(color);
-        });
-        setBatches(printableBatches);
+        // Printing works on a ROLL (one product of one batch). Keep the rolls
+        // that need printing: the batch's manual flag, else the product colour.
+        const printableRolls = batchData.data
+          .flatMap((b: any) => (b.items || []).map((it: any) => ({ ...it, batch: b })))
+          .filter((r: any) => {
+            const color = (r.finished_products?.color || '').toUpperCase();
+            return r.batch.requires_printing ?? ['BLUE', 'RED', 'YELLOW'].includes(color);
+          });
+        setBatches(printableRolls);
       }
 
       if (empData.success) {
-        setEmployees(empData.data.filter((e: any) => 
-            e.companies?.company_name?.toUpperCase() === activeTenant &&
-            (e.employee_categories?.category_name?.toLowerCase().includes('printing') || e.user_types?.name === 'production')
-        ));
+        // Same rule as Cutting: prefer printing staff, but if none are set up
+        // yet fall back to everyone in this company rather than an empty list.
+        const inTenant = empData.data.filter((e: any) => e.companies?.company_name?.toUpperCase() === activeTenant);
+        const printingStaff = inTenant.filter((e: any) =>
+            e.employee_categories?.category_name?.toLowerCase().includes('printing') || e.user_types?.name === 'production'
+        );
+        setEmployees(printingStaff.length > 0 ? printingStaff : inTenant);
       }
 
       fetchPrintingJobs(coId);
@@ -134,8 +143,10 @@ export default function PrintingSectionPage() {
 
   const handleEdit = (job: any) => {
     setEditingId(job.id);
+    setEditingInputQty(parseFloat(job.input_qty) || 0);
     setFormData({
       batch_id: job.batch_id,
+      batch_item_id: job.batch_item_id || '',
       input_qty: parseFloat(job.input_qty) || 0,
       output_qty: parseFloat(job.output_qty) || 0,
       wastage_qty: parseFloat(job.wastage_qty) || 0,
@@ -167,7 +178,7 @@ export default function PrintingSectionPage() {
       const data = await res.json();
       if (data.success) {
         success('Record deleted successfully');
-        fetchPrintingJobs();
+        fetchInitialData(); // roll balances changed, not just the log
       } else {
         error(data.message);
       }
@@ -177,8 +188,17 @@ export default function PrintingSectionPage() {
   };
 
   const savePrintingJob = async () => {
-    if (!formData.batch_id || !formData.operator_id || formData.output_qty <= 0) {
+    if (!formData.batch_item_id || !formData.operator_id || formData.output_qty <= 0) {
       error('Please fill required fields and ensure output is > 0.');
+      return;
+    }
+
+    if (formData.input_qty <= 0) {
+      error('Input quantity must be greater than 0.');
+      return;
+    }
+    if (formData.input_qty > rollCap + 0.0005) {
+      error(`Only ${rollCap.toFixed(2)} Kg left on this roll.`);
       return;
     }
 
@@ -210,7 +230,7 @@ export default function PrintingSectionPage() {
         setShowForm(false);
         setEditingId(null);
         resetForm();
-        fetchPrintingJobs();
+        fetchInitialData(); // roll balances changed, not just the log
       } else {
         error(data.message);
       }
@@ -236,8 +256,10 @@ export default function PrintingSectionPage() {
       nextJobNo = `PRN-${String(max + 1).padStart(6, '0')}`;
     }
 
+    setEditingInputQty(0);
     setFormData({
       batch_id: '',
+      batch_item_id: '',
       input_qty: 0,
       output_qty: 0,
       wastage_qty: 0,
@@ -251,10 +273,14 @@ export default function PrintingSectionPage() {
     });
   };
 
-  const availableBatches = useMemo(() => {
-    const usedBatchIds = printingJobs.map(j => j.batch_id);
-    return batches.filter(b => !usedBatchIds.includes(b.id) || b.id === formData.batch_id);
-  }, [batches, printingJobs, formData.batch_id]);
+  // A roll stays listed until the server says nothing raw is left on it.
+  const availableRolls = useMemo(
+    () => batches.filter((r: any) => r.id === formData.batch_item_id || (Number(r.printing_available_qty) || 0) > 0),
+    [batches, formData.batch_item_id]
+  );
+
+  const selectedRoll = availableRolls.find((r: any) => r.id === formData.batch_item_id);
+  const rollCap = (Number(selectedRoll?.printing_available_qty) || 0) + (editingId ? editingInputQty : 0);
 
   const filteredJobs = printingJobs.filter(j => 
     j.printing_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -301,25 +327,26 @@ export default function PrintingSectionPage() {
                 <Input value={formData.printing_number || 'AUTO-GENERATED'} disabled className="bg-slate-50 font-mono text-xs h-10" />
               </div>
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Box className="w-4 h-4 text-primary" /> Select Batch (Extrusion)</label>
-                <Select 
-                  value={formData.batch_id} 
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Box className="w-4 h-4 text-primary" /> Select Roll (Batch · Product)</label>
+                <Select
+                  value={formData.batch_item_id}
                   onValueChange={(val) => {
-                    const batch = batches.find(b => b.id === val);
-                    setFormData({ 
-                        ...formData, 
-                        batch_id: val,
-                        input_qty: batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0 
+                    const roll = availableRolls.find((r: any) => r.id === val);
+                    setFormData({
+                        ...formData,
+                        batch_id: roll?.batch?.id || '',
+                        batch_item_id: val,
+                        input_qty: Number(roll?.printing_available_qty) || 0
                     });
                   }}
                 >
                   <SelectTrigger className="w-full h-10 border-input bg-background shadow-sm">
-                    <SelectValue placeholder="Select Print-Required Batch" />
+                    <SelectValue placeholder="Select Print-Required Roll" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
-                    {availableBatches.map(b => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.batch_number} - {b.finished_products?.product_name} ({b.finished_products?.color})
+                    {availableRolls.map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.batch.batch_number} · {r.finished_products?.product_name} ({r.finished_products?.color}) — {(Number(r.printing_available_qty) || 0).toFixed(1)} of {r.output_qty} Kg left
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -334,7 +361,19 @@ export default function PrintingSectionPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Input Qty (Kg)</label>
-                <Input value={formData.input_qty} readOnly className="h-10 bg-slate-50 font-bold" />
+                <Input
+                  type="number"
+                  value={formData.input_qty || ''}
+                  max={rollCap}
+                  onChange={e => setFormData({ ...formData, input_qty: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                  className="h-10 font-bold"
+                />
+                {formData.batch_item_id && (
+                  <p className={`text-[11px] font-medium ${formData.input_qty > rollCap ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                    {rollCap.toFixed(2)} Kg available on this roll
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Printer className="w-4 h-4 text-primary" /> Output Qty (Kg)</label>
@@ -392,24 +431,27 @@ export default function PrintingSectionPage() {
           loading={loading}
           searchFields={['printing_number', 'production_batches.batch_number']}
           searchPlaceholder="Search print jobs..."
-          renderRow={(job: any) => (
+          renderRow={(job: any) => {
+            // The roll's product; batch-level product is only the batch's first product (old rows).
+            const prod = job.batch_item?.finished_products || job.production_batches?.finished_products;
+            return (
             <tr key={job.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">
               <td className="px-6 py-4 text-xs font-medium">{new Date(job.date).toLocaleDateString()}</td>
               <td className="px-6 py-4 font-mono font-bold text-primary text-xs min-w-[180px] whitespace-nowrap">{job.printing_number || 'P-001'}</td>
               <td className="px-6 py-4 font-mono text-xs">{job.production_batches?.batch_number}</td>
               <td className="px-6 py-4">
                   <div className="flex flex-col">
-                      <span className="font-bold text-slate-800">{job.production_batches?.finished_products?.product_name}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase">{job.production_batches?.finished_products?.product_code}</span>
+                      <span className="font-bold text-slate-800">{prod?.product_name}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{prod?.product_code}</span>
                   </div>
               </td>
               <td className="px-6 py-4">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      job.production_batches?.finished_products?.color?.toUpperCase() === 'BLUE' ? 'bg-blue-100 text-blue-700' :
-                      job.production_batches?.finished_products?.color?.toUpperCase() === 'RED' ? 'bg-red-100 text-red-700' :
+                      prod?.color?.toUpperCase() === 'BLUE' ? 'bg-blue-100 text-blue-700' :
+                      prod?.color?.toUpperCase() === 'RED' ? 'bg-red-100 text-red-700' :
                       'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {job.production_batches?.finished_products?.color}
+                    {prod?.color}
                   </span>
               </td>
               <td className="px-6 py-4 text-xs">{job.input_qty} Kg</td>
@@ -423,7 +465,8 @@ export default function PrintingSectionPage() {
                 </div>
               </td>
             </tr>
-          )}
+            );
+          }}
         />
       )}
     </div>
