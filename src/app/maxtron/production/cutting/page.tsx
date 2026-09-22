@@ -54,6 +54,7 @@ export default function CuttingSealingPage() {
 
   const [formData, setFormData] = useState({
     batch_id: '',
+    batch_item_id: '',
     input_qty: 0,
     operator_id: '',
     shift: 'General',
@@ -62,6 +63,9 @@ export default function CuttingSealingPage() {
     company_id: '',
     items: [{ product_id: '', quantity: 0, bags_per_kg: 0, micron_size: '' }] as { product_id: string; quantity: number; bags_per_kg: number; micron_size: string }[]
   });
+  // The roll's available_qty from the server already has this entry's own
+  // draw subtracted, so while editing the cap is available + what it drew.
+  const [editingInputQty, setEditingInputQty] = useState(0);
 
   useEffect(() => {
     fetchInitialData();
@@ -135,8 +139,10 @@ export default function CuttingSealingPage() {
 
   const handleEdit = (c: any) => {
     setEditingId(c.id);
+    setEditingInputQty(parseFloat(c.input_qty) || 0);
     setFormData({
       batch_id: c.batch_id,
+      batch_item_id: c.batch_item_id || '',
       input_qty: parseFloat(c.input_qty) || 0,
       operator_id: c.operator_id,
       shift: c.shift || 'General',
@@ -170,7 +176,7 @@ export default function CuttingSealingPage() {
       const data = await res.json();
       if (data.success) {
         success('Entry deleted successfully');
-        fetchConversions();
+        fetchInitialData(); // roll balances changed, not just the log
       } else {
         error(data.message);
       }
@@ -211,17 +217,25 @@ export default function CuttingSealingPage() {
   };
 
   const saveConversion = async () => {
-    if (!formData.batch_id || !formData.operator_id) {
-      error('Please select batch and operator.');
+    if (!formData.batch_item_id || !formData.operator_id) {
+      error('Please select a roll and operator.');
       return;
     }
     if (formData.items.length === 0) {
       error('Please add at least one finished product entry.');
       return;
     }
+    if (formData.input_qty <= 0) {
+      error('Input quantity must be greater than 0.');
+      return;
+    }
+    if (formData.input_qty > rollCap + 0.0005) {
+      error(`Only ${rollCap.toFixed(2)} Kg left on this roll.`);
+      return;
+    }
 
     const totalOutput = formData.items.reduce((sum, it) => sum + it.quantity, 0);
-    
+
     if (totalOutput > formData.input_qty) {
         error(`Total output (${totalOutput.toFixed(2)} Kg) exceeds input quantity (${formData.input_qty.toFixed(2)} Kg).`);
         return;
@@ -252,7 +266,7 @@ export default function CuttingSealingPage() {
         setShowForm(false);
         setEditingId(null);
         resetForm();
-        fetchConversions();
+        fetchInitialData(); // roll balances changed, not just the log
       } else {
         error(data.message);
       }
@@ -264,8 +278,10 @@ export default function CuttingSealingPage() {
   };
 
   const resetForm = () => {
+    setEditingInputQty(0);
     setFormData({
       batch_id: '',
+      batch_item_id: '',
       input_qty: 0,
       operator_id: '',
       shift: 'General',
@@ -276,36 +292,38 @@ export default function CuttingSealingPage() {
     });
   };
 
-  const filteredConversions = conversions.filter(c => 
+  const filteredConversions = conversions.filter(c =>
     c.conversion_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.production_batches?.batch_number?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const availableBatches = useMemo(() => {
-    // Collect all batch_ids already used in conversions
-    const usedBatchIds = conversions.map(c => c.batch_id);
-    const printedBatchIds = printingJobs.map(j => j.batch_id);
-    
-    const printingRequiredColors = ['BLUE', 'RED', 'YELLOW'];
+  /* Cutting draws from a ROLL (one product of one batch), not a batch: one
+   * extrusion run can produce Green 424 Kg and Transparent 776 Kg, and the
+   * floor cuts part of a roll per shift. So the list is every roll with
+   * balance left, and a roll stays listed until the server says it is empty. */
+  const availableRolls = useMemo(() => {
+    const printedItemIds = new Set(printingJobs.map(j => j.batch_item_id));
 
-    // Filter batches: unused AND (no printing required OR already printed)
-    return batches.filter(b => {
-        // Essential check: already used in cutting?
-        if (usedBatchIds.includes(b.id) && b.id !== formData.batch_id) return false;
+    return batches
+      .flatMap(b => (b.items || []).map((it: any) => ({ ...it, batch: b })))
+      .filter((r: any) => {
+        if (r.id === formData.batch_item_id) return true; // the one being edited
+        if ((Number(r.available_qty) || 0) <= 0) return false;
 
-        const color = (b.finished_products?.color || '').toUpperCase();
-        // Use the new requires_printing field, with a fallback to the old color-based logic for historical data
-        const requiresPrinting = b.requires_printing ?? ['BLUE', 'RED', 'YELLOW'].includes(color);
-        
-        if (requiresPrinting) {
-            // Must have a printing record
-            return printedBatchIds.includes(b.id) || b.id === formData.batch_id;
-        }
+        const color = (r.finished_products?.color || '').toUpperCase();
+        // requires_printing is a batch-level flag that extrusion switches ON when
+        // ANY product in the batch might need printing — so on a mixed batch it
+        // would block the green roll because the transparent one was flagged.
+        // Per roll: wait for printing only if the batch says so AND this roll's
+        // own colour is a printed colour. Unticking the flag on the batch still
+        // lets every roll straight through.
+        const requiresPrinting = (r.batch.requires_printing ?? true) && ['BLUE', 'RED', 'YELLOW'].includes(color);
+        return requiresPrinting ? printedItemIds.has(r.id) : true;
+      });
+  }, [batches, printingJobs, formData.batch_item_id]);
 
-        // Direct from extrusion
-        return true;
-    });
-  }, [batches, conversions, printingJobs, formData.batch_id]);
+  const selectedRoll = availableRolls.find((r: any) => r.id === formData.batch_item_id);
+  const rollCap = (Number(selectedRoll?.available_qty) || 0) + (editingId ? editingInputQty : 0);
 
   const totalOutput = formData.items.reduce((sum, it) => sum + it.quantity, 0);
 
@@ -383,36 +401,35 @@ export default function CuttingSealingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Base Production Batch (Input Source)</label>
-                <Select 
-                  value={formData.batch_id} 
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Activity className="w-4 h-4 text-primary" /> Base Roll (Batch · Product)</label>
+                <Select
+                  value={formData.batch_item_id}
                   onValueChange={(val) => {
-                    const batch = batches.find(b => b.id === val);
-                    const printJob = printingJobs.find(j => j.batch_id === val);
-                    const prodId = batch?.finished_products?.id || batch?.product_id;
-                    const inputQty = printJob ? (parseFloat(printJob.output_qty) || 0) : (batch ? (parseFloat(batch.extrusion_output_qty) || 0) : 0);
-                    
-                    setFormData({ 
-                        ...formData, 
-                        batch_id: val,
-                        input_qty: inputQty,
-                        // Strictly lock item to the finished product from the batch / printing section
-                        items: prodId ? [{ 
-                          product_id: prodId, 
-                          quantity: inputQty, 
-                          bags_per_kg: 0, 
-                          micron_size: '' 
+                    const roll = availableRolls.find((r: any) => r.id === val);
+                    const available = Number(roll?.available_qty) || 0;
+
+                    setFormData({
+                        ...formData,
+                        batch_id: roll?.batch?.id || '',
+                        batch_item_id: val,
+                        input_qty: available,
+                        // Strictly lock item to the roll's product
+                        items: roll?.product_id ? [{
+                          product_id: roll.product_id,
+                          quantity: available,
+                          bags_per_kg: 0,
+                          micron_size: ''
                         }] : []
                     });
                   }}
                 >
                   <SelectTrigger className="h-10 w-full border-input bg-background shadow-sm font-bold">
-                    <SelectValue placeholder="Select Base Batch" />
+                    <SelectValue placeholder="Select Roll" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-input">
-                    {availableBatches.map(b => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.batch_number} - {b.finished_products?.product_name || 'N/A'} ({b.extrusion_output_qty} Kg)
+                    {availableRolls.map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.batch.batch_number} · {r.finished_products?.product_name || 'N/A'} ({(Number(r.available_qty) || 0).toFixed(1)} of {r.output_qty} Kg left)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -424,13 +441,12 @@ export default function CuttingSealingPage() {
                   <Package className="w-4 h-4 text-primary" /> Finished Product (From Source)
                 </label>
                 {(() => {
-                  const currentBatch = batches.find(b => b.id === formData.batch_id);
-                  const prod = currentBatch?.finished_products;
+                  const prod = selectedRoll?.finished_products;
                   return (
-                    <Input 
-                      value={prod?.product_name ? `${prod.product_name} (${prod.product_code || 'PROD'})` : (formData.batch_id ? 'Loading...' : 'Select Base Batch First')} 
-                      readOnly 
-                      className="bg-slate-50 font-bold h-10 cursor-not-allowed text-primary" 
+                    <Input
+                      value={prod?.product_name ? `${prod.product_name} (${prod.product_code || 'PROD'})` : (formData.batch_item_id ? 'Loading...' : 'Select Roll First')}
+                      readOnly
+                      className="bg-slate-50 font-bold h-10 cursor-not-allowed text-primary"
                     />
                   );
                 })()}
@@ -438,7 +454,23 @@ export default function CuttingSealingPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> Input Qty (Kg)</label>
-                <Input type="number" readOnly value={formData.input_qty} className="bg-slate-50 font-bold h-10" />
+                <Input
+                  type="number"
+                  value={formData.input_qty || ''}
+                  max={rollCap}
+                  onChange={e => {
+                    const v = parseFloat(e.target.value) || 0;
+                    // Output follows input until the operator adjusts it for wastage
+                    setFormData({ ...formData, input_qty: v, items: formData.items.map((it, i) => i === 0 ? { ...it, quantity: v } : it) });
+                  }}
+                  placeholder="0.00"
+                  className="font-bold h-10"
+                />
+                {formData.batch_item_id && (
+                  <p className={`text-[11px] font-medium ${formData.input_qty > rollCap ? 'text-rose-600' : 'text-muted-foreground'}`}>
+                    {rollCap.toFixed(2)} Kg available on this roll
+                  </p>
+                )}
               </div>
             </div>
 

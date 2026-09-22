@@ -257,7 +257,7 @@ export default function PackingDetailsPage() {
                   <SelectContent className="bg-white border-input">
                     {conversions.map(c => (
                       <SelectItem key={c.id} value={c.id}>
-                        Batch: {c.production_batches?.batch_number} - {c.production_batches?.finished_products?.product_name} ({c.output_qty} Kg)
+                        Batch: {c.production_batches?.batch_number} - {c.batch_item?.finished_products?.product_name || c.production_batches?.finished_products?.product_name} ({c.output_qty} Kg)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -317,7 +317,7 @@ export default function PackingDetailsPage() {
               <tr key={p.id} className="hover:bg-primary/5 border-b last:border-none transition-all">
                 <td className="px-6 py-4 text-xs">{new Date(p.date).toLocaleDateString()}</td>
                 <td className="px-6 py-4 font-mono font-bold text-primary">{batch?.batch_number}</td>
-                <td className="px-6 py-4 font-bold text-primary">{batch?.finished_products?.product_name}</td>
+                <td className="px-6 py-4 font-bold text-primary">{p.production_conversions?.batch_item?.finished_products?.product_name || batch?.finished_products?.product_name}</td>
                 <td className="px-6 py-4 font-black">{p.bundle_count}</td>
                 <td className="px-6 py-4">{p.qty_per_bundle} Kg</td>
                 <td className="px-6 py-4 font-bold text-primary">{p.total_packed_qty} Kg</td>
