@@ -241,21 +241,9 @@ export default function PrintingSectionPage() {
     }
   };
 
-  const resetForm = (latestJobs: any[] = printingJobs) => {
-    let nextJobNo = 'PRN-000001';
-    const validJobs = (latestJobs || [])
-      .filter(j => j.printing_number && /^PRN-\d+$/i.test(j.printing_number))
-      .map(j => {
-        const parts = j.printing_number.split('-');
-        return parts.length > 1 ? parseInt(parts[1], 10) : 0;
-      })
-      .filter(n => !isNaN(n));
-
-    if (validJobs.length > 0) {
-      const max = Math.max(...validJobs);
-      nextJobNo = `PRN-${String(max + 1).padStart(6, '0')}`;
-    }
-
+  // Job number is assigned by the server on save (same as Cutting). Picking it
+  // here from the loaded list gave two tabs the same PRN-000001.
+  const resetForm = () => {
     setEditingInputQty(0);
     setFormData({
       batch_id: '',
@@ -269,7 +257,7 @@ export default function PrintingSectionPage() {
       date: new Date().toISOString().split('T')[0],
       remarks: '',
       company_id: currentCompanyId,
-      printing_number: nextJobNo
+      printing_number: ''
     });
   };
 
