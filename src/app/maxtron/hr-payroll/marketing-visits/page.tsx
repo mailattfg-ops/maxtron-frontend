@@ -43,9 +43,13 @@ const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/emplo
 
 export default function MarketingVisitsPage() {
   const { hasPermission } = usePermission();
-  const canCreate = hasPermission('hr_marketing_view', 'create');
-  const canEdit = hasPermission('hr_marketing_view', 'edit');
-  const canDelete = hasPermission('hr_marketing_view', 'delete');
+  // marketing_view is the key the sidebar gates this page on, and the one the
+  // marketing roles are actually granted. These three used to read the legacy
+  // hr_marketing_view (from when the page lived under HR), which no marketing
+  // role has — so the page opened but every action button was hidden.
+  const canCreate = hasPermission('marketing_view', 'create');
+  const canEdit = hasPermission('marketing_view', 'edit');
+  const canDelete = hasPermission('marketing_view', 'delete');
   const [showForm, setShowForm] = useState(false);
   const [visitRecords, setVisitRecords] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
