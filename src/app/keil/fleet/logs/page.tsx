@@ -89,6 +89,7 @@ export default function VehicleDailyLogPage() {
         company_id: '',
         schedule_time: '',
         start_time: '',
+        end_time: '',
         is_running: true,
         driver_name: '',
         supervisor_id: ''
@@ -239,6 +240,7 @@ export default function VehicleDailyLogPage() {
             complaint_type: formData.complaint_type || null,
             schedule_time: formData.schedule_time || null,
             start_time: formData.start_time || null,
+            end_time: formData.end_time || null,
             is_running: formData.is_running,
             driver_name: formData.driver_name || null,
             supervisor_id: formData.supervisor_id || null
@@ -288,7 +290,7 @@ export default function VehicleDailyLogPage() {
 
         // Headers
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
+            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'ENDING TIME', 'RUNNING STATUS',
             'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
             'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
         ]);
@@ -315,6 +317,7 @@ export default function VehicleDailyLogPage() {
                 l.route?.route_name || 'N/A',
                 l.schedule_time || '-',
                 l.start_time || '-',
+                l.end_time || '-',
                 l.is_running ? 'YES' : 'NO',
                 l.start_km,
                 l.end_km || '-',
@@ -385,6 +388,7 @@ export default function VehicleDailyLogPage() {
             company_id: l.company_id,
             schedule_time: l.schedule_time || '',
             start_time: l.start_time || '',
+            end_time: l.end_time || '',
             is_running: l.is_running ?? true,
             driver_name: l.driver_name || '',
             supervisor_id: l.supervisor_id || ''
@@ -409,6 +413,7 @@ export default function VehicleDailyLogPage() {
             company_id: currentCompanyId,
             schedule_time: '',
             start_time: '',
+            end_time: '',
             is_running: true,
             driver_name: '',
             supervisor_id: ''
@@ -605,6 +610,13 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
                                 <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                    <Clock className="w-3 h-3" /> Ending Time
+                                </label>
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.end_time} onChange={e => setFormData({ ...formData, end_time: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
                                     <Activity className="w-3 h-3" /> Running Status *
                                 </label>
                                 <Select 
@@ -795,6 +807,13 @@ export default function VehicleDailyLogPage() {
                                         <div className="flex flex-col">
                                             <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Starting Time</span>
                                             <span className="text-xs font-bold text-secondary leading-tight">{l.start_time ? l.start_time.slice(0, 5) : '--:--'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-secondary/5 px-3 py-1.5 rounded-lg border border-secondary/10 w-fit">
+                                        <Clock className="w-3.5 h-3.5 text-secondary/60" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Ending Time</span>
+                                            <span className="text-xs font-bold text-secondary leading-tight">{l.end_time ? l.end_time.slice(0, 5) : '--:--'}</span>
                                         </div>
                                     </div>
                                 </div>
