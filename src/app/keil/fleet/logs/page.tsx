@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-    Plus, 
-    Search, 
+import {
+    Plus,
+    Search,
     Edit,
-    Trash2, 
-    Truck, 
+    Trash2,
+    Truck,
     Calendar,
     Fuel,
     Navigation,
@@ -34,12 +34,12 @@ import { TableView } from "@/components/ui/table-view";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { usePermission } from '@/hooks/usePermission';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from "@/components/ui/select";
 
 
@@ -56,7 +56,7 @@ export default function VehicleDailyLogPage() {
     const canCreate = hasPermission('fleet_log_view', 'create');
     const canEdit = hasPermission('fleet_log_view', 'edit');
     const canDelete = hasPermission('fleet_log_view', 'delete');
-    
+
     const [logs, setLogs] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -90,6 +90,7 @@ export default function VehicleDailyLogPage() {
         company_id: '',
         schedule_time: '',
         start_time: '',
+        end_time: '',
         is_running: true,
         driver_name: '',
         spare_driver_name: '',
@@ -114,10 +115,10 @@ export default function VehicleDailyLogPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const compData = await compRes.json();
-            
+
             let coId = '';
             if (compData.success && Array.isArray(compData.data)) {
-                const activeCo = compData.data.find((c: any) => 
+                const activeCo = compData.data.find((c: any) =>
                     c.company_name?.toUpperCase().includes('KEIL')
                 );
                 if (activeCo) {
@@ -198,7 +199,7 @@ export default function VehicleDailyLogPage() {
             error("Target Asset's End Odometer is required.");
             return;
         }
-        
+
         const start = parseFloat(formData.start_km);
         const end = parseFloat(formData.end_km);
         if (end < start) {
@@ -242,6 +243,7 @@ export default function VehicleDailyLogPage() {
             complaint_type: formData.complaint_type || null,
             schedule_time: formData.schedule_time || null,
             start_time: formData.start_time || null,
+            end_time: formData.end_time || null,
             is_running: formData.is_running,
             driver_name: formData.driver_name || null,
             spare_driver_name: formData.spare_driver_name ? formData.spare_driver_name.trim() : null,
@@ -256,9 +258,9 @@ export default function VehicleDailyLogPage() {
         try {
             const res = await fetch(url, {
                 method,
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -292,7 +294,7 @@ export default function VehicleDailyLogPage() {
 
         // Headers
         const headerRow = worksheet.addRow([
-            'DATE', 'SHEET NO', 'VEHICLE', 'VEHICLE CATEGORY', 'DRIVER', 'SPARE DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
+            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
             'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
             'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
         ]);
@@ -312,12 +314,12 @@ export default function VehicleDailyLogPage() {
         // Add Data
         logs.forEach(l => {
             const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
-            const vehicleCategory = l.vehicle?.vehicle_type 
-                || l.vehicle?.vehicle_category 
-                || l.vehicle?.category 
-                || matchedVehicle?.vehicle_type 
-                || matchedVehicle?.vehicle_category 
-                || matchedVehicle?.category 
+            const vehicleCategory = l.vehicle?.vehicle_type
+                || l.vehicle?.vehicle_category
+                || l.vehicle?.category
+                || matchedVehicle?.vehicle_type
+                || matchedVehicle?.vehicle_category
+                || matchedVehicle?.category
                 || '-';
 
             const rowData = [
@@ -331,6 +333,7 @@ export default function VehicleDailyLogPage() {
                 l.route?.route_name || 'N/A',
                 l.schedule_time || '-',
                 l.start_time || '-',
+                l.end_time || '-',
                 l.is_running ? 'YES' : 'NO',
                 l.start_km,
                 l.end_km || '-',
@@ -387,7 +390,6 @@ export default function VehicleDailyLogPage() {
         setEditingId(l.id);
         setFormData({
             vehicle_id: l.vehicle_id,
-            sheet_number: l.sheet_number || '',
             log_date: new Date(l.log_date).toISOString().split('T')[0],
             start_km: l.start_km.toString(),
             end_km: l.end_km ? l.end_km.toString() : '',
@@ -402,6 +404,7 @@ export default function VehicleDailyLogPage() {
             company_id: l.company_id,
             schedule_time: l.schedule_time || '',
             start_time: l.start_time || '',
+            end_time: l.end_time || '',
             is_running: l.is_running ?? true,
             driver_name: l.driver_name || '',
             spare_driver_name: l.spare_driver_name || '',
@@ -428,6 +431,7 @@ export default function VehicleDailyLogPage() {
             company_id: currentCompanyId,
             schedule_time: '',
             start_time: '',
+            end_time: '',
             is_running: true,
             driver_name: '',
             spare_driver_name: '',
@@ -438,8 +442,8 @@ export default function VehicleDailyLogPage() {
 
     const handleVehicleChange = (vId: string) => {
         const vehicle = vehicles.find(v => v.id === vId);
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             vehicle_id: vId,
             start_km: vehicle ? vehicle.current_km : ''
         }));
@@ -469,10 +473,10 @@ export default function VehicleDailyLogPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
                     {canCreate && (
-                        <Button 
-                            onClick={() => { 
-                                setShowForm(!showForm); 
-                                if(!showForm) resetForm(); 
+                        <Button
+                            onClick={() => {
+                                setShowForm(!showForm);
+                                if (!showForm) resetForm();
                                 else setEditingId(null);
                             }}
                             className="flex-1 md:flex-none bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-11 font-bold uppercase tracking-wider active:scale-95"
@@ -481,7 +485,7 @@ export default function VehicleDailyLogPage() {
                             {showForm ? 'Cancel Entry' : 'Manual Log Entry'}
                         </Button>
                     )}
-                    <Button 
+                    <Button
                         variant="outline"
                         onClick={handleExport}
                         disabled={logs.length === 0}
@@ -497,8 +501,8 @@ export default function VehicleDailyLogPage() {
                 <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col md:flex-row items-end gap-4 animate-in slide-in-from-top-2 duration-500">
                     <div className="flex-1 w-full space-y-1.5 flex flex-col">
                         <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">Filter by Vehicle</label>
-                        <Select 
-                            value={filters.vehicle_id || 'all'} 
+                        <Select
+                            value={filters.vehicle_id || 'all'}
                             onValueChange={val => setFilters(prev => ({ ...prev, vehicle_id: val }))}
                         >
                             <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -514,24 +518,24 @@ export default function VehicleDailyLogPage() {
                     </div>
                     <div className="flex-1 w-full space-y-1.5">
                         <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">From Date</label>
-                        <Input 
-                            type="date" 
-                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs" 
-                            value={filters.from} 
-                            onChange={e => setFilters(prev => ({ ...prev, from: e.target.value }))} 
+                        <Input
+                            type="date"
+                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs"
+                            value={filters.from}
+                            onChange={e => setFilters(prev => ({ ...prev, from: e.target.value }))}
                         />
                     </div>
                     <div className="flex-1 w-full space-y-1.5">
                         <label className="text-[10px] font-bold text-primary uppercase tracking-widest pl-1">To Date</label>
-                        <Input 
-                            type="date" 
-                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs" 
-                            value={filters.to} 
-                            onChange={e => setFilters(prev => ({ ...prev, to: e.target.value }))} 
+                        <Input
+                            type="date"
+                            className="h-10 rounded-md border-primary/20 bg-background font-bold text-xs"
+                            value={filters.to}
+                            onChange={e => setFilters(prev => ({ ...prev, to: e.target.value }))}
                         />
                     </div>
-                    <Button 
-                        variant="ghost" 
+                    <Button
+                        variant="ghost"
                         onClick={() => setFilters({ vehicle_id: 'all', from: '', to: '' })}
                         className="text-muted-foreground hover:text-primary font-bold text-xs uppercase h-10 px-6 rounded-full border border-dashed border-primary/10"
                     >
@@ -553,8 +557,8 @@ export default function VehicleDailyLogPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Target Vehicle *</label>
-                                <Select 
-                                    value={formData.vehicle_id} 
+                                <Select
+                                    value={formData.vehicle_id}
                                     onValueChange={val => handleVehicleChange(val)}
                                 >
                                     <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -577,19 +581,19 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 flex flex-col justify-end">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Sheet Number</label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter sheet number..." 
-                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" 
-                                    value={formData.sheet_number} 
-                                    onChange={e => setFormData({ ...formData, sheet_number: e.target.value })} 
+                                <Input
+                                    type="text"
+                                    placeholder="Enter sheet number..."
+                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
+                                    value={formData.sheet_number}
+                                    onChange={e => setFormData({ ...formData, sheet_number: e.target.value })}
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route *</label>
-                                <Select 
-                                    value={formData.route_id} 
+                                <Select
+                                    value={formData.route_id}
                                     onValueChange={val => setFormData({ ...formData, route_id: val })}
                                 >
                                     <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -636,10 +640,17 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
                                 <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                    <Clock className="w-3 h-3" /> Ending Time
+                                </label>
+                                <Input type="time" className="h-10 rounded-md border-primary/20 bg-white font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.end_time} onChange={e => setFormData({ ...formData, end_time: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-1.5 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <label className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
                                     <Activity className="w-3 h-3" /> Running Status *
                                 </label>
-                                <Select 
-                                    value={formData.is_running ? 'yes' : 'no'} 
+                                <Select
+                                    value={formData.is_running ? 'yes' : 'no'}
                                     onValueChange={val => setFormData({ ...formData, is_running: val === 'yes' })}
                                 >
                                     <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -654,8 +665,8 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Driver Name</label>
-                                <Select 
-                                    value={formData.driver_name || 'none'} 
+                                <Select
+                                    value={formData.driver_name || 'none'}
                                     onValueChange={val => setFormData({ ...formData, driver_name: val === 'none' ? '' : val })}
                                 >
                                     <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -677,19 +688,19 @@ export default function VehicleDailyLogPage() {
 
                             <div className="space-y-1.5 flex flex-col justify-end">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Spare Driver Name</label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter spare driver name..." 
-                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" 
-                                    value={formData.spare_driver_name} 
-                                    onChange={e => setFormData({ ...formData, spare_driver_name: e.target.value })} 
+                                <Input
+                                    type="text"
+                                    placeholder="Enter spare driver name..."
+                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
+                                    value={formData.spare_driver_name}
+                                    onChange={e => setFormData({ ...formData, spare_driver_name: e.target.value })}
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Supervisor Option</label>
-                                <Select 
-                                    value={formData.supervisor_id || 'none'} 
+                                <Select
+                                    value={formData.supervisor_id || 'none'}
                                     onValueChange={val => setFormData({ ...formData, supervisor_id: val === 'none' ? '' : val })}
                                 >
                                     <SelectTrigger className="w-full h-10 border-primary/20 bg-background text-sm font-medium focus:ring-0 focus:ring-offset-0 focus:border-primary/20">
@@ -720,7 +731,7 @@ export default function VehicleDailyLogPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-bold">{formData.has_complaint ? 'YES' : 'NO'}</span>
-                                        <Checkbox 
+                                        <Checkbox
                                             checked={formData.has_complaint}
                                             onCheckedChange={(checked: boolean) => setFormData({ ...formData, has_complaint: !!checked })}
                                         />
@@ -750,10 +761,10 @@ export default function VehicleDailyLogPage() {
                                 )}
                             </div>
 
-                             <div className="lg:col-span-3 space-y-1.5">
-                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
-                                 <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
-                             </div>
+                            <div className="lg:col-span-3 space-y-1.5">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Execution Remarks</label>
+                                <Input placeholder="Additional field notes..." className="h-10 rounded-md border-primary/20 bg-background text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} />
+                            </div>
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-primary/10 flex justify-end">
@@ -767,14 +778,14 @@ export default function VehicleDailyLogPage() {
                                     <>
                                         <Save className="w-4 h-4 mr-3" />
                                         Synchronize Field Log
-                                      </>
+                                    </>
                                 )}
-                              </Button>
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
             ) : (
-                <TableView 
+                <TableView
                     title="Logitudinal Protocol"
                     description="Daily performance and resource consumption logs for the transport fleet."
                     searchFields={['vehicle.registration_number', 'sheet_number', 'remarks']}
@@ -783,170 +794,177 @@ export default function VehicleDailyLogPage() {
                     loading={loading}
                     renderRow={(l: any) => {
                         const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
-                        const vehicleCategory = l.vehicle?.vehicle_type 
-                            || l.vehicle?.vehicle_category 
-                            || l.vehicle?.category 
-                            || matchedVehicle?.vehicle_type 
-                            || matchedVehicle?.vehicle_category 
+                        const vehicleCategory = l.vehicle?.vehicle_type
+                            || l.vehicle?.vehicle_category
+                            || l.vehicle?.category
+                            || matchedVehicle?.vehicle_type
+                            || matchedVehicle?.vehicle_category
                             || matchedVehicle?.category;
 
                         return (
-                        <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
-                            <td className="px-6 py-6 font-bold">
-                                <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
-                                            <Truck className="w-4 h-4" />
-                                        </div>
-                                        <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number || matchedVehicle?.registration_number || 'N/A'}</span>
-                                        {vehicleCategory && (
-                                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
-                                                {vehicleCategory}
-                                            </span>
-                                        )}
-                                        <div className={`ml-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${l.is_running ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
-                                            {l.is_running ? 'Running' : 'Not Running'}
-                                        </div>
-                                    </div>
-                                    {l.sheet_number && (
-                                        <div className="flex items-center gap-1.5 pl-1">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sheet No:</span>
-                                            <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">{l.sheet_number}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col gap-1 pl-1">
-                                        {l.driver_name && (
-                                            <span className="text-xs font-semibold text-slate-700">
-                                                Driver: <span className="font-bold text-slate-900">{l.driver_name}</span>
-                                            </span>
-                                        )}
-                                        {l.spare_driver_name && (
-                                            <span className="text-xs font-semibold text-amber-700">
-                                                Spare Driver: <span className="font-bold text-amber-900">{l.spare_driver_name}</span>
-                                            </span>
-                                        )}
-                                        {l.supervisor?.name && (
-                                            <span className="text-xs font-semibold text-slate-600">
-                                                Supervisor: <span className="font-bold text-slate-800">{l.supervisor.name}</span>
-                                            </span>
-                                        )}
-                                    </div>
-                                    {l.route?.route_name && (
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">
-                                            <MapPin className="w-3 h-3 text-secondary/60" />
-                                            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                                                {l.route.route_name}
-                                                {l.route.company?.company_name && (
-                                                    <span className="text-secondary/40 border-l border-secondary/10 ml-2 pl-2 font-medium">{l.route.company.company_name}</span>
-                                                )}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-2 pl-1 opacity-70">
-                                        <Calendar className="w-3 h-3 text-muted-foreground" />
-                                        <span className="text-[11px] font-bold text-muted-foreground uppercase">{new Date(l.log_date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td className="px-6 py-6">
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
-                                        <Clock className="w-3.5 h-3.5 text-primary/60" />
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-primary/40 uppercase tracking-widest leading-none">Schedule Time</span>
-                                            <span className="text-xs font-bold text-primary leading-tight">{l.schedule_time ? l.schedule_time.slice(0, 5) : '--:--'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-secondary/5 px-3 py-1.5 rounded-lg border border-secondary/10 w-fit">
-                                        <Clock className="w-3.5 h-3.5 text-secondary/60" />
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Starting Time</span>
-                                            <span className="text-xs font-bold text-secondary leading-tight">{l.start_time ? l.start_time.slice(0, 5) : '--:--'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td className="px-4 py-6 min-w-[180px]">
-                                <div className="flex flex-col gap-2">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">Start KM</span>
-                                            <div className="px-2 py-1.5 bg-primary/5 border border-primary/10 rounded-lg whitespace-nowrap">
-                                                <span className="text-sm font-bold text-primary">{parseFloat(l.start_km).toLocaleString()}</span>
+                            <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
+                                <td className="px-6 py-6 font-bold">
+                                    <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
+                                                <Truck className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number || matchedVehicle?.registration_number || 'N/A'}</span>
+                                            {vehicleCategory && (
+                                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                                                    {vehicleCategory}
+                                                </span>
+                                            )}
+                                            <div className={`ml-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${l.is_running ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
+                                                {l.is_running ? 'Running' : 'Not Running'}
                                             </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">End KM</span>
-                                            <div className="px-2 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg whitespace-nowrap">
-                                                <span className="text-sm font-bold text-secondary">{l.end_km ? parseFloat(l.end_km).toLocaleString() : '--'}</span>
+                                        {l.sheet_number && (
+                                            <div className="flex items-center gap-1.5 pl-1">
+                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sheet No:</span>
+                                                <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">{l.sheet_number}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col gap-1 pl-1">
+                                            {l.driver_name && (
+                                                <span className="text-xs font-semibold text-slate-700">
+                                                    Driver: <span className="font-bold text-slate-900">{l.driver_name}</span>
+                                                </span>
+                                            )}
+                                            {l.spare_driver_name && (
+                                                <span className="text-xs font-semibold text-amber-700">
+                                                    Spare Driver: <span className="font-bold text-amber-900">{l.spare_driver_name}</span>
+                                                </span>
+                                            )}
+                                            {l.supervisor?.name && (
+                                                <span className="text-xs font-semibold text-slate-600">
+                                                    Supervisor: <span className="font-bold text-slate-800">{l.supervisor.name}</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                        {l.route?.route_name && (
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-secondary/5 rounded-lg w-fit border border-secondary/10">
+                                                <MapPin className="w-3 h-3 text-secondary/60" />
+                                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                                                    {l.route.route_name}
+                                                    {l.route.company?.company_name && (
+                                                        <span className="text-secondary/40 border-l border-secondary/10 ml-2 pl-2 font-medium">{l.route.company.company_name}</span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2 pl-1 opacity-70">
+                                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                                            <span className="text-[11px] font-bold text-muted-foreground uppercase">{new Date(l.log_date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-6">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                            <Clock className="w-3.5 h-3.5 text-primary/60" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-primary/40 uppercase tracking-widest leading-none">Schedule Time</span>
+                                                <span className="text-xs font-bold text-primary leading-tight">{l.schedule_time ? l.schedule_time.slice(0, 5) : '--:--'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-secondary/5 px-3 py-1.5 rounded-lg border border-secondary/10 w-fit">
+                                            <Clock className="w-3.5 h-3.5 text-secondary/60" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Starting Time</span>
+                                                <span className="text-xs font-bold text-secondary leading-tight">{l.start_time ? l.start_time.slice(0, 5) : '--:--'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-secondary/5 px-3 py-1.5 rounded-lg border border-secondary/10 w-fit">
+                                            <Clock className="w-3.5 h-3.5 text-secondary/60" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-secondary/40 uppercase tracking-widest leading-none">Ending Time</span>
+                                                <span className="text-xs font-bold text-secondary leading-tight">{l.end_time ? l.end_time.slice(0, 5) : '--:--'}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    {l.end_km && (
-                                        <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit whitespace-nowrap">
-                                            <Navigation className="w-3 h-3 text-muted-foreground shrink-0" />
-                                            <span className="text-[10px] font-bold text-muted-foreground">Travel: <span className="text-foreground">{(l.end_km - l.start_km).toFixed(1)} KM</span></span>
-                                        </div>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="px-6 py-6">
-                                <div className="flex flex-col items-center justify-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/10 w-[80px]">
-                                    <Fuel className="w-4 h-4 text-amber-600 mb-1" />
-                                    <span className="text-lg font-bold text-amber-700 leading-none">{l.fuel_qty}</span>
-                                    <span className="text-[8px] font-black text-amber-600/60 uppercase tracking-tighter mt-1">LITERS</span>
-                                </div>
-                            </td>
-                            <td className="px-6 py-6">
-                                <div className="flex flex-col gap-2">
-                                    {l.has_complaint ? (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-1.5 rounded-xl w-fit border border-secondary/10">
-                                                <AlertCircle className="w-3 h-3" />
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">{l.complaint_type || 'Fault Logged'}</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <div className="flex flex-col p-2 bg-muted/30 rounded-lg border border-primary/5">
-                                                    <span className="text-[8px] font-black text-muted-foreground uppercase opacity-40">Timing</span>
-                                                    <span className="text-[10px] font-bold opacity-70">
-                                                        {l.workshop_in_time ? new Date(l.workshop_in_time).getHours() + ':' + String(new Date(l.workshop_in_time).getMinutes()).padStart(2, '0') : '??'} → {l.workshop_out_time ? new Date(l.workshop_out_time).getHours() + ':' + String(new Date(l.workshop_out_time).getMinutes()).padStart(2, '0') : '??'}
-                                                    </span>
+                                </td>
+                                <td className="px-4 py-6 min-w-[180px]">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">Start KM</span>
+                                                <div className="px-2 py-1.5 bg-primary/5 border border-primary/10 rounded-lg whitespace-nowrap">
+                                                    <span className="text-sm font-bold text-primary">{parseFloat(l.start_km).toLocaleString()}</span>
                                                 </div>
-                                                <div className="flex flex-col p-2 bg-secondary/10 rounded-lg border border-secondary/5">
-                                                    <span className="text-[8px] font-black text-secondary uppercase opacity-70">Bill Amount</span>
-                                                    <span className="text-[10px] font-black text-secondary leading-none mt-0.5">₹{l.bill_amount}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest pl-1">End KM</span>
+                                                <div className="px-2 py-1.5 bg-secondary/5 border border-secondary/10 rounded-lg whitespace-nowrap">
+                                                    <span className="text-sm font-bold text-secondary">{l.end_km ? parseFloat(l.end_km).toLocaleString() : '--'}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-primary/60 px-4 py-1.5 bg-primary/5 border border-primary/5 rounded-xl w-fit">
-                                            <Check className="w-3 h-3" />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">Optimal Condition</span>
-                                        </div>
-                                    )}
-                                    {l.remarks && (
-                                        <div className="flex gap-2 items-start opacity-70 mt-1 pl-1">
-                                            <Save className="w-3 h-3 text-muted-foreground mt-0.5 rotate-180" />
-                                            <p className="text-[10px] font-bold text-muted-foreground italic leading-tight max-w-[200px]">{l.remarks}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="px-6 py-6 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                    {canEdit && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
-                                            <Edit className="w-4 h-4" />
-                                        </Button>
-                                    )}
-                                    {canDelete && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
+                                        {l.end_km && (
+                                            <div className="flex items-center gap-2 bg-foreground/5 px-2 py-1 rounded-md border border-foreground/5 w-fit whitespace-nowrap">
+                                                <Navigation className="w-3 h-3 text-muted-foreground shrink-0" />
+                                                <span className="text-[10px] font-bold text-muted-foreground">Travel: <span className="text-foreground">{(l.end_km - l.start_km).toFixed(1)} KM</span></span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-6">
+                                    <div className="flex flex-col items-center justify-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/10 w-[80px]">
+                                        <Fuel className="w-4 h-4 text-amber-600 mb-1" />
+                                        <span className="text-lg font-bold text-amber-700 leading-none">{l.fuel_qty}</span>
+                                        <span className="text-[8px] font-black text-amber-600/60 uppercase tracking-tighter mt-1">LITERS</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-6">
+                                    <div className="flex flex-col gap-2">
+                                        {l.has_complaint ? (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-1.5 rounded-xl w-fit border border-secondary/10">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest">{l.complaint_type || 'Fault Logged'}</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                                    <div className="flex flex-col p-2 bg-muted/30 rounded-lg border border-primary/5">
+                                                        <span className="text-[8px] font-black text-muted-foreground uppercase opacity-40">Timing</span>
+                                                        <span className="text-[10px] font-bold opacity-70">
+                                                            {l.workshop_in_time ? new Date(l.workshop_in_time).getHours() + ':' + String(new Date(l.workshop_in_time).getMinutes()).padStart(2, '0') : '??'} → {l.workshop_out_time ? new Date(l.workshop_out_time).getHours() + ':' + String(new Date(l.workshop_out_time).getMinutes()).padStart(2, '0') : '??'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col p-2 bg-secondary/10 rounded-lg border border-secondary/5">
+                                                        <span className="text-[8px] font-black text-secondary uppercase opacity-70">Bill Amount</span>
+                                                        <span className="text-[10px] font-black text-secondary leading-none mt-0.5">₹{l.bill_amount}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-primary/60 px-4 py-1.5 bg-primary/5 border border-primary/5 rounded-xl w-fit">
+                                                <Check className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">Optimal Condition</span>
+                                            </div>
+                                        )}
+                                        {l.remarks && (
+                                            <div className="flex gap-2 items-start opacity-70 mt-1 pl-1">
+                                                <Save className="w-3 h-3 text-muted-foreground mt-0.5 rotate-180" />
+                                                <p className="text-[10px] font-bold text-muted-foreground italic leading-tight max-w-[200px]">{l.remarks}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-6 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                        {canEdit && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(l)} className="hover:bg-primary/10 text-primary/40 hover:text-primary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-primary/20">
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="hover:bg-secondary/10 text-secondary/40 hover:text-secondary rounded-xl transition-all h-10 w-10 border border-transparent hover:border-secondary/20">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
                         );
                     }}
                 />

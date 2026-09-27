@@ -422,7 +422,7 @@ export default function Dashboard() {
                         ]).map((batch: any, i: number) => (
                             <div key={i} className="p-6 bg-muted/20 rounded-2xl border border-border/40 hover:border-secondary/30 transition-all hover:bg-card hover:shadow-xl group">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="overflow-hidden text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.finished_products?.product_name || 'N/A'}</div>
+                                    <div className="overflow-hidden text-[10px] font-black text-blue-600 tracking-widest px-2 py-1 bg-secondary/10 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">{batch.items?.length ? batch.items.map((it: any) => it.finished_products?.product_name).filter(Boolean).join(' + ') : (batch.finished_products?.product_name || 'N/A')}</div>
                                 </div>
                                 <h4 className="text-sm font-black text-foreground/90 uppercase tracking-tight mb-1">{batch.batch_number}</h4>
                                 <div className="text-2xl font-black text-foreground leading-none mb-1">{batch.extrusion_output_qty} <span className="text-[10px] text-muted-foreground ml-1 tracking-widest uppercase">KG</span></div>
