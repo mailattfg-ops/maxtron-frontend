@@ -389,7 +389,8 @@ export default function VehicleDailyLogPage() {
     const handleEdit = (l: any) => {
         setEditingId(l.id);
         setFormData({
-            vehicle_id: l.vehicle_id,
+            vehicle_id: l.vehicle_id ?? '',
+            sheet_number: l.sheet_number || '',
             log_date: new Date(l.log_date).toISOString().split('T')[0],
             start_km: l.start_km.toString(),
             end_km: l.end_km ? l.end_km.toString() : '',
