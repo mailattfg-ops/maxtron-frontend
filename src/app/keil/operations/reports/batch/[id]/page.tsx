@@ -123,6 +123,7 @@ export default function BatchDetailsPage() {
   <div class="grid">
     <div class="info-box"><div class="label">Vehicle</div><div class="value">${batch.registration_number || '--'}</div></div>
     <div class="info-box"><div class="label">Driver</div><div class="value">${batch.driver_name || '--'}</div></div>
+    ${batch.spare_driver_name ? `<div class="info-box"><div class="label">Spare Driver</div><div class="value">${batch.spare_driver_name}</div></div>` : ''}
     <div class="info-box"><div class="label">Supervisor</div><div class="value">${batch.supervisor_name || '--'}</div></div>
     <div class="info-box"><div class="label">Session Time</div><div class="value">${formatTime(batch.start_time)} – ${formatTime(batch.end_time)}</div></div>
     <div class="info-box"><div class="label">KM Run</div><div class="value">${batch.km_run || 0} KM</div></div>

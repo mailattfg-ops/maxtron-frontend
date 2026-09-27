@@ -75,6 +75,7 @@ export default function VehicleDailyLogPage() {
 
     const [formData, setFormData] = useState({
         vehicle_id: '',
+        sheet_number: '',
         log_date: new Date().toISOString().split('T')[0],
         start_km: '',
         end_km: '',
@@ -91,6 +92,7 @@ export default function VehicleDailyLogPage() {
         start_time: '',
         is_running: true,
         driver_name: '',
+        spare_driver_name: '',
         supervisor_id: ''
     });
 
@@ -232,6 +234,7 @@ export default function VehicleDailyLogPage() {
 
         const payload = {
             ...formData,
+            sheet_number: formData.sheet_number ? formData.sheet_number.trim() : null,
             fuel_qty: formData.fuel_qty || 0,
             bill_amount: formData.bill_amount || 0,
             workshop_in_time: formData.workshop_in_time || null,
@@ -241,6 +244,7 @@ export default function VehicleDailyLogPage() {
             start_time: formData.start_time || null,
             is_running: formData.is_running,
             driver_name: formData.driver_name || null,
+            spare_driver_name: formData.spare_driver_name ? formData.spare_driver_name.trim() : null,
             supervisor_id: formData.supervisor_id || null
         };
 
@@ -284,11 +288,11 @@ export default function VehicleDailyLogPage() {
         const ExcelJS = (await import('exceljs')).default;
         const saveAs = (await import('file-saver')).saveAs;
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Vehicle Daily Logs');
+        const worksheet = workbook.addWorksheet('Vehicle Tripsheet Logs');
 
         // Headers
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
+            'DATE', 'SHEET NO', 'VEHICLE', 'VEHICLE CATEGORY', 'DRIVER', 'SPARE DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
             'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
             'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
         ]);
@@ -307,10 +311,22 @@ export default function VehicleDailyLogPage() {
 
         // Add Data
         logs.forEach(l => {
+            const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
+            const vehicleCategory = l.vehicle?.vehicle_type 
+                || l.vehicle?.vehicle_category 
+                || l.vehicle?.category 
+                || matchedVehicle?.vehicle_type 
+                || matchedVehicle?.vehicle_category 
+                || matchedVehicle?.category 
+                || '-';
+
             const rowData = [
                 new Date(l.log_date).toLocaleDateString(),
-                l.vehicle?.registration_number || 'N/A',
+                l.sheet_number || '-',
+                l.vehicle?.registration_number || matchedVehicle?.registration_number || 'N/A',
+                vehicleCategory,
                 l.driver_name || '-',
+                l.spare_driver_name || '-',
                 l.supervisor?.name || '-',
                 l.route?.route_name || 'N/A',
                 l.schedule_time || '-',
@@ -344,8 +360,8 @@ export default function VehicleDailyLogPage() {
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `keil_fleet_telemetry_${new Date().toISOString().split('T')[0]}.xlsx`);
-        success("Telemetry report exported successfully.");
+        saveAs(blob, `keil_tripsheet_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        success("Tripsheet report exported successfully.");
     };
 
     const handleDelete = async (id: string) => {
@@ -371,6 +387,7 @@ export default function VehicleDailyLogPage() {
         setEditingId(l.id);
         setFormData({
             vehicle_id: l.vehicle_id,
+            sheet_number: l.sheet_number || '',
             log_date: new Date(l.log_date).toISOString().split('T')[0],
             start_km: l.start_km.toString(),
             end_km: l.end_km ? l.end_km.toString() : '',
@@ -387,6 +404,7 @@ export default function VehicleDailyLogPage() {
             start_time: l.start_time || '',
             is_running: l.is_running ?? true,
             driver_name: l.driver_name || '',
+            spare_driver_name: l.spare_driver_name || '',
             supervisor_id: l.supervisor_id || ''
         });
         setShowForm(true);
@@ -395,6 +413,7 @@ export default function VehicleDailyLogPage() {
     const resetForm = () => {
         setFormData({
             vehicle_id: '',
+            sheet_number: '',
             log_date: new Date().toISOString().split('T')[0],
             start_km: '',
             end_km: '',
@@ -411,6 +430,7 @@ export default function VehicleDailyLogPage() {
             start_time: '',
             is_running: true,
             driver_name: '',
+            spare_driver_name: '',
             supervisor_id: ''
         });
         setEditingId(null);
@@ -555,6 +575,17 @@ export default function VehicleDailyLogPage() {
                                 <Input required type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" value={formData.log_date} onChange={e => setFormData({ ...formData, log_date: e.target.value })} />
                             </div>
 
+                            <div className="space-y-1.5 flex flex-col justify-end">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Sheet Number</label>
+                                <Input 
+                                    type="text" 
+                                    placeholder="Enter sheet number..." 
+                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" 
+                                    value={formData.sheet_number} 
+                                    onChange={e => setFormData({ ...formData, sheet_number: e.target.value })} 
+                                />
+                            </div>
+
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Logistical Route *</label>
                                 <Select 
@@ -642,6 +673,17 @@ export default function VehicleDailyLogPage() {
                                         })}
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="space-y-1.5 flex flex-col justify-end">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Spare Driver Name</label>
+                                <Input 
+                                    type="text" 
+                                    placeholder="Enter spare driver name..." 
+                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none" 
+                                    value={formData.spare_driver_name} 
+                                    onChange={e => setFormData({ ...formData, spare_driver_name: e.target.value })} 
+                                />
                             </div>
 
                             <div className="space-y-1.5">
@@ -735,11 +777,20 @@ export default function VehicleDailyLogPage() {
                 <TableView 
                     title="Logitudinal Protocol"
                     description="Daily performance and resource consumption logs for the transport fleet."
-                    searchFields={['vehicle.registration_number', 'remarks']}
+                    searchFields={['vehicle.registration_number', 'sheet_number', 'remarks']}
                     headers={['Vehicle / Route / Date', 'Operational Timing', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
                     data={logs}
                     loading={loading}
-                    renderRow={(l: any) => (
+                    renderRow={(l: any) => {
+                        const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
+                        const vehicleCategory = l.vehicle?.vehicle_type 
+                            || l.vehicle?.vehicle_category 
+                            || l.vehicle?.category 
+                            || matchedVehicle?.vehicle_type 
+                            || matchedVehicle?.vehicle_category 
+                            || matchedVehicle?.category;
+
+                        return (
                         <tr key={l.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0 group">
                             <td className="px-6 py-6 font-bold">
                                 <div className="flex flex-col gap-1.5">
@@ -747,15 +798,31 @@ export default function VehicleDailyLogPage() {
                                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/10">
                                             <Truck className="w-4 h-4" />
                                         </div>
-                                        <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number}</span>
+                                        <span className="text-base font-bold text-foreground tracking-tight">{l.vehicle?.registration_number || matchedVehicle?.registration_number || 'N/A'}</span>
+                                        {vehicleCategory && (
+                                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                                                {vehicleCategory}
+                                            </span>
+                                        )}
                                         <div className={`ml-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${l.is_running ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
                                             {l.is_running ? 'Running' : 'Not Running'}
                                         </div>
                                     </div>
+                                    {l.sheet_number && (
+                                        <div className="flex items-center gap-1.5 pl-1">
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sheet No:</span>
+                                            <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">{l.sheet_number}</span>
+                                        </div>
+                                    )}
                                     <div className="flex flex-col gap-1 pl-1">
                                         {l.driver_name && (
                                             <span className="text-xs font-semibold text-slate-700">
                                                 Driver: <span className="font-bold text-slate-900">{l.driver_name}</span>
+                                            </span>
+                                        )}
+                                        {l.spare_driver_name && (
+                                            <span className="text-xs font-semibold text-amber-700">
+                                                Spare Driver: <span className="font-bold text-amber-900">{l.spare_driver_name}</span>
                                             </span>
                                         )}
                                         {l.supervisor?.name && (
@@ -880,7 +947,8 @@ export default function VehicleDailyLogPage() {
                                 </div>
                             </td>
                         </tr>
-                    )}
+                        );
+                    }}
                 />
             )}
         </div>

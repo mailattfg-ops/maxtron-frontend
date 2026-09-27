@@ -67,6 +67,7 @@ export default function FuelFillingPage() {
     const [formData, setFormData] = useState({
         vehicle_id: '',
         log_date: new Date().toISOString().split('T')[0],
+        odometer_reading: '',
         indent_number: '',
         pump_details: '',
         liters: '',
@@ -126,13 +127,15 @@ export default function FuelFillingPage() {
 
     const fetchFillings = async (coId?: string) => {
         const token = localStorage.getItem('token');
-        const filterParams = new URLSearchParams({
-            company_id: coId || currentCompanyId,
-            ...filters
-        }).toString();
+        const effectiveCompanyId = coId || currentCompanyId;
+        const filterParams = new URLSearchParams();
+        if (effectiveCompanyId) filterParams.set('company_id', effectiveCompanyId);
+        if (filters.vehicle_id && filters.vehicle_id !== 'all') filterParams.set('vehicle_id', filters.vehicle_id);
+        if (filters.from && filters.from.trim()) filterParams.set('from', filters.from.trim());
+        if (filters.to && filters.to.trim()) filterParams.set('to', filters.to.trim());
 
         try {
-            const res = await fetch(`${FUEL_API}?${filterParams}`, {
+            const res = await fetch(`${FUEL_API}?${filterParams.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -191,6 +194,7 @@ export default function FuelFillingPage() {
         setFormData({
             vehicle_id: '',
             log_date: new Date().toISOString().split('T')[0],
+            odometer_reading: '',
             indent_number: '',
             pump_details: '',
             liters: '',
@@ -224,8 +228,26 @@ export default function FuelFillingPage() {
     };
 
     const handleExport = async () => {
-        if (fillings.length === 0) {
-            error("No data available to export.");
+        // Verify and apply active date-wise and vehicle filters to exported dataset
+        let exportData = fillings;
+        if (filters.from && filters.from.trim()) {
+            exportData = exportData.filter(f => {
+                const itemDate = new Date(f.log_date).toISOString().split('T')[0];
+                return itemDate >= filters.from.trim();
+            });
+        }
+        if (filters.to && filters.to.trim()) {
+            exportData = exportData.filter(f => {
+                const itemDate = new Date(f.log_date).toISOString().split('T')[0];
+                return itemDate <= filters.to.trim();
+            });
+        }
+        if (filters.vehicle_id && filters.vehicle_id !== 'all') {
+            exportData = exportData.filter(f => f.vehicle_id === filters.vehicle_id);
+        }
+
+        if (exportData.length === 0) {
+            error("No data available to export for the selected filter range.");
             return;
         }
 
@@ -235,10 +257,16 @@ export default function FuelFillingPage() {
         const worksheet = workbook.addWorksheet('Fuel Filling Report');
 
         worksheet.addRow(['FUEL FILLING REPORT - LOGISTICS TELEMETRY']).font = { bold: true, size: 14 };
+        
+        // Add date-wise filter indicator to export sheet
+        if (filters.from || filters.to) {
+            const filterLabel = `Date Filter: ${filters.from || 'Beginning'} to ${filters.to || 'Present'}`;
+            worksheet.addRow([filterLabel]).font = { italic: true, bold: true, size: 10, color: { argb: 'FF475569' } };
+        }
         worksheet.addRow([]);
 
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'LITERS (LTR)', 'RATE', 'TOTAL AMOUNT', 'REMARKS'
+            'DATE', 'VEHICLE NO', 'ODOMETER (KM)', 'INDENT NO', 'PUMP DETAILS', 'LITERS (LTR)', 'RATE (₹)', 'TOTAL AMOUNT (₹)', 'REMARKS'
         ]);
 
         headerRow.eachCell((cell) => {
@@ -246,10 +274,11 @@ export default function FuelFillingPage() {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
-        fillings.forEach(f => {
-            worksheet.addRow([
+        exportData.forEach(f => {
+            const row = worksheet.addRow([
                 new Date(f.log_date).toLocaleDateString(),
                 f.vehicle?.registration_number || 'N/A',
+                f.odometer_reading ? parseFloat(f.odometer_reading).toLocaleString() : '-',
                 f.indent_number || '-',
                 f.pump_details || '-',
                 f.liters,
@@ -257,27 +286,36 @@ export default function FuelFillingPage() {
                 f.amount,
                 f.remarks || ''
             ]);
+            row.eachCell(cell => {
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            });
         });
         
         // Add Totals Row
-        const totalLiters = fillings.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
-        const totalAmount = fillings.reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
+        const totalLiters = exportData.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        const totalAmount = exportData.reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
         
         worksheet.addRow([]); // Empty row
         const footerRow = worksheet.addRow([
-            'TOTAL', '', '', '', totalLiters, '', totalAmount, ''
+            'TOTAL', '', '', '', '', totalLiters.toFixed(2), '', totalAmount.toFixed(2), ''
         ]);
         
         footerRow.eachCell((cell: any) => {
             cell.font = { bold: true };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
 
-        worksheet.columns.forEach(col => { col.width = 15; });
+        worksheet.columns.forEach(col => { col.width = 18; });
+
+        const dateSuffix = filters.from && filters.to 
+            ? `${filters.from}_to_${filters.to}`
+            : (filters.from ? `from_${filters.from}` : new Date().toISOString().split('T')[0]);
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `Fuel_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        saveAs(blob, `Fuel_Report_${dateSuffix}.xlsx`);
+        success(`Fuel report exported successfully (${exportData.length} records).`);
     };
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
@@ -336,7 +374,14 @@ export default function FuelFillingPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Vehicle Number *</label>
-                                <Select value={formData.vehicle_id} onValueChange={v => setFormData({...formData, vehicle_id: v})}>
+                                <Select value={formData.vehicle_id} onValueChange={v => {
+                                    const veh = vehicles.find(veh => veh.id === v);
+                                    setFormData(prev => ({
+                                        ...prev, 
+                                        vehicle_id: v,
+                                        odometer_reading: prev.odometer_reading || (veh?.current_km ? veh.current_km.toString() : '')
+                                    }));
+                                }}>
                                     <SelectTrigger className="h-11 rounded-lg border-primary/20 bg-white font-bold">
                                         <SelectValue placeholder="Select Vehicle" />
                                     </SelectTrigger>
@@ -346,6 +391,18 @@ export default function FuelFillingPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary">Odometer Reading (KM)</label>
+                                <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    min={0}
+                                    value={formData.odometer_reading} 
+                                    onChange={e => setFormData({...formData, odometer_reading: e.target.value})} 
+                                    placeholder="e.g. 45200" 
+                                    className="h-11 rounded-lg border-primary/20 font-bold" 
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary">Indent Number</label>
@@ -417,7 +474,7 @@ export default function FuelFillingPage() {
                             data={fillings}
                             loading={loading}
                             headers={['DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'QUANTITY', 'RATE / AMOUNT', 'EFFICIENCY HUB', 'REMARKS', 'ACTIONS']}
-                            searchFields={['indent_number', 'vehicle.registration_number', 'remarks', 'pump_details']}
+                            searchFields={['indent_number', 'vehicle.registration_number', 'remarks', 'pump_details', 'odometer_reading']}
                             renderRow={(f) => (
                                 <tr key={f.id} className="hover:bg-primary/[0.02] transition-colors border-b border-primary/5 last:border-0">
                                     <td className="px-6 py-4 font-bold text-sm text-slate-700">
@@ -428,7 +485,14 @@ export default function FuelFillingPage() {
                                             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
                                                 <Truck className="w-4 h-4" />
                                             </div>
-                                            <span className="font-black text-slate-800 tracking-tight">{f.vehicle?.registration_number}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-slate-800 tracking-tight">{f.vehicle?.registration_number}</span>
+                                                {f.odometer_reading && (
+                                                    <span className="text-[9px] font-bold text-slate-500 font-mono">
+                                                        {parseFloat(f.odometer_reading).toLocaleString()} KM
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -486,6 +550,7 @@ export default function FuelFillingPage() {
                                                         setEditingId(f.id);
                                                         setFormData({
                                                             ...f,
+                                                            odometer_reading: f.odometer_reading ? f.odometer_reading.toString() : '',
                                                             log_date: new Date(f.log_date).toISOString().split('T')[0]
                                                         });
                                                         setShowForm(true);

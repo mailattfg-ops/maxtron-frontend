@@ -66,6 +66,7 @@ export default function DailyCollectionEntryPage() {
         route_id: '',
         registration_number: '',
         driver_name: '',
+        spare_driver_name: '',
         supervisor_name: '',
         remarks: '',
         start_time: '',
@@ -251,6 +252,7 @@ export default function DailyCollectionEntryPage() {
                 const payload = {
                     header: {
                         ...headerData,
+                        spare_driver_name: headerData.spare_driver_name ? headerData.spare_driver_name.trim() : null,
                         total_hce_assigned: stats.total_assigned,
                         total_visited: stats.total_visited,
                         assigned_bedded: stats.assigned_bedded,
@@ -290,7 +292,7 @@ export default function DailyCollectionEntryPage() {
         }
 
         const routeData = routes.find(r => r.id === selectedRouteId);
-        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Remark'];
+        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Driver', 'Spare Driver', 'Supervisor', 'Remark'];
         
         const rows = assignedHces.map(a => {
             const entry = entries[a.hce_id] || {};
@@ -300,6 +302,9 @@ export default function DailyCollectionEntryPage() {
                 a.keil_hces?.hce_place || 'N/A',
                 entry.is_visited ? 'YES' : 'NO',
                 entry.visit_status || 'Not Visited',
+                headerData.driver_name || 'N/A',
+                headerData.spare_driver_name || '-',
+                headerData.supervisor_name || 'N/A',
                 entry.remark || '-'
             ];
         });
@@ -422,7 +427,7 @@ export default function DailyCollectionEntryPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
-                                <User className="w-3 h-3 text-primary" /> Employee Assigning
+                                <User className="w-3 h-3 text-primary" /> Employee Assigning (Driver)
                             </label>
                             <Select value={headerData.driver_name} onValueChange={(val) => setHeaderData({ ...headerData, driver_name: val })}>
                                 <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
@@ -434,6 +439,17 @@ export default function DailyCollectionEntryPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <User className="w-3 h-3 text-primary" /> Spare Driver Name
+                            </label>
+                            <Input 
+                                placeholder="Enter spare driver name..." 
+                                className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" 
+                                value={headerData.spare_driver_name} 
+                                onChange={e => setHeaderData({ ...headerData, spare_driver_name: e.target.value })} 
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
