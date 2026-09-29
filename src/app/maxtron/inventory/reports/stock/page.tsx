@@ -29,7 +29,7 @@ export default function StockListPage() {
   const [inTransitOrders, setInTransitOrders] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const { success, error, info } = useToast();
-  const { user } = usePermission();
+  const { user, isMarketing } = usePermission();
   const isAdmin = user?.role_name?.toLowerCase() === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
 
   // Modal states

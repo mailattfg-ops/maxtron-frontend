@@ -16,7 +16,12 @@ import {
     Search,
     Download,
     Eye,
-    Edit
+    Edit,
+    Upload,
+    FileSpreadsheet,
+    CheckCircle2,
+    AlertTriangle,
+    Loader2
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -44,6 +49,12 @@ export default function PayrollPage() {
     const [submitting, setSubmitting] = useState(false);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
     
+    // Bulk Import states
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importPreview, setImportPreview] = useState<any[]>([]);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [importing, setImporting] = useState(false);
+
     // Filters
     const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
     const [filterYear, setFilterYear] = useState(new Date().getFullYear());
@@ -282,6 +293,235 @@ export default function PayrollPage() {
         }
     };
 
+    const handleExport = async () => {
+        if (payrolls.length === 0) {
+            info('No payroll records found for this period to export.');
+            return;
+        }
+
+        const ExcelJS = (await import('exceljs')).default;
+        const saveAs = (await import('file-saver')).saveAs;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Payroll Report');
+
+        const headerRow = worksheet.addRow([
+            'EMP CODE', 'EMPLOYEE NAME', 'CATEGORY', 'MONTH', 'YEAR', 
+            'BASIC SALARY (₹)', 'ALLOWANCES (₹)', 'DEDUCTIONS (₹)', 
+            'INCENTIVES (₹)', 'NET SALARY (₹)', 'PAYMENT STATUS', 'PAYMENT MODE', 'PAYMENT DATE', 'REMARKS'
+        ]);
+
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        payrolls.forEach(p => {
+            worksheet.addRow([
+                p.users?.employee_code || 'N/A',
+                p.users?.name || 'N/A',
+                p.users?.employee_categories?.category_name || 'General Staff',
+                months[p.month - 1] || p.month,
+                p.year,
+                Number(p.basic_salary) || 0,
+                Number(p.allowances) || 0,
+                Number(p.deductions) || 0,
+                Number(p.incentives) || 0,
+                Number(p.net_salary) || 0,
+                p.payment_status || 'PENDING',
+                p.payment_mode || 'BANK',
+                p.payment_date || '-',
+                p.remarks || ''
+            ]);
+        });
+
+        worksheet.columns.forEach(col => { col.width = 18; });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `maxtron_payroll_report_${months[filterMonth - 1]}_${filterYear}.xlsx`);
+        success('Payroll report exported successfully.');
+    };
+
+    const downloadSampleTemplate = async () => {
+        const ExcelJS = (await import('exceljs')).default;
+        const saveAs = (await import('file-saver')).saveAs;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Payroll_Import_Template');
+
+        const headerRow = worksheet.addRow([
+            'Employee Code', 'Month', 'Year', 'Basic Salary', 
+            'Allowances', 'Deductions', 'Incentives', 'Payment Status', 'Payment Mode', 'Payment Date', 'Remarks'
+        ]);
+
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        if (employees.length > 0) {
+            employees.slice(0, 3).forEach((emp, idx) => {
+                worksheet.addRow([
+                    emp.employee_code || `EMP-${1001 + idx}`,
+                    filterMonth,
+                    filterYear,
+                    Number(emp.basic_salary) || 25000,
+                    1500,
+                    500,
+                    1000,
+                    'PENDING',
+                    'BANK',
+                    new Date().toISOString().split('T')[0],
+                    'Monthly regular payout'
+                ]);
+            });
+        } else {
+            worksheet.addRow([
+                'EMP-1001',
+                filterMonth,
+                filterYear,
+                25000,
+                2000,
+                500,
+                1000,
+                'PENDING',
+                'BANK',
+                new Date().toISOString().split('T')[0],
+                'Sample payroll record'
+            ]);
+        }
+
+        worksheet.columns.forEach(col => { col.width = 18; });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `maxtron_payroll_import_template_${filterMonth}_${filterYear}.xlsx`);
+        success('Sample Excel import template downloaded successfully.');
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const workbook = new ExcelJS.Workbook();
+            const arrayBuffer = await file.arrayBuffer();
+            await workbook.xlsx.load(arrayBuffer);
+            const worksheet = workbook.worksheets[0];
+
+            if (!worksheet) {
+                error('Uploaded file contains no worksheets.');
+                return;
+            }
+
+            const parsedRows: any[] = [];
+            const validationErrors: string[] = [];
+
+            const headerValues: string[] = [];
+            worksheet.getRow(1).eachCell((cell, colNumber) => {
+                headerValues[colNumber] = cell.value ? cell.value.toString().trim().toLowerCase() : '';
+            });
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) return;
+
+                const getCell = (namePart: string) => {
+                    const colIndex = headerValues.findIndex(h => h && h.includes(namePart));
+                    return colIndex > -1 ? row.getCell(colIndex).value : null;
+                };
+
+                const rawCode = getCell('code');
+                const empCode = rawCode ? rawCode.toString().trim() : '';
+                if (!empCode) return;
+
+                const matchedEmp = employees.find(
+                    emp => emp.employee_code?.trim().toUpperCase() === empCode.toUpperCase()
+                );
+
+                if (!matchedEmp) {
+                    validationErrors.push(`Row ${rowNumber}: Employee with code "${empCode}" not found.`);
+                    return;
+                }
+
+                const basicSalary = Number(getCell('basic') || matchedEmp.basic_salary || 0);
+                const allowances = Number(getCell('allow') || 0);
+                const deductions = Number(getCell('deduct') || 0);
+                const incentives = Number(getCell('incent') || 0);
+                const netSalary = (basicSalary + allowances + incentives) - deductions;
+
+                const monthVal = Number(getCell('month') || filterMonth);
+                const yearVal = Number(getCell('year') || filterYear);
+                const rawStatus = getCell('status')?.toString().toUpperCase().trim();
+                const paymentStatus = rawStatus === 'PAID' ? 'PAID' : 'PENDING';
+                const paymentMode = getCell('mode')?.toString().trim() || 'BANK';
+                const paymentDate = getCell('date')?.toString().trim() || new Date().toISOString().split('T')[0];
+                const remarks = getCell('remark')?.toString().trim() || 'Bulk imported via Excel';
+
+                parsedRows.push({
+                    employee_id: matchedEmp.id,
+                    employee_name: matchedEmp.name,
+                    employee_code: matchedEmp.employee_code,
+                    company_id: currentCompanyId,
+                    month: monthVal,
+                    year: yearVal,
+                    basic_salary: basicSalary,
+                    allowances,
+                    deductions,
+                    incentives,
+                    net_salary: netSalary,
+                    payment_status: paymentStatus,
+                    payment_mode: paymentMode,
+                    payment_date: paymentDate,
+                    remarks
+                });
+            });
+
+            if (parsedRows.length === 0 && validationErrors.length === 0) {
+                error('No data found in uploaded Excel file.');
+                return;
+            }
+
+            setImportPreview(parsedRows);
+            setImportErrors(validationErrors);
+            setShowImportModal(true);
+        } catch (err: any) {
+            error('Error reading Excel: ' + err.message);
+        } finally {
+            e.target.value = '';
+        }
+    };
+
+    const confirmBulkImport = async () => {
+        if (importPreview.length === 0) return;
+        setImporting(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${activeEntity}/payroll`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(importPreview)
+            });
+            const data = await res.json();
+            if (data.success) {
+                success(`Successfully imported ${importPreview.length} payroll records!`);
+                setShowImportModal(false);
+                setImportPreview([]);
+                setImportErrors([]);
+                fetchPayrolls();
+            } else {
+                error(data.message || 'Import failed.');
+            }
+        } catch (err: any) {
+            error(err.message || 'Network error during import.');
+        } finally {
+            setImporting(false);
+        }
+    };
+
     const months = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -301,6 +541,31 @@ export default function PayrollPage() {
                     <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Manage employee month-wise salary distributions and net payouts.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <Button 
+                        onClick={handleExport}
+                        variant="outline"
+                        className="h-10 md:h-11 border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 font-bold shadow-sm flex items-center justify-center gap-2"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Export Excel</span>
+                    </Button>
+                    <div className="relative">
+                        <input
+                            type="file"
+                            id="bulk-payroll-input-maxtron"
+                            accept=".xlsx, .xls"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                        />
+                        <Button 
+                            onClick={() => document.getElementById('bulk-payroll-input-maxtron')?.click()}
+                            variant="outline"
+                            className="h-10 md:h-11 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 rounded-full px-5 font-bold shadow-sm flex items-center justify-center gap-2"
+                        >
+                            <Upload className="w-4 h-4 text-emerald-600" />
+                            <span>Bulk Import Excel</span>
+                        </Button>
+                    </div>
                     <Button 
                         onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); }}
                         className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 md:h-11 transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
@@ -609,6 +874,118 @@ export default function PayrollPage() {
                         </tr>
                     )}
                 />
+            )}
+
+            {/* Bulk Import Preview Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <Card className="w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden bg-white animate-in zoom-in-95">
+                        <div className="bg-primary/5 p-6 border-b border-primary/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                                    <FileSpreadsheet className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-800">Payroll Bulk Import Preview</h2>
+                                    <p className="text-xs text-muted-foreground">Verify parsed records before applying to database</p>
+                                </div>
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={downloadSampleTemplate} 
+                                className="font-bold text-xs gap-2 border-primary/20 text-primary hover:bg-primary/5 rounded-full"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                Download Sample Template
+                            </Button>
+                        </div>
+
+                        <CardContent className="p-6 overflow-y-auto space-y-4 flex-1">
+                            {importErrors.length > 0 && (
+                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600" /> Validation Warnings ({importErrors.length})
+                                    </div>
+                                    <ul className="text-xs text-amber-700 list-disc pl-5 space-y-1">
+                                        {importErrors.map((err, i) => (
+                                            <li key={i}>{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div>
+                                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Ready to Import: {importPreview.length} Record(s)
+                                </h3>
+                                <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[300px]">
+                                    <table className="w-full text-left text-xs whitespace-nowrap">
+                                        <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 sticky top-0">
+                                            <tr>
+                                                <th className="p-3">Emp Code</th>
+                                                <th className="p-3">Employee Name</th>
+                                                <th className="p-3">Basic (₹)</th>
+                                                <th className="p-3">Allowances (₹)</th>
+                                                <th className="p-3">Deductions (₹)</th>
+                                                <th className="p-3">Incentives (₹)</th>
+                                                <th className="p-3">Net (₹)</th>
+                                                <th className="p-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {importPreview.map((row, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50/50">
+                                                    <td className="p-3 font-mono font-bold text-primary">{row.employee_code}</td>
+                                                    <td className="p-3 font-bold text-slate-800">{row.employee_name}</td>
+                                                    <td className="p-3 font-bold text-slate-600">₹{row.basic_salary.toLocaleString()}</td>
+                                                    <td className="p-3">₹{row.allowances.toLocaleString()}</td>
+                                                    <td className="p-3 text-red-500">₹{row.deductions.toLocaleString()}</td>
+                                                    <td className="p-3 text-emerald-600">₹{row.incentives.toLocaleString()}</td>
+                                                    <td className="p-3 font-black text-primary">₹{row.net_salary.toLocaleString()}</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                                            row.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                            {row.payment_status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </CardContent>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }}
+                                className="font-bold text-slate-500 hover:text-slate-800 rounded-full px-6"
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                onClick={confirmBulkImport}
+                                disabled={importing || importPreview.length === 0}
+                                className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-8 shadow-md gap-2"
+                            >
+                                {importing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Importing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Confirm & Import ({importPreview.length} Records)
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
             )}
         </div>
     );

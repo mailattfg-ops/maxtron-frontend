@@ -25,6 +25,7 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
+import { exportQuotationToWord, downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
 import { 
     Tag, 
     Megaphone, 
@@ -33,7 +34,10 @@ import {
     ChevronRight,
     Star,
     Info,
-    Clock3
+    Clock3,
+    FileText,
+    History,
+    FileCode
 } from 'lucide-react';
 
 const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-visits`;
@@ -63,6 +67,8 @@ export default function MarketingVisitsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showQuotationHistoryModal, setShowQuotationHistoryModal] = useState(false);
+  const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState<string>('ALL');
   const [offerForm, setOfferForm] = useState({
     title: '',
     description: '',
@@ -108,7 +114,7 @@ export default function MarketingVisitsPage() {
     feedback: '',
     company_id: '',
     is_quotation: false,
-    quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
+    quotation_items: [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
     quotation_delivery_date: '',
     quotation_status: 'Pending',
     probability: '',
@@ -217,6 +223,58 @@ export default function MarketingVisitsPage() {
     });
   };
 
+  const extractCustomerLocation = (cust: any): string => {
+    if (!cust) return '';
+
+    // Direct location field if present
+    if (cust.location && typeof cust.location === 'string' && cust.location.trim()) {
+      return cust.location.trim();
+    }
+
+    // Check addresses list if available
+    const addrs = Array.isArray(cust.addresses) ? cust.addresses : [];
+    if (addrs.length > 0) {
+      // Find preferred address type (billing/customer/office), fallback to first
+      const primary = addrs.find((a: any) => 
+        ['billing', 'customer', 'office'].includes(a.address_type?.toLowerCase())
+      ) || addrs[0];
+
+      if (primary) {
+        const area = (primary.street || primary.address_line1 || primary.address || '').trim();
+        const city = (primary.city || '').trim();
+        const state = (primary.state || '').trim();
+
+        const parts: string[] = [];
+        if (area) parts.push(area);
+        if (city && !parts.some(p => p.toLowerCase().includes(city.toLowerCase()))) {
+          parts.push(city);
+        }
+        if (parts.length === 0 && state) {
+          parts.push(state);
+        }
+
+        if (parts.length > 0) {
+          return parts.join(', ');
+        }
+      }
+    }
+
+    // Direct fallback fields on the customer object
+    const directArea = (cust.street || cust.address || '').trim();
+    const directCity = (cust.city || '').trim();
+    const directState = (cust.state || '').trim();
+    const directParts: string[] = [];
+    if (directArea) directParts.push(directArea);
+    if (directCity && !directParts.some(p => p.toLowerCase().includes(directCity.toLowerCase()))) {
+      directParts.push(directCity);
+    }
+    if (directParts.length === 0 && directState) {
+      directParts.push(directState);
+    }
+
+    return directParts.join(', ');
+  };
+
   const openAddCustomerModal = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -285,6 +343,7 @@ export default function MarketingVisitsPage() {
           {
             address_type: 'billing',
             address_line1: newCustomerData.address || '',
+            street: newCustomerData.address || '',
             city: newCustomerData.city || '',
             state: newCustomerData.state || 'Kerala',
             zip_code: newCustomerData.zip_code || ''
@@ -305,11 +364,17 @@ export default function MarketingVisitsPage() {
         success('Customer created successfully!');
         setShowAddCustomerModal(false);
         const createdCustomer = data.data;
+        const autoLoc = extractCustomerLocation(createdCustomer) || 
+          [newCustomerData.address, newCustomerData.city].filter(Boolean).join(', ') || 
+          newCustomerData.city || 
+          newCustomerData.state || 
+          '';
         setCustomers(prev => [createdCustomer, ...prev]);
         setFormData(prev => ({
           ...prev,
           customer_name: createdCustomer.customer_name,
-          customer_id: createdCustomer.id
+          customer_id: createdCustomer.id,
+          location: autoLoc
         }));
       } else {
         error(data.message || 'Failed to create customer');
@@ -324,7 +389,7 @@ export default function MarketingVisitsPage() {
   const addQuotationItem = () => {
     setFormData(prev => ({
       ...prev,
-      quotation_items: [...prev.quotation_items, { product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }]
+      quotation_items: [...prev.quotation_items, { product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }]
     }));
   };
 
@@ -653,7 +718,7 @@ export default function MarketingVisitsPage() {
       feedback: '',
       company_id: currentCompanyId,
       is_quotation: false,
-      quotation_items: [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
+      quotation_items: [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
       quotation_delivery_date: '',
       quotation_status: 'Pending',
       probability: '',
@@ -664,11 +729,13 @@ export default function MarketingVisitsPage() {
 
   const handleEdit = (rec: any) => {
     setEditingId(rec.id);
+    const matchedCust = customers.find(c => (rec.customer_id && c.id === rec.customer_id) || c.customer_name === rec.customer_name);
+    const fallbackLoc = extractCustomerLocation(matchedCust);
     setFormData({
       employee_id: rec.employee_id,
       customer_id: rec.customer_id || '',
       customer_name: rec.customer_name,
-      location: rec.location || '',
+      location: rec.location || fallbackLoc || '',
       visit_date: rec.visit_date ? rec.visit_date.split('T')[0] : new Date().toISOString().split('T')[0],
       time_in: rec.time_in || '',
       time_out: rec.time_out || '',
@@ -682,10 +749,11 @@ export default function MarketingVisitsPage() {
             product_id: i.product_id || '',
             product_name: i.product_name || i.product || '',
             quantity: i.quantity || '',
+            unit: i.unit || 'Kg',
             amount: i.amount || '',
             gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '0'
           })) 
-        : [{ product_id: '', product_name: '', quantity: '', amount: '', gst_percent: '0' }],
+        : [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
       quotation_status: rec.quotation_status || 'Pending',
       probability: rec.probability || '',
@@ -927,16 +995,24 @@ export default function MarketingVisitsPage() {
                 <h1 className="text-2xl md:text-3xl font-bold text-primary tracking-tight font-heading" id="page-title">Marketing Operations</h1>
                 <p className="text-muted-foreground text-xs md:text-sm font-medium">Field staff tracking, client visit logs, and outcome analysis.</p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-wrap">
                 {!showForm && (
-                  <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto">
-                    <Download className="w-4 h-4 mr-2" /> Download Visit List
-                  </Button>
+                  <>
+                    <Button onClick={downloadVisitList} variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto">
+                      <Download className="w-4 h-4 mr-2" /> Download Visit List
+                    </Button>
+                    <Button onClick={() => setShowQuotationHistoryModal(true)} variant="outline" className="border-indigo-300 text-indigo-900 bg-indigo-50/60 hover:bg-indigo-100 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto font-bold">
+                      <History className="w-4 h-4 mr-2 text-indigo-600" /> Customer Quote History
+                    </Button>
+                    <Button onClick={downloadQuotationTemplate} variant="outline" className="border-blue-300 text-blue-900 bg-blue-50/60 hover:bg-blue-100 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto font-bold" title="Download Word Quotation Template (.doc)">
+                      <FileText className="w-4 h-4 mr-2 text-blue-600" /> Word Template (.doc)
+                    </Button>
+                  </>
                 )}
                 {canCreate && (
                   <Button 
                     onClick={() => { setShowForm(!showForm); if(!showForm) resetForm(); setEditingId(null); }}
-                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full md:w-auto flex-1 md:flex-none"
+                    className="bg-primary hover:bg-primary/95 text-white px-6 rounded-full shadow-lg shadow-primary/20 h-10 transition-all active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold"
                   >
                     {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                     {showForm ? 'Cancel Entry' : 'New Field Visit'}
@@ -1091,11 +1167,13 @@ export default function MarketingVisitsPage() {
                               return;
                             }
                             const selectedCust = customers.find(c => c.customer_name === val);
-                            setFormData({
-                              ...formData, 
+                            const autoLocation = extractCustomerLocation(selectedCust);
+                            setFormData(prev => ({
+                              ...prev, 
                               customer_name: val,
-                              customer_id: selectedCust?.id || ''
-                            });
+                              customer_id: selectedCust?.id || '',
+                              location: autoLocation
+                            }));
                           }}
                         >
                           <SelectTrigger className="w-full h-10 bg-white border-slate-200">
@@ -1122,13 +1200,20 @@ export default function MarketingVisitsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                        Location
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                          <MapPin className="w-4 h-4 mr-2 text-primary" /> Location
+                        </label>
+                        <span className="text-[10px] text-muted-foreground font-semibold bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                          Auto-filled
+                        </span>
+                      </div>
                       <Input 
-                        placeholder="Area / GPS Location"
+                        readOnly
+                        tabIndex={-1}
+                        placeholder={formData.customer_name ? "No location registered for customer" : "Auto-filled on customer selection"}
                         value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                        className="bg-slate-50 text-slate-700 border-slate-200 cursor-not-allowed font-medium select-none focus-visible:ring-0 focus-visible:border-slate-200"
                       />
                     </div>
 
@@ -1289,17 +1374,17 @@ export default function MarketingVisitsPage() {
 
                           <div className="space-y-3">
                             {formData.quotation_items.map((item, idx) => (
-                              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white p-3 rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
-                                <div className="md:col-span-4 space-y-1.5">
+                              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm transition-all hover:border-primary/30">
+                                <div className="md:col-span-3 space-y-1.5">
                                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Product Name</label>
                                   <Select 
                                     value={item.product_id}
                                     onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
                                   >
-                                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-sm">
+                                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-xs font-semibold">
                                       <SelectValue placeholder="Select Product..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white">
+                                    <SelectContent className="bg-white z-[1000]">
                                       {products.map(p => (
                                         <SelectItem key={p.id} value={p.id}>
                                           {p.product_name} ({p.balance} Kg Available)
@@ -1315,17 +1400,37 @@ export default function MarketingVisitsPage() {
                                     placeholder="0"
                                     value={item.quantity}
                                     onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
-                                    className="h-9 text-sm text-center font-mono"
+                                    className="h-9 text-xs text-center font-mono font-bold"
                                   />
                                 </div>
                                 <div className="md:col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Unit Price</label>
+                                  <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">Unit (Pcs/Kg)</label>
+                                  <Select
+                                    value={item.unit || 'Kg'}
+                                    onValueChange={(val) => updateQuotationItem(idx, 'unit', val)}
+                                  >
+                                    <SelectTrigger className="h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
+                                      <SelectValue placeholder="Unit" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white z-[1000]">
+                                      <SelectItem value="Pcs">Pcs (Pieces)</SelectItem>
+                                      <SelectItem value="Kg">Kg (Kilograms)</SelectItem>
+                                      <SelectItem value="Bag">Bag</SelectItem>
+                                      <SelectItem value="Roll">Roll</SelectItem>
+                                      <SelectItem value="Mtr">Mtr (Meters)</SelectItem>
+                                      <SelectItem value="Set">Set</SelectItem>
+                                      <SelectItem value="Box">Box</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="md:col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Unit Price (₹)</label>
                                   <Input 
                                     type="number"
                                     placeholder="0.00"
                                     value={item.amount}
                                     onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
-                                    className="h-9 text-sm text-right font-mono text-slate-700"
+                                    className="h-9 text-xs text-right font-mono font-bold text-slate-800"
                                   />
                                 </div>
                                 <div className="md:col-span-1 space-y-1.5">
@@ -1334,10 +1439,10 @@ export default function MarketingVisitsPage() {
                                     value={String(item.gst_percent)}
                                     onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
                                   >
-                                    <SelectTrigger className="h-9 bg-white border-slate-200">
+                                    <SelectTrigger className="h-9 bg-white border-slate-200 text-xs">
                                       <SelectValue placeholder="0" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white">
+                                    <SelectContent className="bg-white z-[1000]">
                                       <SelectItem value="0">0%</SelectItem>
                                       <SelectItem value="5">5%</SelectItem>
                                       <SelectItem value="12">12%</SelectItem>
@@ -1346,9 +1451,9 @@ export default function MarketingVisitsPage() {
                                     </SelectContent>
                                   </Select>
                                 </div>
-                                <div className="md:col-span-3 flex justify-end gap-2 pl-4 pb-0.5">
-                                  <div className="w-fulltext-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 whitespace-nowrap">
-                                    Sum: ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                <div className="md:col-span-2 flex justify-end items-center gap-1 pl-2 pb-0.5">
+                                  <div className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 whitespace-nowrap">
+                                    ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                   </div>
                                   <Button 
                                     type="button" 
@@ -1356,7 +1461,7 @@ export default function MarketingVisitsPage() {
                                     size="icon" 
                                     onClick={() => removeQuotationItem(idx)}
                                     disabled={formData.quotation_items.length <= 1}
-                                    className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full"
+                                    className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
@@ -1578,7 +1683,7 @@ export default function MarketingVisitsPage() {
                                         <Package className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                                         <div className="flex flex-col min-w-0">
                                           <span className="font-bold text-slate-700 truncate">{item.product_name || item.product}</span>
-                                          <span className="text-[7px] text-muted-foreground uppercase">Qty: {item.quantity} | GST: {item.gst_percent}%</span>
+                                          <span className="text-[7px] text-muted-foreground uppercase">Qty: {item.quantity} {item.unit || 'Kg'} | GST: {item.gst_percent}%</span>
                                         </div>
                                       </div>
                                       <div className="text-right flex flex-col">
@@ -1588,11 +1693,23 @@ export default function MarketingVisitsPage() {
                                     </div>
                                   ))}
                                 </div>
-                                {rec.quotation_delivery_date && (
-                                  <div className="mt-1.5 flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter px-1 border-t border-slate-100 pt-1">
-                                    <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
-                                  </div>
-                                )}
+                                <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100">
+                                  {rec.quotation_delivery_date ? (
+                                    <div className="flex items-center gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                      <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
+                                    </div>
+                                  ) : <div />}
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => exportQuotationToWord(rec)}
+                                    className="h-6 text-[9px] font-bold border-blue-300 text-blue-800 bg-blue-50/70 hover:bg-blue-100 px-2 rounded flex items-center gap-1 shadow-sm"
+                                    title="Download quotation in Microsoft Word (.doc) format"
+                                  >
+                                    <FileText className="w-3 h-3 text-blue-600" /> Word (.doc)
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1781,6 +1898,148 @@ export default function MarketingVisitsPage() {
             >
               <Save className="w-4 h-4 mr-2" /> Save & Select Customer
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Quotation History Modal */}
+      <Dialog open={showQuotationHistoryModal} onOpenChange={setShowQuotationHistoryModal}>
+        <DialogContent className="w-[95%] sm:max-w-4xl bg-white rounded-3xl p-6 border shadow-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+                <History className="w-6 h-6 text-indigo-600" /> Customer Quotation History
+              </DialogTitle>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadQuotationTemplate}
+                className="text-xs font-bold border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center gap-1.5"
+              >
+                <FileText className="w-4 h-4 text-blue-600" /> Download Word Template (.doc)
+              </Button>
+            </div>
+            <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
+              Select a customer to view their complete historical quotation record and download Word (.doc) proposals.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 my-4">
+            {/* Customer Selector */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              <div className="space-y-1 w-full sm:w-72">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Filter by Customer</label>
+                <Select value={selectedHistoryCustomer} onValueChange={setSelectedHistoryCustomer}>
+                  <SelectTrigger className="w-full h-10 font-bold bg-white border-slate-300">
+                    <SelectValue placeholder="All Customers" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-[1300] max-h-60 overflow-y-auto">
+                    <SelectItem value="ALL">All Customers ({new Set(visitRecords.filter(v => v.is_quotation).map(v => v.customer_name)).size} Clients)</SelectItem>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={c.customer_name}>
+                        {c.customer_name} ({c.customer_code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-center">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Total Quotes</span>
+                  <span className="text-base font-black text-indigo-700">
+                    {visitRecords.filter(v => v.is_quotation && (selectedHistoryCustomer === 'ALL' || v.customer_name === selectedHistoryCustomer)).length}
+                  </span>
+                </div>
+                <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-center">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Combined Value</span>
+                  <span className="text-base font-black text-emerald-700">
+                    ₹{visitRecords
+                      .filter(v => v.is_quotation && (selectedHistoryCustomer === 'ALL' || v.customer_name === selectedHistoryCustomer))
+                      .reduce((sum, v) => sum + (v.quotation_items?.reduce((itemSum: number, item: any) => itemSum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0) || 0), 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quotations List */}
+            <div className="space-y-4">
+              {visitRecords
+                .filter(v => v.is_quotation && (selectedHistoryCustomer === 'ALL' || v.customer_name === selectedHistoryCustomer))
+                .length === 0 ? (
+                <div className="text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-slate-400 font-medium">
+                  No quotation history found for the selected customer.
+                </div>
+              ) : (
+                visitRecords
+                  .filter(v => v.is_quotation && (selectedHistoryCustomer === 'ALL' || v.customer_name === selectedHistoryCustomer))
+                  .map((quoteRec, idx) => {
+                    const totalVal = quoteRec.quotation_items?.reduce((sum: number, item: any) =>
+                      sum + ((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)), 0) || 0;
+
+                    return (
+                      <Card key={idx} className="border border-slate-200/80 shadow-sm hover:border-indigo-200 transition-all overflow-hidden bg-white">
+                        <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-3.5 px-5">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-slate-900 text-base">{quoteRec.customer_name}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                  quoteRec.quotation_status === 'Approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                  quoteRec.quotation_status === 'Rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                  'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}>
+                                  {quoteRec.quotation_status || 'Pending'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500 font-medium flex items-center gap-3">
+                                <span>Date: <strong className="text-slate-700">{new Date(quoteRec.visit_date).toLocaleDateString()}</strong></span>
+                                <span>Prepared by: <strong className="text-slate-700">{quoteRec.users?.name || quoteRec.employee_name || 'Executive'}</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                              <div className="text-right font-mono font-black text-emerald-700 text-lg">
+                                ₹{totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => exportQuotationToWord(quoteRec)}
+                                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20 text-xs flex items-center gap-1.5 shrink-0"
+                              >
+                                <FileText className="w-4 h-4" /> Download Word (.doc)
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">Quotation Items List:</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {quoteRec.quotation_items?.map((item: any, itemIdx: number) => (
+                                <div key={itemIdx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                                  <div>
+                                    <div className="font-bold text-slate-800">{item.product_name || `Product #${itemIdx + 1}`}</div>
+                                    <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                      Qty: <strong className="text-slate-700">{item.quantity} {item.unit || 'Kg'}</strong> @ ₹{Number(item.amount || 0).toLocaleString()} / {item.unit || 'Kg'} (GST {item.gst_percent || 0}%)
+                                    </div>
+                                  </div>
+                                  <div className="font-mono font-bold text-slate-900 text-right">
+                                    ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

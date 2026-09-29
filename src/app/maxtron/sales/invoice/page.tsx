@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { usePermission } from '@/hooks/usePermission';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
@@ -39,6 +40,15 @@ const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function SalesInvoiceEntry() {
+  const router = useRouter();
+  const { isMarketing } = usePermission();
+
+  useEffect(() => {
+    if (isMarketing) {
+      router.replace('/maxtron/production/reports/fg-stock');
+    }
+  }, [isMarketing, router]);
+
   const [invoices, setInvoices] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -71,7 +81,7 @@ export default function SalesInvoiceEntry() {
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
-  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C'>('ALL');
+  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C' | 'EINVOICE' | 'EXTERNAL'>('ALL');
 
   // Cancellation Modal States
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -322,6 +332,10 @@ export default function SalesInvoiceEntry() {
     vehicle_type: 'Regular',
     trans_doc_no: '',
     trans_doc_date: '',
+    is_external: false,
+    billing_software: 'Tally',
+    bill_document_url: '',
+    bill_document_name: '',
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }
     ]
@@ -755,10 +769,16 @@ export default function SalesInvoiceEntry() {
 
   const filteredInvoices = useMemo(() => {
     if (activeSection === 'B2B') {
-      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B');
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B' && !i.is_external);
     }
     if (activeSection === 'B2C') {
-      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C');
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external);
+    }
+    if (activeSection === 'EINVOICE') {
+      return invoices.filter(i => i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn));
+    }
+    if (activeSection === 'EXTERNAL') {
+      return invoices.filter(i => Boolean(i.is_external));
     }
     return invoices;
   }, [invoices, activeSection]);
@@ -828,6 +848,10 @@ export default function SalesInvoiceEntry() {
           vehicle_type: 'Regular',
           trans_doc_no: '',
           trans_doc_date: '',
+          is_external: false,
+          billing_software: 'Tally',
+          bill_document_url: '',
+          bill_document_name: '',
           items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
         });
         setRoundOff(false);
@@ -867,6 +891,10 @@ export default function SalesInvoiceEntry() {
       vehicle_type: inv.vehicle_type || 'Regular',
       trans_doc_no: inv.trans_doc_no || '',
       trans_doc_date: inv.trans_doc_date ? inv.trans_doc_date.split('T')[0] : '',
+      is_external: Boolean(inv.is_external),
+      billing_software: inv.billing_software || 'Tally',
+      bill_document_url: inv.bill_document_url || '',
+      bill_document_name: inv.bill_document_name || '',
       items: inv.items.map((i: any) => {
         const qty = Number(i.quantity) || 0;
         const rate = Number(i.rate) || 0;
@@ -1150,6 +1178,15 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  if (isMarketing) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <p className="text-base font-semibold">Access Restricted</p>
+        <p className="text-sm">Marketing role cannot view Invoice details.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto min-w-0">
       {/* Alert Dialog */}
@@ -1216,6 +1253,10 @@ export default function SalesInvoiceEntry() {
                 vehicle_type: 'Regular',
                 trans_doc_no: '',
                 trans_doc_date: '',
+                is_external: false,
+                billing_software: 'Tally',
+                bill_document_url: '',
+                bill_document_name: '',
                 items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
               });
               fetchNextInvoiceNumber(currentCompanyId);
@@ -1364,6 +1405,112 @@ export default function SalesInvoiceEntry() {
                   </div>
                 </div>
               )}
+
+              {/* External Bill Entry Section (Bills raised outside system e.g. Tally) */}
+              <div className="p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <Checkbox
+                      id="is_external_bill"
+                      checked={formData.is_external || false}
+                      onCheckedChange={(checked) => {
+                        const val = Boolean(checked);
+                        setFormData(prev => ({
+                          ...prev,
+                          is_external: val,
+                          billing_software: val ? (prev.billing_software || 'Tally') : ''
+                        }));
+                      }}
+                      className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-5 w-5 rounded-md"
+                    />
+                    <label htmlFor="is_external_bill" className="text-sm font-black text-slate-800 cursor-pointer flex items-center gap-2 select-none">
+                      <span>Bill Raised Outside System (e.g. Tally)</span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">External Bill</span>
+                    </label>
+                  </div>
+                  {formData.is_external && (
+                    <p className="text-xs text-amber-800 font-bold bg-amber-100/70 px-3 py-1 rounded-lg flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" /> Stock will be deducted as normal. e-Invoice generation will be skipped.
+                    </p>
+                  )}
+                </div>
+
+                {formData.is_external && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-amber-200/60 animate-in fade-in duration-200">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-amber-900 flex items-center gap-1 px-1">
+                        <Tag className="w-3 h-3 text-amber-600" /> Billing Software Name
+                      </label>
+                      <Select
+                        value={formData.billing_software || 'Tally'}
+                        onValueChange={(val) => setFormData(prev => ({ ...prev, billing_software: val }))}
+                      >
+                        <SelectTrigger className="w-full h-10 font-bold bg-white border-amber-300 focus:border-amber-500">
+                          <SelectValue placeholder="Select Software..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white z-[1000]">
+                          <SelectItem value="Tally">Tally ERP / Tally Prime</SelectItem>
+                          <SelectItem value="Busy">Busy Accounting</SelectItem>
+                          <SelectItem value="Zoho Books">Zoho Books</SelectItem>
+                          <SelectItem value="SAP">SAP ERP</SelectItem>
+                          <SelectItem value="Marg ERP">Marg ERP</SelectItem>
+                          <SelectItem value="Manual / Paper">Manual / Paper Bill</SelectItem>
+                          <SelectItem value="Other">Other External Software</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-amber-900 flex items-center gap-1 px-1">
+                        <FileText className="w-3 h-3 text-amber-600" /> Upload External Bill Copy (PDF / Image)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept=".pdf,image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 8 * 1024 * 1024) {
+                                error('File size exceeds 8MB limit.');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  bill_document_url: event.target?.result as string,
+                                  bill_document_name: file.name
+                                }));
+                                success(`File "${file.name}" attached successfully.`);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="bg-white border-amber-300 text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer h-10"
+                        />
+                        {formData.bill_document_url && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFormData(prev => ({ ...prev, bill_document_url: '', bill_document_name: '' }))}
+                            className="text-rose-600 border-rose-200 hover:bg-rose-50 h-10 shrink-0 px-3 font-bold"
+                            title="Remove File"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      {formData.bill_document_name && (
+                        <p className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-1">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Attached: <span className="font-bold underline truncate">{formData.bill_document_name}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Line Items */}
               <div className="space-y-4 w-full max-w-full min-w-0">
@@ -1606,7 +1753,7 @@ export default function SalesInvoiceEntry() {
 
       {!showForm && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/80">
+          <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/80 flex-wrap">
             <button
               type="button"
               onClick={() => setActiveSection('ALL')}
@@ -1625,7 +1772,7 @@ export default function SalesInvoiceEntry() {
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
             >
-              B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B').length})
+              B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B' && !i.is_external).length})
             </button>
             <button
               type="button"
@@ -1635,7 +1782,27 @@ export default function SalesInvoiceEntry() {
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
             >
-              B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C').length})
+              B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('EINVOICE')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'EINVOICE'
+                ? 'bg-white text-purple-700 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              e-Invoices ({invoices.filter(i => i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('EXTERNAL')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'EXTERNAL'
+                ? 'bg-white text-amber-800 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              External Bills ({invoices.filter(i => Boolean(i.is_external)).length})
             </button>
           </div>
 
@@ -1660,14 +1827,22 @@ export default function SalesInvoiceEntry() {
                     <div className="text-[10px] text-slate-400 font-normal">{inv.customers?.customer_code}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
-                      }`}>
-                      {resolvedType}
-                    </span>
+                    {inv.is_external ? (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 w-fit">
+                        <Tag className="w-3 h-3 text-amber-700" /> {inv.billing_software || 'Tally'}
+                      </span>
+                    ) : (
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}>
+                        {resolvedType}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-mono font-bold text-slate-900">₹ {Number(inv.net_amount).toLocaleString()}</td>
                   <td className="px-6 py-4">
-                    {!isB2B ? (
+                    {inv.is_external ? (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase">N/A (External Bill)</span>
+                    ) : !isB2B ? (
                       <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-400 uppercase">N/A (B2C)</span>
                     ) : (
                       <div className="flex flex-col gap-1.5 items-start">
@@ -1952,6 +2127,25 @@ export default function SalesInvoiceEntry() {
                           );
                         })()}
                       </div>
+
+                      {inv.bill_document_url && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const win = window.open();
+                            if (win) {
+                              win.document.write(`<iframe src="${inv.bill_document_url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; font-family:sans-serif;" allowfullscreen></iframe>`);
+                            }
+                          }}
+                          className="h-8 text-[11px] font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-lg flex items-center gap-1 px-2.5"
+                          title={inv.bill_document_name || 'View Bill Copy'}
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="hidden sm:inline truncate max-w-[100px]">{inv.bill_document_name || 'Bill Copy'}</span>
+                        </Button>
+                      )}
 
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary rounded-lg" title="Edit Invoice">
                         <Edit2 className="w-4 h-4" />
