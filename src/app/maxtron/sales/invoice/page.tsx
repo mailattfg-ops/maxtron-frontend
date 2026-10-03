@@ -12,7 +12,8 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin,
   CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer,
-  Download, FileDown, ChevronDown, Loader2, Sliders, Settings2, SlidersHorizontal
+  Download, FileDown, ChevronDown, Loader2, Sliders, Settings2, SlidersHorizontal,
+  ExternalLink
 } from 'lucide-react';
 import {
   Select,
@@ -81,7 +82,8 @@ export default function SalesInvoiceEntry() {
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
-  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C' | 'EINVOICE' | 'EXTERNAL'>('ALL');
+  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C' | 'EINVOICE' | 'NON_EINVOICE' | 'EXTERNAL'>('ALL');
+  const [viewingBillDoc, setViewingBillDoc] = useState<{ url: string; name: string; invoiceNumber: string; software?: string } | null>(null);
 
   // Cancellation Modal States
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -775,7 +777,10 @@ export default function SalesInvoiceEntry() {
       return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external);
     }
     if (activeSection === 'EINVOICE') {
-      return invoices.filter(i => i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn));
+      return invoices.filter(i => (i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) && !i.is_external);
+    }
+    if (activeSection === 'NON_EINVOICE') {
+      return invoices.filter(i => Boolean(i.is_external) || !(i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) || i.einvoice_status === 'NOT_APPLICABLE');
     }
     if (activeSection === 'EXTERNAL') {
       return invoices.filter(i => Boolean(i.is_external));
@@ -1437,13 +1442,19 @@ export default function SalesInvoiceEntry() {
 
                 {formData.is_external && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-amber-200/60 animate-in fade-in duration-200">
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-amber-900 flex items-center gap-1 px-1">
                         <Tag className="w-3 h-3 text-amber-600" /> Billing Software Name
                       </label>
                       <Select
-                        value={formData.billing_software || 'Tally'}
-                        onValueChange={(val) => setFormData(prev => ({ ...prev, billing_software: val }))}
+                        value={['Tally', 'Busy', 'Zoho Books', 'SAP', 'Marg ERP', 'Manual / Paper'].includes(formData.billing_software) ? formData.billing_software : 'Other'}
+                        onValueChange={(val) => {
+                          if (val === 'Other') {
+                            setFormData(prev => ({ ...prev, billing_software: '' }));
+                          } else {
+                            setFormData(prev => ({ ...prev, billing_software: val }));
+                          }
+                        }}
                       >
                         <SelectTrigger className="w-full h-10 font-bold bg-white border-amber-300 focus:border-amber-500">
                           <SelectValue placeholder="Select Software..." />
@@ -1455,9 +1466,21 @@ export default function SalesInvoiceEntry() {
                           <SelectItem value="SAP">SAP ERP</SelectItem>
                           <SelectItem value="Marg ERP">Marg ERP</SelectItem>
                           <SelectItem value="Manual / Paper">Manual / Paper Bill</SelectItem>
-                          <SelectItem value="Other">Other External Software</SelectItem>
+                          <SelectItem value="Other">Other Software (Type Custom Name)</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {(!['Tally', 'Busy', 'Zoho Books', 'SAP', 'Marg ERP', 'Manual / Paper'].includes(formData.billing_software)) && (
+                        <div className="space-y-1 animate-in fade-in duration-200">
+                          <Input
+                            type="text"
+                            placeholder="Enter software name (e.g. QuickBooks, Miracle, Custom ERP)..."
+                            value={formData.billing_software || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, billing_software: e.target.value }))}
+                            className="bg-white border-amber-300 text-xs font-bold text-slate-800 focus:border-amber-500 h-10"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -1471,8 +1494,8 @@ export default function SalesInvoiceEntry() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              if (file.size > 8 * 1024 * 1024) {
-                                error('File size exceeds 8MB limit.');
+                              if (file.size > 15 * 1024 * 1024) {
+                                error('File size exceeds 15MB limit.');
                                 return;
                               }
                               const reader = new FileReader();
@@ -1490,21 +1513,38 @@ export default function SalesInvoiceEntry() {
                           className="bg-white border-amber-300 text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer h-10"
                         />
                         {formData.bill_document_url && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setFormData(prev => ({ ...prev, bill_document_url: '', bill_document_name: '' }))}
-                            className="text-rose-600 border-rose-200 hover:bg-rose-50 h-10 shrink-0 px-3 font-bold"
-                            title="Remove File"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setViewingBillDoc({
+                                url: formData.bill_document_url,
+                                name: formData.bill_document_name || 'Bill Copy',
+                                invoiceNumber: formData.invoice_number || 'Draft',
+                                software: formData.billing_software
+                              })}
+                              className="text-amber-900 border-amber-300 hover:bg-amber-100 h-10 px-3 font-bold text-xs flex items-center gap-1"
+                              title="Preview Attached Copy"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-700" /> Preview
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setFormData(prev => ({ ...prev, bill_document_url: '', bill_document_name: '' }))}
+                              className="text-rose-600 border-rose-200 hover:bg-rose-50 h-10 px-3 font-bold"
+                              title="Remove File"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                       {formData.bill_document_name && (
                         <p className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-1">
-                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Attached: <span className="font-bold underline truncate">{formData.bill_document_name}</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Attached: <span className="font-bold underline truncate max-w-xs">{formData.bill_document_name}</span>
                         </p>
                       )}
                     </div>
@@ -1766,6 +1806,39 @@ export default function SalesInvoiceEntry() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveSection('EINVOICE')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'EINVOICE'
+                ? 'bg-white text-purple-700 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-purple-600" />
+              <span>e-Invoices ({invoices.filter(i => (i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) && !i.is_external).length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('NON_EINVOICE')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'NON_EINVOICE'
+                ? 'bg-white text-amber-800 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <Tag className="w-3.5 h-3.5 text-amber-600" />
+              <span>Non-e-Invoice Bills ({invoices.filter(i => Boolean(i.is_external) || !(i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) || i.einvoice_status === 'NOT_APPLICABLE').length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('EXTERNAL')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'EXTERNAL'
+                ? 'bg-white text-amber-900 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
+              <span>External Bills (Tally) ({invoices.filter(i => Boolean(i.is_external)).length})</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveSection('B2B')}
               className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'B2B'
                 ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50'
@@ -1783,26 +1856,6 @@ export default function SalesInvoiceEntry() {
                 }`}
             >
               B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external).length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection('EINVOICE')}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'EINVOICE'
-                ? 'bg-white text-purple-700 shadow-md shadow-slate-200/50'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
-                }`}
-            >
-              e-Invoices ({invoices.filter(i => i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)).length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection('EXTERNAL')}
-              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'EXTERNAL'
-                ? 'bg-white text-amber-800 shadow-md shadow-slate-200/50'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
-                }`}
-            >
-              External Bills ({invoices.filter(i => Boolean(i.is_external)).length})
             </button>
           </div>
 
@@ -1869,11 +1922,14 @@ export default function SalesInvoiceEntry() {
                         {einvStatus === 'CANCELLED' && (
                           <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Cancelled</span>
                         )}
-                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'FAILED' && (
+                        {einvStatus === 'NOT_APPLICABLE' && (
+                          <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 uppercase">Not Applicable</span>
+                        )}
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'FAILED' && einvStatus !== 'NOT_APPLICABLE' && (
                           <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">Pending</span>
                         )}
 
-                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && (
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'NOT_APPLICABLE' && (
                           <div className="flex items-center gap-1.5 pt-0.5">
                             <Button
                               type="button"
@@ -2128,24 +2184,28 @@ export default function SalesInvoiceEntry() {
                         })()}
                       </div>
 
-                      {inv.bill_document_url && (
+                      {inv.bill_document_url ? (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const win = window.open();
-                            if (win) {
-                              win.document.write(`<iframe src="${inv.bill_document_url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; font-family:sans-serif;" allowfullscreen></iframe>`);
-                            }
-                          }}
-                          className="h-8 text-[11px] font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-lg flex items-center gap-1 px-2.5"
-                          title={inv.bill_document_name || 'View Bill Copy'}
+                          onClick={() => setViewingBillDoc({
+                            url: inv.bill_document_url,
+                            name: inv.bill_document_name || `Bill_${inv.invoice_number}`,
+                            invoiceNumber: inv.invoice_number,
+                            software: inv.billing_software
+                          })}
+                          className="h-8 text-[11px] font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-lg flex items-center gap-1.5 px-2.5 shadow-sm"
+                          title={`View ${inv.billing_software || 'External'} Bill Copy (${inv.bill_document_name || 'Attached'})`}
                         >
                           <FileText className="w-3.5 h-3.5 text-amber-600" />
                           <span className="hidden sm:inline truncate max-w-[100px]">{inv.bill_document_name || 'Bill Copy'}</span>
                         </Button>
-                      )}
+                      ) : inv.is_external ? (
+                        <span className="text-[10px] font-bold text-amber-700/60 italic px-1">
+                          No copy
+                        </span>
+                      ) : null}
 
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary rounded-lg" title="Edit Invoice">
                         <Edit2 className="w-4 h-4" />
@@ -3778,6 +3838,64 @@ export default function SalesInvoiceEntry() {
               </div>
             </CardFooter>
           </Card>
+        </div>
+      )}
+
+      {/* Attached External Bill Copy Viewer Modal */}
+      {viewingBillDoc && (
+        <div className="fixed inset-0 z-[1200] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-sm">
+                  <FileText className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                    <span>External Bill Copy</span>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      {viewingBillDoc.software || 'External Software'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium truncate max-w-md">
+                    Invoice #{viewingBillDoc.invoiceNumber} • {viewingBillDoc.name || 'Document'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={viewingBillDoc.url}
+                  download={viewingBillDoc.name || `bill_${viewingBillDoc.invoiceNumber}`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" /> Download Copy
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setViewingBillDoc(null)}
+                  className="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-slate-100 min-h-[450px]">
+              {viewingBillDoc.url.startsWith('data:image/') || viewingBillDoc.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                <img
+                  src={viewingBillDoc.url}
+                  alt={viewingBillDoc.name}
+                  className="max-h-[72vh] max-w-full object-contain rounded-lg shadow"
+                />
+              ) : (
+                <iframe
+                  src={viewingBillDoc.url}
+                  title={viewingBillDoc.name}
+                  className="w-full h-[72vh] rounded-lg border border-slate-200 bg-white shadow-sm"
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

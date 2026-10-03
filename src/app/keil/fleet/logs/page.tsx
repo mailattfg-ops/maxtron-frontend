@@ -294,9 +294,28 @@ export default function VehicleDailyLogPage() {
 
         // Headers
         const headerRow = worksheet.addRow([
-            'DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'ROUTE', 'SCHEDULE TIME', 'STARTING TIME', 'RUNNING STATUS',
-            'START KM', 'END KM', 'DISTANCE (KM)', 'FUEL (LTR)',
-            'COMPLAINT', 'TYPE', 'WORKSHOP IN', 'WORKSHOP OUT', 'BILL AMT', 'REMARKS'
+            'DATE',
+            'SHEET NO (SL)',
+            'VEHICLE',
+            'VEHICLE CATEGORY',
+            'DRIVER',
+            'SPARE DRIVER',
+            'SUPERVISOR',
+            'ROUTE',
+            'SCHEDULE TIME',
+            'STARTING TIME',
+            'ENDING TIME',
+            'RUNNING STATUS',
+            'START KM',
+            'END KM',
+            'DISTANCE (KM)',
+            'FUEL (LTR)',
+            'COMPLAINT',
+            'COMPLAINT TYPE',
+            'WORKSHOP IN',
+            'WORKSHOP OUT',
+            'BILL AMT',
+            'REMARKS'
         ]);
 
         headerRow.eachCell((cell) => {
