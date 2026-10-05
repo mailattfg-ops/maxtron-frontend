@@ -475,7 +475,10 @@ export default function KeilPayrollPage() {
                 const rawStatus = getCell('status')?.toString().toUpperCase().trim();
                 const paymentStatus = rawStatus === 'PAID' ? 'PAID' : 'PENDING';
                 const paymentMode = getCell('mode')?.toString().trim() || 'BANK';
-                const paymentDate = getCell('date')?.toString().trim() || new Date().toISOString().split('T')[0];
+                const rawDate = getCell('date');
+                const paymentDate = rawDate instanceof Date
+                    ? rawDate.toISOString().split('T')[0]
+                    : (rawDate?.toString().trim() || new Date().toISOString().split('T')[0]);
                 const remarks = getCell('remark')?.toString().trim() || 'Bulk imported via Excel';
 
                 parsedRows.push({
@@ -523,7 +526,9 @@ export default function KeilPayrollPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                body: JSON.stringify(importPreview)
+                // employee_name and employee_code are only for the preview table. The
+                // payroll table has no such columns and rejects the whole batch with them.
+                body: JSON.stringify(importPreview.map(({ employee_name, employee_code, ...row }) => row))
             });
             const data = await res.json();
             if (data.success) {
@@ -533,7 +538,7 @@ export default function KeilPayrollPage() {
                 setImportErrors([]);
                 fetchPayrolls();
             } else {
-                error(data.message || 'Import failed.');
+                error([data.message || 'Import failed.', data.error].filter(Boolean).join(': '));
             }
         } catch (err: any) {
             error(err.message || 'Network error during import.');
