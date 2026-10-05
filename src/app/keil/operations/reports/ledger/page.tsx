@@ -130,6 +130,7 @@ export default function HCEServiceLedgerPage() {
             'Total Bags',
             'Registration Number',
             'Driver Name',
+            'Spare Driver Name',
             'Supervisor Name',
             'Start Time',
             'End Time',
@@ -151,6 +152,7 @@ export default function HCEServiceLedgerPage() {
                 total,
                 ent.header?.registration_number || 'N/A',
                 ent.header?.driver_name || 'N/A',
+                ent.header?.spare_driver_name || '-',
                 ent.header?.supervisor_name || 'N/A',
                 ent.start_time || '00:00',
                 ent.end_time || '00:00',
@@ -335,7 +337,7 @@ export default function HCEServiceLedgerPage() {
                                                     <Truck className="w-3.5 h-3.5 text-primary/40" /> {ent.header?.registration_number}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                                                    <User className="w-3 h-3" /> {ent.header?.driver_name} (D) | {ent.header?.supervisor_name} (S)
+                                                    <User className="w-3 h-3" /> {ent.header?.driver_name} (D) {ent.header?.spare_driver_name ? `| ${ent.header.spare_driver_name} (Spare D)` : ''} | {ent.header?.supervisor_name} (S)
                                                 </div>
                                             </div>
                                         </td>

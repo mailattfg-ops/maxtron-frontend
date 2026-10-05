@@ -139,18 +139,18 @@ export default function RouteCollectionReportPage() {
 
         // Main Headers (Row 1)
         const mainHeader = [
-            'ROUTE NAME', 'VEHICLE NUMBER', 'DRIVER NAME', 'SUPERVISOR NAME', 
+            'ROUTE NAME', 'VEHICLE NUMBER', 'DRIVER NAME', 'SPARE DRIVER NAME', 'SUPERVISOR NAME', 
             'STARTING TIME', 'ENDING TIME', 'KM RUN', 
-            'TOTAL HCE', '', '', // 8, 9, 10
-            'VISITED HCE', '', '', // 11, 12, 13
+            'TOTAL HCE', '', '', // 9, 10, 11
+            'VISITED HCE', '', '', // 12, 13, 14
             'COLLECTION', 'DC', 'NW', 'RB',
-            'MISSED', '', '' // 18, 19, 20
+            'MISSED', '', '' // 19, 20, 21
         ];
         const headerRow1 = worksheet.addRow(mainHeader);
         
         // Sub Headers (Row 2)
         const subHeader = [
-            '', '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
             'BEDDED', 'OTHERS', 'TOTAL',
             'BEDDED', 'OTHERS', 'TOTAL',
             '', '', '', '',
@@ -170,8 +170,8 @@ export default function RouteCollectionReportPage() {
                     right: { style: 'thin' }
                 };
                 
-                // Color for COLLECTION (Col 14)
-                if (colNumber === 14) {
+                // Color for COLLECTION (Col 15)
+                if (colNumber === 15) {
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Yellow
                 } else if (idx === 0) {
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
@@ -180,12 +180,12 @@ export default function RouteCollectionReportPage() {
         });
 
         // Merging Cells for Row 1
-        worksheet.mergeCells('H1:J1'); // TOTAL HCE
-        worksheet.mergeCells('K1:M1'); // VISITED HCE
-        worksheet.mergeCells('R1:T1'); // MISSED
+        worksheet.mergeCells('I1:K1'); // TOTAL HCE
+        worksheet.mergeCells('L1:N1'); // VISITED HCE
+        worksheet.mergeCells('S1:U1'); // MISSED
         
         // Vertical Merge for fixed headers
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'N', 'O', 'P', 'Q'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'O', 'P', 'Q', 'R'].forEach(col => {
             worksheet.mergeCells(`${col}1:${col}2`);
         });
 
@@ -221,6 +221,7 @@ export default function RouteCollectionReportPage() {
                 batch.route?.route_name || 'N/A',
                 batch.registration_number || 'N/A',
                 batch.driver_name || 'N/A',
+                batch.spare_driver_name || '-',
                 batch.supervisor_name || 'N/A',
                 batch.start_time || '-',
                 batch.end_time || '-',
@@ -414,7 +415,7 @@ export default function RouteCollectionReportPage() {
                         headers={['Route / Branch', 'Vehicle & Personnel', 'Duration & KM', 'Coverage', 'Remarks', 'Manage']}
                         data={batches}
                         loading={loading}
-                        searchFields={['route.route_name', 'registration_number', 'driver_name']}
+                        searchFields={['route.route_name', 'registration_number', 'driver_name', 'spare_driver_name']}
                         renderRow={(batch: any) => (
                             <tr key={batch.id} className="hover:bg-slate-50/50 transition-colors border-b last:border-0">
                                 <td className="px-6 py-4">
@@ -431,7 +432,9 @@ export default function RouteCollectionReportPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <User className="w-3 h-3 text-slate-400" />
-                                            <span className="text-[10px] font-medium text-slate-500">{batch.driver_name} (D) | {batch.supervisor_name} (S)</span>
+                                            <span className="text-[10px] font-medium text-slate-500">
+                                                {batch.driver_name} (D) {batch.spare_driver_name ? `| ${batch.spare_driver_name} (Spare D)` : ''} | {batch.supervisor_name} (S)
+                                            </span>
                                         </div>
                                     </div>
                                 </td>

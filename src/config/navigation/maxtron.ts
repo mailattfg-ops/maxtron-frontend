@@ -49,6 +49,7 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Trading Goods Inward", path: "/maxtron/inventory/trading-goods", permissionKey: "inv_trading_view" },
             { title: "Material Consumption", path: "/maxtron/inventory/consumption", permissionKey: "inv_consumption_view" },
             { title: "Stock List", path: "/maxtron/inventory/reports/stock", permissionKey: "inv_rm_view" },
+            { title: "Finished Good Stock List", path: "/maxtron/production/reports/fg-stock", permissionKey: "prod_product_view" },
             { title: "Purchase Report", path: "/maxtron/inventory/reports/purchase", permissionKey: "inv_purchase_view" },
             { title: "Consumption Report", path: "/maxtron/inventory/reports/consumption", permissionKey: "inv_consumption_view" }
         ]
@@ -62,12 +63,12 @@ export const maxtronSidebarMenu: NavItem[] = [
             { title: "Printing Section", path: "/maxtron/production/printing", permissionKey: "prod_extrusion_view" },
             { title: "Cutting & Sealing", path: "/maxtron/production/cutting", permissionKey: "prod_cutting_view" },
             { title: "Packing Details", path: "/maxtron/production/packing", permissionKey: "prod_packing_view" },
-            { title: "Damages & Wastage", path: "/maxtron/production/wastage", permissionKey: "prod_product_view" },
+            { title: "Damages & Wastage", path: "/maxtron/production/wastage", permissionKey: "prod_extrusion_view" },
             { title: "Miscellaneous Expenses", path: "/maxtron/production/expenses", permissionKey: "prod_extrusion_view" },
             { title: "Production Summary", path: "/maxtron/production/reports/summary", permissionKey: "prod_extrusion_view" },
             { title: "Packing Summary", path: "/maxtron/production/reports/packing", permissionKey: "prod_packing_view" },
             { title: "Finished Good Stock List", path: "/maxtron/production/reports/fg-stock", permissionKey: "prod_product_view" },
-            { title: "Wastage Analysis", path: "/maxtron/production/reports/wastage", permissionKey: "prod_product_view" }
+            { title: "Wastage Analysis", path: "/maxtron/production/reports/wastage", permissionKey: "prod_extrusion_view" }
         ]
     },
     {

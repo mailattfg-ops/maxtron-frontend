@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { usePermission } from '@/hooks/usePermission';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,15 @@ import { useToast } from '@/components/ui/toast';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function BillingSummary() {
+  const router = useRouter();
+  const { isMarketing } = usePermission();
+
+  useEffect(() => {
+    if (isMarketing) {
+      router.replace('/maxtron/production/reports/fg-stock');
+    }
+  }, [isMarketing, router]);
+
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -99,6 +109,15 @@ export default function BillingSummary() {
     });
     info('Billing summary exported successfully!');
   };
+
+  if (isMarketing) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <p className="text-base font-semibold">Access Restricted</p>
+        <p className="text-sm">Marketing role cannot view Billing details.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">

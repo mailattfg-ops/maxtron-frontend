@@ -112,6 +112,8 @@ export default function EmployeeInformationPage() {
     username: '',    // The email used for login
     password: '',    // Initial generated password
     date_of_birth: '',
+    date_of_joining: '',
+    relieving_date: '',
     addresses: [
       { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
       { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -481,7 +483,7 @@ export default function EmployeeInformationPage() {
     
     const headers = [
       'Emp Code', 'Full Name', 'Username/Email', 'Phone', 'Aadhaar',
-      'Role', 'Category', 'Company', 'DOB', 
+      'Role', 'Category', 'Company', 'DOB', 'Date of Joining', 'Relieving Date',
       'Has License', 'License Number', 'License Expiry', 'Vehicle Class',
       'Has Passport', 
       'Has Insurance', 'Policy Number', 'Insurance Provider', 'Insurance Type', 'Insurance Expiry', 'Insurance Premium',
@@ -509,6 +511,8 @@ export default function EmployeeInformationPage() {
         emp.employee_categories?.category_name || 'N/A',
         emp.companies?.company_name || 'N/A',
         formatDate(emp.date_of_birth),
+        formatDate(emp.date_of_joining),
+        formatDate(emp.relieving_date),
         emp.has_license ? 'Yes' : 'No',
         emp.employee_licenses?.[0]?.license_number || 'N/A',
         formatDate(emp.employee_licenses?.[0]?.expiry_date),
@@ -695,7 +699,7 @@ export default function EmployeeInformationPage() {
         fetchEmployees(formData.company_id); // Refresh list for active company
         // Reset form
         setFormData({
-          employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+          employee_code: '', name: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
           addresses: [
             { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -741,6 +745,8 @@ export default function EmployeeInformationPage() {
       username: emp.username || '',
       password: '', // Leave blank unless they want to change it
       date_of_birth: emp.date_of_birth ? emp.date_of_birth.split('T')[0] : '',
+      date_of_joining: emp.date_of_joining ? emp.date_of_joining.split('T')[0] : '',
+      relieving_date: emp.relieving_date ? emp.relieving_date.split('T')[0] : '',
       addresses: [
         emp.addresses?.find((a: any) => a.address_type === 'Communication') || { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
         emp.addresses?.find((a: any) => a.address_type === 'Permanent') || { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -943,7 +949,7 @@ export default function EmployeeInformationPage() {
                     setEditingId(null);
                     const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
                     setFormData({ 
-                      employee_code: '', name: '', username: '', password: '', date_of_birth: '', 
+                      employee_code: '', name: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
                       addresses: [
                         { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                         { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -1107,6 +1113,28 @@ export default function EmployeeInformationPage() {
                            className={`h-10 md:h-11 ${errors.date_of_birth ? 'border-amber-400 bg-amber-50/30' : ''}`} 
                         />
                         {errors.date_of_birth && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.date_of_birth}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Joining</label>
+                        <Input 
+                           type="date" 
+                           name="date_of_joining" 
+                           value={formData.date_of_joining} 
+                           onChange={handleInputChange} 
+                           disabled={isViewMode} 
+                           className="h-10 md:h-11 bg-background font-medium" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Relieving Date</label>
+                        <Input 
+                           type="date" 
+                           name="relieving_date" 
+                           value={formData.relieving_date} 
+                           onChange={handleInputChange} 
+                           disabled={isViewMode} 
+                           className="h-10 md:h-11 bg-background font-medium" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number {!formData.phone && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
@@ -2288,6 +2316,7 @@ export default function EmployeeInformationPage() {
                         <th className="p-4 font-semibold w-24">Emp Code</th>
                         <th className="p-4 font-semibold">Full Name</th>
                         <th className="p-4 font-semibold">Department / Role</th>
+                        <th className="p-4 font-semibold">Joining / Relieving</th>
                         <th className="p-4 font-semibold">Basic Salary</th>
                         <th className="p-4 font-semibold">Contact Email</th>
                         <th className="p-4 font-semibold text-right">Actions</th>
@@ -2321,6 +2350,12 @@ export default function EmployeeInformationPage() {
                             {emp.branch_ids.length} {emp.branch_ids.length === 1 ? 'Branch' : 'Branches'}
                           </span>
                         ) : null}
+                      </td>
+                      <td className="p-4 font-medium text-xs text-slate-600">
+                        <div>{emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString() : '--'}</div>
+                        {emp.relieving_date && (
+                          <div className="text-[10px] text-rose-500 font-bold">Relieved: {new Date(emp.relieving_date).toLocaleDateString()}</div>
+                        )}
                       </td>
                       <td className="p-4 font-bold text-primary">₹{Number(emp.basic_salary || 0).toLocaleString()}</td>
                       <td className="p-4 text-foreground/60 font-mono text-xs">{emp.username}</td>

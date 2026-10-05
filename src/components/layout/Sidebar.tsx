@@ -144,7 +144,7 @@ function SidebarContent({
             const isModuleExpanded = expanded[moduleItem.title];
 
             if (!moduleItem.children) {
-              if (!canShowItem(moduleItem.roles, moduleItem.permissionKey)) return null;
+              if (!canShowItem(moduleItem.roles, moduleItem.permissionKey, moduleItem.path)) return null;
               const isActive = pathname === moduleItem.path;
               return (
                 <li key={idx}>
@@ -162,7 +162,9 @@ function SidebarContent({
               );
             }
 
-            if (!canShowItem(moduleItem.roles, moduleItem.permissionKey)) return null;
+            const visibleChildren = moduleItem.children?.filter((link: any) => canShowItem(link.roles, link.permissionKey, link.path)) || [];
+            if (visibleChildren.length === 0) return null;
+
             return (
               <li key={idx} className="flex flex-col">
                 <div
@@ -179,8 +181,7 @@ function SidebarContent({
                 </div>
                 {isModuleExpanded && (
                   <ul className="ml-8 mt-1 space-y-1 mb-2 border-l border-white/10 pl-2">
-                    {moduleItem.children?.map((link: any, lIdx: number) => {
-                      if (!canShowItem(link.roles, link.permissionKey)) return null;
+                    {visibleChildren.map((link: any, lIdx: number) => {
                       const isActive = pathname === link.path;
                       return (
                         <li key={lIdx}>

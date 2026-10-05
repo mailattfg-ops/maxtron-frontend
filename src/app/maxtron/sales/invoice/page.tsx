@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { usePermission } from '@/hooks/usePermission';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
@@ -11,7 +12,8 @@ import {
   Info, Edit2, CheckCircle2, AlertCircle, AlertTriangle, XCircle,
   Truck, ArrowRight, Check, Copy, UserPlus, Phone, Mail, MapPin,
   CreditCard, Tag, Layers, Hash, Box, Palette, Ruler, Edit, Printer,
-  Download, FileDown, ChevronDown, Loader2, Sliders, Settings2, SlidersHorizontal
+  Download, FileDown, ChevronDown, Loader2, Sliders, Settings2, SlidersHorizontal,
+  ExternalLink
 } from 'lucide-react';
 import {
   Select,
@@ -26,10 +28,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   downloadAllInvoiceDocs,
   downloadSingleTaxInvoice,
+  buildSingleTaxInvoice,
   downloadSingleEWayBill,
-  numberToWordsINR,
+  lineGstPercent,
   type InvoiceLayoutOptions
 } from '@/utils/invoicePdfGenerator';
+
+/** A customer's address as recorded. Missing parts are left out, never filled in. */
+const recordedAddress = (customer: any) => {
+  const a = customer?.addresses?.[0] || {};
+  return [a.street, a.city, a.state, a.zip_code].filter(Boolean).join(', ');
+};
+
+// Printed where "(ORIGINAL FOR RECIPIENT)" goes, so a draft can never pass for the registered invoice.
+const DRAFT_COPY_LABEL = '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5004';
 const INVOICES_API = `${API_BASE}/api/maxtron/sales/invoices`;
@@ -39,6 +51,15 @@ const PRODUCTS_API = `${API_BASE}/api/maxtron/products`;
 const EMPLOYEES_API = `${API_BASE}/api/maxtron/employees`;
 
 export default function SalesInvoiceEntry() {
+  const router = useRouter();
+  const { isMarketing } = usePermission();
+
+  useEffect(() => {
+    if (isMarketing) {
+      router.replace('/maxtron/production/reports/fg-stock');
+    }
+  }, [isMarketing, router]);
+
   const [invoices, setInvoices] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -71,7 +92,8 @@ export default function SalesInvoiceEntry() {
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
 
-  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C'>('ALL');
+  const [activeSection, setActiveSection] = useState<'ALL' | 'B2B' | 'B2C' | 'EINVOICE' | 'NON_EINVOICE' | 'EXTERNAL'>('ALL');
+  const [viewingBillDoc, setViewingBillDoc] = useState<{ url: string; name: string; invoiceNumber: string; software?: string } | null>(null);
 
   // Cancellation Modal States
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -161,6 +183,9 @@ export default function SalesInvoiceEntry() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewSource, setPreviewSource] = useState<'FORM' | 'TABLE'>('FORM');
+  // The preview is the invoice PDF itself, shown in a frame.
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
 
   // Download & Layout Sizing Customization States
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -322,6 +347,10 @@ export default function SalesInvoiceEntry() {
     vehicle_type: 'Regular',
     trans_doc_no: '',
     trans_doc_date: '',
+    is_external: false,
+    billing_software: 'Tally',
+    bill_document_url: '',
+    bill_document_name: '',
     items: [
       { product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }
     ]
@@ -674,27 +703,32 @@ export default function SalesInvoiceEntry() {
     if (order) {
       const cust = customers.find(c => c.id === order.customer_id);
       const autoType = cust?.gst_no ? 'B2B' : 'B2C';
+      const items = order.items.map((i: any) => {
+        const qty = Number(i.quantity) || 0;
+        const rate = Number(i.rate) || 0;
+        const gstP = Number(i.gst_percent ?? 18);
+        const taxable = qty * rate;
+        const gstAmt = (taxable * gstP) / 100;
+        return {
+          product_id: i.product_id,
+          quantity: qty,
+          rate: rate,
+          gst_percent: gstP,
+          gst_amount: gstAmt,
+          amount: taxable + gstAmt
+        };
+      });
       setFormData({
         ...formData,
         order_id: orderId,
         customer_id: order.customer_id,
         invoice_type: autoType,
         executive_id: order.executive_id || '',
-        items: order.items.map((i: any) => {
-          const qty = i.quantity || 0;
-          const rate = i.rate || 0;
-          const gstP = i.gst_percent || 18;
-          const taxable = qty * rate;
-          const gstAmt = i.gst_amount || ((taxable * gstP) / 100);
-          return {
-            product_id: i.product_id,
-            quantity: qty,
-            rate: rate,
-            gst_percent: gstP,
-            gst_amount: gstAmt,
-            amount: taxable + gstAmt
-          };
-        })
+        items,
+        // The invoice's tax is the tax of the lines just brought in. It used to
+        // stay at whatever the form held (0 on a new invoice), so an order at
+        // 18% was saved as an invoice with no GST.
+        tax_amount: items.reduce((sum: number, i: any) => sum + i.gst_amount, 0)
       });
     }
   };
@@ -755,10 +789,19 @@ export default function SalesInvoiceEntry() {
 
   const filteredInvoices = useMemo(() => {
     if (activeSection === 'B2B') {
-      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B');
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B' && !i.is_external);
     }
     if (activeSection === 'B2C') {
-      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C');
+      return invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external);
+    }
+    if (activeSection === 'EINVOICE') {
+      return invoices.filter(i => (i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) && !i.is_external);
+    }
+    if (activeSection === 'NON_EINVOICE') {
+      return invoices.filter(i => Boolean(i.is_external) || !(i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) || i.einvoice_status === 'NOT_APPLICABLE');
+    }
+    if (activeSection === 'EXTERNAL') {
+      return invoices.filter(i => Boolean(i.is_external));
     }
     return invoices;
   }, [invoices, activeSection]);
@@ -828,6 +871,10 @@ export default function SalesInvoiceEntry() {
           vehicle_type: 'Regular',
           trans_doc_no: '',
           trans_doc_date: '',
+          is_external: false,
+          billing_software: 'Tally',
+          bill_document_url: '',
+          bill_document_name: '',
           items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
         });
         setRoundOff(false);
@@ -867,19 +914,23 @@ export default function SalesInvoiceEntry() {
       vehicle_type: inv.vehicle_type || 'Regular',
       trans_doc_no: inv.trans_doc_no || '',
       trans_doc_date: inv.trans_doc_date ? inv.trans_doc_date.split('T')[0] : '',
+      is_external: Boolean(inv.is_external),
+      billing_software: inv.billing_software || 'Tally',
+      bill_document_url: inv.bill_document_url || '',
+      bill_document_name: inv.bill_document_name || '',
       items: inv.items.map((i: any) => {
         const qty = Number(i.quantity) || 0;
         const rate = Number(i.rate) || 0;
-        const gstP = Number(i.gst_percent) || 18;
+        const gstP = lineGstPercent(i, inv);
         const taxable = qty * rate;
-        const gstAmt = Number(i.gst_amount) || ((taxable * gstP) / 100);
+        const gstAmt = (taxable * gstP) / 100;
         return {
           product_id: i.product_id,
           quantity: qty,
           rate: rate,
           gst_percent: gstP,
           gst_amount: gstAmt,
-          amount: Number(i.amount) || (taxable + gstAmt)
+          amount: taxable + gstAmt
         };
       })
     });
@@ -981,29 +1032,28 @@ export default function SalesInvoiceEntry() {
       const qty = Number(item.quantity) || 0;
       const rate = Number(item.rate) || 0;
       const taxable = qty * rate;
-      const gstP = Number(item.gst_percent) !== undefined ? Number(item.gst_percent) : 18;
-      const gstAmt = item.gst_amount || ((taxable * gstP) / 100);
-      const totalAmt = item.amount || (taxable + gstAmt);
+      const gstP = Number(item.gst_percent) || 0;
+      const gstAmt = (taxable * gstP) / 100;
 
       return {
         ...item,
         id: `preview-item-${index}`,
-        product_name: prod?.product_name || `Product #${index + 1}`,
+        product_name: prod?.product_name || '',
         product_code: prod?.product_code || '',
-        hsn_code: prod?.hsn_code || '392011',
+        hsn_code: prod?.hsn_code || '',
         thickness_microns: prod?.thickness_microns,
         size: prod?.size,
         color: prod?.color,
-        finished_products: prod || {
-          product_name: prod?.product_name || `Product #${index + 1}`,
-          hsn_code: prod?.hsn_code || '392011'
-        },
+        finished_products: prod || {},
         quantity: qty,
         rate: rate,
         taxable_amount: taxable,
         gst_percent: gstP,
         gst_amount: gstAmt,
-        amount: totalAmt
+        // Taxable value (qty x rate), as a saved invoice line holds it. The form
+        // keeps `amount` tax-inclusive, and the invoice page adds tax on top of
+        // whatever it is given — passing that through printed tax on tax.
+        amount: taxable
       };
     });
 
@@ -1034,6 +1084,42 @@ export default function SalesInvoiceEntry() {
     });
     setPreviewSource('FORM');
     setShowPreviewModal(true);
+  };
+
+  /* Build the invoice PDF for the open preview. Same generator as the download,
+   * so the preview cannot drift from what prints.
+   * ponytail: shown through the browser's own PDF viewer. Phone browsers do not
+   * render PDFs inside a page; there the Download button is the way to see it.
+   * Draw the pages onto a canvas if phone previews are ever needed. */
+  useEffect(() => {
+    if (!showPreviewModal || !previewData) return;
+    let url: string | null = null;
+    let cancelled = false;
+    buildSingleTaxInvoice(previewData, activeTenant, DRAFT_COPY_LABEL, getEffectiveLayoutOptions())
+      .then(doc => {
+        if (cancelled) return;
+        url = URL.createObjectURL(doc.output('blob'));
+        setPreviewPdfUrl(url);
+      })
+      .catch(() => { if (!cancelled) error('Could not prepare the invoice preview.'); });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+      setPreviewPdfUrl(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt when the previewed invoice changes; layout options are read at that moment
+  }, [showPreviewModal, previewData]);
+
+  // Print the invoice in the frame — not the web page around it.
+  const printPreviewPdf = () => {
+    const frame = previewFrameRef.current?.contentWindow;
+    try {
+      if (!frame) throw new Error('no frame');
+      frame.focus();
+      frame.print();
+    } catch {
+      if (previewPdfUrl) window.open(previewPdfUrl, '_blank');
+    }
   };
 
   const handleOpenTablePreview = (inv: any) => {
@@ -1150,6 +1236,15 @@ export default function SalesInvoiceEntry() {
     }
   };
 
+  if (isMarketing) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <p className="text-base font-semibold">Access Restricted</p>
+        <p className="text-sm">Marketing role cannot view Invoice details.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto min-w-0">
       {/* Alert Dialog */}
@@ -1216,6 +1311,10 @@ export default function SalesInvoiceEntry() {
                 vehicle_type: 'Regular',
                 trans_doc_no: '',
                 trans_doc_date: '',
+                is_external: false,
+                billing_software: 'Tally',
+                bill_document_url: '',
+                bill_document_name: '',
                 items: [{ product_id: '', quantity: 0, rate: 0, gst_percent: 18, gst_amount: 0, amount: 0 }]
               });
               fetchNextInvoiceNumber(currentCompanyId);
@@ -1359,11 +1458,152 @@ export default function SalesInvoiceEntry() {
                       : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       }`}>
                       <span className="text-[10px] uppercase font-bold opacity-70 block">Tax Method</span>
-                      {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST 18%)' : 'Intra-State (CGST 9% + SGST 9%)'}
+                      {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* External Bill Entry Section (Bills raised outside system e.g. Tally) */}
+              <div className="p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <Checkbox
+                      id="is_external_bill"
+                      checked={formData.is_external || false}
+                      onCheckedChange={(checked) => {
+                        const val = Boolean(checked);
+                        setFormData(prev => ({
+                          ...prev,
+                          is_external: val,
+                          billing_software: val ? (prev.billing_software || 'Tally') : ''
+                        }));
+                      }}
+                      className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 h-5 w-5 rounded-md"
+                    />
+                    <label htmlFor="is_external_bill" className="text-sm font-black text-slate-800 cursor-pointer flex items-center gap-2 select-none">
+                      <span>Bill Raised Outside System (e.g. Tally)</span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">External Bill</span>
+                    </label>
+                  </div>
+                  {formData.is_external && (
+                    <p className="text-xs text-amber-800 font-bold bg-amber-100/70 px-3 py-1 rounded-lg flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" /> Stock will be deducted as normal. e-Invoice generation will be skipped.
+                    </p>
+                  )}
+                </div>
+
+                {formData.is_external && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-amber-200/60 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-amber-900 flex items-center gap-1 px-1">
+                        <Tag className="w-3 h-3 text-amber-600" /> Billing Software Name
+                      </label>
+                      <Select
+                        value={['Tally', 'Busy', 'Zoho Books', 'SAP', 'Marg ERP', 'Manual / Paper'].includes(formData.billing_software) ? formData.billing_software : 'Other'}
+                        onValueChange={(val) => {
+                          if (val === 'Other') {
+                            setFormData(prev => ({ ...prev, billing_software: '' }));
+                          } else {
+                            setFormData(prev => ({ ...prev, billing_software: val }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-10 font-bold bg-white border-amber-300 focus:border-amber-500">
+                          <SelectValue placeholder="Select Software..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white z-[1000]">
+                          <SelectItem value="Tally">Tally ERP / Tally Prime</SelectItem>
+                          <SelectItem value="Busy">Busy Accounting</SelectItem>
+                          <SelectItem value="Zoho Books">Zoho Books</SelectItem>
+                          <SelectItem value="SAP">SAP ERP</SelectItem>
+                          <SelectItem value="Marg ERP">Marg ERP</SelectItem>
+                          <SelectItem value="Manual / Paper">Manual / Paper Bill</SelectItem>
+                          <SelectItem value="Other">Other Software (Type Custom Name)</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {(!['Tally', 'Busy', 'Zoho Books', 'SAP', 'Marg ERP', 'Manual / Paper'].includes(formData.billing_software)) && (
+                        <div className="space-y-1 animate-in fade-in duration-200">
+                          <Input
+                            type="text"
+                            placeholder="Enter software name (e.g. QuickBooks, Miracle, Custom ERP)..."
+                            value={formData.billing_software || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, billing_software: e.target.value }))}
+                            className="bg-white border-amber-300 text-xs font-bold text-slate-800 focus:border-amber-500 h-10"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-amber-900 flex items-center gap-1 px-1">
+                        <FileText className="w-3 h-3 text-amber-600" /> Upload External Bill Copy (PDF / Image)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept=".pdf,image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 15 * 1024 * 1024) {
+                                error('File size exceeds 15MB limit.');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  bill_document_url: event.target?.result as string,
+                                  bill_document_name: file.name
+                                }));
+                                success(`File "${file.name}" attached successfully.`);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="bg-white border-amber-300 text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer h-10"
+                        />
+                        {formData.bill_document_url && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setViewingBillDoc({
+                                url: formData.bill_document_url,
+                                name: formData.bill_document_name || 'Bill Copy',
+                                invoiceNumber: formData.invoice_number || 'Draft',
+                                software: formData.billing_software
+                              })}
+                              className="text-amber-900 border-amber-300 hover:bg-amber-100 h-10 px-3 font-bold text-xs flex items-center gap-1"
+                              title="Preview Attached Copy"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-700" /> Preview
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setFormData(prev => ({ ...prev, bill_document_url: '', bill_document_name: '' }))}
+                              className="text-rose-600 border-rose-200 hover:bg-rose-50 h-10 px-3 font-bold"
+                              title="Remove File"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {formData.bill_document_name && (
+                        <p className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-1">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Attached: <span className="font-bold underline truncate max-w-xs">{formData.bill_document_name}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Line Items */}
               <div className="space-y-4 w-full max-w-full min-w-0">
@@ -1529,22 +1769,28 @@ export default function SalesInvoiceEntry() {
                         />
                       </div>
 
+                      {Math.abs(totals.tax - totals.calculatedTax) > 1 && (
+                        <p className="text-[10px] font-medium text-amber-700">
+                          Differs from the GST of the lines (₹ {totals.calculatedTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}). The invoice will be charged the amount typed here.
+                        </p>
+                      )}
+
                       {/* GST Tax Breakdown */}
                       {totals.tax > 0 && formData.customer_id && (
                         <div className="pt-2 border-t border-dashed border-slate-200 text-xs space-y-1 font-mono">
                           {getGstType(formData.customer_id) === 'IGST' ? (
                             <div className="flex justify-between text-amber-700 font-medium">
-                              <span>IGST (18%)</span>
+                              <span>IGST</span>
                               <span>₹ {totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                           ) : (
                             <>
                               <div className="flex justify-between text-emerald-700 font-medium">
-                                <span>CGST (9%)</span>
+                                <span>CGST</span>
                                 <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                               <div className="flex justify-between text-emerald-700 font-medium">
-                                <span>SGST (9%)</span>
+                                <span>SGST</span>
                                 <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                             </>
@@ -1606,7 +1852,7 @@ export default function SalesInvoiceEntry() {
 
       {!showForm && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/80">
+          <div className="flex items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-fit border border-slate-200/80 flex-wrap">
             <button
               type="button"
               onClick={() => setActiveSection('ALL')}
@@ -1619,13 +1865,46 @@ export default function SalesInvoiceEntry() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveSection('EINVOICE')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'EINVOICE'
+                ? 'bg-white text-purple-700 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-purple-600" />
+              <span>e-Invoices ({invoices.filter(i => (i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) && !i.is_external).length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('NON_EINVOICE')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'NON_EINVOICE'
+                ? 'bg-white text-amber-800 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <Tag className="w-3.5 h-3.5 text-amber-600" />
+              <span>Non-e-Invoice Bills ({invoices.filter(i => Boolean(i.is_external) || !(i.einvoice_status === 'GENERATED' || Boolean(i.einvoice_irn)) || i.einvoice_status === 'NOT_APPLICABLE').length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('EXTERNAL')}
+              className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${activeSection === 'EXTERNAL'
+                ? 'bg-white text-amber-900 shadow-md shadow-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
+              <span>External Bills (Tally) ({invoices.filter(i => Boolean(i.is_external)).length})</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveSection('B2B')}
               className={`px-5 py-2.5 text-xs font-black rounded-xl transition-all ${activeSection === 'B2B'
                 ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50'
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
             >
-              B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B').length})
+              B2B Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2B' && !i.is_external).length})
             </button>
             <button
               type="button"
@@ -1635,7 +1914,7 @@ export default function SalesInvoiceEntry() {
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
             >
-              B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C').length})
+              B2C Invoices ({invoices.filter(i => (i.invoice_type || (i.customers?.gst_no ? 'B2B' : 'B2C')).toUpperCase() === 'B2C' && !i.is_external).length})
             </button>
           </div>
 
@@ -1660,14 +1939,22 @@ export default function SalesInvoiceEntry() {
                     <div className="text-[10px] text-slate-400 font-normal">{inv.customers?.customer_code}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
-                      }`}>
-                      {resolvedType}
-                    </span>
+                    {inv.is_external ? (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 w-fit">
+                        <Tag className="w-3 h-3 text-amber-700" /> {inv.billing_software || 'Tally'}
+                      </span>
+                    ) : (
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isB2B ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}>
+                        {resolvedType}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-mono font-bold text-slate-900">₹ {Number(inv.net_amount).toLocaleString()}</td>
                   <td className="px-6 py-4">
-                    {!isB2B ? (
+                    {inv.is_external ? (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase">N/A (External Bill)</span>
+                    ) : !isB2B ? (
                       <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-400 uppercase">N/A (B2C)</span>
                     ) : (
                       <div className="flex flex-col gap-1.5 items-start">
@@ -1694,11 +1981,14 @@ export default function SalesInvoiceEntry() {
                         {einvStatus === 'CANCELLED' && (
                           <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Cancelled</span>
                         )}
-                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'FAILED' && (
+                        {einvStatus === 'NOT_APPLICABLE' && (
+                          <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 uppercase">Not Applicable</span>
+                        )}
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'FAILED' && einvStatus !== 'NOT_APPLICABLE' && (
                           <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">Pending</span>
                         )}
 
-                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && (
+                        {einvStatus !== 'GENERATED' && einvStatus !== 'CANCELLED' && einvStatus !== 'NOT_APPLICABLE' && (
                           <div className="flex items-center gap-1.5 pt-0.5">
                             <Button
                               type="button"
@@ -1953,6 +2243,29 @@ export default function SalesInvoiceEntry() {
                         })()}
                       </div>
 
+                      {inv.bill_document_url ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewingBillDoc({
+                            url: inv.bill_document_url,
+                            name: inv.bill_document_name || `Bill_${inv.invoice_number}`,
+                            invoiceNumber: inv.invoice_number,
+                            software: inv.billing_software
+                          })}
+                          className="h-8 text-[11px] font-bold border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-lg flex items-center gap-1.5 px-2.5 shadow-sm"
+                          title={`View ${inv.billing_software || 'External'} Bill Copy (${inv.bill_document_name || 'Attached'})`}
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="hidden sm:inline truncate max-w-[100px]">{inv.bill_document_name || 'Bill Copy'}</span>
+                        </Button>
+                      ) : inv.is_external ? (
+                        <span className="text-[10px] font-bold text-amber-700/60 italic px-1">
+                          No copy
+                        </span>
+                      ) : null}
+
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)} className="h-8 w-8 p-0 text-slate-500 hover:text-primary rounded-lg" title="Edit Invoice">
                         <Edit2 className="w-4 h-4" />
                       </Button>
@@ -2168,7 +2481,7 @@ export default function SalesInvoiceEntry() {
                   </div>
                   <div className="min-w-0">
                     <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate">
-                      E-Way Bill Slip #{viewEwbInvoice.ewb_no || '121049284910'}
+                      E-Way Bill Slip #{viewEwbInvoice.ewb_no || '—'}
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-300 truncate">
                       Official e-Way Bill for Tax Invoice {viewEwbInvoice.invoice_number}
@@ -2230,7 +2543,7 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                   <div>
                     <span className="text-slate-500 font-medium block">e-Way Bill No:</span>
-                    <span className="font-mono font-black text-sm text-primary">{viewEwbInvoice.ewb_no || '121049284910'}</span>
+                    <span className="font-mono font-black text-sm text-primary">{viewEwbInvoice.ewb_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Generated Date:</span>
@@ -2256,17 +2569,17 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">Consignor (From)</span>
-                    <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                    <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'MAXTRON ASSOCIATES'}</div>
                     <div className="text-slate-600 font-mono text-[11px]">GSTIN: 32AUYPV8850B1Z2</div>
-                    <div className="text-slate-500">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                    <div className="text-slate-500">Address: 13-95, 13-96, Pirivusala, Chandranagar, Palakkad, Kerala</div>
                   </div>
 
                   <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">Consignee (To)</span>
-                    <div className="font-bold text-sm text-slate-900">{viewEwbInvoice.customers?.customer_name || 'Customer'}</div>
+                    <div className="font-bold text-sm text-slate-900">{viewEwbInvoice.customers?.customer_name || '—'}</div>
                     <div className="text-slate-600 font-mono text-[11px]">GSTIN: {viewEwbInvoice.customers?.gst_no || 'URP (Unregistered)'}</div>
                     <div className="text-slate-500">
-                      Address: {viewEwbInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEwbInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEwbInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEwbInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                      Address: {recordedAddress(viewEwbInvoice.customers) || 'Not on record'}
                     </div>
                   </div>
                 </div>
@@ -2304,11 +2617,11 @@ export default function SalesInvoiceEntry() {
                     <tbody className="divide-y divide-slate-200 font-medium">
                       {(viewEwbInvoice.items || []).map((item: any, idx: number) => (
                         <tr key={idx} className="hover:bg-slate-50">
-                          <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Products'}</td>
-                          <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                          <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || '—'}</td>
+                          <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '—'}</td>
                           <td className="p-2.5 text-center font-mono">{item.quantity}</td>
                           <td className="p-2.5 text-right font-mono">₹ {(Number(item.quantity) * Number(item.rate)).toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-mono">{item.gst_percent || 18}%</td>
+                          <td className="p-2.5 text-right font-mono">{lineGstPercent(item, viewEwbInvoice)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2329,15 +2642,15 @@ export default function SalesInvoiceEntry() {
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Vehicle Number:</span>
-                    <span className="font-mono font-black text-sm text-blue-900">{viewEwbInvoice.vehicle_no || 'KL53V9494'}</span>
+                    <span className="font-mono font-black text-sm text-blue-900">{viewEwbInvoice.vehicle_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Transporter Name:</span>
-                    <span className="font-bold text-blue-950">{viewEwbInvoice.transporter_name || 'Direct Transport'}</span>
+                    <span className="font-bold text-blue-950">{viewEwbInvoice.transporter_name || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Distance (Approx):</span>
-                    <span className="font-mono font-bold text-blue-950">{viewEwbInvoice.trans_distance || 10} Km</span>
+                    <span className="font-mono font-bold text-blue-950">{viewEwbInvoice.trans_distance ? `${viewEwbInvoice.trans_distance} Km` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -2456,14 +2769,14 @@ export default function SalesInvoiceEntry() {
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-slate-500">Invoice Reference Number (IRN):</div>
                   <div className="font-mono text-xs font-bold bg-white p-2.5 rounded-lg border border-emerald-300 text-slate-900 break-all select-all shadow-sm">
-                    {viewEInvoice.einvoice_irn || '4b89f0291e8432a10b9876543210feab9876543210feab9876543210feab9876'}
+                    {viewEInvoice.einvoice_irn || '—'}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-1">
                   <div>
                     <span className="text-slate-500 font-medium block">Ack No:</span>
-                    <span className="font-mono font-black text-sm text-emerald-950">{viewEInvoice.einvoice_ack_no || '105330196958644'}</span>
+                    <span className="font-mono font-black text-sm text-emerald-950">{viewEInvoice.einvoice_ack_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Ack Date:</span>
@@ -2480,17 +2793,17 @@ export default function SalesInvoiceEntry() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
                   <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
-                  <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                  <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'MAXTRON ASSOCIATES'}</div>
                   <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: 32AUYPV8850B1Z2</div>
-                  <div className="text-slate-500 pt-1">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                  <div className="text-slate-500 pt-1">Address: 13-95, 13-96, Pirivusala, Chandranagar, Palakkad, Kerala</div>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
                   <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Buyer (Consignee)</span>
-                  <div className="font-bold text-sm text-slate-900">{viewEInvoice.customers?.customer_name || 'Customer'}</div>
+                  <div className="font-bold text-sm text-slate-900">{viewEInvoice.customers?.customer_name || '—'}</div>
                   <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: {viewEInvoice.customers?.gst_no || 'N/A'}</div>
                   <div className="text-slate-500 pt-1">
-                    Address: {viewEInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                    Address: {recordedAddress(viewEInvoice.customers) || 'Not on record'}
                   </div>
                 </div>
               </div>
@@ -2532,12 +2845,12 @@ export default function SalesInvoiceEntry() {
                         const qty = Number(item.quantity) || 0;
                         const rate = Number(item.rate) || 0;
                         const taxable = qty * rate;
-                        const gstP = Number(item.gst_percent) || 18;
-                        const lineTotal = Number(item.amount) || (taxable + (taxable * gstP / 100));
+                        const gstP = lineGstPercent(item, viewEInvoice);
+                        const lineTotal = taxable + (taxable * gstP / 100);
                         return (
                           <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Product'}</td>
-                            <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                            <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || '—'}</td>
+                            <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '—'}</td>
                             <td className="p-2.5 text-center font-mono">{qty}</td>
                             <td className="p-2.5 text-right font-mono">₹ {rate.toLocaleString()}</td>
                             <td className="p-2.5 text-right font-mono">₹ {taxable.toLocaleString()}</td>
@@ -2601,313 +2914,51 @@ export default function SalesInvoiceEntry() {
       )}
 
       {/* Pre-e-Invoice Draft Preview Modal */}
+      {/* The preview shows the invoice PDF itself — the page the download saves —
+          so what is checked here is what will print. It used to be a separately
+          drawn summary, which looked nothing like the invoice. */}
       {showPreviewModal && previewData && (
-        <div className="fixed inset-0 z-[1300] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 overflow-y-auto animate-in fade-in">
-          <Card className="w-full max-w-4xl bg-white shadow-2xl border-amber-300 rounded-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 relative">
-            <CardHeader className="bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 text-white p-4 md:p-5 shrink-0 flex flex-col gap-3 w-full border-b border-amber-800">
-              <div className="w-full flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 bg-amber-500/20 text-amber-300 rounded-xl border border-amber-400/30 shrink-0">
-                    <AlertTriangle className="w-5 h-5 md:w-6 md:h-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 border border-amber-300">
-                        DRAFT PREVIEW
-                      </span>
-                      <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">
-                        Pre-e-Invoice Verification
-                      </span>
-                    </div>
-                    <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate mt-0.5">
-                      Preview Before e-Invoice Generation — {previewData.invoice_number || 'DRAFT'}
-                    </CardTitle>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowPreviewModal(false)}
-                  className="hover:bg-amber-900 text-amber-300 hover:text-white rounded-full shrink-0 ml-auto"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
+        <div className="fixed inset-0 z-[1300] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 animate-in fade-in">
+          <Card className="w-full max-w-5xl h-[94vh] gap-0 py-0 bg-white shadow-2xl border-amber-300 rounded-2xl overflow-hidden flex flex-col animate-in zoom-in-95 relative">
+            <CardHeader className="bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 text-white px-4 py-3 shrink-0 flex flex-row items-center justify-between gap-3 border-b border-amber-800">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 border border-amber-300 shrink-0">
+                  Draft Preview
+                </span>
+                <CardTitle className="text-sm md:text-base font-black text-white truncate">
+                  Invoice {previewData.invoice_number || 'DRAFT'} — as it will print
+                </CardTitle>
               </div>
-
-              {/* Action buttons header row */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full pt-2 border-t border-amber-800/80">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => window.print()}
-                  className="w-full border-amber-700 bg-amber-900/60 hover:bg-amber-800 text-amber-200 hover:text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
-                >
-                  <Printer className="w-3.5 h-3.5 text-amber-300 shrink-0" /> Print Preview
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => downloadSingleTaxInvoice(previewData, activeTenant, '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)', getEffectiveLayoutOptions())}
-                  className="w-full bg-amber-600 hover:bg-amber-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center"
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0" /> Download Draft PDF
-                </Button>
-                {previewSource === 'FORM' ? (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowPreviewModal(false);
-                      const formEl = document.getElementById('sales-invoice-form') as HTMLFormElement;
-                      if (formEl) formEl.requestSubmit();
-                    }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center col-span-2 sm:col-span-1"
-                  >
-                    <Save className="w-3.5 h-3.5 shrink-0" /> {editingId ? "Update Invoice" : "Generate Invoice"}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowPreviewModal(false);
-                      if (previewData?.id) handleGenerateEInvoice(previewData.id);
-                    }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-9 text-xs font-bold gap-1.5 shadow-md justify-center col-span-2 sm:col-span-1"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Generate IRN Now
-                  </Button>
-                )}
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPreviewModal(false)}
+                className="hover:bg-amber-900 text-amber-300 hover:text-white rounded-full shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </Button>
             </CardHeader>
 
-            <CardContent className="p-4 md:p-6 overflow-y-auto space-y-6 text-slate-800 font-sans print:p-0 relative">
-              {/* Large Watermark */}
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.04] select-none rotate-[-25deg] text-6xl md:text-8xl font-black text-slate-900 uppercase">
-                PREVIEW ONLY - NOT AN E-INVOICE
-              </div>
-
-              {/* Warning Banner */}
-              <div className="p-4 bg-amber-50/90 border-2 border-amber-300 rounded-xl flex items-start gap-3 shadow-sm">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-black uppercase text-amber-950 tracking-wider flex items-center gap-2">
-                    <span>PREVIEW ONLY — NOT AN OFFICIAL E-INVOICE / TAX INVOICE</span>
-                    <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">DRAFT</span>
-                  </div>
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    This document is an uncertified preview generated for verification purposes before e-Invoice (IRN) generation.
-                    It does <strong>NOT</strong> constitute a legally binding tax invoice under GST Rules and does not contain a verified Government IRN or digitally signed QR code.
-                  </p>
+            <CardContent className="flex-1 min-h-0 p-0 bg-slate-200">
+              {previewPdfUrl ? (
+                <iframe
+                  ref={previewFrameRef}
+                  src={`${previewPdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+                  title="Invoice preview"
+                  className="w-full h-full border-0 bg-white"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Preparing invoice preview…
                 </div>
-              </div>
-
-              {/* e-Invoice Registration Pending Box */}
-              <div className="border-2 border-dashed border-amber-300 rounded-xl p-4 bg-amber-50/40 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
-                  <div>
-                    <div className="text-[10px] uppercase font-black tracking-widest text-amber-800">GST e-Invoice System (IRP)</div>
-                    <div className="text-lg font-black text-amber-950">TAX INVOICE (PRE-GENERATION DRAFT)</div>
-                  </div>
-                  <div>
-                    <span className="px-3 py-1 bg-amber-200/80 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 w-fit">
-                      <AlertCircle className="w-3.5 h-3.5 text-amber-700" /> IRN PENDING / NOT GENERATED
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="text-[11px] font-bold text-slate-500">Invoice Reference Number (IRN):</div>
-                  <div className="font-mono text-xs font-bold bg-white p-2.5 rounded-lg border border-amber-200 text-amber-900 select-all shadow-sm">
-                    [PENDING REGISTRATION - Will be assigned by GST e-Invoice Portal upon generation]
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-                  <div>
-                    <span className="text-slate-500 font-medium block text-[10px]">Ack No:</span>
-                    <span className="font-mono font-bold text-slate-600">NOT GENERATED</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-medium block text-[10px]">Ack Date:</span>
-                    <span className="font-bold text-slate-600">DRAFT (Pending)</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-medium block text-[10px]">Document Type:</span>
-                    <span className="font-bold text-slate-800">Tax Invoice (INV)</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-medium block text-[10px]">Preview Mode:</span>
-                    <span className="font-bold text-amber-700">Pre-IRN Validation</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Seller & Buyer Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                {/* Seller */}
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
-                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
-                  <div className="font-bold text-sm text-slate-900">{currentCompany?.company_name || (activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries')}</div>
-                  <div className="text-slate-700 font-mono text-[11px] font-bold">
-                    GSTIN: {currentCompany?.gst_no || (activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2')}
-                  </div>
-                  <div className="text-slate-500 pt-1">
-                    Address: {currentCompany?.addresses?.[0]?.street || (activeTenant === 'KEIL' ? 'KEIL Industrial Complex, Kochi, Kerala - 682001' : 'Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001')}
-                  </div>
-                </div>
-
-                {/* Buyer */}
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
-                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Buyer (Consignee)</span>
-                  <div className="font-bold text-sm text-slate-900">{previewData.customers?.customer_name || 'Customer Name'}</div>
-                  <div className="text-slate-700 font-mono text-[11px] font-bold">
-                    GSTIN: {previewData.customers?.gst_no || 'URP (Unregistered)'}
-                  </div>
-                  <div className="text-slate-500 pt-1">
-                    Address: {previewData.customers?.addresses?.[0]?.street || 'Address not specified'}, {previewData.customers?.addresses?.[0]?.city || ''} {previewData.customers?.addresses?.[0]?.state || ''} {previewData.customers?.addresses?.[0]?.zip_code ? `- ${previewData.customers?.addresses?.[0]?.zip_code}` : ''}
-                  </div>
-                </div>
-              </div>
-
-              {/* Invoice Metadata Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-100 p-3.5 rounded-xl border border-slate-200 font-mono">
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Draft Invoice No:</span>
-                  <span className="font-bold text-slate-900 text-sm">{previewData.invoice_number || 'DRAFT'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Invoice Date:</span>
-                  <span className="font-bold text-slate-900">{previewData.invoice_date ? new Date(previewData.invoice_date).toLocaleDateString() : new Date().toLocaleDateString()}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Transporter / Vehicle:</span>
-                  <span className="font-bold text-slate-900">{previewData.vehicle_no || previewData.transporter_name || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Total Invoice Value:</span>
-                  <span className="font-black text-amber-900 text-sm">₹ {Number(previewData.net_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div className="space-y-2">
-                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
-                  <span>Item Details & Pre-Tax Values</span>
-                  <span className="text-[10px] font-semibold text-slate-400">({(previewData.items || []).length} items)</span>
-                </h4>
-                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                      <tr>
-                        <th className="p-2.5">#</th>
-                        <th className="p-2.5">Item Description</th>
-                        <th className="p-2.5 text-center">HSN</th>
-                        <th className="p-2.5 text-center">Qty</th>
-                        <th className="p-2.5 text-right">Rate (₹)</th>
-                        <th className="p-2.5 text-right">Taxable Value</th>
-                        <th className="p-2.5 text-right">GST %</th>
-                        <th className="p-2.5 text-right">Line Total (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 font-medium">
-                      {(previewData.items || []).map((item: any, idx: number) => {
-                        const qty = Number(item.quantity) || 0;
-                        const rate = Number(item.rate) || 0;
-                        const taxable = qty * rate;
-                        const gstP = Number(item.gst_percent) !== undefined ? Number(item.gst_percent) : 18;
-                        const lineTotal = Number(item.amount) || (taxable + (taxable * gstP / 100));
-                        const prodName = item.product_name || item.finished_products?.product_name || 'Product';
-                        return (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
-                            <td className="p-2.5 font-bold text-slate-900">
-                              {prodName}
-                              {item.thickness_microns && <span className="ml-1 text-[10px] font-normal text-slate-500">({item.thickness_microns}µ)</span>}
-                            </td>
-                            <td className="p-2.5 text-center font-mono text-slate-600">{item.hsn_code || item.finished_products?.hsn_code || '392011'}</td>
-                            <td className="p-2.5 text-center font-mono font-bold">{qty}</td>
-                            <td className="p-2.5 text-right font-mono">₹ {rate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2.5 text-right font-mono font-semibold">₹ {taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2.5 text-right font-mono">{gstP}%</td>
-                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">₹ {lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Aggregates Breakdown */}
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pt-2">
-                <div className="text-xs text-slate-500 space-y-1 max-w-sm">
-                  <div className="font-bold text-slate-700">Amount in Words:</div>
-                  <div className="italic font-medium text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    {numberToWordsINR(Number(previewData.net_amount || 0))}
-                  </div>
-                  {previewData.remarks && (
-                    <div className="pt-2">
-                      <span className="font-bold text-slate-700">Remarks: </span>
-                      <span className="italic">{previewData.remarks}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="w-full sm:w-80 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Taxable Subtotal:</span>
-                    <span className="font-mono font-bold">₹ {Number(previewData.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  {/* GST Tax Breakdown */}
-                  {Number(previewData.tax_amount || 0) > 0 && (
-                    <div className="pt-1 pb-1 border-t border-dashed border-slate-200 space-y-1 font-mono text-[11px]">
-                      {previewData.customer_id && getGstType(previewData.customer_id) === 'IGST' ? (
-                        <div className="flex justify-between text-amber-700 font-medium">
-                          <span>IGST (18%)</span>
-                          <span>₹ {Number(previewData.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between text-emerald-700 font-medium">
-                            <span>CGST (9%)</span>
-                            <span>₹ {(Number(previewData.tax_amount) / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between text-emerald-700 font-medium">
-                            <span>SGST (9%)</span>
-                            <span>₹ {(Number(previewData.tax_amount) / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {Number(previewData.discount_amount || 0) > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>Discount (-):</span>
-                      <span className="font-mono font-bold text-rose-600">- ₹ {Number(previewData.discount_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-
-                  {previewData.roundoff_amount !== undefined && previewData.roundoff_amount !== 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>Round Off:</span>
-                      <span className="font-mono font-bold">₹ {Number(previewData.roundoff_amount).toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="h-px bg-slate-200 my-1" />
-                  <div className="flex justify-between font-black text-slate-900 text-sm">
-                    <span>Net Invoice Value:</span>
-                    <span className="font-mono text-amber-900">₹ {Number(previewData.net_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
 
             <CardFooter className="bg-slate-50 p-4 border-t flex flex-wrap justify-between items-center gap-2 shrink-0">
               <div className="flex items-center gap-2 text-[11px] text-amber-800 font-semibold">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                <span>Draft preview copy for verification only prior to e-Invoice registration.</span>
+                <span>Draft for checking only — IRN is assigned when the e-Invoice is generated.</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowPreviewModal(false)} className="rounded-full px-5 font-bold text-slate-600">
@@ -2915,12 +2966,12 @@ export default function SalesInvoiceEntry() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => downloadSingleTaxInvoice(previewData, activeTenant, '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)', getEffectiveLayoutOptions())}
+                  onClick={() => downloadSingleTaxInvoice(previewData, activeTenant, DRAFT_COPY_LABEL, getEffectiveLayoutOptions())}
                   className="bg-amber-700 hover:bg-amber-800 text-white rounded-full px-5 font-bold gap-1.5 shadow-md text-xs"
                 >
                   <Download className="w-3.5 h-3.5" /> Download Draft PDF
                 </Button>
-                <Button type="button" onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-5 font-bold gap-2 text-xs">
+                <Button type="button" onClick={printPreviewPdf} disabled={!previewPdfUrl} className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-5 font-bold gap-2 text-xs">
                   <Printer className="w-3.5 h-3.5" /> Print Preview
                 </Button>
                 {previewSource === 'FORM' ? (
@@ -3584,6 +3635,64 @@ export default function SalesInvoiceEntry() {
               </div>
             </CardFooter>
           </Card>
+        </div>
+      )}
+
+      {/* Attached External Bill Copy Viewer Modal */}
+      {viewingBillDoc && (
+        <div className="fixed inset-0 z-[1200] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-sm">
+                  <FileText className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                    <span>External Bill Copy</span>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      {viewingBillDoc.software || 'External Software'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium truncate max-w-md">
+                    Invoice #{viewingBillDoc.invoiceNumber} • {viewingBillDoc.name || 'Document'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={viewingBillDoc.url}
+                  download={viewingBillDoc.name || `bill_${viewingBillDoc.invoiceNumber}`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" /> Download Copy
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setViewingBillDoc(null)}
+                  className="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-slate-100 min-h-[450px]">
+              {viewingBillDoc.url.startsWith('data:image/') || viewingBillDoc.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                <img
+                  src={viewingBillDoc.url}
+                  alt={viewingBillDoc.name}
+                  className="max-h-[72vh] max-w-full object-contain rounded-lg shadow"
+                />
+              ) : (
+                <iframe
+                  src={viewingBillDoc.url}
+                  title={viewingBillDoc.name}
+                  className="w-full h-[72vh] rounded-lg border border-slate-200 bg-white shadow-sm"
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -48,6 +48,22 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         const expectedPrefix = `/${companyCode}`;
         if (!pathname.startsWith(expectedPrefix)) {
           router.push(expectedPrefix);
+          return;
+        }
+
+        const roleStr = (userObj?.role_name || userObj?.user_types?.name || '').toLowerCase();
+        if (roleStr.includes('marketing')) {
+          const allowedMarketingPaths = [
+            '/maxtron/inventory/trading-goods',
+            '/maxtron/production/reports/fg-stock',
+            '/maxtron/inventory/reports/stock',
+            '/maxtron/hr-payroll/marketing-visits',
+            '/maxtron/marketing/reports'
+          ];
+          const isAllowed = allowedMarketingPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
+          if (!isAllowed && pathname !== '/login' && pathname !== '/maxtron') {
+            router.push('/maxtron/production/reports/fg-stock');
+          }
         }
       }
     }
@@ -58,14 +74,29 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     setSidebarOpen(false);
   }, [pathname]);
 
-  const canShowItem = (allowedRoles?: string[], permissionKey?: string) => {
+  const canShowItem = (allowedRoles?: string[], permissionKey?: string, path?: string) => {
+    if (!user) return false;
+    const userRole = (user?.role_name || user?.user_types?.name || '').toLowerCase();
+    const isAdmin = userRole === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
+    if (isAdmin) return true;
+
+    const isMarketing = userRole.includes('marketing');
+    if (isMarketing) {
+      const allowedMarketingPaths = [
+        '/maxtron/inventory/trading-goods',
+        '/maxtron/production/reports/fg-stock',
+        '/maxtron/inventory/reports/stock',
+        '/maxtron/hr-payroll/marketing-visits',
+        '/maxtron/marketing/reports'
+      ];
+      if (path) {
+        return allowedMarketingPaths.some(p => path === p || path.startsWith(p + '/'));
+      }
+    }
+
     if (permissionKey) {
         return hasPermission(permissionKey, 'view');
     }
-    if (!user) return false;
-    const userRole = (user?.role_name || '').toLowerCase();
-    const isAdmin = userRole === 'admin' || user?.email?.toLowerCase() === 'admin@maxtron.com';
-    if (isAdmin) return true;
     if (!allowedRoles || allowedRoles.length === 0) return true;
     return allowedRoles.some(role => role.toLowerCase() === userRole);
   };

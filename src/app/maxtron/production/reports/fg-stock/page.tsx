@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { exportToExcel } from '@/utils/export';
+import { usePermission } from '@/hooks/usePermission';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,6 +23,7 @@ export default function FGStockListPage() {
   const [editValue, setEditValue] = useState<string>('');
   const [updating, setUpdating] = useState(false);
   const { info, error: showError } = useToast();
+  const { isMarketing } = usePermission();
   
   const pathname = usePathname();
   const activeTenant = pathname?.startsWith('/keil') ? 'KEIL' : 'MAXTRON';
@@ -89,6 +91,29 @@ export default function FGStockListPage() {
 
   const downloadStockReport = async () => {
     if (stock.length === 0) return;
+
+    if (isMarketing) {
+      const headers = ['Product Code', 'Product Name', 'Size', 'Color', 'Trading Inward', 'Stock Balance', 'Unit', 'Stock Status'];
+      const rows = stock.map(s => [
+        s.product_code || '',
+        s.product_name || '',
+        s.size || '',
+        s.color || '',
+        Number(s.trading_inward || 0),
+        Number(s.balance || 0),
+        'Kg',
+        s.balance < (s.stock_threshold || 50) ? 'LOW STOCK' : 'AVAILABLE'
+      ]);
+      await exportToExcel({
+        headers,
+        rows,
+        filename: `fg_stock_report_marketing_${activeTenant.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`,
+        sheetName: 'Stock Status'
+      });
+      info('Stock report exported successfully.');
+      return;
+    }
+
     const headers = ['Product Code', 'Product Name', 'Size', 'Color', 'Opening Stock', 'Produced', 'Trading Inward', 'Sold', 'Total Balance', 'Unit'];
     const rows = stock.map(s => [
       s.product_code || '',
@@ -126,7 +151,7 @@ export default function FGStockListPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 ${isMarketing ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-6`}>
         <Card className="bg-white border-primary/10 overflow-hidden group">
           <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
@@ -155,7 +180,7 @@ export default function FGStockListPage() {
           <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Available Stock</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Available Stock (Balance)</p>
                 <h3 className="text-3xl font-black text-primary mt-1">
                     {stock.reduce((acc, curr) => acc + Number(curr.balance), 0).toLocaleString()} <span className="text-[10px]">Kg</span>
                 </h3>
@@ -165,25 +190,31 @@ export default function FGStockListPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-primary/10 overflow-hidden group">
-          <CardContent className="p-6 relative">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Produced</p>
-                <h3 className="text-3xl font-black text-primary mt-1">
-                    {stock.reduce((acc, curr) => acc + Number(curr.produced), 0).toLocaleString()} <span className="text-[10px]">Kg</span>
-                </h3>
+        {!isMarketing && (
+          <Card className="bg-white border-primary/10 overflow-hidden group">
+            <CardContent className="p-6 relative">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Produced</p>
+                  <h3 className="text-3xl font-black text-primary mt-1">
+                      {stock.reduce((acc, curr) => acc + Number(curr.produced), 0).toLocaleString()} <span className="text-[10px]">Kg</span>
+                  </h3>
+                </div>
+                <TrendingUp className="w-8 h-8 text-primary/20 group-hover:scale-110 transition-transform" />
               </div>
-              <TrendingUp className="w-8 h-8 text-primary/20 group-hover:scale-110 transition-transform" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <TableView
         title="Live Finished Goods Dashboard"
-        description="Consolidated view of production, trading inward, sales, and closing stock balance."
-        headers={['Product Specification', 'Net Opening Stock', 'Produced Qty', 'Trading Inward', 'Invoiced Qty', 'Closing Balance', 'Stock Status']}
+        description={isMarketing ? "Consolidated view of trading inward, stock balance, and stock status." : "Consolidated view of production, trading inward, sales, and closing stock balance."}
+        headers={
+          isMarketing
+            ? ['Product Specification', 'Trading Inward', 'Stock Balance', 'Stock Status']
+            : ['Product Specification', 'Net Opening Stock', 'Produced Qty', 'Trading Inward', 'Invoiced Qty', 'Closing Balance', 'Stock Status']
+        }
         data={stock}
         loading={loading}
         searchFields={['product_name', 'product_code']}
@@ -198,71 +229,77 @@ export default function FGStockListPage() {
                  </span>
                </div>
             </td>
-            <td className="px-6 py-4">
-               {editingId === s.id ? (
-                 <div className="flex items-center gap-2 animate-in zoom-in duration-200">
-                    <input 
-                      type="number" 
-                      value={editValue} 
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="w-24 px-2 py-1.5 border-2 border-primary/30 rounded-lg font-black text-lg focus:outline-none focus:border-primary transition-all"
-                      autoFocus
-                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateOpeningStock(s.id)}
-                    />
-                    <div className="flex flex-col gap-1">
+            {!isMarketing && (
+              <td className="px-6 py-4">
+                 {editingId === s.id ? (
+                   <div className="flex items-center gap-2 animate-in zoom-in duration-200">
+                      <input 
+                        type="number" 
+                        value={editValue} 
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-24 px-2 py-1.5 border-2 border-primary/30 rounded-lg font-black text-lg focus:outline-none focus:border-primary transition-all"
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateOpeningStock(s.id)}
+                      />
+                      <div className="flex flex-col gap-1">
+                        <button 
+                          onClick={() => handleUpdateOpeningStock(s.id)}
+                          disabled={updating}
+                          className="p-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={() => setEditingId(null)}
+                          className="p-1 bg-slate-200 text-slate-600 rounded hover:bg-slate-300"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                   </div>
+                 ) : (
+                   <div className="group/edit flex items-center gap-2">
+                      <div className="text-xl font-bold text-slate-700 leading-none">
+                        {Number(s.opening_stock || 0).toLocaleString()}
+                        <span className="text-[9px] font-black text-slate-400 ml-1 uppercase">KG</span>
+                      </div>
                       <button 
-                        onClick={() => handleUpdateOpeningStock(s.id)}
-                        disabled={updating}
-                        className="p-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                        onClick={() => {
+                          setEditingId(s.id);
+                          setEditValue(s.opening_stock?.toString() || '0');
+                        }}
+                        className="p-1.5 hover:bg-primary/10 rounded-full text-primary transition-colors"
+                        title="Update Opening Stock"
                       >
-                        <Check className="w-3 h-3" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button 
-                        onClick={() => setEditingId(null)}
-                        className="p-1 bg-slate-200 text-slate-600 rounded hover:bg-slate-300"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
+                   </div>
+                 )}
+                 <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">BASE OPENING STOCK</div>
+              </td>
+            )}
+            {!isMarketing && (
+              <td className="px-6 py-4">
+                 <div className="flex items-center text-primary font-black">
+                   <TrendingUp className="w-3.5 h-3.5 mr-1" /> {Number(s.produced).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
                  </div>
-               ) : (
-                 <div className="group/edit flex items-center gap-2">
-                    <div className="text-xl font-bold text-slate-700 leading-none">
-                      {Number(s.opening_stock || 0).toLocaleString()}
-                      <span className="text-[9px] font-black text-slate-400 ml-1 uppercase">KG</span>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setEditingId(s.id);
-                        setEditValue(s.opening_stock?.toString() || '0');
-                      }}
-                      className="p-1.5 hover:bg-primary/10 rounded-full text-primary transition-colors"
-                      title="Update Opening Stock"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                 </div>
-               )}
-               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">BASE OPENING STOCK</div>
-            </td>
-            <td className="px-6 py-4">
-               <div className="flex items-center text-primary font-black">
-                 <TrendingUp className="w-3.5 h-3.5 mr-1" /> {Number(s.produced).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
-               </div>
-               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TOTAL PRODUCTION</div>
-            </td>
+                 <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TOTAL PRODUCTION</div>
+              </td>
+            )}
             <td className="px-6 py-4">
                <div className="flex items-center text-blue-700 font-black">
                  <ArrowDownToLine className="w-3.5 h-3.5 mr-1 text-blue-600" /> +{Number(s.trading_inward || 0).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
                </div>
                <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">TRADING INWARD</div>
             </td>
-            <td className="px-6 py-4 text-rose-500 font-black">
-               <div className="flex items-center">
-                 <TrendingDown className="w-3.5 h-3.5 mr-1" /> {Number(s.sold).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
-               </div>
-               <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">ISSUED / INVOICED</div>
-            </td>
+            {!isMarketing && (
+              <td className="px-6 py-4 text-rose-500 font-black">
+                 <div className="flex items-center">
+                   <TrendingDown className="w-3.5 h-3.5 mr-1" /> {Number(s.sold).toLocaleString()} <span className="text-[10px] ml-1">Kg</span>
+                 </div>
+                 <div className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">ISSUED / INVOICED</div>
+              </td>
+            )}
             <td className="px-6 py-4">
                <div className="text-2xl font-black text-slate-900 leading-none tracking-tighter">
                   {Number(s.balance).toLocaleString()}
@@ -272,7 +309,7 @@ export default function FGStockListPage() {
                   <span className="text-[9px] font-bold text-slate-500">Threshold: {s.stock_threshold || 50} Kg</span>
                </div>
                <div className="mt-1.5 w-full bg-slate-100/50 rounded-full h-1.5 overflow-hidden border border-slate-100">
-                  <div className={`h-full ${s.balance < (s.stock_threshold || 50) ? 'bg-amber-400' : 'bg-primary'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/(Number(s.produced) + Number(s.opening_stock)))*100 || 0, 100)}%` }}></div>
+                  <div className={`h-full ${s.balance < (s.stock_threshold || 50) ? 'bg-amber-400' : 'bg-primary'} transition-all duration-1000`} style={{ width: `${Math.min((s.balance/(Number(s.produced) + Number(s.opening_stock) + Number(s.trading_inward) || 1))*100 || 0, 100)}%` }}></div>
                </div>
             </td>
             <td className="px-6 py-4">

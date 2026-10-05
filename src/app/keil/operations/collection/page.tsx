@@ -21,7 +21,9 @@ import {
     ArrowDown,
     Download,
     Lock,
-    Loader2
+    Loader2,
+    Filter,
+    FileSpreadsheet
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +61,8 @@ export default function DailyCollectionEntryPage() {
     const [employees, setEmployees] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
     const [currentCompanyId, setCurrentCompanyId] = useState('');
+    const [existingBatchId, setExistingBatchId] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     // Header Data
     const [headerData, setHeaderData] = useState({
@@ -66,6 +70,7 @@ export default function DailyCollectionEntryPage() {
         route_id: '',
         registration_number: '',
         driver_name: '',
+        spare_driver_name: '',
         supervisor_name: '',
         remarks: '',
         start_time: '',
@@ -140,18 +145,84 @@ export default function DailyCollectionEntryPage() {
         }
     };
 
-    const fetchHcesForRoute = async (routeId: string) => {
+    const fetchHcesForRoute = async (routeId: string, targetDate?: string) => {
         setLoading(true);
         const token = localStorage.getItem('token');
+        const dateToCheck = targetDate || headerData.collection_date;
+
         try {
+            // 1. Fetch assigned HCEs for the route
             const res = await fetch(`${ASSIGN_API}?route_id=${routeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            if (data.success) {
-                setAssignedHces(data.data);
+            const hces = data.success ? data.data : [];
+            setAssignedHces(hces);
+
+            // 2. Check if a collection session already exists for this route and date
+            let savedBatch: any = null;
+            if (dateToCheck && currentCompanyId) {
+                const batchRes = await fetch(`${COLLECTION_API}?company_id=${currentCompanyId}&date=${dateToCheck}&route_id=${routeId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const batchData = await batchRes.json();
+                if (batchData.success && Array.isArray(batchData.data) && batchData.data.length > 0) {
+                    const latestBatch = batchData.data[0];
+                    const fullRes = await fetch(`${COLLECTION_API}/${latestBatch.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const fullData = await fullRes.json();
+                    if (fullData.success) {
+                        savedBatch = fullData.data;
+                    }
+                }
+            }
+
+            if (savedBatch) {
+                setExistingBatchId(savedBatch.id);
+                setHeaderData(prev => ({
+                    ...prev,
+                    collection_date: savedBatch.collection_date ? savedBatch.collection_date.split('T')[0] : dateToCheck,
+                    registration_number: savedBatch.registration_number || '',
+                    driver_name: savedBatch.driver_name || '',
+                    spare_driver_name: savedBatch.spare_driver_name || '',
+                    supervisor_name: savedBatch.supervisor_name || '',
+                    remarks: savedBatch.remarks || '',
+                    start_time: savedBatch.start_time || '',
+                    end_time: savedBatch.end_time || '',
+                    km_run: savedBatch.km_run || 0,
+                    dc_qty: savedBatch.dc_qty || 0,
+                    nw_qty: savedBatch.nw_qty || 0,
+                    rd_qty: savedBatch.rd_qty || 0
+                }));
+
+                const savedEntriesMap: Record<string, any> = {};
+                hces.forEach((a: any) => {
+                    const savedEntry = (savedBatch.entries || []).find((e: any) => e.hce_id === a.hce_id);
+                    if (savedEntry) {
+                        savedEntriesMap[a.hce_id] = {
+                            hce_id: a.hce_id,
+                            is_visited: !!savedEntry.is_visited,
+                            note: savedEntry.note || '',
+                            remark: savedEntry.remark || '',
+                            visit_status: savedEntry.visit_status || (savedEntry.is_visited ? 'Visited' : 'Not Visited')
+                        };
+                    } else {
+                        savedEntriesMap[a.hce_id] = {
+                            hce_id: a.hce_id,
+                            is_visited: false,
+                            note: '',
+                            remark: '',
+                            visit_status: 'Not Visited'
+                        };
+                    }
+                });
+                setEntries(savedEntriesMap);
+                success(`Loaded saved collection data for ${dateToCheck}`);
+            } else {
+                setExistingBatchId(null);
                 const initialEntries: Record<string, any> = {};
-                data.data.forEach((a: any) => {
+                hces.forEach((a: any) => {
                     initialEntries[a.hce_id] = {
                         hce_id: a.hce_id,
                         is_visited: false,
@@ -173,10 +244,18 @@ export default function DailyCollectionEntryPage() {
         setSelectedRouteId(routeId);
         setHeaderData(prev => ({ ...prev, route_id: routeId }));
         if (routeId) {
-            fetchHcesForRoute(routeId);
+            fetchHcesForRoute(routeId, headerData.collection_date);
         } else {
             setAssignedHces([]);
             setEntries({});
+            setExistingBatchId(null);
+        }
+    };
+
+    const handleDateChange = (newDate: string) => {
+        setHeaderData(prev => ({ ...prev, collection_date: newDate }));
+        if (selectedRouteId) {
+            fetchHcesForRoute(selectedRouteId, newDate);
         }
     };
 
@@ -248,9 +327,18 @@ export default function DailyCollectionEntryPage() {
         if (await confirm({ message: "Confirm saving today's collection data?" })) {
             const token = localStorage.getItem('token');
             try {
+                // If there's an existing batch for this route and date, delete it first to ensure clean update without duplicates
+                if (existingBatchId) {
+                    await fetch(`${COLLECTION_API}/${existingBatchId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+
                 const payload = {
                     header: {
                         ...headerData,
+                        spare_driver_name: headerData.spare_driver_name ? headerData.spare_driver_name.trim() : null,
                         total_hce_assigned: stats.total_assigned,
                         total_visited: stats.total_visited,
                         assigned_bedded: stats.assigned_bedded,
@@ -283,34 +371,197 @@ export default function DailyCollectionEntryPage() {
         }
     };
 
-    const handleExport = async () => {
-        if (assignedHces.length === 0) {
-            error("No facility data available for export.");
-            return;
-        }
-
-        const routeData = routes.find(r => r.id === selectedRouteId);
-        const headers = ['Facility Name', 'Facility Code', 'Place', 'Visited', 'Visit Status', 'Remark'];
-        
-        const rows = assignedHces.map(a => {
-            const entry = entries[a.hce_id] || {};
-            return [
-                a.keil_hces?.hce_name || 'N/A',
-                a.keil_hces?.hce_code || 'N/A',
-                a.keil_hces?.hce_place || 'N/A',
-                entry.is_visited ? 'YES' : 'NO',
-                entry.visit_status || 'Not Visited',
-                entry.remark || '-'
+    const handleExport = async (exportAllForDate: boolean = false) => {
+        setExporting(true);
+        const token = localStorage.getItem('token');
+        try {
+            const headers = [
+                'Sl No',
+                'Collection Date',
+                'Route Name',
+                'Route Code',
+                'Vehicle Number',
+                'Driver Name',
+                'Spare Driver Name',
+                'Supervisor Name',
+                'Start Time',
+                'End Time',
+                'KM Run',
+                'Facility Code',
+                'Facility Name',
+                'Facility Category',
+                'Place',
+                'Visited',
+                'Visit Status',
+                'DC Qty',
+                'NW Qty',
+                'RB Qty',
+                'Total Qty',
+                'Route Total Assigned',
+                'Route Total Visited',
+                'Facility Remark',
+                'Session Remarks'
             ];
-        });
 
-        await exportToExcel({
-            headers,
-            rows,
-            filename: `collection_manifest_${routeData?.route_name?.toLowerCase().replace(/\s+/g, '_')}_${headerData.collection_date}.xlsx`,
-            sheetName: 'Session Manifest'
-        });
-        success("Collection manifest exported successfully.");
+            let rows: any[][] = [];
+
+            if (!exportAllForDate && selectedRouteId && assignedHces.length > 0) {
+                // Export current route session
+                const routeData = routes.find(r => r.id === selectedRouteId);
+                const totalQty = (Number(headerData.dc_qty) || 0) + (Number(headerData.nw_qty) || 0) + (Number(headerData.rd_qty) || 0);
+
+                rows = assignedHces.map((a, idx) => {
+                    const entry = entries[a.hce_id] || {};
+                    return [
+                        idx + 1,
+                        headerData.collection_date || 'N/A',
+                        routeData?.route_name || 'N/A',
+                        routeData?.route_code || 'N/A',
+                        headerData.registration_number || 'N/A',
+                        headerData.driver_name || 'N/A',
+                        headerData.spare_driver_name || '-',
+                        headerData.supervisor_name || 'N/A',
+                        headerData.start_time || '-',
+                        headerData.end_time || '-',
+                        headerData.km_run || 0,
+                        a.keil_hces?.hce_code || 'N/A',
+                        a.keil_hces?.hce_name || 'N/A',
+                        a.keil_hces?.collection_type || a.keil_hces?.hce_category || 'N/A',
+                        a.keil_hces?.hce_place || 'N/A',
+                        entry.is_visited ? 'YES' : 'NO',
+                        entry.visit_status || (entry.is_visited ? 'Visited' : 'Not Visited'),
+                        headerData.dc_qty || 0,
+                        headerData.nw_qty || 0,
+                        headerData.rd_qty || 0,
+                        totalQty,
+                        totals.total_assigned,
+                        totals.total_visited,
+                        entry.remark || '-',
+                        headerData.remarks || '-'
+                    ];
+                });
+
+                const filename = `daily_collection_${routeData?.route_name?.toLowerCase().replace(/\s+/g, '_')}_${headerData.collection_date}.xlsx`;
+                await exportToExcel({
+                    headers,
+                    rows,
+                    filename,
+                    sheetName: 'Daily Collection'
+                });
+                success(`Exported collection report for ${routeData?.route_name} (${headerData.collection_date})`);
+            } else {
+                // Export all saved collection batches for this date
+                const dateUrl = `${COLLECTION_API}?date=${headerData.collection_date}${currentCompanyId ? `&company_id=${currentCompanyId}` : ''}`;
+                const bRes = await fetch(dateUrl, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const bData = await bRes.json();
+                const batches = bData.success && Array.isArray(bData.data) ? bData.data : [];
+
+                if (batches.length === 0 && assignedHces.length === 0) {
+                    error(`No collection records found for ${headerData.collection_date}.`);
+                    return;
+                }
+
+                let slNo = 1;
+                for (const batch of batches) {
+                    const fullRes = await fetch(`${COLLECTION_API}/${batch.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const fullData = await fullRes.json();
+                    if (fullData.success && fullData.data) {
+                        const b = fullData.data;
+                        const bTotalQty = (Number(b.dc_qty) || 0) + (Number(b.nw_qty) || 0) + (Number(b.rd_qty) || 0);
+                        const bEntries = b.entries || [];
+
+                        bEntries.forEach((entry: any) => {
+                            rows.push([
+                                slNo++,
+                                b.collection_date ? b.collection_date.split('T')[0] : headerData.collection_date,
+                                b.route?.route_name || 'N/A',
+                                b.route?.route_code || 'N/A',
+                                b.registration_number || 'N/A',
+                                b.driver_name || 'N/A',
+                                b.spare_driver_name || '-',
+                                b.supervisor_name || 'N/A',
+                                b.start_time || '-',
+                                b.end_time || '-',
+                                b.km_run || 0,
+                                entry.hce?.hce_code || 'N/A',
+                                entry.hce?.hce_name || 'N/A',
+                                entry.hce?.collection_type || entry.hce?.hce_category || 'N/A',
+                                entry.hce?.hce_place || 'N/A',
+                                entry.is_visited ? 'YES' : 'NO',
+                                entry.visit_status || (entry.is_visited ? 'Visited' : 'Not Visited'),
+                                b.dc_qty || 0,
+                                b.nw_qty || 0,
+                                b.rd_qty || 0,
+                                bTotalQty,
+                                b.total_hce_assigned || 0,
+                                b.total_visited || 0,
+                                entry.remark || '-',
+                                b.remarks || '-'
+                            ]);
+                        });
+                    }
+                }
+
+                // If no saved batches found but there are assigned HCEs on screen, fallback to exporting screen data
+                if (rows.length === 0 && assignedHces.length > 0) {
+                    const routeData = routes.find(r => r.id === selectedRouteId);
+                    const totalQty = (Number(headerData.dc_qty) || 0) + (Number(headerData.nw_qty) || 0) + (Number(headerData.rd_qty) || 0);
+                    rows = assignedHces.map((a, idx) => {
+                        const entry = entries[a.hce_id] || {};
+                        return [
+                            idx + 1,
+                            headerData.collection_date || 'N/A',
+                            routeData?.route_name || 'N/A',
+                            routeData?.route_code || 'N/A',
+                            headerData.registration_number || 'N/A',
+                            headerData.driver_name || 'N/A',
+                            headerData.spare_driver_name || '-',
+                            headerData.supervisor_name || 'N/A',
+                            headerData.start_time || '-',
+                            headerData.end_time || '-',
+                            headerData.km_run || 0,
+                            a.keil_hces?.hce_code || 'N/A',
+                            a.keil_hces?.hce_name || 'N/A',
+                            a.keil_hces?.collection_type || a.keil_hces?.hce_category || 'N/A',
+                            a.keil_hces?.hce_place || 'N/A',
+                            entry.is_visited ? 'YES' : 'NO',
+                            entry.visit_status || (entry.is_visited ? 'Visited' : 'Not Visited'),
+                            headerData.dc_qty || 0,
+                            headerData.nw_qty || 0,
+                            headerData.rd_qty || 0,
+                            totalQty,
+                            totals.total_assigned,
+                            totals.total_visited,
+                            entry.remark || '-',
+                            headerData.remarks || '-'
+                        ];
+                    });
+                }
+
+                if (rows.length === 0) {
+                    error(`No collection data found to export for ${headerData.collection_date}.`);
+                    return;
+                }
+
+                const filename = `daily_collection_report_${headerData.collection_date}.xlsx`;
+                await exportToExcel({
+                    headers,
+                    rows,
+                    filename,
+                    sheetName: 'Daily Collection Report'
+                });
+                success(`Exported complete daily collection report for ${headerData.collection_date} (${rows.length} facilities)`);
+            }
+        } catch (err: any) {
+            console.error('Export error:', err);
+            error('Failed to export daily collection report: ' + err.message);
+        } finally {
+            setExporting(false);
+        }
     };
 
     const totals = calculateTotals();
@@ -344,13 +595,24 @@ export default function DailyCollectionEntryPage() {
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => handleExport(false)} 
+                        disabled={exporting}
+                        className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5 h-11 font-bold uppercase tracking-wider active:scale-95 transition-all text-xs"
+                    >
+                        {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />} 
+                        <span>{selectedRouteId ? 'Export Route Report' : 'Export Daily Report'}</span>
+                    </Button>
                     {selectedRouteId && (
                         <Button 
                             variant="outline" 
-                            onClick={handleExport} 
-                            className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 rounded-full px-6 h-11 font-bold uppercase tracking-wider active:scale-95 transition-all text-sm"
+                            onClick={() => handleExport(true)} 
+                            disabled={exporting}
+                            title="Export all routes for this date"
+                            className="flex-1 md:flex-none border-primary/20 text-primary/70 hover:text-primary hover:bg-primary/5 rounded-full px-4 h-11 font-bold uppercase tracking-wider active:scale-95 transition-all text-xs"
                         >
-                            <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Export Report</span><span className="sm:hidden">Export</span>
+                            <FileSpreadsheet className="w-4 h-4 mr-1.5" /> All Routes
                         </Button>
                     )}
                     <div className="flex-1 md:flex-none bg-primary/5 px-4 py-2 rounded-full border border-primary/10 flex items-center justify-center gap-3">
@@ -373,6 +635,65 @@ export default function DailyCollectionEntryPage() {
                 </div>
             </div>
 
+            {/* Date Filtering Toolbar */}
+            <div className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                            <Calendar className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Filter Date:</span>
+                    </div>
+                    <Input 
+                        type="date" 
+                        value={headerData.collection_date} 
+                        onChange={e => handleDateChange(e.target.value)} 
+                        className="w-44 h-10 font-bold border-primary/20 bg-background text-sm"
+                    />
+                    <div className="flex items-center gap-1.5">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs font-bold h-9 px-3 text-muted-foreground hover:text-primary hover:bg-primary/5 border border-slate-200"
+                            onClick={() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() - 1);
+                                handleDateChange(d.toISOString().split('T')[0]);
+                            }}
+                        >
+                            Yesterday
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs font-bold h-9 px-3 text-muted-foreground hover:text-primary hover:bg-primary/5 border border-slate-200"
+                            onClick={() => {
+                                handleDateChange(new Date().toISOString().split('T')[0]);
+                            }}
+                        >
+                            Today
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    {existingBatchId ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Saved Session Loaded ({headerData.collection_date})
+                        </span>
+                    ) : selectedRouteId ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3.5 h-3.5" /> New Session ({headerData.collection_date})
+                        </span>
+                    ) : (
+                        <span className="text-xs font-medium text-muted-foreground italic">
+                            Select a route to view or record manifest
+                        </span>
+                    )}
+                </div>
+            </div>
 
             {/* Header Form */}
             <Card className="border-primary/20 shadow-xl overflow-hidden rounded-xl">
@@ -388,7 +709,7 @@ export default function DailyCollectionEntryPage() {
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
                                 <Calendar className="w-3 h-3 text-primary" /> Effective Date
                             </label>
-                            <Input type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.collection_date} onChange={e => setHeaderData({ ...headerData, collection_date: e.target.value })} />
+                            <Input type="date" className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" value={headerData.collection_date} onChange={e => handleDateChange(e.target.value)} />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
@@ -422,7 +743,7 @@ export default function DailyCollectionEntryPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
-                                <User className="w-3 h-3 text-primary" /> Employee Assigning
+                                <User className="w-3 h-3 text-primary" /> Employee Assigning (Driver)
                             </label>
                             <Select value={headerData.driver_name} onValueChange={(val) => setHeaderData({ ...headerData, driver_name: val })}>
                                 <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
@@ -434,6 +755,17 @@ export default function DailyCollectionEntryPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <User className="w-3 h-3 text-primary" /> Spare Driver Name
+                            </label>
+                            <Input 
+                                placeholder="Enter spare driver name..." 
+                                className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" 
+                                value={headerData.spare_driver_name} 
+                                onChange={e => setHeaderData({ ...headerData, spare_driver_name: e.target.value })} 
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">

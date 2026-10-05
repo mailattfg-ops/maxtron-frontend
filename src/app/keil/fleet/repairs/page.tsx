@@ -22,7 +22,8 @@ import {
     Lock,
     Loader2,
     Download,
-    Activity
+    Activity,
+    Phone
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,10 +81,14 @@ export default function VehicleRepairLogPage() {
         status: 'Pending',
         remarks: '',
         workshop_name: '',
+        workshop_contact_number: '',
+        is_gst_bill: false,
+        is_on_route: false,
         districts: '',
         starting_km: '',
         closing_km: '',
         supervisor_name: '',
+        spare_driver_name: '',
         company_id: ''
     });
 
@@ -200,6 +205,10 @@ export default function VehicleRepairLogPage() {
             error("Please specify the Workshop Name / Service Center.");
             return;
         }
+        if (!formData.workshop_contact_number || !formData.workshop_contact_number.trim()) {
+            error("Workshop Contact Number is required.");
+            return;
+        }
         if (formData.cost === '' || parseFloat(formData.cost) < 0) {
             error("Repair Amount (Cost) is required.");
             return;
@@ -249,6 +258,10 @@ export default function VehicleRepairLogPage() {
                 },
                 body: JSON.stringify({
                     ...payload,
+                    workshop_contact_number: formData.workshop_contact_number ? formData.workshop_contact_number.trim() : null,
+                    is_gst_bill: !!formData.is_gst_bill,
+                    is_on_route: !!formData.is_on_route,
+                    spare_driver_name: formData.spare_driver_name ? formData.spare_driver_name.trim() : null,
                     cost: formData.cost || 0,
                     starting_km: formData.starting_km || 0,
                     closing_km: formData.closing_km || 0
@@ -282,7 +295,8 @@ export default function VehicleRepairLogPage() {
 
         // Headers
         const headerRow = worksheet.addRow([
-            'LOG DATE', 'VEHICLE', 'DRIVER', 'SUPERVISOR', 'DISTRICTS', 'ROUTE', 'WORKSHOP', 
+            'LOG DATE', 'VEHICLE', 'DRIVER', 'SPARE DRIVER', 'SUPERVISOR', 'DISTRICTS', 'ROUTE', 
+            'WORKSHOP', 'WORKSHOP CONTACT', 'GST BILL?', 'ON ROUTE?', 
             'START KM', 'END KM', 'TOTAL KM', 'REPAIR DESCRIPTION', 'REPAIR START', 'REPAIR END', 
             'STATUS', 'COST (₹)', 'REMARKS'
         ]);
@@ -305,10 +319,14 @@ export default function VehicleRepairLogPage() {
                 new Date(r.log_date).toLocaleDateString(),
                 r.vehicle?.registration_number || 'N/A',
                 r.driver?.name || 'N/A',
+                r.spare_driver_name || '-',
                 r.supervisor_name || '-',
                 r.districts || '-',
                 r.route?.route_name || 'N/A',
                 r.workshop_name || '-',
+                r.workshop_contact_number || '-',
+                r.is_gst_bill ? 'YES' : 'NO',
+                r.is_on_route ? 'YES' : 'NO',
                 r.starting_km || 0,
                 r.closing_km || 0,
                 (r.closing_km - r.starting_km) || 0,
@@ -344,6 +362,9 @@ export default function VehicleRepairLogPage() {
         setEditingId(r.id);
         setFormData({
             ...r,
+            workshop_contact_number: r.workshop_contact_number || '',
+            is_gst_bill: r.is_gst_bill ?? false,
+            is_on_route: r.is_on_route ?? false,
             log_date: r.log_date || new Date().toISOString().split('T')[0],
             entry_date: r.entry_date ? new Date(r.entry_date).toISOString().substring(0, 16) : '',
             exit_date: r.exit_date ? new Date(r.exit_date).toISOString().substring(0, 16) : '',
@@ -351,6 +372,7 @@ export default function VehicleRepairLogPage() {
             starting_km: r.starting_km || '',
             closing_km: r.closing_km || '',
             supervisor_name: r.supervisor_name || '',
+            spare_driver_name: r.spare_driver_name || '',
             company_id: currentCompanyId
         });
         setShowForm(true);
@@ -388,10 +410,14 @@ export default function VehicleRepairLogPage() {
             status: 'Pending',
             remarks: '',
             workshop_name: '',
+            workshop_contact_number: '',
+            is_gst_bill: false,
+            is_on_route: false,
             districts: '',
             starting_km: '',
             closing_km: '',
             supervisor_name: '',
+            spare_driver_name: '',
             company_id: currentCompanyId
         });
     };
@@ -545,6 +571,15 @@ export default function VehicleRepairLogPage() {
                                 </Select>
 
                             </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Spare Driver Name</label>
+                                <Input 
+                                    placeholder="Enter spare driver name..." 
+                                    className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" 
+                                    value={formData.spare_driver_name} 
+                                    onChange={e => setFormData({ ...formData, spare_driver_name: e.target.value })} 
+                                />
+                            </div>
                              <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Route Name *</label>
                                 <Select 
@@ -573,6 +608,49 @@ export default function VehicleRepairLogPage() {
                                     value={formData.workshop_name} 
                                     onChange={e => setFormData({ ...formData, workshop_name: e.target.value })} 
                                 />
+                            </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1 flex items-center gap-1">
+                                    Workshop Contact Number <span className="text-rose-500">*</span>
+                                </label>
+                                <Input 
+                                    required 
+                                    type="tel"
+                                    placeholder="e.g. +91 98765 43210" 
+                                    className="h-12 rounded-xl font-bold border-slate-100 bg-slate-50/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/40 focus:outline-none" 
+                                    value={formData.workshop_contact_number} 
+                                    onChange={e => setFormData({ ...formData, workshop_contact_number: e.target.value })} 
+                                />
+                            </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">GST Bill?</label>
+                                <Select 
+                                    value={formData.is_gst_bill ? 'yes' : 'no'} 
+                                    onValueChange={val => setFormData({ ...formData, is_gst_bill: val === 'yes' })}
+                                >
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/10">
+                                        <SelectItem value="yes">YES (GST Invoice)</SelectItem>
+                                        <SelectItem value="no">NO (Non-GST / Cash Memo)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5 flex flex-col">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">On Route?</label>
+                                <Select 
+                                    value={formData.is_on_route ? 'yes' : 'no'} 
+                                    onValueChange={val => setFormData({ ...formData, is_on_route: val === 'yes' })}
+                                >
+                                    <SelectTrigger className="w-full h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold focus:ring-0 focus:ring-offset-0 focus:border-primary/40">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border-primary/10">
+                                        <SelectItem value="yes">YES (Route Breakdown)</SelectItem>
+                                        <SelectItem value="no">NO (Base / Scheduled)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-1.5 flex flex-col">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Supervisor Name</label>
@@ -664,7 +742,7 @@ export default function VehicleRepairLogPage() {
                     <TableView 
                         title="Active Workshop Registry"
                         description="Current and historical repair logs for transport assets."
-                        searchFields={['vehicle.registration_number', 'repair_description', 'workshop']}
+                        searchFields={['vehicle.registration_number', 'repair_description', 'workshop_name', 'workshop_contact_number']}
                         headers={['Vehicle / Route / Date', 'Operational Details', 'Repair Log', 'Financial Impact', 'Actions']}
                         data={repairs}
                         loading={loading}
@@ -702,13 +780,34 @@ export default function VehicleRepairLogPage() {
                                     </div>
                                 </td>
                                  <td className="px-6 py-6">
-                                    <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2.5">
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/10 w-fit">
                                             <Wrench className="w-3 h-3 text-primary" />
                                             <div className="flex flex-col">
                                                 <span className="text-[8px] font-black text-primary/50 uppercase leading-none">Workshop/Service Center</span>
                                                 <span className="text-[10px] font-bold text-slate-700">{r.workshop_name || 'In-House Service'}</span>
+                                                {r.workshop_contact_number && (
+                                                    <span className="text-[9px] font-bold text-slate-500 flex items-center gap-1 mt-0.5">
+                                                        <Phone className="w-2.5 h-2.5 text-primary/60" /> {r.workshop_contact_number}
+                                                    </span>
+                                                )}
                                             </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${
+                                                r.is_gst_bill 
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                                            }`}>
+                                                {r.is_gst_bill ? 'GST Bill: YES' : 'GST: NO'}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${
+                                                r.is_on_route 
+                                                    ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                                                    : 'bg-blue-50 text-blue-600 border-blue-200'
+                                            }`}>
+                                                {r.is_on_route ? '⚡ On Route' : 'Base Workshop'}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-100 w-fit">
                                             <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-400 shadow-sm">
@@ -719,6 +818,17 @@ export default function VehicleRepairLogPage() {
                                                 <span className="text-[10px] font-bold text-slate-600">{r.driver?.name || 'Unassigned'}</span>
                                             </div>
                                         </div>
+                                        {r.spare_driver_name && (
+                                            <div className="flex items-center gap-2 p-2 bg-amber-50/70 rounded-xl border border-amber-200/60 w-fit">
+                                                <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shadow-sm">
+                                                    <User className="w-3 h-3" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black text-amber-600 uppercase leading-none">Spare Driver</span>
+                                                    <span className="text-[10px] font-bold text-amber-900">{r.spare_driver_name}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="flex flex-col gap-1 px-3 py-2 bg-primary/5 rounded-xl border border-primary/10 w-fit">
                                             <span className={`text-[8px] font-black uppercase tracking-widest ${
                                                 r.status === 'Completed' ? 'text-emerald-500' :
