@@ -26,6 +26,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
 import { exportQuotationToWord, downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
+import { exportQuotationToExcel, resizeImageFile, emptyQuotationItem, type QuotationType } from '@/utils/quotationExcelGenerator';
 import { 
     Tag, 
     Megaphone, 
@@ -114,7 +115,7 @@ export default function MarketingVisitsPage() {
     feedback: '',
     company_id: '',
     is_quotation: false,
-    quotation_items: [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
+    quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
     quotation_delivery_date: '',
     quotation_status: 'Pending',
     probability: '',
@@ -386,10 +387,24 @@ export default function MarketingVisitsPage() {
     }
   };
 
+  // The client's own quotation formats (Trading / Bags), as an .xlsx.
+  const downloadQuotationExcel = (rec: any) => {
+    exportQuotationToExcel(rec).catch(() => error('Could not generate the Excel quotation.'));
+  };
+
+  const pickQuotationImage = async (index: number, file?: File) => {
+    if (!file) return;
+    try {
+      updateQuotationItem(index, 'image', await resizeImageFile(file));
+    } catch {
+      error('Could not read that image. Please try a JPG or PNG.');
+    }
+  };
+
   const addQuotationItem = () => {
     setFormData(prev => ({
       ...prev,
-      quotation_items: [...prev.quotation_items, { product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }]
+      quotation_items: [...prev.quotation_items, emptyQuotationItem()]
     }));
   };
 
@@ -598,8 +613,16 @@ export default function MarketingVisitsPage() {
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${MARKETING_API}/${editingId}` : MARKETING_API;
 
+    // The quotation header fields travel only with a quotation, so saving a
+    // plain visit never depends on those columns.
+    const { quotation_type, quotation_ref, quotation_subject, ...visitFields } = formData;
     const dataToSave = {
-      ...formData,
+      ...visitFields,
+      ...(formData.is_quotation ? {
+        quotation_type,
+        quotation_ref: quotation_ref.trim() || null,
+        quotation_subject: quotation_subject.trim() || null
+      } : {}),
       customer_id: formData.customer_id === '' ? null : formData.customer_id,
       employee_id: formData.employee_id === '' ? null : formData.employee_id,
       quotation_items: formData.is_quotation ? formData.quotation_items.map(item => ({
@@ -613,15 +636,24 @@ export default function MarketingVisitsPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(url, {
+      const send = (body: object) => fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(dataToSave)
-      });
-      const data = await res.json();
+        body: JSON.stringify(body)
+      }).then(r => r.json());
+
+      let data = await send(dataToSave);
+      /* If this build reaches a database that does not have the quotation
+       * format columns yet (migrations/add_quotation_format_fields.sql), the
+       * save is refused outright. Losing a whole quotation over three header
+       * fields is the worse outcome: save it without them and say so. */
+      if (!data.success && /quotation_(type|ref|subject)/.test(String(data.message || ''))) {
+        data = await send({ ...dataToSave, quotation_type: undefined, quotation_ref: undefined, quotation_subject: undefined });
+        if (data.success) info('Saved, but Quotation Format / Ref No / Subject were not stored — the database update for them is still pending.');
+      }
       if (data.success) {
         success(editingId ? 'Visit updated!' : 'Visit saved!');
         
@@ -718,7 +750,7 @@ export default function MarketingVisitsPage() {
       feedback: '',
       company_id: currentCompanyId,
       is_quotation: false,
-      quotation_items: [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
+      quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
       quotation_delivery_date: '',
       quotation_status: 'Pending',
       probability: '',
@@ -751,9 +783,14 @@ export default function MarketingVisitsPage() {
             quantity: i.quantity || '',
             unit: i.unit || 'Kg',
             amount: i.amount || '',
-            gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '0'
+            gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '0',
+            bags_per_kg: i.bags_per_kg || '',
+            image: i.image || ''
           })) 
-        : [{ product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0' }],
+        : [emptyQuotationItem()],
+      quotation_type: (rec.quotation_type === 'TRADING' ? 'TRADING' : 'BAGS') as QuotationType,
+      quotation_ref: rec.quotation_ref || '',
+      quotation_subject: rec.quotation_subject || '',
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
       quotation_status: rec.quotation_status || 'Pending',
       probability: rec.probability || '',
@@ -1357,6 +1394,44 @@ export default function MarketingVisitsPage() {
 
                       {formData.is_quotation && (
                         <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
+                            <div className="md:col-span-3 space-y-1.5">
+                              <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">Quotation Format</label>
+                              <Select
+                                value={formData.quotation_type}
+                                onValueChange={(val) => setFormData(prev => ({ ...prev, quotation_type: val as QuotationType }))}
+                              >
+                                <SelectTrigger className="w-full h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
+                                  <SelectValue placeholder="Format" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white z-[1000]">
+                                  <SelectItem value="BAGS">Bags (No. of Bags / KG)</SelectItem>
+                                  <SelectItem value="TRADING">Trading (with product image)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="md:col-span-4 space-y-1.5">
+                              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Quotation Ref No</label>
+                              <Input
+                                value={formData.quotation_ref}
+                                onChange={(e) => setFormData(prev => ({ ...prev, quotation_ref: e.target.value }))}
+                                placeholder={formData.quotation_type === 'TRADING' ? 'MA/TSR-01420/26-27' : 'MA/VKM(FO)-QUOTE-0131/2026-27'}
+                                className="h-9 text-xs font-mono font-bold"
+                              />
+                            </div>
+                            {formData.quotation_type === 'BAGS' && (
+                              <div className="md:col-span-5 space-y-1.5">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Subject (Sub:)</label>
+                                <Input
+                                  value={formData.quotation_subject}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, quotation_subject: e.target.value }))}
+                                  placeholder="Quotation for the Supply of Semi Virgin Poly Bags 51 MICRONS – Reg."
+                                  className="h-9 text-xs font-semibold"
+                                />
+                              </div>
+                            )}
+                          </div>
+
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-bold text-primary flex items-center">
                               <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
@@ -1465,6 +1540,44 @@ export default function MarketingVisitsPage() {
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
+                                </div>
+                                <div className="md:col-span-12">
+                                  {formData.quotation_type === 'TRADING' ? (
+                                    <div className="flex items-center gap-3">
+                                      {item.image && (
+                                        // eslint-disable-next-line @next/next/no-img-element -- a data URL preview, nothing for next/image to optimise
+                                        <img src={item.image} alt="Product" className="h-14 w-14 object-contain rounded border border-slate-200 bg-white" />
+                                      )}
+                                      <label className="inline-flex items-center h-8 px-3 rounded-full border border-blue-300 bg-blue-50/60 text-[11px] font-bold text-blue-800 cursor-pointer hover:bg-blue-100">
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => { pickQuotationImage(idx, e.target.files?.[0]); e.target.value = ''; }}
+                                        />
+                                        {item.image ? 'Change Product Image' : 'Add Product Image'}
+                                      </label>
+                                      {item.image && (
+                                        <button
+                                          type="button"
+                                          onClick={() => updateQuotationItem(idx, 'image', '')}
+                                          className="text-[11px] font-bold text-rose-600 hover:underline"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="md:w-1/4 space-y-1.5">
+                                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">No. of Bags / KG</label>
+                                      <Input
+                                        value={item.bags_per_kg}
+                                        onChange={(e) => updateQuotationItem(idx, 'bags_per_kg', e.target.value)}
+                                        placeholder="45 TO 50"
+                                        className="h-9 text-xs text-center font-bold"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -1699,6 +1812,16 @@ export default function MarketingVisitsPage() {
                                       <Calendar className="w-2.5 h-2.5" /> Est. Delivery: {new Date(rec.quotation_delivery_date).toLocaleDateString()}
                                     </div>
                                   ) : <div />}
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => downloadQuotationExcel(rec)}
+                                    className="h-6 text-[9px] font-bold border-emerald-300 text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 px-2 rounded flex items-center gap-1 shadow-sm"
+                                    title="Download quotation in Excel (.xlsx), in the Maxtron quotation format"
+                                  >
+                                    <Download className="w-3 h-3 text-emerald-600" /> Excel (.xlsx)
+                                  </Button>
                                   <Button
                                     type="button"
                                     size="sm"
@@ -2004,6 +2127,14 @@ export default function MarketingVisitsPage() {
                               <div className="text-right font-mono font-black text-emerald-700 text-lg">
                                 ₹{totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => downloadQuotationExcel(quoteRec)}
+                                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20 text-xs flex items-center gap-1.5 shrink-0"
+                              >
+                                <Download className="w-4 h-4" /> Download Excel (.xlsx)
+                              </Button>
                               <Button
                                 type="button"
                                 size="sm"
