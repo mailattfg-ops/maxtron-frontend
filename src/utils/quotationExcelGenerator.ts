@@ -59,18 +59,18 @@ const EMU_PER_PX = 9525;
 const colPx = (chars: number) => Math.round(chars * 7 + 5);
 const rowPx = (points: number) => Math.round((points * 96) / 72);
 
-const num = (v: unknown) => Number(v) || 0;
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const quoteDate = (record: any) => new Date(record.visit_date || Date.now());
+export const num = (v: unknown) => Number(v) || 0;
+export const pad2 = (n: number) => String(n).padStart(2, '0');
+export const quoteDate = (record: any) => new Date(record.visit_date || Date.now());
 
-const itemsOf = (record: any): any[] => (Array.isArray(record.quotation_items) ? record.quotation_items : []);
-const customerName = (record: any) => String(record.customer_name || record.customers?.customer_name || '').trim();
+export const itemsOf = (record: any): any[] => (Array.isArray(record.quotation_items) ? record.quotation_items : []);
+export const customerName = (record: any) => String(record.customer_name || record.customers?.customer_name || '').trim();
 /** "Vaniyamkulam, Kerala" -> ["Vaniyamkulam", "Kerala"] */
-const locationParts = (record: any) =>
+export const locationParts = (record: any) =>
     String(record.location || '').split(',').map(s => s.trim()).filter(Boolean);
 
 /** The one GST rate shared by every item, or null when rates differ. Reference sheets quote 18%. */
-const uniformGst = (items: any[]): number | null => {
+export const uniformGst = (items: any[]): number | null => {
     const rates = [...new Set(items.map(i => num(i.gst_percent)))];
     if (rates.length === 0) return 18;
     return rates.length === 1 ? rates[0] : null;
@@ -256,7 +256,7 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     const gst = uniformGst(items);
 
     // Letterhead (rows 1-4): logo down the left; name banner, address and
-    // contact line beside it. No rule underneath, as on the reference.
+    // contact line beside it; ruled off underneath, as on the reference.
     [30, 30, 16, 16].forEach((h, i) => { ws.getRow(i + 1).height = h; });
     placeImage(wb, ws, assets.logo, 1, 1, 2, 4, 2);
     if (assets.name) placeImage(wb, ws, assets.name, 3, 1, 6, 2, 4);
@@ -265,6 +265,7 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true });
     ws.mergeCells(4, 3, 4, 6);
     put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true });
+    for (let c = 1; c <= 6; c++) ws.getCell(4, c).border = { bottom: THIN };
 
     // REF (left) and Date (right).
     const d = quoteDate(record);
@@ -381,11 +382,11 @@ export function buildQuotationWorkbook(record: any, assets: QuotationAssets = {}
     return wb;
 }
 
-export const quotationFileName = (record: any) => {
+export const quotationFileName = (record: any, ext: 'xlsx' | 'docx' = 'xlsx') => {
     const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
     const ref = safe(String(record.quotation_ref || '')) || 'Quotation';
     const cust = safe(customerName(record)) || 'Customer';
-    return `${ref}_${cust}.xlsx`;
+    return `${ref}_${cust}.${ext}`;
 };
 
 // ── Browser side ─────────────────────────────────────────────────────────────

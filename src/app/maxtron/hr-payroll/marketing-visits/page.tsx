@@ -26,7 +26,8 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
 import { exportQuotationToWord, downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
-import { exportQuotationToExcel, resizeImageFile, emptyQuotationItem, type QuotationType } from '@/utils/quotationExcelGenerator';
+import { exportQuotationToExcel, resizeImageFile, emptyQuotationItem, quotationTypeOf, type QuotationType } from '@/utils/quotationExcelGenerator';
+import { exportBagsQuotationToWord } from '@/utils/quotationWordTemplate';
 import { 
     Tag, 
     Megaphone, 
@@ -390,6 +391,14 @@ export default function MarketingVisitsPage() {
   // The client's own quotation formats (Trading / Bags), as an .xlsx.
   const downloadQuotationExcel = (rec: any) => {
     exportQuotationToExcel(rec).catch(() => error('Could not generate the Excel quotation.'));
+  };
+
+  // Bags quotations download as the client's own Word document with the data
+  // filled in. Their trading format exists only as an Excel sheet, so a trading
+  // quotation keeps the general Word layout.
+  const downloadQuotationWord = (rec: any) => {
+    if (quotationTypeOf(rec) !== 'BAGS') return exportQuotationToWord(rec);
+    exportBagsQuotationToWord(rec).catch(() => error('Could not generate the Word quotation.'));
   };
 
   const pickQuotationImage = async (index: number, file?: File) => {
@@ -1826,7 +1835,7 @@ export default function MarketingVisitsPage() {
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => exportQuotationToWord(rec)}
+                                    onClick={() => downloadQuotationWord(rec)}
                                     className="h-6 text-[9px] font-bold border-blue-300 text-blue-800 bg-blue-50/70 hover:bg-blue-100 px-2 rounded flex items-center gap-1 shadow-sm"
                                     title="Download quotation in Microsoft Word (.doc) format"
                                   >
@@ -2138,7 +2147,7 @@ export default function MarketingVisitsPage() {
                               <Button
                                 type="button"
                                 size="sm"
-                                onClick={() => exportQuotationToWord(quoteRec)}
+                                onClick={() => downloadQuotationWord(quoteRec)}
                                 className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20 text-xs flex items-center gap-1.5 shrink-0"
                               >
                                 <FileText className="w-4 h-4" /> Download Word (.doc)
