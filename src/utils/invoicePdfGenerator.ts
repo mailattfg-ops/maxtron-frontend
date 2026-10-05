@@ -90,31 +90,66 @@ export function formatDateTime(dateStr?: string): string {
   return `${day}-${month}-${year} ${time}`;
 }
 
-// State Code Mapping
+// GST state codes
 const STATE_CODES: Record<string, string> = {
+  'jammu and kashmir': '01',
+  'himachal pradesh': '02',
+  'punjab': '03',
+  'chandigarh': '04',
+  'uttarakhand': '05',
+  'haryana': '06',
+  'delhi': '07',
+  'rajasthan': '08',
+  'uttar pradesh': '09',
+  'bihar': '10',
+  'sikkim': '11',
+  'arunachal pradesh': '12',
+  'nagaland': '13',
+  'manipur': '14',
+  'mizoram': '15',
+  'tripura': '16',
+  'meghalaya': '17',
+  'assam': '18',
+  'west bengal': '19',
+  'jharkhand': '20',
+  'odisha': '21',
+  'chhattisgarh': '22',
+  'madhya pradesh': '23',
+  'gujarat': '24',
+  'dadra and nagar haveli and daman and diu': '26',
+  'maharashtra': '27',
+  'karnataka': '29',
+  'goa': '30',
+  'lakshadweep': '31',
   'kerala': '32',
   'tamil nadu': '33',
-  'karnataka': '29',
-  'maharashtra': '27',
-  'andhra pradesh': '37',
+  'puducherry': '34',
+  'andaman and nicobar islands': '35',
   'telangana': '36',
-  'delhi': '07',
-  'gujarat': '24',
-  'uttar pradesh': '09',
-  'haryana': '06',
-  'punjab': '03',
-  'west bengal': '19',
-  'rajasthan': '08',
-  'madhya pradesh': '23',
-  'bihar': '10',
-  'odisha': '21',
-  'goa': '30'
+  'andhra pradesh': '37',
+  'ladakh': '38'
 };
 
+/** GST code of a state, or '' when the name is not a state. It used to answer Kerala's code for anything it did not know. */
 export function getStateCode(stateName?: string): string {
-  if (!stateName) return '32';
-  const clean = stateName.trim().toLowerCase();
-  return STATE_CODES[clean] || '32';
+  return STATE_CODES[String(stateName || '').trim().toLowerCase()] || '';
+}
+
+/**
+ * The buyer's state as it is on record: the state of the billing address, or
+ * failing that the state a registered buyer's GSTIN begins with. With neither
+ * on record no state is printed and the supply is treated as local — the page
+ * used to print "Kerala" for every buyer whose state was missing.
+ */
+function buyerStateOf(billingAddr: any, gstin: string, sellerStateCode: string) {
+  const recorded = String(billingAddr?.state || '').trim();
+  const gstinCode = /^\d{2}/.test(gstin) ? gstin.slice(0, 2) : '';
+  const code = getStateCode(recorded) || gstinCode;
+  const fromGstin = Object.keys(STATE_CODES).find(k => STATE_CODES[k] === gstinCode) || '';
+  const name = recorded || fromGstin.replace(/\b\w/g, c => c.toUpperCase());
+  const isInterState = code ? code !== sellerStateCode : !!recorded;
+  const line = name ? `State Name : ${name}${code ? `, Code : ${code}` : ''}` : (code ? `State Code : ${code}` : '');
+  return { name, code, isInterState, line };
 }
 
 // ==========================================
@@ -290,6 +325,45 @@ export interface EwbGoodsDetail {
 // ==========================================
 // Draw Single Tax Invoice Page
 // ==========================================
+/**
+ * The GST rate of an invoice line: the rate typed for that line. 0% is a real
+ * rate and must survive — `rate || 18` used to turn it into 18%.
+ *
+ * Two cases have no usable typed rate and take the rate the invoice was
+ * actually charged at (its own saved tax ÷ taxable value) instead:
+ *  - lines saved before the rate was stored per line;
+ *  - an invoice whose tax total was typed over and no longer agrees with its
+ *    line rates (say the rate left at 18% and the tax typed as 0). The typed
+ *    total is what was charged, so the lines follow it and the page adds up.
+ * Nothing is ever assumed to be 18%. Same rule as lineGstRates in the backend.
+ */
+export function lineGstPercent(item: any, inv: any): number {
+  const typedGstPercent = (line: any): number | null => {
+    const v = line?.gst_percent;
+    return v === undefined || v === null || v === '' || isNaN(Number(v)) ? null : Number(v);
+  };
+
+  const taxable = Number(inv?.total_amount) || 0;
+  const savedTax = Number(inv?.tax_amount) || 0;
+  const invoiceRate = taxable > 0 ? Math.round((savedTax / taxable) * 10000) / 100 : 0;
+
+  const typed = typedGstPercent(item);
+  if (typed === null) return invoiceRate;
+
+  const lines: any[] = Array.isArray(inv?.items) ? inv.items : [];
+  const hasSavedTax = inv?.tax_amount !== undefined && inv?.tax_amount !== null && inv?.tax_amount !== '';
+  if (hasSavedTax && lines.length > 0) {
+    const taxFromRates = lines.reduce((sum, l) =>
+      sum + (Number(l.quantity) || 0) * (Number(l.rate) || 0) * (typedGstPercent(l) ?? invoiceRate) / 100, 0);
+    if (Math.abs(taxFromRates - savedTax) > 1) return invoiceRate;
+  }
+  return typed;
+}
+
+/* This page prints what is on the invoice record and nothing else. Where a
+ * value is missing it is left blank or shown as not available — it used to
+ * fall back to sample data (another firm's name and GSTIN, a made-up address,
+ * item, IRN, Ack and e-Way Bill number), which then printed as if real. */
 export async function renderTaxInvoicePage(
   doc: jsPDF,
   inv: any,
@@ -318,9 +392,9 @@ export async function renderTaxInvoicePage(
 
   // Customer (Consignee & Buyer) Info
   const customer = inv.customers || {};
-  const customerName = customer.customer_name || 'THE NATIONAL AGENCIES';
-  const customerGstin = customer.gst_no || '32BDXPP5589C1ZZ';
-  
+  const customerName = customer.customer_name || '';
+  const customerGstin = customer.gst_no || '';
+
   // Addresses
   const rawAddresses = customer.addresses || [];
   const billingAddrObj = rawAddresses.find((a: any) => a.address_type?.toLowerCase() === 'billing' || a.address_type?.toLowerCase() === 'customer') || rawAddresses[0] || {};
@@ -331,43 +405,35 @@ export async function renderTaxInvoicePage(
     if (customer.contact_person || customer.mobile_no) {
       parts.push(`Contact: ${customer.mobile_no || customer.contact_person}`);
     }
-    return parts.length > 0 ? parts.join(', ') : 'Cellar, Ground and First Floors, 67/11896, 67/11897, 67/11898, CENTURY BUILDING, Basin Road, St Thomas Church, NEAR MARKET ROAD, Kochi, Ernakulam, Kerala, Contact:8089758114';
+    return parts.join(', ');
   };
 
   const consigneeAddress = buildAddressStr(shippingAddrObj);
   const buyerAddress = buildAddressStr(billingAddrObj);
-  const buyerState = billingAddrObj.state || 'Kerala';
-  const buyerStateCode = getStateCode(buyerState);
+  const buyer = buyerStateOf(billingAddrObj, customerGstin, sellerStateCode);
 
   // Invoice & e-Invoice Info
-  /* A draft — an invoice previewed before e-Invoice generation — has no IRN,
-   * Ack number or e-Way Bill yet. The preview shows this very page, so a draft
-   * must say "pending" there and never print the sample values below as if the
-   * portal had issued them. Everything else on the page is laid out the same. */
-  const isDraft = !!inv.is_preview && !inv.einvoice_irn;
-  const invoiceNo = inv.invoice_number || 'MA154/26-27';
-  const ewbNo = inv.ewb_no || (isDraft ? '' : '592050677018');
+  /* IRN, Ack number, QR code and e-Way Bill number are printed only when the
+   * portal has issued them. Where e-Invoicing applies (a registered buyer, a
+   * bill raised in this system) but has not been done yet, the page says so;
+   * where it does not apply — an unregistered buyer, an outside bill — that
+   * strip stays empty. The space is kept either way, so every invoice is laid
+   * out the same. */
+  const hasIrn = !!inv.einvoice_irn;
+  const eInvoiceApplies = !!customerGstin && !inv.is_external
+    && String(inv.einvoice_status || '').toUpperCase() !== 'NOT_APPLICABLE';
+  const invoiceNo = inv.invoice_number || '';
+  const ewbNo = inv.ewb_no || '';
   const invoiceDate = formatInvoiceDate(inv.invoice_date);
   const orderNo = inv.orders?.order_number || '';
   const orderDate = inv.orders?.order_date ? formatInvoiceDate(inv.orders.order_date) : '';
-  const irn = inv.einvoice_irn || (isDraft ? '' : 'adc49db2ff35768faa247a838a7a23a6ed8fae3d99db8fb76736ee546d62b404');
-  const ackNo = inv.einvoice_ack_no || (isDraft ? '' : '152626715521045');
-  const ackDate = inv.einvoice_ack_date ? formatInvoiceDate(inv.einvoice_ack_date) : invoiceDate;
+  const irn = inv.einvoice_irn || '';
+  const ackNo = inv.einvoice_ack_no || '';
+  const ackDate = inv.einvoice_ack_date ? formatInvoiceDate(inv.einvoice_ack_date) : '';
 
   // Tax and Item Calculations
-  const isInterState = buyerState.trim().toLowerCase() !== sellerState.toLowerCase();
-  const items = (inv.items && inv.items.length > 0) ? inv.items : [
-    {
-      product_name: 'GREEN BAG',
-      product_code: 'FP-000001',
-      hsn_code: '39232100',
-      size: 'Size:30×50',
-      quantity: 1200,
-      rate: 105,
-      gst_percent: 18,
-      amount: 148680
-    }
-  ];
+  const isInterState = buyer.isInterState;
+  const items = Array.isArray(inv.items) ? inv.items : [];
 
   let totalTaxable = 0;
   let totalCgst = 0;
@@ -378,10 +444,12 @@ export async function renderTaxInvoicePage(
   const processedItems: InvoiceItemDetail[] = items.map((item: any) => {
     const qty = Number(item.quantity) || 0;
     const rate = Number(item.rate) || 0;
-    const taxable = Number(item.amount) || (qty * rate);
-    const gstP = Number(item.gst_percent) || 18;
-    const pName = item.finished_products?.product_name || item.product_name || 'GREEN BAG';
-    const hsn = item.finished_products?.hsn_code || item.hsn_code || '39232100';
+    // Taxable value is quantity x rate. A line's `amount` is that too on a saved
+    // invoice, but the entry form keeps it tax-inclusive — so it is only a last resort.
+    const taxable = (qty * rate) || Number(item.amount) || 0;
+    const gstP = lineGstPercent(item, inv);
+    const pName = item.finished_products?.product_name || item.product_name || '';
+    const hsn = item.finished_products?.hsn_code || item.hsn_code || '';
     const size = item.finished_products?.size || item.size || '';
 
     let cgstAmt = 0;
@@ -461,10 +529,10 @@ export async function renderTaxInvoicePage(
   const qrX = endX - qrSize;
   const eInvoiceTagY = topHeaderY;
 
-  // The space is kept on a draft so the rest of the page sits exactly where
-  // it will on the registered invoice; only the tag and the code are left out.
+  // The e-Invoice tag and QR code belong to a registered invoice only. Their
+  // space is kept regardless, so the rest of the page sits in the same place.
   const qrY = eInvoiceTagY + (2.5 * dimScale);
-  if (!isDraft) {
+  if (hasIrn) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fs(9.5));
     doc.text('e-Invoice', qrX + (qrSize / 2), eInvoiceTagY, { align: 'center' });
@@ -475,24 +543,24 @@ export async function renderTaxInvoicePage(
 
   // Left Side: IRN & Ack details
   doc.setFontSize(fs(6.5));
-  doc.setFont('helvetica', 'bold');
   const irnY = topHeaderY + (5.5 * dimScale);
-  doc.text('IRN :', startX, irnY);
-  doc.setFont('helvetica', 'normal');
-
   const maxChars = Math.max(24, Math.floor(46 * wScale));
   const irnLine1 = irn.length > maxChars ? irn.substring(0, maxChars) + '-' : irn;
   const irnLine2 = irn.length > maxChars ? irn.substring(maxChars) : '';
-  doc.setFont('helvetica', 'bold');
-  doc.text(isDraft ? 'Pending - not generated' : irnLine1, startX + (8 * dimScale), irnY);
-  if (irnLine2) {
-    doc.text(irnLine2, startX + (8 * dimScale), irnY + (3.0 * dimScale));
+  if (hasIrn || eInvoiceApplies) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('IRN :', startX, irnY);
+    doc.text(hasIrn ? irnLine1 : 'Pending - not generated', startX + (8 * dimScale), irnY);
+    if (irnLine2) {
+      doc.text(irnLine2, startX + (8 * dimScale), irnY + (3.0 * dimScale));
+    }
   }
 
   const ackY = irnLine2 ? irnY + (6.0 * dimScale) : irnY + (3.4 * dimScale);
-  if (!isDraft) {
+  if (hasIrn && ackNo) {
+    doc.setFont('helvetica', 'bold');
     doc.text(`Ack No. : ${ackNo}`, startX, ackY);
-    doc.text(`Ack Date : ${ackDate}`, startX, ackY + (3.0 * dimScale));
+    if (ackDate) doc.text(`Ack Date : ${ackDate}`, startX, ackY + (3.0 * dimScale));
   }
 
   // 3. Main Border Box Outer Frame (guaranteed to start below QR code and Ack info)
@@ -649,9 +717,9 @@ export async function renderTaxInvoicePage(
   doc.text(consigneeLines, startX + 1.5, sellerBoxEndY + (cStep * 3.2));
 
   doc.setFont('helvetica', 'bold');
-  doc.text(`GSTIN/UIN : ${customerGstin}`, startX + 1.5, sellerBoxEndY + (cStep * 5.5), { maxWidth: partiesW - 3 });
+  doc.text(`GSTIN/UIN : ${customerGstin || 'Unregistered'}`, startX + 1.5, sellerBoxEndY + (cStep * 5.5), { maxWidth: partiesW - 3 });
   doc.setFont('helvetica', 'normal');
-  doc.text(`State Name : ${buyerState}, Code : ${buyerStateCode}`, startX + 1.5, sellerBoxEndY + (cStep * 6.6), { maxWidth: partiesW - 3 });
+  doc.text(buyer.line, startX + 1.5, sellerBoxEndY + (cStep * 6.6), { maxWidth: partiesW - 3 });
 
   // Divider under Consignee
   doc.line(startX, consigneeBoxEndY, metaSplitX, consigneeBoxEndY);
@@ -671,9 +739,9 @@ export async function renderTaxInvoicePage(
   doc.text(buyerLines, startX + 1.5, consigneeBoxEndY + (bStep * 3.2));
 
   doc.setFont('helvetica', 'bold');
-  doc.text(`GSTIN/UIN : ${customerGstin}`, startX + 1.5, consigneeBoxEndY + (bStep * 5.5), { maxWidth: partiesW - 3 });
+  doc.text(`GSTIN/UIN : ${customerGstin || 'Unregistered'}`, startX + 1.5, consigneeBoxEndY + (bStep * 5.5), { maxWidth: partiesW - 3 });
   doc.setFont('helvetica', 'normal');
-  doc.text(`State Name : ${buyerState}, Code : ${buyerStateCode}`, startX + 1.5, consigneeBoxEndY + (bStep * 6.6), { maxWidth: partiesW - 3 });
+  doc.text(buyer.line, startX + 1.5, consigneeBoxEndY + (bStep * 6.6), { maxWidth: partiesW - 3 });
 
   // Bottom divider under entire parties & metadata section
   doc.line(startX, partiesEndY, endX, partiesEndY);
@@ -733,7 +801,7 @@ export async function renderTaxInvoicePage(
   doc.text('Order Date', rColMidX + 1.5, rRow1Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(orderDate || invoiceDate, rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+  doc.text(orderDate || 'N/A', rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
   // Row 3: Dispatched through | Destination
   doc.setFont('helvetica', 'normal');
@@ -741,7 +809,7 @@ export async function renderTaxInvoicePage(
   doc.text('Dispatched through', metaSplitX + 1.5, rRow2Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  const dispatchThrough = inv.transporter_name || inv.vehicle_no || 'Direct Road Transport';
+  const dispatchThrough = inv.transporter_name || inv.vehicle_no || 'N/A';
   doc.text(dispatchThrough, metaSplitX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
   doc.setFont('helvetica', 'normal');
@@ -749,7 +817,7 @@ export async function renderTaxInvoicePage(
   doc.text('Destination', rColMidX + 1.5, rRow2Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(billingAddrObj.city || buyerState || 'Kerala', rColMidX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+  doc.text(billingAddrObj.city || buyer.name || 'N/A', rColMidX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
   // Row 4: Mode/Terms of Payment | Terms of Delivery
   doc.setFont('helvetica', 'normal');
@@ -757,7 +825,7 @@ export async function renderTaxInvoicePage(
   doc.text('Mode/Terms of Payment', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.36));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(6.8));
-  doc.text(inv.payment_terms || 'Credit / 30 Days', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
+  doc.text(inv.payment_terms || 'N/A', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(fs(5.8));
@@ -766,7 +834,7 @@ export async function renderTaxInvoicePage(
   doc.setFontSize(fs(6.8));
   const deliveryTerms = inv.scheduled_delivery_date
     ? `Exp: ${formatInvoiceDate(inv.scheduled_delivery_date)}`
-    : (inv.remarks || 'Standard Delivery');
+    : (inv.remarks || 'N/A');
   doc.text(deliveryTerms, rColMidX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
   // ----------------------------------------------------
@@ -853,6 +921,24 @@ export async function renderTaxInvoicePage(
         doc.text(formatINR(it.sgstAmt), endX - rPad, taxSubY + (2.8 * dimScale), { align: 'right' });
       }
     }
+  });
+
+  // Discount and round-off, when the invoice has them. Without these lines the
+  // goods and tax above would not add up to the total printed below. Round-off
+  // is not stored on its own; it is whatever under a rupee separates the saved
+  // total from goods + tax - discount.
+  const discount = Number(inv.discount_amount) || 0;
+  const unexplained = netInvoiceAmount - (totalTaxable + totalTaxAmount - discount);
+  const roundOff = Math.abs(unexplained) >= 0.005 && Math.abs(unexplained) < 1 ? unexplained : 0;
+  const adjustments: [string, number][] = [];
+  if (discount > 0) adjustments.push(['Less : Discount', -discount]);
+  if (roundOff) adjustments.push(['Round Off', roundOff]);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(fs(6.2));
+  adjustments.forEach(([label, value], i) => {
+    const y = goodsTotalRowTopY - ((adjustments.length - i) * 2.8 * dimScale) + (1.0 * dimScale);
+    doc.text(label, colDescX - (1.5 * dimScale), y, { align: 'right' });
+    doc.text(`${value < 0 ? '(-)' : ''}${formatINR(Math.abs(value))}`, endX - rPad, y, { align: 'right' });
   });
 
   // Total Line in Goods Table
@@ -1054,51 +1140,43 @@ export async function renderEWayBillPage(
     : '13-95, 13-96, PIRIVUSALA, CHANDRANAGAR, PALAKKAD, KERALA Kerala Kerala 678007';
 
   const customer = inv.customers || {};
-  const customerName = customer.customer_name || 'THE NATIONAL AGENCIES';
-  const customerGstin = customer.gst_no || '32BDXPP5589C1ZZ';
+  // As on the tax invoice page: what is on record, never a sample.
+  const customerName = customer.customer_name || '';
+  const customerGstin = customer.gst_no || '';
   
   const rawAddresses = customer.addresses || [];
   const billingAddrObj = rawAddresses.find((a: any) => a.address_type?.toLowerCase() === 'billing' || a.address_type?.toLowerCase() === 'customer') || rawAddresses[0] || {};
   const shippingAddrObj = rawAddresses.find((a: any) => a.address_type?.toLowerCase() === 'shipping' || a.address_type?.toLowerCase() === 'customer') || rawAddresses[1] || rawAddresses[0] || {};
 
   const customerShipAddr = [
-    shippingAddrObj.street || 'Cellar, Ground and First Floors, 67/11896, 67/11897, 67/11898, CENTURY BUILDING',
-    'Basin Road, St Thomas Church, NEAR, MARKET ROAD',
-    shippingAddrObj.city || 'Kochi, Ernakulam',
-    shippingAddrObj.state || 'Kerala',
+    shippingAddrObj.street,
+    shippingAddrObj.city,
+    shippingAddrObj.state,
     customer.mobile_no ? `Contact:${customer.mobile_no}` : '',
-    shippingAddrObj.zip_code || '682018'
+    shippingAddrObj.zip_code
   ].filter(Boolean).join(', ');
 
-  const buyerState = billingAddrObj.state || 'Kerala';
-  const isInterState = buyerState.trim().toLowerCase() !== 'kerala';
+  const buyer = buyerStateOf(billingAddrObj, customerGstin, getStateCode(sellerState));
+  const buyerState = buyer.name;
+  const isInterState = buyer.isInterState;
 
-  const invoiceNo = inv.invoice_number || 'MA154/26-27';
+  const invoiceNo = inv.invoice_number || '';
   const invoiceDate = formatInvoiceDate(inv.invoice_date);
-  const ewbNo = inv.ewb_no || '592050677018';
-  const ewbDate = inv.ewb_date ? formatDateTime(inv.ewb_date) : `${invoiceDate} 10:28 AM`;
-  const ewbValidUpto = inv.ewb_valid_till ? formatDateTime(inv.ewb_valid_till) : `8-Aug-26 11:59 PM`;
-  const distance = inv.trans_distance ? `${inv.trans_distance} KM` : '132 KM';
-  const vehicleNo = inv.vehicle_no || 'KL09AV7027';
+  const ewbNo = inv.ewb_no || '';
+  const ewbDate = inv.ewb_date ? formatDateTime(inv.ewb_date) : '';
+  const ewbValidUpto = inv.ewb_valid_till ? formatDateTime(inv.ewb_valid_till) : '';
+  const distance = inv.trans_distance ? `${inv.trans_distance} KM` : '';
+  const vehicleNo = inv.vehicle_no || '';
   const transporterId = inv.transporter_id || '';
   const transporterName = inv.transporter_name || '';
   const transModeStr = inv.trans_mode === '2' ? '2 - Rail' : inv.trans_mode === '3' ? '3 - Air' : inv.trans_mode === '4' ? '4 - Ship' : '1 - Road';
 
-  const irn = inv.einvoice_irn || 'adc49db2ff35768faa247a838a7a23a6ed8fae3d99db8fb76736ee546d62b404';
-  const ackNo = inv.einvoice_ack_no || '152626715521045';
-  const ackDate = inv.einvoice_ack_date ? formatInvoiceDate(inv.einvoice_ack_date) : invoiceDate;
+  const irn = inv.einvoice_irn || '';
+  const ackNo = inv.einvoice_ack_no || '';
+  const ackDate = inv.einvoice_ack_date ? formatInvoiceDate(inv.einvoice_ack_date) : '';
 
   // Calculate Goods Details
-  const items = (inv.items && inv.items.length > 0) ? inv.items : [
-    {
-      product_name: 'GREEN BAG & GREEN BAG',
-      hsn_code: '39232100',
-      quantity: 1200,
-      rate: 105,
-      gst_percent: 18,
-      amount: 148680
-    }
-  ];
+  const items = Array.isArray(inv.items) ? inv.items : [];
 
   let totalTaxable = 0;
   let totalCgst = 0;
@@ -1110,9 +1188,9 @@ export async function renderEWayBillPage(
     const qty = Number(it.quantity) || 0;
     const rate = Number(it.rate) || 0;
     const taxable = qty * rate;
-    const gstP = Number(it.gst_percent) || 18;
-    const pName = it.finished_products?.product_name ? `${it.finished_products.product_name}` : (it.product_name || 'Industrial Poly Product');
-    const hsn = it.finished_products?.hsn_code || it.hsn_code || '39232100';
+    const gstP = lineGstPercent(it, inv);
+    const pName = it.finished_products?.product_name ? `${it.finished_products.product_name}` : (it.product_name || '');
+    const hsn = it.finished_products?.hsn_code || it.hsn_code || '';
 
     let cgst = 0;
     let sgst = 0;
@@ -1475,27 +1553,28 @@ export async function generateAllInvoiceDocumentsPDF(
   const isEwbGenerated = inv.ewb_status === 'GENERATED' || Boolean(inv.ewb_no && inv.ewb_status !== 'CANCELLED' && inv.ewb_status !== 'FAILED');
 
   // Prepare QR Data URLs
-  const invoiceNo = inv.invoice_number || 'MA154/26-27';
+  const invoiceNo = inv.invoice_number || '';
   const ewbNo = inv.ewb_no || '';
   const gstin = activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2';
-  const buyerGstin = inv.customers?.gst_no || '32BDXPP5589C1ZZ';
-  const netAmount = inv.net_amount || '148680.00';
+  const buyerGstin = inv.customers?.gst_no || '';
+  const netAmount = Number(inv.net_amount) || 0;
   const irn = inv.einvoice_irn || '';
 
-  const einvoiceQrData = inv.einvoice_signed_qr_code || JSON.stringify({
+  // The QR code is the registered e-Invoice's; with no IRN there is nothing to encode.
+  const einvoiceQrData = !irn ? '' : (inv.einvoice_signed_qr_code || JSON.stringify({
     SellerGstin: gstin,
     BuyerGstin: buyerGstin,
     DocNo: invoiceNo,
     DocTyp: 'INV',
     DocDt: formatInvoiceDate(inv.invoice_date),
-    TotInvVal: Number(netAmount),
-    ItemCnt: inv.items?.length || 1,
-    MainHsnCode: inv.items?.[0]?.finished_products?.hsn_code || '39232100',
+    TotInvVal: netAmount,
+    ItemCnt: inv.items?.length || 0,
+    MainHsnCode: inv.items?.[0]?.finished_products?.hsn_code || '',
     Irn: irn
-  });
+  }));
 
   const [einvoiceQrUrl, logoDataUrl] = await Promise.all([
-    generateQRCodeDataUrl(einvoiceQrData),
+    einvoiceQrData ? generateQRCodeDataUrl(einvoiceQrData) : Promise.resolve(''),
     getMaxtronLogoDataUrl()
   ]);
 
@@ -1572,16 +1651,17 @@ export async function buildSingleTaxInvoice(
     format: [requestedWidth, requestedHeight]
   });
   const gstin = activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2';
-  const qrData = inv.einvoice_signed_qr_code || JSON.stringify({
+  // The QR code is the registered e-Invoice's; with no IRN there is nothing to encode.
+  const qrData = !inv.einvoice_irn ? '' : (inv.einvoice_signed_qr_code || JSON.stringify({
     SellerGstin: gstin,
-    BuyerGstin: inv.customers?.gst_no || '32BDXPP5589C1ZZ',
-    DocNo: inv.invoice_number || 'MA154/26-27',
+    BuyerGstin: inv.customers?.gst_no || '',
+    DocNo: inv.invoice_number || '',
     DocTyp: 'INV',
     TotInvVal: Number(inv.net_amount || 0),
-    Irn: inv.einvoice_irn || 'adc49db2ff35768faa247a838a7a23a6ed8fae3d99db8fb76736ee546d62b404'
-  });
+    Irn: inv.einvoice_irn
+  }));
   const [qrUrl, logoDataUrl] = await Promise.all([
-    generateQRCodeDataUrl(qrData),
+    qrData ? generateQRCodeDataUrl(qrData) : Promise.resolve(''),
     getMaxtronLogoDataUrl()
   ]);
   await renderTaxInvoicePage(doc, inv, activeTenant, copyType, qrUrl, logoDataUrl, options);
@@ -1615,11 +1695,13 @@ export async function downloadSingleEWayBill(
     format: [requestedWidth, requestedHeight]
   });
   const gstin = activeTenant === 'KEIL' ? '32AAACK1234F1Z5' : '32AUYPV8850B1Z2';
+  // There is no e-Way Bill document to print for an invoice that has none.
+  if (!inv.ewb_no) throw new Error('No e-Way Bill has been generated for this invoice.');
   const qrData = JSON.stringify({
-    ewbNo: inv.ewb_no || '592050677018',
-    docNo: inv.invoice_number || 'MA154/26-27',
+    ewbNo: inv.ewb_no,
+    docNo: inv.invoice_number || '',
     fromGstin: gstin,
-    toGstin: inv.customers?.gst_no || '32BDXPP5589C1ZZ',
+    toGstin: inv.customers?.gst_no || '',
     totVal: Number(inv.net_amount || 0)
   });
   const qrUrl = await generateQRCodeDataUrl(qrData);

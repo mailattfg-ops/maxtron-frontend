@@ -30,8 +30,15 @@ import {
   downloadSingleTaxInvoice,
   buildSingleTaxInvoice,
   downloadSingleEWayBill,
+  lineGstPercent,
   type InvoiceLayoutOptions
 } from '@/utils/invoicePdfGenerator';
+
+/** A customer's address as recorded. Missing parts are left out, never filled in. */
+const recordedAddress = (customer: any) => {
+  const a = customer?.addresses?.[0] || {};
+  return [a.street, a.city, a.state, a.zip_code].filter(Boolean).join(', ');
+};
 
 // Printed where "(ORIGINAL FOR RECIPIENT)" goes, so a draft can never pass for the registered invoice.
 const DRAFT_COPY_LABEL = '(DRAFT PREVIEW - NOT AN OFFICIAL E-INVOICE)';
@@ -696,27 +703,32 @@ export default function SalesInvoiceEntry() {
     if (order) {
       const cust = customers.find(c => c.id === order.customer_id);
       const autoType = cust?.gst_no ? 'B2B' : 'B2C';
+      const items = order.items.map((i: any) => {
+        const qty = Number(i.quantity) || 0;
+        const rate = Number(i.rate) || 0;
+        const gstP = Number(i.gst_percent ?? 18);
+        const taxable = qty * rate;
+        const gstAmt = (taxable * gstP) / 100;
+        return {
+          product_id: i.product_id,
+          quantity: qty,
+          rate: rate,
+          gst_percent: gstP,
+          gst_amount: gstAmt,
+          amount: taxable + gstAmt
+        };
+      });
       setFormData({
         ...formData,
         order_id: orderId,
         customer_id: order.customer_id,
         invoice_type: autoType,
         executive_id: order.executive_id || '',
-        items: order.items.map((i: any) => {
-          const qty = i.quantity || 0;
-          const rate = i.rate || 0;
-          const gstP = i.gst_percent || 18;
-          const taxable = qty * rate;
-          const gstAmt = i.gst_amount || ((taxable * gstP) / 100);
-          return {
-            product_id: i.product_id,
-            quantity: qty,
-            rate: rate,
-            gst_percent: gstP,
-            gst_amount: gstAmt,
-            amount: taxable + gstAmt
-          };
-        })
+        items,
+        // The invoice's tax is the tax of the lines just brought in. It used to
+        // stay at whatever the form held (0 on a new invoice), so an order at
+        // 18% was saved as an invoice with no GST.
+        tax_amount: items.reduce((sum: number, i: any) => sum + i.gst_amount, 0)
       });
     }
   };
@@ -909,16 +921,16 @@ export default function SalesInvoiceEntry() {
       items: inv.items.map((i: any) => {
         const qty = Number(i.quantity) || 0;
         const rate = Number(i.rate) || 0;
-        const gstP = Number(i.gst_percent) || 18;
+        const gstP = lineGstPercent(i, inv);
         const taxable = qty * rate;
-        const gstAmt = Number(i.gst_amount) || ((taxable * gstP) / 100);
+        const gstAmt = (taxable * gstP) / 100;
         return {
           product_id: i.product_id,
           quantity: qty,
           rate: rate,
           gst_percent: gstP,
           gst_amount: gstAmt,
-          amount: Number(i.amount) || (taxable + gstAmt)
+          amount: taxable + gstAmt
         };
       })
     });
@@ -1020,22 +1032,19 @@ export default function SalesInvoiceEntry() {
       const qty = Number(item.quantity) || 0;
       const rate = Number(item.rate) || 0;
       const taxable = qty * rate;
-      const gstP = Number(item.gst_percent) !== undefined ? Number(item.gst_percent) : 18;
-      const gstAmt = item.gst_amount || ((taxable * gstP) / 100);
+      const gstP = Number(item.gst_percent) || 0;
+      const gstAmt = (taxable * gstP) / 100;
 
       return {
         ...item,
         id: `preview-item-${index}`,
-        product_name: prod?.product_name || `Product #${index + 1}`,
+        product_name: prod?.product_name || '',
         product_code: prod?.product_code || '',
-        hsn_code: prod?.hsn_code || '392011',
+        hsn_code: prod?.hsn_code || '',
         thickness_microns: prod?.thickness_microns,
         size: prod?.size,
         color: prod?.color,
-        finished_products: prod || {
-          product_name: prod?.product_name || `Product #${index + 1}`,
-          hsn_code: prod?.hsn_code || '392011'
-        },
+        finished_products: prod || {},
         quantity: qty,
         rate: rate,
         taxable_amount: taxable,
@@ -1449,7 +1458,7 @@ export default function SalesInvoiceEntry() {
                       : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       }`}>
                       <span className="text-[10px] uppercase font-bold opacity-70 block">Tax Method</span>
-                      {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST 18%)' : 'Intra-State (CGST 9% + SGST 9%)'}
+                      {getGstType(selectedCustomer.id) === 'IGST' ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
                     </div>
                   </div>
                 </div>
@@ -1760,22 +1769,28 @@ export default function SalesInvoiceEntry() {
                         />
                       </div>
 
+                      {Math.abs(totals.tax - totals.calculatedTax) > 1 && (
+                        <p className="text-[10px] font-medium text-amber-700">
+                          Differs from the GST of the lines (₹ {totals.calculatedTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}). The invoice will be charged the amount typed here.
+                        </p>
+                      )}
+
                       {/* GST Tax Breakdown */}
                       {totals.tax > 0 && formData.customer_id && (
                         <div className="pt-2 border-t border-dashed border-slate-200 text-xs space-y-1 font-mono">
                           {getGstType(formData.customer_id) === 'IGST' ? (
                             <div className="flex justify-between text-amber-700 font-medium">
-                              <span>IGST (18%)</span>
+                              <span>IGST</span>
                               <span>₹ {totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                           ) : (
                             <>
                               <div className="flex justify-between text-emerald-700 font-medium">
-                                <span>CGST (9%)</span>
+                                <span>CGST</span>
                                 <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                               <div className="flex justify-between text-emerald-700 font-medium">
-                                <span>SGST (9%)</span>
+                                <span>SGST</span>
                                 <span>₹ {(totals.tax / 2).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                             </>
@@ -2466,7 +2481,7 @@ export default function SalesInvoiceEntry() {
                   </div>
                   <div className="min-w-0">
                     <CardTitle className="text-base md:text-lg font-black text-white flex items-center gap-2 truncate">
-                      E-Way Bill Slip #{viewEwbInvoice.ewb_no || '121049284910'}
+                      E-Way Bill Slip #{viewEwbInvoice.ewb_no || '—'}
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-300 truncate">
                       Official e-Way Bill for Tax Invoice {viewEwbInvoice.invoice_number}
@@ -2528,7 +2543,7 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                   <div>
                     <span className="text-slate-500 font-medium block">e-Way Bill No:</span>
-                    <span className="font-mono font-black text-sm text-primary">{viewEwbInvoice.ewb_no || '121049284910'}</span>
+                    <span className="font-mono font-black text-sm text-primary">{viewEwbInvoice.ewb_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Generated Date:</span>
@@ -2554,17 +2569,17 @@ export default function SalesInvoiceEntry() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">Consignor (From)</span>
-                    <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                    <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'MAXTRON ASSOCIATES'}</div>
                     <div className="text-slate-600 font-mono text-[11px]">GSTIN: 32AUYPV8850B1Z2</div>
-                    <div className="text-slate-500">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                    <div className="text-slate-500">Address: 13-95, 13-96, Pirivusala, Chandranagar, Palakkad, Kerala</div>
                   </div>
 
                   <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/30 space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">Consignee (To)</span>
-                    <div className="font-bold text-sm text-slate-900">{viewEwbInvoice.customers?.customer_name || 'Customer'}</div>
+                    <div className="font-bold text-sm text-slate-900">{viewEwbInvoice.customers?.customer_name || '—'}</div>
                     <div className="text-slate-600 font-mono text-[11px]">GSTIN: {viewEwbInvoice.customers?.gst_no || 'URP (Unregistered)'}</div>
                     <div className="text-slate-500">
-                      Address: {viewEwbInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEwbInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEwbInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEwbInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                      Address: {recordedAddress(viewEwbInvoice.customers) || 'Not on record'}
                     </div>
                   </div>
                 </div>
@@ -2602,11 +2617,11 @@ export default function SalesInvoiceEntry() {
                     <tbody className="divide-y divide-slate-200 font-medium">
                       {(viewEwbInvoice.items || []).map((item: any, idx: number) => (
                         <tr key={idx} className="hover:bg-slate-50">
-                          <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Products'}</td>
-                          <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                          <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || '—'}</td>
+                          <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '—'}</td>
                           <td className="p-2.5 text-center font-mono">{item.quantity}</td>
                           <td className="p-2.5 text-right font-mono">₹ {(Number(item.quantity) * Number(item.rate)).toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-mono">{item.gst_percent || 18}%</td>
+                          <td className="p-2.5 text-right font-mono">{lineGstPercent(item, viewEwbInvoice)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2627,15 +2642,15 @@ export default function SalesInvoiceEntry() {
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Vehicle Number:</span>
-                    <span className="font-mono font-black text-sm text-blue-900">{viewEwbInvoice.vehicle_no || 'KL53V9494'}</span>
+                    <span className="font-mono font-black text-sm text-blue-900">{viewEwbInvoice.vehicle_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Transporter Name:</span>
-                    <span className="font-bold text-blue-950">{viewEwbInvoice.transporter_name || 'Direct Transport'}</span>
+                    <span className="font-bold text-blue-950">{viewEwbInvoice.transporter_name || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 text-[10px] font-medium block">Distance (Approx):</span>
-                    <span className="font-mono font-bold text-blue-950">{viewEwbInvoice.trans_distance || 10} Km</span>
+                    <span className="font-mono font-bold text-blue-950">{viewEwbInvoice.trans_distance ? `${viewEwbInvoice.trans_distance} Km` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -2754,14 +2769,14 @@ export default function SalesInvoiceEntry() {
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-slate-500">Invoice Reference Number (IRN):</div>
                   <div className="font-mono text-xs font-bold bg-white p-2.5 rounded-lg border border-emerald-300 text-slate-900 break-all select-all shadow-sm">
-                    {viewEInvoice.einvoice_irn || '4b89f0291e8432a10b9876543210feab9876543210feab9876543210feab9876'}
+                    {viewEInvoice.einvoice_irn || '—'}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-1">
                   <div>
                     <span className="text-slate-500 font-medium block">Ack No:</span>
-                    <span className="font-mono font-black text-sm text-emerald-950">{viewEInvoice.einvoice_ack_no || '105330196958644'}</span>
+                    <span className="font-mono font-black text-sm text-emerald-950">{viewEInvoice.einvoice_ack_no || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium block">Ack Date:</span>
@@ -2778,17 +2793,17 @@ export default function SalesInvoiceEntry() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
                   <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Seller (Consignor)</span>
-                  <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'Maxtron Industries'}</div>
+                  <div className="font-bold text-sm text-slate-900">{activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'MAXTRON ASSOCIATES'}</div>
                   <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: 32AUYPV8850B1Z2</div>
-                  <div className="text-slate-500 pt-1">Address: Maxtron Industrial Area, Phase II, Mumbai, Maharashtra - 400001</div>
+                  <div className="text-slate-500 pt-1">Address: 13-95, 13-96, Pirivusala, Chandranagar, Palakkad, Kerala</div>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
                   <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Buyer (Consignee)</span>
-                  <div className="font-bold text-sm text-slate-900">{viewEInvoice.customers?.customer_name || 'Customer'}</div>
+                  <div className="font-bold text-sm text-slate-900">{viewEInvoice.customers?.customer_name || '—'}</div>
                   <div className="text-slate-700 font-mono text-[11px] font-bold">GSTIN: {viewEInvoice.customers?.gst_no || 'N/A'}</div>
                   <div className="text-slate-500 pt-1">
-                    Address: {viewEInvoice.customers?.addresses?.[0]?.street || 'Customer Address'}, {viewEInvoice.customers?.addresses?.[0]?.city || 'City'}, {viewEInvoice.customers?.addresses?.[0]?.state || 'State'} - {viewEInvoice.customers?.addresses?.[0]?.zip_code || '400001'}
+                    Address: {recordedAddress(viewEInvoice.customers) || 'Not on record'}
                   </div>
                 </div>
               </div>
@@ -2830,12 +2845,12 @@ export default function SalesInvoiceEntry() {
                         const qty = Number(item.quantity) || 0;
                         const rate = Number(item.rate) || 0;
                         const taxable = qty * rate;
-                        const gstP = Number(item.gst_percent) || 18;
-                        const lineTotal = Number(item.amount) || (taxable + (taxable * gstP / 100));
+                        const gstP = lineGstPercent(item, viewEInvoice);
+                        const lineTotal = taxable + (taxable * gstP / 100);
                         return (
                           <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || 'Industrial Poly Product'}</td>
-                            <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '392011'}</td>
+                            <td className="p-2.5 font-bold text-slate-900">{item.finished_products?.product_name || '—'}</td>
+                            <td className="p-2.5 text-center font-mono">{item.finished_products?.hsn_code || '—'}</td>
                             <td className="p-2.5 text-center font-mono">{qty}</td>
                             <td className="p-2.5 text-right font-mono">₹ {rate.toLocaleString()}</td>
                             <td className="p-2.5 text-right font-mono">₹ {taxable.toLocaleString()}</td>
