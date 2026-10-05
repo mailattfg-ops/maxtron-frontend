@@ -45,7 +45,12 @@ const TERMS = [
     'Taxes: GST extra as applicable at the time of billing.',
 ];
 
+// The Word original's page footer (bags format only).
+const FOOTER_LABEL = 'Manufacturing Unit:  ';
+const FOOTER_LINES = ['Maxtron Associates, Kottamangalam, Erattakulam – Nallepilly Road,', 'Nallepilly, Palakkad, Kerala.'];
+
 const FONT = 'Calibri';
+const RULE_BLUE: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF4472C4' } };
 const THIN: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FF000000' } };
 const MEDIUM: Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF000000' } };
 const EMU_PER_PX = 9525;
@@ -245,21 +250,21 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
 const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) => {
     const ws = wb.addWorksheet('Quotation');
     pageSetup(ws);
-    [10, 30, 14, 20, 16, 16].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    [8, 28, 16, 22, 14, 12].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const items = itemsOf(record);
     const gst = uniformGst(items);
 
-    // Letterhead (rows 1-4), ruled off underneath.
-    [32, 32, 18, 18].forEach((h, i) => { ws.getRow(i + 1).height = h; });
-    placeImage(wb, ws, assets.logo, 1, 1, 2, 3, 2);
+    // Letterhead (rows 1-4): logo down the left; name banner, address and
+    // contact line beside it. No rule underneath, as on the reference.
+    [30, 30, 16, 16].forEach((h, i) => { ws.getRow(i + 1).height = h; });
+    placeImage(wb, ws, assets.logo, 1, 1, 2, 4, 2);
     if (assets.name) placeImage(wb, ws, assets.name, 3, 1, 6, 2, 4);
     else { ws.mergeCells(1, 3, 2, 6); put(ws, 1, 3, COMPANY, { bold: true, size: 24, h: 'center' }); }
     ws.mergeCells(3, 3, 3, 6);
-    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 10, shrink: true });
-    ws.mergeCells(4, 1, 4, 6);
-    put(ws, 4, 1, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 10, shrink: true });
-    for (let c = 1; c <= 6; c++) ws.getCell(4, c).border = { bottom: THIN };
+    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true });
+    ws.mergeCells(4, 3, 4, 6);
+    put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true });
 
     // REF (left) and Date (right).
     const d = quoteDate(record);
@@ -287,7 +292,7 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     const head = r;
     ws.getRow(head).height = 30;
     ['Sl. No', 'Description', 'Rate/KG', 'No. of Bags/KG', 'Qty In KG', 'Total'].forEach((hd, i) =>
-        put(ws, head, i + 1, hd, { bold: true, h: i === 1 ? 'left' : 'center', wrap: true }));
+        put(ws, head, i + 1, hd, { bold: true, h: 'center', wrap: true }));
 
     const first = head + 1;
     items.forEach((it, i) => {
@@ -296,44 +301,64 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
         const qty = num(it.quantity);
         ws.getRow(row).height = 20;
         put(ws, row, 1, i + 1, { h: 'center' });
-        put(ws, row, 2, String(it.product_name || '').toUpperCase(), { wrap: true });
+        put(ws, row, 2, String(it.product_name || '').toUpperCase(), { h: 'center', wrap: true });
         put(ws, row, 3, rate || null, { h: 'center' });
         put(ws, row, 4, it.bags_per_kg ? String(it.bags_per_kg) : null, { h: 'center' });
         put(ws, row, 5, qty || null, { h: 'center' });
-        put(ws, row, 6, { formula: `C${row}*E${row}`, result: rate * qty }, { h: 'center' });
+        put(ws, row, 6, { formula: `C${row}*E${row}`, result: rate * qty }, { h: 'right' });
     });
     const lastItem = first + Math.max(items.length, 1) - 1;
+    box(ws, head, 1, lastItem + 1, 6); // the item grid, with one blank ruled row under it
 
-    // Blank row, then Sub Total / GST / Grand Total placed as on the reference:
-    // Sub Total and Grand Total under "Qty In KG" | "Total", GST under "Rate/KG" | "No. of Bags/KG".
+    // Sub Total / GST / Grand Total: boxed on the right only — the label across
+    // "No. of Bags/KG" + "Qty In KG", the amount under "Total".
     const subRow = lastItem + 2;
     const gstRow = subRow + 1;
     const grandRow = subRow + 2;
     const subTotal = items.reduce((s, it) => s + num(it.amount) * num(it.quantity), 0);
     const gstAmount = items.reduce((s, it) => s + (num(it.amount) * num(it.quantity) * num(it.gst_percent)) / 100, 0);
-
-    put(ws, subRow, 5, 'Sub Total', { bold: true, h: 'center' });
-    put(ws, subRow, 6, { formula: `SUM(F${first}:F${lastItem})`, result: subTotal }, { bold: true, h: 'center' });
-    put(ws, gstRow, 3, gst === null ? 'GST' : `GST ${gst}%`, { bold: true, h: 'center' });
+    const totalLine = (row: number, label: string, value: ExcelJS.CellValue) => {
+        ws.mergeCells(row, 4, row, 5);
+        put(ws, row, 4, label, { bold: true, h: 'center' });
+        put(ws, row, 6, value, { bold: true, h: 'right' });
+    };
+    totalLine(subRow, 'Sub Total', { formula: `SUM(F${first}:F${lastItem})`, result: subTotal });
     // Mixed rates cannot be one formula; a single rate stays live.
-    put(ws, gstRow, 4, gst === null ? gstAmount : { formula: `F${subRow}*${gst}/100`, result: gstAmount }, { bold: true, h: 'center' });
-    put(ws, grandRow, 5, 'Grand Total', { bold: true, h: 'center' });
-    put(ws, grandRow, 6, { formula: `F${subRow}+D${gstRow}`, result: subTotal + gstAmount }, { bold: true, h: 'center' });
-    box(ws, head, 1, grandRow, 6);
+    totalLine(gstRow, gst === null ? 'GST' : `GST ${gst}%`, gst === null ? gstAmount : { formula: `F${subRow}*${gst}/100`, result: gstAmount });
+    totalLine(grandRow, 'Grand Total', { formula: `F${subRow}+F${gstRow}`, result: subTotal + gstAmount });
+    box(ws, subRow, 4, grandRow, 6);
 
-    // Terms, then sign-off.
-    r = grandRow + 2;
-    put(ws, r++, 1, 'Terms & Conditions:', { bold: true });
+    // Terms, indented one column as on the reference.
+    r = grandRow + 1;
+    put(ws, r++, 2, 'Terms & Conditions:', { bold: true });
     TERMS.forEach((t, i) => {
-        ws.mergeCells(r, 1, r, 6);
-        put(ws, r++, 1, `${i + 1}. ${t}`);
+        ws.mergeCells(r, 2, r, 6);
+        put(ws, r++, 2, `${i + 1}. ${t}`);
     });
+
+    // Sign-off: the executive who raised the quotation, with their phone.
     r++;
     put(ws, r++, 1, 'Thanks & Best Regards,');
+    r++;
     put(ws, r++, 1, `For ${COMPANY}`);
     r++;
-    const executive = record.users?.name || record.employee_name;
-    if (executive) put(ws, r++, 1, String(executive));
+    const executive = record.users || {};
+    [executive.name || record.employee_name, executive.phone].filter(Boolean)
+        .forEach(line => { ws.mergeCells(r, 1, r, 3); put(ws, r++, 1, String(line)); });
+
+    // Footer: blue rule, then the manufacturing unit address, centred.
+    r += 2;
+    ws.mergeCells(r, 1, r, 6);
+    for (let c = 1; c <= 6; c++) ws.getCell(r, c).border = { top: RULE_BLUE };
+    const foot = ws.getCell(r, 1);
+    foot.value = { richText: [
+        { font: { name: FONT, size: 9, bold: true }, text: FOOTER_LABEL },
+        { font: { name: FONT, size: 9 }, text: FOOTER_LINES[0] },
+    ] };
+    foot.alignment = { horizontal: 'center', vertical: 'middle' };
+    r++;
+    ws.mergeCells(r, 1, r, 6);
+    put(ws, r, 1, FOOTER_LINES[1], { size: 9, h: 'center' });
     ws.pageSetup.printArea = `A1:F${r}`;
 };
 

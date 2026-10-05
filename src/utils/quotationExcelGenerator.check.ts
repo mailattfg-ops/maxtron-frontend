@@ -58,7 +58,7 @@ const bags = {
     visit_date: '2026-09-08',
     customer_name: 'PK Das Hospital',
     location: 'Vaniyamkulam, Kerala',
-    users: { name: 'Mr. Sivadas' },
+    users: { name: 'Mr. Sivadas', phone: '81390-12444' },
     quotation_items: [
         { product_name: '30X50 Green', amount: 105, gst_percent: 18, quantity: 25, unit: 'Kg', bags_per_kg: '45 TO 50' },
         { product_name: '30X50 Black', amount: 105, gst_percent: 18, quantity: 25, unit: 'Kg', bags_per_kg: '45 TO 50' },
@@ -70,7 +70,8 @@ const bags = {
 const result = (cell: any) => (cell.formula ? cell.result : cell.value);
 const formula = (cell: any) => cell.formula;
 const findRow = (ws: any, col: number, text: string) => {
-    for (let r = 1; r <= ws.rowCount; r++) if (String(ws.getCell(r, col).value ?? '') === text) return r;
+    // .text, not .value: the footer is rich text.
+    for (let r = 1; r <= ws.rowCount; r++) if (ws.getCell(r, col).text === text) return r;
     throw new Error(`"${text}" not found in column ${col}`);
 };
 
@@ -110,20 +111,28 @@ const findRow = (ws: any, col: number, text: string) => {
     eq(b.getCell(head, 4).value, 'No. of Bags/KG', 'bags-per-kg column');
     eq(b.getCell(head + 1, 4).value, '45 TO 50', 'bags per kg is text');
     eq(result(b.getCell(head + 1, 6)), 2625, 'line total');
-    const sub = findRow(b, 5, 'Sub Total');
+    // Totals are stacked on the right: label across D:E, amount in F.
+    const sub = findRow(b, 4, 'Sub Total');
     eq(result(b.getCell(sub, 6)), 7875, 'sub total');
-    eq(b.getCell(sub + 1, 3).value, 'GST 18%', 'GST label sits under Rate/KG, as on the reference');
-    eq(result(b.getCell(sub + 1, 4)), 1417.5, 'GST amount');
+    eq(b.getCell(sub + 1, 4).value, 'GST 18%', 'GST sits between Sub Total and Grand Total');
+    eq(result(b.getCell(sub + 1, 6)), 1417.5, 'GST amount');
+    eq(b.getCell(sub + 2, 4).value, 'Grand Total', 'grand total label');
     eq(result(b.getCell(sub + 2, 6)), 9292.5, 'grand total');
-    eq(formula(b.getCell(sub + 2, 6)), `F${sub}+D${sub + 1}`, 'grand total stays a live formula');
-    eq(b.getCell(findRow(b, 1, 'Terms & Conditions:') + 4, 1).value, '4. Taxes: GST extra as applicable at the time of billing.', 'four terms');
-    ok(findRow(b, 1, 'Mr. Sivadas') > findRow(b, 1, 'For MAXTRON ASSOCIATES'), 'signed by the executive');
+    eq(formula(b.getCell(sub + 2, 6)), `F${sub}+F${sub + 1}`, 'grand total stays a live formula');
+    ok(b.getCell(sub, 4).isMerged && !b.getCell(sub, 3).border?.left, 'totals are boxed on the right only');
+    eq(b.getCell(findRow(b, 2, 'Terms & Conditions:') + 4, 2).value, '4. Taxes: GST extra as applicable at the time of billing.', 'four terms, indented');
+    const signed = findRow(b, 1, 'Mr. Sivadas');
+    ok(signed > findRow(b, 1, 'For MAXTRON ASSOCIATES'), 'signed by the executive');
+    eq(b.getCell(signed + 1, 1).value, '81390-12444', 'with their phone');
+    const foot = findRow(b, 1, 'Manufacturing Unit:  Maxtron Associates, Kottamangalam, Erattakulam – Nallepilly Road,');
+    eq(b.getCell(foot + 1, 1).value, 'Nallepilly, Palakkad, Kerala.', 'manufacturing unit footer');
+    assert.throws(() => findRow(t, 1, b.getCell(foot, 1).text), 'the trading sheet has no such footer'); checks++;
 
     // Mixed GST rates cannot be one formula, and must not pretend to be one rate.
     const mixed = buildQuotationWorkbook({ ...bags, quotation_items: [bags.quotation_items[0], { ...bags.quotation_items[1], gst_percent: 5 }] }).getWorksheet('Quotation')!;
-    const mSub = findRow(mixed, 5, 'Sub Total');
-    eq(mixed.getCell(mSub + 1, 3).value, 'GST', 'mixed rates: no percentage in the label');
-    eq(result(mixed.getCell(mSub + 1, 4)), 2625 * 0.18 + 2625 * 0.05, 'mixed rates: summed per line');
+    const mSub = findRow(mixed, 4, 'Sub Total');
+    eq(mixed.getCell(mSub + 1, 4).value, 'GST', 'mixed rates: no percentage in the label');
+    eq(result(mixed.getCell(mSub + 1, 6)), 2625 * 0.18 + 2625 * 0.05, 'mixed rates: summed per line');
 
     // An old quotation saved before the format existed still exports (as BAGS).
     ok(buildQuotationWorkbook({ quotation_items: [] }).getWorksheet('Quotation'), 'legacy record builds');
