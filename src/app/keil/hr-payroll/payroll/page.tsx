@@ -37,6 +37,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { plainCell, monthOf, yearOf, amountOf, dateOf } from '@/utils/payrollImport';
 
 export default function KeilPayrollPage() {
     const pathname = usePathname();
@@ -439,7 +440,7 @@ export default function KeilPayrollPage() {
 
             const headerValues: string[] = [];
             worksheet.getRow(1).eachCell((cell, colNumber) => {
-                headerValues[colNumber] = cell.value ? cell.value.toString().trim().toLowerCase() : '';
+                headerValues[colNumber] = String(plainCell(cell.value) ?? '').trim().toLowerCase();
             });
 
             worksheet.eachRow((row, rowNumber) => {
@@ -447,7 +448,7 @@ export default function KeilPayrollPage() {
 
                 const getCell = (namePart: string) => {
                     const colIndex = headerValues.findIndex(h => h && h.includes(namePart));
-                    return colIndex > -1 ? row.getCell(colIndex).value : null;
+                    return colIndex > -1 ? plainCell(row.getCell(colIndex).value) : null;
                 };
 
                 const rawCode = getCell('code');
@@ -463,22 +464,36 @@ export default function KeilPayrollPage() {
                     return;
                 }
 
-                const noOfDuties = Number(getCell('dut') || 0);
-                const basicSalary = Number(getCell('basic') || matchedEmp.basic_salary || 0);
-                const allowances = Number(getCell('allow') || 0);
-                const deductions = Number(getCell('deduct') || 0);
-                const incentives = Number(getCell('incent') || 0);
+                const noOfDuties = amountOf(getCell('dut')) ?? 0;
+                const basicSalary = amountOf(getCell('basic')) || Number(matchedEmp.basic_salary) || 0;
+                const allowances = amountOf(getCell('allow')) ?? 0;
+                const deductions = amountOf(getCell('deduct')) ?? 0;
+                const incentives = amountOf(getCell('incent')) ?? 0;
                 const netSalary = (basicSalary + allowances + incentives) - deductions;
 
-                const monthVal = Number(getCell('month') || filterMonth);
-                const yearVal = Number(getCell('year') || filterYear);
+                // A blank Month or Year takes the month being viewed. One that cannot
+                // be read stops the row here, listed as an error, instead of reaching
+                // the server as null and failing the whole import.
+                const rawMonth = getCell('month');
+                const rawYear = getCell('year');
+                const blank = (v: any) => v === null || v === undefined || v === '';
+                const monthVal = blank(rawMonth) ? filterMonth : monthOf(rawMonth);
+                const yearVal = blank(rawYear) ? (yearOf(rawMonth) ?? filterYear) : yearOf(rawYear);
+                if (monthVal === null || yearVal === null) {
+                    validationErrors.push(monthVal === null
+                        ? `Row ${rowNumber}: Month "${rawMonth}" not understood. Use 1-12 or the month name.`
+                        : `Row ${rowNumber}: Year "${rawYear}" not understood. Use a 4-digit year.`);
+                    return;
+                }
                 const rawStatus = getCell('status')?.toString().toUpperCase().trim();
                 const paymentStatus = rawStatus === 'PAID' ? 'PAID' : 'PENDING';
                 const paymentMode = getCell('mode')?.toString().trim() || 'BANK';
                 const rawDate = getCell('date');
-                const paymentDate = rawDate instanceof Date
-                    ? rawDate.toISOString().split('T')[0]
-                    : (rawDate?.toString().trim() || new Date().toISOString().split('T')[0]);
+                const paymentDate = blank(rawDate) ? new Date().toISOString().split('T')[0] : dateOf(rawDate);
+                if (paymentDate === null) {
+                    validationErrors.push(`Row ${rowNumber}: Payment Date "${rawDate}" not understood. Use DD-MM-YYYY.`);
+                    return;
+                }
                 const remarks = getCell('remark')?.toString().trim() || 'Bulk imported via Excel';
 
                 parsedRows.push({
