@@ -340,13 +340,18 @@ export async function renderTaxInvoicePage(
   const buyerStateCode = getStateCode(buyerState);
 
   // Invoice & e-Invoice Info
+  /* A draft — an invoice previewed before e-Invoice generation — has no IRN,
+   * Ack number or e-Way Bill yet. The preview shows this very page, so a draft
+   * must say "pending" there and never print the sample values below as if the
+   * portal had issued them. Everything else on the page is laid out the same. */
+  const isDraft = !!inv.is_preview && !inv.einvoice_irn;
   const invoiceNo = inv.invoice_number || 'MA154/26-27';
-  const ewbNo = inv.ewb_no || '592050677018';
+  const ewbNo = inv.ewb_no || (isDraft ? '' : '592050677018');
   const invoiceDate = formatInvoiceDate(inv.invoice_date);
   const orderNo = inv.orders?.order_number || '';
   const orderDate = inv.orders?.order_date ? formatInvoiceDate(inv.orders.order_date) : '';
-  const irn = inv.einvoice_irn || 'adc49db2ff35768faa247a838a7a23a6ed8fae3d99db8fb76736ee546d62b404';
-  const ackNo = inv.einvoice_ack_no || '152626715521045';
+  const irn = inv.einvoice_irn || (isDraft ? '' : 'adc49db2ff35768faa247a838a7a23a6ed8fae3d99db8fb76736ee546d62b404');
+  const ackNo = inv.einvoice_ack_no || (isDraft ? '' : '152626715521045');
   const ackDate = inv.einvoice_ack_date ? formatInvoiceDate(inv.einvoice_ack_date) : invoiceDate;
 
   // Tax and Item Calculations
@@ -456,13 +461,16 @@ export async function renderTaxInvoicePage(
   const qrX = endX - qrSize;
   const eInvoiceTagY = topHeaderY;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(9.5));
-  doc.text('e-Invoice', qrX + (qrSize / 2), eInvoiceTagY, { align: 'center' });
-
+  // The space is kept on a draft so the rest of the page sits exactly where
+  // it will on the registered invoice; only the tag and the code are left out.
   const qrY = eInvoiceTagY + (2.5 * dimScale);
-  if (qrDataUrl) {
-    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+  if (!isDraft) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(9.5));
+    doc.text('e-Invoice', qrX + (qrSize / 2), eInvoiceTagY, { align: 'center' });
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    }
   }
 
   // Left Side: IRN & Ack details
@@ -476,14 +484,16 @@ export async function renderTaxInvoicePage(
   const irnLine1 = irn.length > maxChars ? irn.substring(0, maxChars) + '-' : irn;
   const irnLine2 = irn.length > maxChars ? irn.substring(maxChars) : '';
   doc.setFont('helvetica', 'bold');
-  doc.text(irnLine1, startX + (8 * dimScale), irnY);
+  doc.text(isDraft ? 'Pending - not generated' : irnLine1, startX + (8 * dimScale), irnY);
   if (irnLine2) {
     doc.text(irnLine2, startX + (8 * dimScale), irnY + (3.0 * dimScale));
   }
 
   const ackY = irnLine2 ? irnY + (6.0 * dimScale) : irnY + (3.4 * dimScale);
-  doc.text(`Ack No. : ${ackNo}`, startX, ackY);
-  doc.text(`Ack Date : ${ackDate}`, startX, ackY + (3.0 * dimScale));
+  if (!isDraft) {
+    doc.text(`Ack No. : ${ackNo}`, startX, ackY);
+    doc.text(`Ack Date : ${ackDate}`, startX, ackY + (3.0 * dimScale));
+  }
 
   // 3. Main Border Box Outer Frame (guaranteed to start below QR code and Ack info)
   const tableStartY = Math.max(qrY + qrSize + (2.5 * dimScale), ackY + (4.5 * dimScale));
@@ -1542,13 +1552,17 @@ export async function downloadAllInvoiceDocs(
   }
 }
 
-// Download Single Document (e.g. only Tax Invoice or only e-Way Bill)
-export async function downloadSingleTaxInvoice(
+/**
+ * The tax invoice as a PDF document, not yet saved. The on-screen preview
+ * shows this, and the download saves it — one page, drawn once, so what is
+ * previewed is what prints.
+ */
+export async function buildSingleTaxInvoice(
   inv: any,
   activeTenant: string = 'MAXTRON',
   copyType: string = '(ORIGINAL FOR RECIPIENT)',
   options?: InvoiceLayoutOptions
-) {
+): Promise<jsPDF> {
   const requestedWidth = options?.pageWidth || 210;
   const requestedHeight = options?.pageHeight || 297;
   const isLandscape = requestedWidth > requestedHeight;
@@ -1571,6 +1585,17 @@ export async function downloadSingleTaxInvoice(
     getMaxtronLogoDataUrl()
   ]);
   await renderTaxInvoicePage(doc, inv, activeTenant, copyType, qrUrl, logoDataUrl, options);
+  return doc;
+}
+
+// Download Single Document (e.g. only Tax Invoice or only e-Way Bill)
+export async function downloadSingleTaxInvoice(
+  inv: any,
+  activeTenant: string = 'MAXTRON',
+  copyType: string = '(ORIGINAL FOR RECIPIENT)',
+  options?: InvoiceLayoutOptions
+) {
+  const doc = await buildSingleTaxInvoice(inv, activeTenant, copyType, options);
   const cleanInvNo = (inv.invoice_number || 'INV').replace(/[^a-zA-Z0-9_-]/g, '_');
   const cleanType = copyType.replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`${cleanInvNo}_Tax_Invoice_${cleanType}.pdf`);
