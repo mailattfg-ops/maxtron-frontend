@@ -41,6 +41,8 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 
+import { readFuelRegister } from '@/utils/fuelRegisterImport';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const FUEL_API = `${API_BASE}/api/keil/fleet/fuel-fillings`;
 const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
@@ -354,184 +356,17 @@ export default function FuelFillingPage() {
             const buffer = await file.arrayBuffer();
             await workbook.xlsx.load(buffer);
 
-            const worksheet = workbook.worksheets[0];
-            if (!worksheet) {
+            if (workbook.worksheets.length === 0) {
                 error("Uploaded workbook contains no worksheets.");
                 return;
             }
 
-            const getCellValue = (cell: any): string => {
-                if (!cell || cell.value === null || cell.value === undefined) return '';
-                if (cell.value instanceof Date) {
-                    const d = cell.value;
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                }
-                if (typeof cell.value === 'object') {
-                    if (cell.value.result !== undefined) return String(cell.value.result).trim();
-                    if (cell.value.text !== undefined) return String(cell.value.text).trim();
-                    if (cell.value.richText) return cell.value.richText.map((t: any) => t.text).join('').trim();
-                    return JSON.stringify(cell.value).trim();
-                }
-                return String(cell.value).trim();
-            };
+            const { rows: parsedRows, sheetsRead } = readFuelRegister(workbook, matchVehicle);
 
-            // Detect header row by scanning rows 1 to 10
-            let headerRowIndex = -1;
-            let colMap = { date: -1, veh: -1, ltr: -1, rate: -1, amount: -1, pump: -1 };
-
-            worksheet.eachRow((row, rowNumber) => {
-                if (headerRowIndex !== -1) return;
-                const cellTexts: { [col: number]: string } = {};
-                row.eachCell((cell, colNumber) => {
-                    cellTexts[colNumber] = getCellValue(cell).toUpperCase();
-                });
-
-                const values = Object.values(cellTexts);
-                const hasDate = values.some(v => v.includes('DATE'));
-                const hasVeh = values.some(v => v.includes('VEH') || v.includes('REG') || v.includes('ASSET'));
-                const hasLtr = values.some(v => v.includes('LTR') || v.includes('LITER') || v.includes('QTY'));
-
-                if (hasDate && (hasVeh || hasLtr)) {
-                    headerRowIndex = rowNumber;
-                    Object.entries(cellTexts).forEach(([colStr, text]) => {
-                        const colIdx = Number(colStr);
-                        if (text.includes('DATE')) colMap.date = colIdx;
-                        else if (text.includes('VEH') || text.includes('REG') || text.includes('ASSET')) colMap.veh = colIdx;
-                        else if (text.includes('LTR') || text.includes('LITER') || text.includes('QTY')) colMap.ltr = colIdx;
-                        else if (text.includes('RATE') || text.includes('PRICE')) colMap.rate = colIdx;
-                        else if (text.includes('AMOUT') || text.includes('AMOUNT') || text.includes('TOTAL') || text.includes('COST')) colMap.amount = colIdx;
-                        else if (text.includes('PUMP') || text.includes('STATION') || text.includes('BUNK')) colMap.pump = colIdx;
-                    });
-                }
-            });
-
-            if (headerRowIndex === -1 || colMap.date === -1 || colMap.veh === -1 || colMap.ltr === -1) {
+            if (sheetsRead === 0) {
                 error("Could not find expected columns (DATE, VEH NO, LTR, RATE, AMOUT, PUMP). Please download and use the provided template.");
                 return;
             }
-
-            const parseDateValue = (raw: string, cell: any): string => {
-                if (cell?.value instanceof Date) {
-                    const d = cell.value;
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                }
-                if (typeof cell?.value === 'number' && cell.value > 20000 && cell.value < 100000) {
-                    const dateObj = new Date((cell.value - 25569) * 86400 * 1000);
-                    const yyyy = dateObj.getFullYear();
-                    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const dd = String(dateObj.getDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                }
-                const clean = raw.trim();
-                if (!clean) return '';
-
-                // Match DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
-                const dmyMatch = clean.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-                if (dmyMatch) {
-                    const [_, day, month, year] = dmyMatch;
-                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                }
-
-                // Match YYYY-MM-DD
-                const ymdMatch = clean.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-                if (ymdMatch) {
-                    const [_, year, month, day] = ymdMatch;
-                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                }
-
-                const parsed = new Date(clean);
-                if (!isNaN(parsed.getTime())) {
-                    return parsed.toISOString().split('T')[0];
-                }
-                return '';
-            };
-
-            const parsedRows: any[] = [];
-
-            worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber <= headerRowIndex) return;
-
-                const rawDate = colMap.date !== -1 ? getCellValue(row.getCell(colMap.date)) : '';
-                const rawVeh = colMap.veh !== -1 ? getCellValue(row.getCell(colMap.veh)) : '';
-                const rawLtr = colMap.ltr !== -1 ? getCellValue(row.getCell(colMap.ltr)) : '';
-                const rawRate = colMap.rate !== -1 ? getCellValue(row.getCell(colMap.rate)) : '';
-                const rawAmount = colMap.amount !== -1 ? getCellValue(row.getCell(colMap.amount)) : '';
-                const rawPump = colMap.pump !== -1 ? getCellValue(row.getCell(colMap.pump)) : '';
-
-                // Skip blank rows or total summary rows at bottom
-                if (!rawDate && !rawVeh && !rawLtr && !rawAmount && !rawPump) return;
-                if (rawDate.toUpperCase().includes('TOTAL') || rawVeh.toUpperCase().includes('TOTAL')) return;
-
-                const rowErrors: string[] = [];
-
-                // 1. Date Validation
-                const dateCell = colMap.date !== -1 ? row.getCell(colMap.date) : null;
-                const formattedDate = parseDateValue(rawDate, dateCell);
-                if (!rawDate) {
-                    rowErrors.push("Date is required");
-                } else if (!formattedDate) {
-                    rowErrors.push(`Invalid date: "${rawDate}" (use DD-MM-YYYY)`);
-                } else {
-                    const yr = parseInt(formattedDate.split('-')[0], 10);
-                    if (yr < 2000 || yr > 2099) {
-                        rowErrors.push(`Date year ${yr} out of range`);
-                    }
-                }
-
-                // 2. Vehicle Matching
-                if (!rawVeh) {
-                    rowErrors.push("Vehicle number is required");
-                }
-                const matchedVeh = matchVehicle(rawVeh);
-                if (rawVeh && !matchedVeh) {
-                    rowErrors.push(`Vehicle "${rawVeh}" not found in registered fleet`);
-                }
-
-                // 3. Liters Validation
-                const ltrNum = parseFloat(rawLtr);
-                if (!rawLtr) {
-                    rowErrors.push("Liters (LTR) is required");
-                } else if (isNaN(ltrNum) || ltrNum <= 0) {
-                    rowErrors.push(`Invalid liters: "${rawLtr}"`);
-                }
-
-                // 4. Rate & Amount Validation / Auto-calculation
-                let rateNum = parseFloat(rawRate);
-                let amountNum = parseFloat(rawAmount);
-
-                if ((isNaN(amountNum) || amountNum <= 0) && !isNaN(ltrNum) && !isNaN(rateNum) && ltrNum > 0 && rateNum > 0) {
-                    amountNum = parseFloat((ltrNum * rateNum).toFixed(2));
-                }
-
-                if ((isNaN(rateNum) || rateNum <= 0) && !isNaN(ltrNum) && !isNaN(amountNum) && ltrNum > 0 && amountNum > 0) {
-                    rateNum = parseFloat((amountNum / ltrNum).toFixed(2));
-                }
-
-                if (isNaN(amountNum) || amountNum <= 0) {
-                    rowErrors.push("Valid amount or rate is required");
-                }
-
-                parsedRows.push({
-                    rowNumber,
-                    rawDate,
-                    formattedDate,
-                    rawVeh,
-                    vehicleId: matchedVeh?.id || null,
-                    vehicleReg: matchedVeh?.registration_number || rawVeh,
-                    liters: !isNaN(ltrNum) ? ltrNum : 0,
-                    rate: !isNaN(rateNum) ? rateNum : 0,
-                    amount: !isNaN(amountNum) ? amountNum : 0,
-                    pump: rawPump || '',
-                    isValid: rowErrors.length === 0,
-                    errors: rowErrors
-                });
-            });
 
             if (parsedRows.length === 0) {
                 error("No data rows found below the header row.");
@@ -541,7 +376,7 @@ export default function FuelFillingPage() {
             setBulkPreviewRecords(parsedRows);
             setShowBulkImport(true);
             setShowForm(false);
-            success(`Loaded ${parsedRows.length} rows from Excel file. Please review before importing.`);
+            success(`Loaded ${parsedRows.length} rows from ${sheetsRead} sheet${sheetsRead === 1 ? '' : 's'}. Please review before importing.`);
         } catch (err: any) {
             console.error("Excel parse error:", err);
             error(`Failed to parse Excel file: ${err.message}`);
@@ -585,7 +420,12 @@ export default function FuelFillingPage() {
 
             const data = await res.json();
             if (data.success) {
-                success(`Successfully imported ${validRecords.length} fuel records!`);
+                // Rows already stored by an earlier upload of the same register are
+                // skipped by the server, which reports how many.
+                const imported = data.count ?? validRecords.length;
+                success(data.skipped
+                    ? `Imported ${imported} new fuel records. ${data.skipped} already in the system were skipped.`
+                    : `Successfully imported ${imported} fuel records!`);
                 setShowBulkImport(false);
                 setBulkPreviewRecords([]);
                 setBulkFileName('');
@@ -601,8 +441,8 @@ export default function FuelFillingPage() {
         }
     };
 
-    const removeBulkRecord = (index: number) => {
-        setBulkPreviewRecords(prev => prev.filter((_, i) => i !== index));
+    const removeBulkRecord = (row: any) => {
+        setBulkPreviewRecords(prev => prev.filter(r => r !== row));
     };
 
     const resetBulkImport = () => {
@@ -949,7 +789,7 @@ export default function FuelFillingPage() {
                                         <table className="w-full text-left border-collapse text-xs">
                                             <thead className="bg-slate-800 text-white uppercase text-[10px] tracking-wider sticky top-0 z-10 font-bold">
                                                 <tr>
-                                                    <th className="py-3 px-3 text-center w-12">#</th>
+                                                    <th className="py-3 px-3 text-center">Sheet · Row</th>
                                                     <th className="py-3 px-4 w-28">Status</th>
                                                     <th className="py-3 px-4">Date</th>
                                                     <th className="py-3 px-4">Vehicle No</th>
@@ -970,7 +810,7 @@ export default function FuelFillingPage() {
                                                     })
                                                     .map((row, idx) => (
                                                         <tr key={idx} className={row.isValid ? 'hover:bg-slate-50/80' : 'bg-rose-50/50 hover:bg-rose-50'}>
-                                                            <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">{row.rowNumber}</td>
+                                                            <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px] whitespace-nowrap">{row.sheetName} · {row.rowNumber}</td>
                                                             <td className="py-2.5 px-4">
                                                                 {row.isValid ? (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200">
@@ -1027,7 +867,7 @@ export default function FuelFillingPage() {
                                                             <td className="py-2.5 px-3 text-center">
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => removeBulkRecord(idx)}
+                                                                    onClick={() => removeBulkRecord(row)}
                                                                     className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                                                                     title="Remove row"
                                                                 >
