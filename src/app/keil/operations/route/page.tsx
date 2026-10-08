@@ -363,6 +363,8 @@ export default function RouteRegistryPage() {
                     headers={['Route Code', 'Route Name', 'Type', 'Branch', 'Actions']}
                     data={routes}
                     loading={loading}
+                    deleteUrl={ROUTE_API}
+                    onRefresh={() => fetchRoutes(currentCompanyId)}
                     searchFields={['route_name', 'route_code', 'route_type', 'branch_name']}
                     renderRow={(r: any) => (
                         <tr key={r.id} className="hover:bg-primary/5 transition-colors group border-b last:border-0 border-slate-100">

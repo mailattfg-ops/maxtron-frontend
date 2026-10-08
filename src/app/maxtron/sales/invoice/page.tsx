@@ -1922,6 +1922,8 @@ export default function SalesInvoiceEntry() {
             headers={['Invoice No', 'Date', 'Customer', 'Type', 'Amount', 'E-Invoice Status', 'E-Way Bill Status', 'Actions']}
             data={filteredInvoices}
             loading={loading}
+            deleteUrl={INVOICES_API}
+            onRefresh={fetchInvoices}
             searchPlaceholder="Search invoices by Inv No or Customer..."
             searchFields={['invoice_number', 'customers.customer_name'] as any}
             renderRow={(inv: any) => {

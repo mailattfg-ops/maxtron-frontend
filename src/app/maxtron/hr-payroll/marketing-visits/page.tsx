@@ -379,7 +379,8 @@ export default function MarketingVisitsPage() {
           location: autoLoc
         }));
       } else {
-        error(data.message || 'Failed to create customer');
+        const errorDetail = data.errors?.map((e: any) => e.message).join(', ');
+        error(errorDetail ? `${data.message}` : (data.message || 'Failed to create customer'));
       }
     } catch (err: any) {
       error(err.message || 'Error creating customer');

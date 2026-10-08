@@ -544,6 +544,8 @@ export default function ConsumptionPage() {
           headers={['Slip / Date', 'Raw Material', 'Quantity', 'Process / Line', 'Status', 'Actions']}
           data={consumptions}
           loading={loading}
+          deleteUrl={CONSUMPTION_API}
+          onRefresh={() => fetchConsumptions(currentCompanyId)}
           searchFields={['consumption_slip_no', 'raw_materials.rm_name', 'process_type']}
           searchPlaceholder="Find slip or material..."
           renderRow={(c: any) => (

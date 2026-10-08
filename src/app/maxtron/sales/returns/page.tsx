@@ -961,6 +961,8 @@ export default function SalesReturns() {
           headers={['Return No', 'Req. Date', 'Customer', 'Return Through', 'Total Value', 'Credit Note', 'Actions']}
           data={returns}
           loading={loading}
+          deleteUrl={RETURNS_API}
+          onRefresh={fetchReturns}
           searchFields={['return_number', 'customers.customer_name', 'invoices.invoice_number', 'invoices.einvoice_ack_no', 'invoices.einvoice_irn']}
           renderRow={(ret: any) => (
             <tr key={ret.id} className="hover:bg-rose-50 transition-all border-b last:border-0">

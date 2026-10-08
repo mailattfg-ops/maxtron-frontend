@@ -228,6 +228,8 @@ export default function PettyCashPage() {
                     headers={['Voucher No', 'Date', 'Category', 'Paid To', 'Amount', 'Actions']}
                     data={records}
                     loading={loading}
+                    deleteUrl={`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/petty-cash`}
+                    onRefresh={fetchData}
                     searchFields={['category', 'paid_to']}
                     searchPlaceholder="Search category or recipient..."
                     renderRow={(row: any) => (

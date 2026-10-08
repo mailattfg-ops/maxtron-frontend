@@ -309,6 +309,8 @@ export default function PackingDetailsPage() {
           headers={['Date', 'Batch #', 'Product', 'Bundles', 'Qty / Bundle', 'Total Packed', 'Actions']}
           data={packingRecords}
           loading={loading}
+          deleteUrl={PACKING_API}
+          onRefresh={() => fetchPacking(currentCompanyId)}
           searchFields={['production_conversions.production_batches.batch_number', 'production_conversions.production_batches.finished_products.product_name']}
           searchPlaceholder="Search packing records..."
           renderRow={(p: any) => {

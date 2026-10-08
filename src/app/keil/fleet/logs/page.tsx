@@ -94,6 +94,7 @@ export default function VehicleDailyLogPage() {
         is_running: true,
         driver_name: '',
         spare_driver_name: '',
+        spare_picker_name: '',
         supervisor_id: ''
     });
 
@@ -247,6 +248,7 @@ export default function VehicleDailyLogPage() {
             is_running: formData.is_running,
             driver_name: formData.driver_name || null,
             spare_driver_name: formData.spare_driver_name ? formData.spare_driver_name.trim() : null,
+            spare_picker_name: formData.spare_picker_name ? formData.spare_picker_name.trim() : null,
             supervisor_id: formData.supervisor_id || null
         };
 
@@ -300,6 +302,7 @@ export default function VehicleDailyLogPage() {
             'VEHICLE CATEGORY',
             'DRIVER',
             'SPARE DRIVER',
+            'SPARE PICKER',
             'SUPERVISOR',
             'ROUTE',
             'SCHEDULE TIME',
@@ -348,6 +351,7 @@ export default function VehicleDailyLogPage() {
                 vehicleCategory,
                 l.driver_name || '-',
                 l.spare_driver_name || '-',
+                l.spare_picker_name || '-',
                 l.supervisor?.name || '-',
                 l.route?.route_name || 'N/A',
                 l.schedule_time || '-',
@@ -428,6 +432,7 @@ export default function VehicleDailyLogPage() {
             is_running: l.is_running ?? true,
             driver_name: l.driver_name || '',
             spare_driver_name: l.spare_driver_name || '',
+            spare_picker_name: l.spare_picker_name || '',
             supervisor_id: l.supervisor_id || ''
         });
         setShowForm(true);
@@ -455,6 +460,7 @@ export default function VehicleDailyLogPage() {
             is_running: true,
             driver_name: '',
             spare_driver_name: '',
+            spare_picker_name: '',
             supervisor_id: ''
         });
         setEditingId(null);
@@ -717,6 +723,17 @@ export default function VehicleDailyLogPage() {
                                 />
                             </div>
 
+                            <div className="space-y-1.5 flex flex-col justify-end">
+                                <label className="text-sm font-semibold text-foreground/80 pl-1">Spare Picker Name</label>
+                                <Input
+                                    type="text"
+                                    placeholder="Enter spare picker name..."
+                                    className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-primary/20 focus:outline-none"
+                                    value={formData.spare_picker_name}
+                                    onChange={e => setFormData({ ...formData, spare_picker_name: e.target.value })}
+                                />
+                            </div>
+
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-foreground/80 pl-1">Supervisor Option</label>
                                 <Select
@@ -808,10 +825,12 @@ export default function VehicleDailyLogPage() {
                 <TableView
                     title="Logitudinal Protocol"
                     description="Daily performance and resource consumption logs for the transport fleet."
-                    searchFields={['vehicle.registration_number', 'sheet_number', 'remarks']}
+                    searchFields={['vehicle.registration_number', 'sheet_number', 'driver_name', 'spare_driver_name', 'spare_picker_name', 'remarks']}
                     headers={['Vehicle / Route / Date', 'Operational Timing', 'Odometer Matrix', 'Diesel', 'Complaints & Workshop', 'Actions']}
                     data={logs}
                     loading={loading}
+                    deleteUrl={LOGS_API}
+                    onRefresh={() => fetchLogs(currentCompanyId)}
                     renderRow={(l: any) => {
                         const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
                         const vehicleCategory = l.vehicle?.vehicle_type
@@ -854,6 +873,11 @@ export default function VehicleDailyLogPage() {
                                             {l.spare_driver_name && (
                                                 <span className="text-xs font-semibold text-amber-700">
                                                     Spare Driver: <span className="font-bold text-amber-900">{l.spare_driver_name}</span>
+                                                </span>
+                                            )}
+                                            {l.spare_picker_name && (
+                                                <span className="text-xs font-semibold text-indigo-700">
+                                                    Spare Picker: <span className="font-bold text-indigo-900">{l.spare_picker_name}</span>
                                                 </span>
                                             )}
                                             {l.supervisor?.name && (

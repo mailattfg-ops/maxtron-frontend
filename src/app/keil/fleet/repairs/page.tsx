@@ -746,6 +746,8 @@ export default function VehicleRepairLogPage() {
                         headers={['Vehicle / Route / Date', 'Operational Details', 'Repair Log', 'Financial Impact', 'Actions']}
                         data={repairs}
                         loading={loading}
+                        deleteUrl={REPAIRS_API}
+                        onRefresh={() => fetchRepairs(currentCompanyId)}
                         renderRow={(r: any) => (
                             <tr key={r.id} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
                                 <td className="px-6 py-8">

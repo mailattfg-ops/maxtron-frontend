@@ -778,6 +778,8 @@ export default function TradingGoodsInwardPage() {
           headers={['Inward Details', 'Supplier / Vendor', 'Finished Product', 'Inward Quantity', 'Rate / Total', 'Actions']}
           data={filteredList}
           loading={loading}
+          deleteUrl={TRADING_API}
+          onRefresh={() => fetchInwardList(currentCompanyId)}
           searchFields={['inward_number', 'reference_no']}
           rightAlignedColumns={[5]}
           renderRow={(item: any) => (

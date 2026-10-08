@@ -346,6 +346,8 @@ export default function ProductionExpensesPage() {
           headers={['Date', 'Category', 'Description', 'Amount', 'Mode', 'Ref No', 'Actions']}
           data={filteredExpenses}
           loading={loading}
+          deleteUrl={EXPENSES_API}
+          onRefresh={() => fetchExpenses(currentCompanyId)}
           searchFields={['category', 'description', 'reference_no']}
           renderRow={(ex: any) => (
             <tr key={ex.id} className="hover:bg-primary/5 border-b last:border-none transition-all group">

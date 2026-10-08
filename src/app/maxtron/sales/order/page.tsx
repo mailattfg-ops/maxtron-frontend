@@ -1162,6 +1162,8 @@ export default function CustomerOrderEntry() {
           headers={['Order No', 'Date', 'Type', 'Customer', 'Executive', 'Total Value', 'E-Way Bill', 'Items', 'Actions']}
           data={orders}
           loading={loading}
+          deleteUrl={ORDERS_API}
+          onRefresh={fetchOrders}
           searchFields={['order_number', 'customers.customer_name', 'executive.name', 'remarks']}
           renderRow={(o: any) => (
             <tr key={o.id} className="hover:bg-primary/5 border-b last:border-none transition-all group cursor-pointer">

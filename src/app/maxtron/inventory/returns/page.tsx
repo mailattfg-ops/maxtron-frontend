@@ -489,6 +489,8 @@ export default function PurchaseReturnPage() {
           headers={['Debit / Date', 'Source GRN', 'Supplier Partner', 'Returned Qty', 'Reason', 'Status', 'Actions']}
           data={returns}
           loading={loading}
+          deleteUrl={RETURN_API}
+          onRefresh={() => fetchReturns(currentCompanyId)}
           searchFields={['return_no', 'suppliers.supplier_name', 'purchase_entries.entry_number']}
           searchPlaceholder="Find DN or vendor..."
           renderRow={(r: any) => (

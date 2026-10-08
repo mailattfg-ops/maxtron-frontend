@@ -388,6 +388,8 @@ export default function FinishedProductPage() {
           headers={['Code', 'Name', 'HSN Code', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
           data={products}
           loading={loading}
+          deleteUrl={PRODUCT_API}
+          onRefresh={() => fetchProducts(currentCompanyId)}
           searchFields={['product_code', 'product_name', 'color', 'hsn_code']}
           searchPlaceholder="Search products..."
           renderRow={(p: any) => (

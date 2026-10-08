@@ -58,6 +58,19 @@ export default function CustomerCollectionPage() {
     const { confirm } = useConfirm();
     const companyId = localStorage.getItem('companyId') || '24ea3bef-1e0c-4490-9d40-7063fb9067e9';
 
+    const fetchCollections = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const collRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/collections?company_id=${companyId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const collData = await collRes.json();
+            if (collData.success) setCollections(collData.data);
+        } catch (error) {
+            console.error('Failed to fetch collections', error);
+        }
+    };
+
     useEffect(() => {
        const fetchData = async () => {
         setLoading(true);
@@ -332,6 +345,8 @@ export default function CustomerCollectionPage() {
                 headers={['Voucher No', 'Date', 'Customer', 'Mode', 'Amount', 'Actions']}
                 data={collections}
                 loading={loading}
+                deleteUrl={`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/collections`}
+                onRefresh={fetchCollections}
                 searchFields={['voucher_no', 'customers.customer_name']}
                 searchPlaceholder="Search voucher or customer..."
                 renderRow={(row: any) => (
