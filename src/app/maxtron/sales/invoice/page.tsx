@@ -1842,7 +1842,7 @@ export default function SalesInvoiceEntry() {
                   loading={submitting}
                   className="gap-2 px-10 h-12 text-base font-bold shadow-xl hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none"
                 >
-                  <Save className="w-5 h-5" /> {editingId ? "Update Invoice" : "Generate Invoice"}
+                  <Save className="w-5 h-5" /> {editingId ? (formData.is_external ? "Update Bill" : "Update Invoice") : (formData.is_external ? "Save Bill" : "Generate Invoice")}
                 </Button>
               </div>
             </form>
@@ -2986,7 +2986,7 @@ export default function SalesInvoiceEntry() {
                     }}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 font-bold gap-2 text-xs shadow-md"
                   >
-                    <Save className="w-4 h-4" /> {editingId ? "Update & Save Invoice" : "Confirm & Generate Invoice"}
+                    <Save className="w-4 h-4" /> {editingId ? (formData.is_external ? "Update & Save Bill" : "Update & Save Invoice") : (formData.is_external ? "Confirm & Save Bill" : "Confirm & Generate Invoice")}
                   </Button>
                 ) : (
                   <Button
