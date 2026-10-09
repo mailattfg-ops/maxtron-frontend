@@ -102,6 +102,8 @@ const findRow = (ws: any, col: number, text: string) => {
     // ── Bags: the reference totals are 7875 / 1417.5 / 9292.5 ──
     const b = buildQuotationWorkbook(bags, { logo, name }).getWorksheet('Quotation')!;
     ok(b.views.length > 0, 'bags sheet declares a view');
+    ok((t.views[0] as any).showGridLines === false && (b.views[0] as any).showGridLines === false, 'no gridlines on either format');
+    ok((b.views[0] as any).style === 'pageLayout', 'bags opens as a page, like the Word quotation');
     eq(b.getCell('A6').value, 'REF: MA/VKM(FO)-QUOTE-0131/2026-27', 'ref');
     eq(b.getCell('E6').value, 'Date: 08.09.2026', 'date as dd.mm.yyyy');
     eq(b.getCell('A9').value, 'Purchase Department,', 'To line 1');

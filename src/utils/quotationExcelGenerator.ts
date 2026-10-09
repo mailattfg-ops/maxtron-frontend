@@ -154,7 +154,8 @@ const pageSetup = (ws: ExcelJS.Worksheet) => {
     // reads every row at 96/DPI of its height (two-thirds at 150%), while
     // pictures and columns keep their size — so the letterhead and product
     // images spill over the text. Measured, not assumed; the check guards it.
-    ws.views = [{ state: 'normal' }];
+    // No gridlines: the quotation is a letter, and opens looking like one.
+    ws.views = [{ state: 'normal', showGridLines: false }];
     ws.pageSetup = {
         paperSize: 9, // A4
         orientation: 'portrait',
@@ -250,6 +251,9 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
 const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) => {
     const ws = wb.addWorksheet('Quotation');
     pageSetup(ws);
+    // Opens as a white A4 page with its margins (Page Layout view), the way the
+    // client's Word quotation looks, instead of a sheet of cells.
+    ws.views = [{ state: 'normal', showGridLines: false, style: 'pageLayout', showRuler: false } as any];
     [8, 28, 16, 22, 14, 12].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const items = itemsOf(record);
@@ -262,9 +266,9 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     if (assets.name) placeImage(wb, ws, assets.name, 3, 1, 6, 2, 4);
     else { ws.mergeCells(1, 3, 2, 6); put(ws, 1, 3, COMPANY, { bold: true, size: 24, h: 'center' }); }
     ws.mergeCells(3, 3, 3, 6);
-    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true });
+    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true, font: 'Times New Roman' });
     ws.mergeCells(4, 3, 4, 6);
-    put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true });
+    put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true, font: 'Times New Roman' });
     for (let c = 1; c <= 6; c++) ws.getCell(4, c).border = { bottom: THIN };
 
     // REF (left) and Date (right).
