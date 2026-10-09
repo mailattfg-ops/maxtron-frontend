@@ -12,9 +12,10 @@ import {
   RotateCcw, Plus, Trash2, Save, X, Search,
   User, Calendar, Package, Info, Edit2,
   CheckCircle2, XCircle, AlertCircle, FileText,
-  BadgeCheck, RefreshCw, AlertTriangle, Eye, Copy, Check, Printer
+  BadgeCheck, RefreshCw, AlertTriangle, Eye, Copy, Check, Printer, Download
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { exportToExcel } from '@/utils/export';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const RETURNS_API = `${API_BASE}/api/maxtron/sales/returns`;
@@ -363,6 +364,37 @@ export default function SalesReturns() {
     } finally {
       setCrnLoading(null);
     }
+  };
+
+  /** Every return as an Excel sheet, one row per returned item. */
+  const downloadReturnsExcel = async () => {
+    const rows = returns.flatMap((ret: any) => {
+      const via = ret.return_through === 'DIRECT' ? (ret.return_employee?.name || '') : (ret.courier_name || '');
+      const lines = ret.items?.length ? ret.items : [null];
+      return lines.map((it: any) => [
+        ret.return_number || '',
+        ret.return_date ? new Date(ret.return_date).toLocaleDateString('en-GB') : '',
+        ret.invoices?.invoice_number || '',
+        ret.customers?.customer_name || '',
+        ret.return_through || '',
+        via,
+        ret.reason || '',
+        it?.finished_products?.product_name || '',
+        it ? Number(it.quantity) || 0 : '',
+        it ? Number(it.rate) || 0 : '',
+        it ? (Number(it.value) || (Number(it.quantity) || 0) * (Number(it.rate) || 0)) : '',
+        Number(ret.total_return_value) || 0,
+        ret.credit_note_status || '',
+        ret.credit_note_irn || '',
+      ]);
+    });
+    await exportToExcel({
+      headers: ['Return No', 'Return Date', 'Invoice No', 'Customer', 'Return Through', 'Employee / Courier', 'Reason',
+        'Product', 'Qty', 'Rate', 'Item Value', 'Total Return Value', 'Credit Note', 'Credit Note IRN'],
+      rows,
+      filename: `sales_returns_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Sales Returns',
+    });
   };
 
   const handleDownloadCreditNotePdf = async (ret: any, qrDataUrl: string | null) => {
@@ -762,6 +794,15 @@ export default function SalesReturns() {
           </h1>
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Handle product returns, quality issues, and credit notes.</p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <Button
+          onClick={downloadReturnsExcel}
+          variant="outline"
+          disabled={returns.length === 0}
+          className="h-11 px-6 rounded-full gap-2 border-primary/20 text-primary font-bold hover:bg-primary/5 shadow-sm"
+        >
+          <Download className="w-4 h-4" /> Download Excel
+        </Button>
         <Button
           onClick={() => setShowForm(!showForm)}
           className={`h-11 px-6 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 w-full md:w-auto flex-1 md:flex-none font-bold ${showForm ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"}`}
@@ -769,6 +810,7 @@ export default function SalesReturns() {
           {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {showForm ? "Cancel Return" : "Process New Return"}
         </Button>
+        </div>
       </div>
 
       {showForm && (
