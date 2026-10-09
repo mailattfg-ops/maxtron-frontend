@@ -251,9 +251,8 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
 const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) => {
     const ws = wb.addWorksheet('Quotation');
     pageSetup(ws);
-    // Opens as a white A4 page with its margins (Page Layout view), the way the
-    // client's Word quotation looks, instead of a sheet of cells.
-    ws.views = [{ state: 'normal', showGridLines: false, style: 'pageLayout', showRuler: false } as any];
+    // Not Page Layout view: on the client's machine it split the letter over
+    // four pages instead of fitting it to one (tried 9 Oct 2026, reverted).
     [8, 28, 16, 22, 14, 12].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const items = itemsOf(record);
