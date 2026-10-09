@@ -344,7 +344,6 @@ export default function MarketingVisitsPage() {
         addresses: [
           {
             address_type: 'billing',
-            address_line1: newCustomerData.address || '',
             street: newCustomerData.address || '',
             city: newCustomerData.city || '',
             state: newCustomerData.state || 'Kerala',
@@ -379,8 +378,8 @@ export default function MarketingVisitsPage() {
           location: autoLoc
         }));
       } else {
-        const errorDetail = data.errors?.map((e: any) => e.message).join(', ');
-        error(errorDetail ? `${data.message}` : (data.message || 'Failed to create customer'));
+        // Say why, not only that it failed
+        error([data.message || 'Failed to create customer', data.error].filter(Boolean).join(': '));
       }
     } catch (err: any) {
       error(err.message || 'Error creating customer');
