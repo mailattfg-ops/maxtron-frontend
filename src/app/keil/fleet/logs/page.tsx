@@ -289,100 +289,39 @@ export default function VehicleDailyLogPage() {
             return;
         }
 
-        const ExcelJS = (await import('exceljs')).default;
+        const { buildTripSheetWorkbook } = await import('@/utils/tripSheetExcel');
         const saveAs = (await import('file-saver')).saveAs;
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Vehicle Tripsheet Logs');
 
-        // Headers
-        const headerRow = worksheet.addRow([
-            'DATE',
-            'SHEET NO (SL)',
-            'VEHICLE',
-            'VEHICLE CATEGORY',
-            'DRIVER',
-            'SPARE DRIVER',
-            'SPARE PICKER',
-            'SUPERVISOR',
-            'ROUTE',
-            'SCHEDULE TIME',
-            'STARTING TIME',
-            'ENDING TIME',
-            'RUNNING STATUS',
-            'START KM',
-            'END KM',
-            'DISTANCE (KM)',
-            'FUEL (LTR)',
-            'COMPLAINT',
-            'COMPLAINT TYPE',
-            'WORKSHOP IN',
-            'WORKSHOP OUT',
-            'BILL AMT',
-            'REMARKS'
-        ]);
-
-        headerRow.eachCell((cell) => {
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // slate-800
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
-        });
-
-        // Add Data
-        logs.forEach(l => {
+        // In the client's trip sheet format: a sheet per vehicle type (LCV,
+        // PICK UP, HCV) with the contract header and a total.
+        const workbook = buildTripSheetWorkbook(logs.map(l => {
             const matchedVehicle = vehicles.find((v: any) => v.id === l.vehicle_id);
-            const vehicleCategory = l.vehicle?.vehicle_type
-                || l.vehicle?.vehicle_category
-                || l.vehicle?.category
-                || matchedVehicle?.vehicle_type
-                || matchedVehicle?.vehicle_category
-                || matchedVehicle?.category
-                || '-';
-
-            const rowData = [
-                new Date(l.log_date).toLocaleDateString(),
-                l.sheet_number || '-',
-                l.vehicle?.registration_number || matchedVehicle?.registration_number || 'N/A',
-                vehicleCategory,
-                l.driver_name || '-',
-                l.spare_driver_name || '-',
-                l.spare_picker_name || '-',
-                l.supervisor?.name || '-',
-                l.route?.route_name || 'N/A',
-                l.schedule_time || '-',
-                l.start_time || '-',
-                l.end_time || '-',
-                l.is_running ? 'YES' : 'NO',
-                l.start_km,
-                l.end_km || '-',
-                l.end_km ? (l.end_km - l.start_km).toFixed(2) : '0',
-                l.fuel_qty || 0,
-                l.has_complaint ? 'YES' : 'NO',
-                l.complaint_type || '-',
-                l.workshop_in_time ? new Date(l.workshop_in_time).toLocaleString() : '-',
-                l.workshop_out_time ? new Date(l.workshop_out_time).toLocaleString() : '-',
-                l.bill_amount || 0,
-                l.remarks || ''
-            ];
-            const r = worksheet.addRow(rowData);
-            r.eachCell(cell => {
-                cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
-            });
-        });
-
-        // Column widths
-        worksheet.columns.forEach(col => { col.width = 18; });
+            return {
+                log_date: l.log_date,
+                sheet_number: l.sheet_number,
+                route: l.route?.route_name || '',
+                start_km: l.start_km,
+                end_km: l.end_km,
+                vehicle_no: l.vehicle?.registration_number || matchedVehicle?.registration_number || '',
+                vehicle_category: l.vehicle?.vehicle_type || l.vehicle?.vehicle_category || l.vehicle?.category
+                    || matchedVehicle?.vehicle_type || matchedVehicle?.vehicle_category || matchedVehicle?.category || '',
+                remarks: l.remarks || '',
+                driver: l.driver_name || '',
+                supervisor: l.supervisor?.name || '',
+                start_time: l.start_time,
+                end_time: l.end_time,
+                spare_driver: l.spare_driver_name || '',
+                spare_picker: l.spare_picker_name || '',
+                schedule_time: l.schedule_time,
+                running: !!l.is_running,
+                fuel_qty: l.fuel_qty,
+                complaint: !!l.has_complaint,
+                complaint_type: l.complaint_type || '',
+                workshop_in: l.workshop_in_time,
+                workshop_out: l.workshop_out_time,
+                bill_amount: l.bill_amount,
+            };
+        }), { from: filters.from, to: filters.to });
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

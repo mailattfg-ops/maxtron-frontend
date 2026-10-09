@@ -419,6 +419,9 @@ export async function renderTaxInvoicePage(
    * where it does not apply — an unregistered buyer, an outside bill — that
    * strip stays empty. The space is kept either way, so every invoice is laid
    * out the same. */
+  // The same page prints a credit note (sales return) in the client's credit
+  // note format: other title, other boxes on the right, same everything else.
+  const isCreditNote = inv.document_kind === 'CREDIT_NOTE';
   const hasIrn = !!inv.einvoice_irn;
   const eInvoiceApplies = !!customerGstin && !inv.is_external
     && String(inv.einvoice_status || '').toUpperCase() !== 'NOT_APPLICABLE';
@@ -518,11 +521,11 @@ export async function renderTaxInvoicePage(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(fs(12.5));
   doc.setTextColor(0, 0, 0);
-  doc.text('Tax Invoice', centerX, topHeaderY, { align: 'center' });
+  doc.text(isCreditNote ? 'Credit Note' : 'Tax Invoice', centerX, topHeaderY, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(fs(8));
-  doc.text(copySubtitle, centerX, topHeaderY + (3.8 * dimScale), { align: 'center' });
+  if (copySubtitle) doc.text(copySubtitle, centerX, topHeaderY + (3.8 * dimScale), { align: 'center' });
 
   // 2. Right Side: 'e-Invoice' Title + QR Code (properly stacked without overlap)
   const qrSize = Math.max(14, Math.min(24, 24 * dimScale));
@@ -757,85 +760,111 @@ export async function renderTaxInvoicePage(
   doc.line(metaSplitX, rRow2Y, endX, rRow2Y);
   doc.line(metaSplitX, rRow3Y, endX, rRow3Y);
 
-  // Row 1: 3 Columns (Invoice No | e-Way Bill No | Dated)
-  const rCol1X = metaSplitX + (metaW * 0.33);
-  const rCol2X = metaSplitX + (metaW * 0.70);
-  doc.line(rCol1X, tableStartY, rCol1X, rRow1Y);
-  doc.line(rCol2X, tableStartY, rCol2X, rRow1Y);
+  if (isCreditNote) {
+    // Credit Note No. | Dated / Original Invoice No. & Date | Other References /
+    // Buyer's Order No. | Dated — the client's credit note boxes. Fourth row left open.
+    const rColMidX = metaSplitX + (metaW * 0.50);
+    doc.line(rColMidX, tableStartY, rColMidX, rRow3Y);
+    const cells: [string, string][][] = [
+      [['Credit Note No.', invoiceNo], ['Dated', invoiceDate]],
+      [['Original Invoice No. & Date.', inv.original_invoice_ref || ''], ['Other References', inv.other_references || '']],
+      [["Buyer's Order No.", orderNo], ['Dated', orderDate]],
+    ];
+    cells.forEach((row, i) => {
+      const rowTop = tableStartY + (rRowStep * i);
+      row.forEach(([label, value], j) => {
+        const x = (j === 0 ? metaSplitX : rColMidX) + 1.5;
+        const w = (j === 0 ? rColMidX - metaSplitX : endX - rColMidX) - 2;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fs(5.8));
+        doc.text(label, x, rowTop + (rRowStep * 0.36));
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(fs(7.5));
+        if (value) doc.text(value, x, rowTop + (rRowStep * 0.82), { maxWidth: w });
+      });
+    });
+  } else {
+    // Row 1: 3 Columns (Invoice No | e-Way Bill No | Dated)
+    const rCol1X = metaSplitX + (metaW * 0.33);
+    const rCol2X = metaSplitX + (metaW * 0.70);
+    doc.line(rCol1X, tableStartY, rCol1X, rRow1Y);
+    doc.line(rCol2X, tableStartY, rCol2X, rRow1Y);
 
-  doc.setFontSize(fs(5.8));
-  doc.text('Invoice No.', metaSplitX + 1.5, tableStartY + (rRowStep * 0.36));
-  doc.setFontSize(fs(7.5));
-  doc.setFont('helvetica', 'bold');
-  doc.text(invoiceNo, metaSplitX + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (rCol1X - metaSplitX) - 2 });
+    doc.setFontSize(fs(5.8));
+    doc.text('Invoice No.', metaSplitX + 1.5, tableStartY + (rRowStep * 0.36));
+    doc.setFontSize(fs(7.5));
+    doc.setFont('helvetica', 'bold');
+    doc.text(invoiceNo, metaSplitX + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (rCol1X - metaSplitX) - 2 });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('e-Way Bill No.', rCol1X + 1.5, tableStartY + (rRowStep * 0.36));
-  doc.setFontSize(fs(7.2));
-  doc.setFont('helvetica', 'bold');
-  doc.text(ewbNo || 'N/A', rCol1X + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (rCol2X - rCol1X) - 2 });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('e-Way Bill No.', rCol1X + 1.5, tableStartY + (rRowStep * 0.36));
+    doc.setFontSize(fs(7.2));
+    doc.setFont('helvetica', 'bold');
+    doc.text(ewbNo || 'N/A', rCol1X + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (rCol2X - rCol1X) - 2 });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Dated', rCol2X + 1.5, tableStartY + (rRowStep * 0.36));
-  doc.setFontSize(fs(7.5));
-  doc.setFont('helvetica', 'bold');
-  doc.text(invoiceDate, rCol2X + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (endX - rCol2X) - rPad });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Dated', rCol2X + 1.5, tableStartY + (rRowStep * 0.36));
+    doc.setFontSize(fs(7.5));
+    doc.setFont('helvetica', 'bold');
+    doc.text(invoiceDate, rCol2X + 1.5, tableStartY + (rRowStep * 0.82), { maxWidth: (endX - rCol2X) - rPad });
 
-  // Middle vertical column divider for Rows 2 to 4
-  const rColMidX = metaSplitX + (metaW * 0.50);
-  const rSubW = (rColMidX - metaSplitX) - 2;
-  doc.line(rColMidX, rRow1Y, rColMidX, rRow4Y);
+    // Middle vertical column divider for Rows 2 to 4
+    const rColMidX = metaSplitX + (metaW * 0.50);
+    const rSubW = (rColMidX - metaSplitX) - 2;
+    doc.line(rColMidX, rRow1Y, rColMidX, rRow4Y);
 
-  // Row 2: Buyer's Order No. | Order Date
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text("Buyer's Order No.", metaSplitX + 1.5, rRow1Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  doc.text(orderNo || 'N/A', metaSplitX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: rSubW });
+    // Row 2: Buyer's Order No. | Order Date
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text("Buyer's Order No.", metaSplitX + 1.5, rRow1Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    doc.text(orderNo || 'N/A', metaSplitX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Order Date', rColMidX + 1.5, rRow1Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  doc.text(orderDate || 'N/A', rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Order Date', rColMidX + 1.5, rRow1Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    doc.text(orderDate || 'N/A', rColMidX + 1.5, rRow1Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
-  // Row 3: Dispatched through | Destination
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Dispatched through', metaSplitX + 1.5, rRow2Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  const dispatchThrough = inv.transporter_name || inv.vehicle_no || 'N/A';
-  doc.text(dispatchThrough, metaSplitX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: rSubW });
+    // Row 3: Dispatched through | Destination
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Dispatched through', metaSplitX + 1.5, rRow2Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    const dispatchThrough = inv.transporter_name || inv.vehicle_no || 'N/A';
+    doc.text(dispatchThrough, metaSplitX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Destination', rColMidX + 1.5, rRow2Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  doc.text(billingAddrObj.city || buyer.name || 'N/A', rColMidX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Destination', rColMidX + 1.5, rRow2Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    doc.text(billingAddrObj.city || buyer.name || 'N/A', rColMidX + 1.5, rRow2Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
 
-  // Row 4: Mode/Terms of Payment | Terms of Delivery
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Mode/Terms of Payment', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  doc.text(inv.payment_terms || 'N/A', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
+    // Row 4: Mode/Terms of Payment | Terms of Delivery
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Mode/Terms of Payment', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    doc.text(inv.payment_terms || 'N/A', metaSplitX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: rSubW });
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fs(5.8));
-  doc.text('Terms of Delivery', rColMidX + 1.5, rRow3Y + (rRowStep * 0.36));
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(fs(6.8));
-  const deliveryTerms = inv.scheduled_delivery_date
-    ? `Exp: ${formatInvoiceDate(inv.scheduled_delivery_date)}`
-    : (inv.remarks || 'N/A');
-  doc.text(deliveryTerms, rColMidX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fs(5.8));
+    doc.text('Terms of Delivery', rColMidX + 1.5, rRow3Y + (rRowStep * 0.36));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fs(6.8));
+    const deliveryTerms = inv.scheduled_delivery_date
+      ? `Exp: ${formatInvoiceDate(inv.scheduled_delivery_date)}`
+      : (inv.remarks || 'N/A');
+    doc.text(deliveryTerms, rColMidX + 1.5, rRow3Y + (rRowStep * 0.82), { maxWidth: (endX - rColMidX) - rPad });
+
+  }
 
   // ----------------------------------------------------
   // Section 2: Goods Items Table
@@ -1117,7 +1146,7 @@ export async function renderTaxInvoicePage(
   // 7. Bottom Line Note
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(fs(6.5));
-  doc.text('This is a Computer Generated Invoice', centerX, pageHeight - (2.5 * dimScale), { align: 'center' });
+  doc.text(isCreditNote ? 'This is a Computer Generated Document' : 'This is a Computer Generated Invoice', centerX, pageHeight - (2.5 * dimScale), { align: 'center' });
 }
 
 // ==========================================

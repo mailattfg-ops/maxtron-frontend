@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import QRCode from 'qrcode';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +13,7 @@ import {
   BadgeCheck, RefreshCw, AlertTriangle, Eye, Copy, Check, Printer, Download
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { buildSingleTaxInvoice, formatInvoiceDate } from '@/utils/invoicePdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const RETURNS_API = `${API_BASE}/api/maxtron/sales/returns`;
@@ -365,141 +364,43 @@ export default function SalesReturns() {
     }
   };
 
-  /** The credit note PDF straight from the list, with its QR code when the portal issued one. */
-  const downloadCreditNoteFromRow = async (ret: any) => {
-    const qr = ret.credit_note_signed_qr_code
-      ? await QRCode.toDataURL(ret.credit_note_signed_qr_code, { margin: 1, width: 160 }).catch(() => null)
-      : null;
-    await handleDownloadCreditNotePdf(ret, qr);
-  };
-
-  const handleDownloadCreditNotePdf = async (ret: any, qrDataUrl: string | null) => {
+  /**
+   * The credit note PDF, in the client's credit note format: the same page as
+   * the tax invoice, with the return's lines, the GST rate the original
+   * invoice was charged at, and the IRN / QR the portal issued for the note.
+   */
+  const handleDownloadCreditNotePdf = async (ret: any) => {
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-
-      // Header Banner
-      doc.setFillColor(244, 63, 94); // Rose 500
-      doc.rect(0, 0, pageWidth, 24, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text('CREDIT NOTE / SALES RETURN', 14, 15);
-
-      doc.setFontSize(9);
-      doc.text(`Doc No: ${ret.return_number}`, pageWidth - 14, 15, { align: 'right' });
-
-      let y = 32;
-
-      // Seller & Buyer Info
-      doc.setTextColor(30, 41, 59);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('ISSUED BY:', 14, y);
-      doc.text('ISSUED TO (CUSTOMER):', 110, y);
-
-      y += 5;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(activeTenant === 'KEIL' ? 'KEIL Industries Ltd.' : 'MAXTRON ASSOCIATES', 14, y);
-      doc.text(ret.customers?.customer_name || 'Customer', 110, y);
-
-      y += 4.5;
-      doc.text('GSTIN: 32AUYPV8850B1Z2', 14, y);
-      doc.text(`GSTIN: ${ret.customers?.gst_no || 'Unregistered'}`, 110, y);
-
-      y += 4.5;
-      doc.text(`Date: ${new Date(ret.return_date).toLocaleDateString('en-GB')}`, 14, y);
-      doc.text(`Orig. Inv: ${ret.invoices?.invoice_number || 'N/A'}`, 110, y);
-
-      y += 8;
-
-      // e-Invoice IRN Details (if generated)
-      if (ret.credit_note_irn) {
-        doc.setFillColor(248, 250, 252);
-        doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'D');
-
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(16, 185, 129);
-        doc.text('E-CREDIT NOTE IRN:', 18, y + 6);
-
-        doc.setFont('courier', 'bold');
-        doc.setFontSize(7);
-        doc.setTextColor(30, 41, 59);
-        doc.text(ret.credit_note_irn, 18, y + 11);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text(`Ack No: ${ret.credit_note_ack_no || 'N/A'}`, 18, y + 17);
-        if (ret.credit_note_ack_date) {
-          doc.text(`Ack Date: ${new Date(ret.credit_note_ack_date).toLocaleString()}`, 100, y + 17);
-        }
-
-        if (qrDataUrl) {
-          try {
-            doc.addImage(qrDataUrl, 'PNG', pageWidth - 32, y + 2, 18, 18);
-          } catch {}
-        }
-        y += 26;
-      }
-
-      // Line Items Table using autoTable
-      const tableData = (ret.items || []).map((item: any, idx: number) => {
-        const val = Number(item.value || (item.quantity * item.rate));
-        const gst = Number((val * 0.18).toFixed(2));
-        return [
-          (idx + 1).toString(),
-          item.finished_products?.product_name || 'Returned Product',
-          item.finished_products?.hsn_code || '392011',
-          Number(item.quantity).toString(),
-          `Rs ${Number(item.rate).toLocaleString()}`,
-          `Rs ${val.toLocaleString()}`,
-          `Rs ${gst.toLocaleString()}`,
-          `Rs ${(val + gst).toLocaleString()}`
-        ];
-      });
-
-      autoTable(doc, {
-        startY: y,
-        head: [['#', 'Product Name', 'HSN Code', 'Qty', 'Rate', 'Taxable Val', 'GST (18%)', 'Total']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [244, 63, 94], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 8, font: 'helvetica' },
-        columnStyles: {
-          0: { cellWidth: 10 },
-          3: { halign: 'center' },
-          4: { halign: 'right' },
-          5: { halign: 'right' },
-          6: { halign: 'right' },
-          7: { halign: 'right', fontStyle: 'bold' }
-        }
-      });
-
-      const finalY = (doc as any).lastAutoTable?.finalY || y + 30;
-
-      // Summary Box
-      const totalTaxable = Number(ret.total_return_value || 0);
-      const totalGst = Number((totalTaxable * 0.18).toFixed(2));
-      const totalAmount = totalTaxable + totalGst;
-
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 41, 59);
-      doc.text(`Total Taxable Value: Rs ${totalTaxable.toLocaleString()}`, pageWidth - 14, finalY + 10, { align: 'right' });
-      doc.text(`Total GST Amount (18%): Rs ${totalGst.toLocaleString()}`, pageWidth - 14, finalY + 15, { align: 'right' });
-
-      doc.setFontSize(11);
-      doc.setTextColor(225, 29, 72);
-      doc.text(`Total Credit Note Value: Rs ${totalAmount.toLocaleString()}`, pageWidth - 14, finalY + 22, { align: 'right' });
-
+      const items = (ret.items || []).map((it: any) => ({
+        ...it,
+        amount: Number(it.value) || (Number(it.quantity) || 0) * (Number(it.rate) || 0),
+      }));
+      const taxable = items.reduce((s: number, it: any) => s + it.amount, 0) || Number(ret.total_return_value) || 0;
+      // Same rate the e-Invoice service reports for the note: the original invoice's
+      const origTax = Number(ret.invoices?.tax_amount) || 0;
+      const origTaxable = (Number(ret.invoices?.net_amount) || 0) - origTax;
+      const rate = origTaxable > 0 ? Math.round((origTax / origTaxable) * 100) : 0;
+      const tax = Number(((taxable * rate) / 100).toFixed(2));
+      const doc = await buildSingleTaxInvoice({
+        document_kind: 'CREDIT_NOTE',
+        invoice_number: ret.return_number,
+        invoice_date: ret.return_date,
+        original_invoice_ref: ret.invoices?.invoice_number
+          ? `${ret.invoices.invoice_number} dt. ${formatInvoiceDate(ret.invoices.invoice_date)}` : '',
+        customers: ret.customers,
+        items: items.map((it: any) => ({ ...it, gst_percent: rate })),
+        total_amount: taxable,
+        tax_amount: tax,
+        net_amount: taxable + tax,
+        einvoice_irn: ret.credit_note_irn,
+        einvoice_ack_no: ret.credit_note_ack_no,
+        einvoice_ack_date: ret.credit_note_ack_date,
+        einvoice_signed_qr_code: ret.credit_note_signed_qr_code,
+        einvoice_status: ret.credit_note_status || 'NOT_APPLICABLE',
+      }, activeTenant, '');
       doc.save(`Credit_Note_${ret.return_number}.pdf`);
-    } catch (err) {
-      console.error('Error generating Credit Note PDF:', err);
+    } catch (err: any) {
+      setAlert({ show: true, type: 'error', title: 'Credit Note PDF', message: err.message || 'Could not create the credit note PDF.' });
     }
   };
 
@@ -745,7 +646,7 @@ export default function SalesReturns() {
             <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
               <Button
                 variant="outline"
-                onClick={() => handleDownloadCreditNotePdf(viewingReturn, qrCodeDataUrl)}
+                onClick={() => handleDownloadCreditNotePdf(viewingReturn)}
                 className="gap-2 border-slate-300 hover:bg-white text-slate-700 font-bold text-xs cursor-pointer"
               >
                 <Printer className="w-4 h-4 text-rose-600" /> Download Credit Note PDF
@@ -1048,7 +949,7 @@ export default function SalesReturns() {
                   >
                     <Eye className="w-3.5 h-3.5 text-primary" /> View
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => downloadCreditNoteFromRow(ret)} title="Download Credit Note PDF" className="h-8 w-8 p-0 text-emerald-700 border cursor-pointer"><Download className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDownloadCreditNotePdf(ret)} title="Download Credit Note PDF" className="h-8 w-8 p-0 text-emerald-700 border cursor-pointer"><Download className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="sm" onClick={() => handleEdit(ret)} title="Edit Return" className="h-8 w-8 p-0 text-primary border cursor-pointer"><Edit2 className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(ret.id)} title="Delete Return" className="h-8 w-8 p-0 text-rose-600 border cursor-pointer"><Trash2 className="w-4 h-4" /></Button>
                 </div>
