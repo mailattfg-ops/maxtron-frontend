@@ -132,19 +132,26 @@ const placeImage = (
     const w = Math.max(1, Math.round(img.width * scale));
     const h = Math.max(1, Math.round(img.height * scale));
 
-    // Walk the offset across cells so the anchor cell is the one the offset falls in.
-    let offX = Math.round((boxW - w) / 2);
-    let col = col1;
-    while (col < col2 && offX >= colPx(ws.getColumn(col).width || 8.43)) { offX -= colPx(ws.getColumn(col).width || 8.43); col++; }
-    let offY = Math.round((boxH - h) / 2);
-    let row = row1;
-    while (row < row2 && offY >= rowPx(ws.getRow(row).height || 15)) { offY -= rowPx(ws.getRow(row).height || 15); row++; }
+    // A pixel distance from the block's corner -> the cell it falls in and the
+    // offset inside that cell.
+    const cellAt = (startX: number, startY: number) => {
+        let x = startX, col = col1;
+        while (col < col2 && x >= colPx(ws.getColumn(col).width || 8.43)) { x -= colPx(ws.getColumn(col).width || 8.43); col++; }
+        let y = startY, row = row1;
+        while (row < row2 && y >= rowPx(ws.getRow(row).height || 15)) { y -= rowPx(ws.getRow(row).height || 15); row++; }
+        return { nativeCol: col - 1, nativeColOff: x * EMU_PER_PX, nativeRow: row - 1, nativeRowOff: y * EMU_PER_PX };
+    };
+    const offX = Math.round((boxW - w) / 2);
+    const offY = Math.round((boxH - h) / 2);
 
     const extension = /^data:image\/png/i.test(img.dataUrl) ? 'png' : 'jpeg';
     const id = wb.addImage({ base64: img.dataUrl, extension });
+    // Pinned at both corners (a two-cell anchor). The one-corner-plus-size form
+    // is drawn by desktop Excel but left out by phone viewers, which is how the
+    // letterhead went missing on mobile.
     ws.addImage(id, {
-        tl: { nativeCol: col - 1, nativeColOff: offX * EMU_PER_PX, nativeRow: row - 1, nativeRowOff: offY * EMU_PER_PX } as any,
-        ext: { width: w, height: h },
+        tl: cellAt(offX, offY) as any,
+        br: cellAt(offX + w, offY + h) as any,
         editAs: 'oneCell',
     });
 };
