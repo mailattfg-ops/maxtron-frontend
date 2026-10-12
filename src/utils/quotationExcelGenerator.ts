@@ -17,7 +17,7 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-export type QuotationType = 'TRADING' | 'BAGS';
+export type QuotationType = 'TRADING' | 'BAGS' | 'PRODUCT';
 
 export interface QuoteImage {
     dataUrl: string;

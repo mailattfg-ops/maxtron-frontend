@@ -10,6 +10,13 @@ import {
   Settings, Layers, Ruler, Palette, Hash, Box, Package, FileText, AlertCircle
 } from 'lucide-react';
 import { TableView } from '@/components/ui/table-view';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -47,6 +54,7 @@ export default function FinishedProductPage() {
   const [formData, setFormData] = useState({
     product_code: '',
     product_name: '',
+    category: 'PRODUCT',
     color: '',
     thickness_microns: 0,
     size: '',
@@ -160,6 +168,7 @@ export default function FinishedProductPage() {
     setFormData({
       product_code: prod.product_code,
       product_name: prod.product_name,
+      category: prod.category || 'PRODUCT',
       color: prod.color || '',
       thickness_microns: prod.thickness_microns || 0,
       size: prod.size || '',
@@ -221,6 +230,7 @@ export default function FinishedProductPage() {
     setFormData({
       product_code: nextCode,
       product_name: '',
+      category: 'PRODUCT',
       color: '',
       thickness_microns: 0,
       size: '',
@@ -310,6 +320,21 @@ export default function FinishedProductPage() {
                 {nameError && <p className="text-[10px] font-bold text-destructive mt-1 ml-1">{nameError}</p>}
               </div>
               <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Category</label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(val) => setFormData({ ...formData, category: val })}
+                >
+                  <SelectTrigger className="h-11 font-bold bg-white">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-[1000]">
+                    <SelectItem value="PRODUCT">Product</SelectItem>
+                    <SelectItem value="TRADING">Trading</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-2"><Palette className="w-4 h-4 text-primary" /> Color</label>
                 <Input 
                   placeholder="e.g. White" 
@@ -385,17 +410,24 @@ export default function FinishedProductPage() {
         <TableView
           title="Master Data Explorer"
           description="Explore and manage finished product specifications."
-          headers={['Code', 'Name', 'HSN Code', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
+          headers={['Code', 'Name', 'Category', 'HSN Code', 'Color', 'Thickness (µ)', 'Size', 'Count/Kg', 'Threshold', 'Description', 'Actions']}
           data={products}
           loading={loading}
           deleteUrl={PRODUCT_API}
           onRefresh={() => fetchProducts(currentCompanyId)}
-          searchFields={['product_code', 'product_name', 'color', 'hsn_code']}
+          searchFields={['product_code', 'product_name', 'color', 'hsn_code', 'category']}
           searchPlaceholder="Search products..."
           renderRow={(p: any) => (
             <tr key={p.id} className="hover:bg-primary/5 transition-all border-b last:border-none group">
               <td className="px-6 py-4 font-mono text-xs font-bold text-primary">{p.product_code}</td>
               <td className="px-6 py-4 font-bold text-primary">{p.product_name}</td>
+              <td className="px-6 py-4">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  p.category === 'TRADING' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {p.category === 'TRADING' ? 'Trading' : 'Product'}
+                </span>
+              </td>
               <td className="px-6 py-4 font-mono text-xs font-bold">{p.hsn_code || '-'}</td>
               <td className="px-6 py-4 text-sm font-medium">{p.color}</td>
               <td className="px-6 py-4 text-sm">{Number(p.thickness_microns) > 0 ? p.thickness_microns : ''}</td>

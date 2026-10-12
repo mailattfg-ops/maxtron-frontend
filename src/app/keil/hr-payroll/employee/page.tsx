@@ -109,6 +109,7 @@ export default function EmployeeInformationPage() {
   const [formData, setFormData] = useState({
     employee_code: '',
     name: '',
+    designation: '',
     username: '',    // The email used for login
     password: '',    // Initial generated password
     date_of_birth: '',
@@ -482,7 +483,7 @@ export default function EmployeeInformationPage() {
     }
     
     const headers = [
-      'Emp Code', 'Full Name', 'Username/Email', 'Phone', 'Aadhaar',
+      'Emp Code', 'Full Name', 'Designation', 'Username/Email', 'Phone', 'Aadhaar',
       'Role', 'Category', 'Company', 'DOB', 'Date of Joining', 'Relieving Date',
       'Has License', 'License Number', 'License Expiry', 'Vehicle Class',
       'Has Passport', 
@@ -504,6 +505,7 @@ export default function EmployeeInformationPage() {
       return [
         emp.employee_code || 'SYS',
         emp.name || 'N/A',
+        emp.designation || 'N/A',
         emp.username || 'N/A',
         emp.phone || 'N/A',
         emp.aadhaar || 'N/A',
@@ -699,7 +701,7 @@ export default function EmployeeInformationPage() {
         fetchEmployees(formData.company_id); // Refresh list for active company
         // Reset form
         setFormData({
-          employee_code: '', name: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
+          employee_code: '', name: '', designation: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
           addresses: [
             { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
             { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -742,6 +744,7 @@ export default function EmployeeInformationPage() {
     setFormData({
       employee_code: emp.employee_code || '',
       name: emp.name || '',
+      designation: emp.designation || '',
       username: emp.username || '',
       password: '', // Leave blank unless they want to change it
       date_of_birth: emp.date_of_birth ? emp.date_of_birth.split('T')[0] : '',
@@ -949,7 +952,7 @@ export default function EmployeeInformationPage() {
                     setEditingId(null);
                     const defaultCompany = companies.find((c: any) => c.company_name?.toUpperCase().includes(activeTenant));
                     setFormData({ 
-                      employee_code: '', name: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
+                      employee_code: '', name: '', designation: '', username: '', password: '', date_of_birth: '', date_of_joining: '', relieving_date: '',
                       addresses: [
                         { address_type: 'Communication', street: '', city: '', state: '', zip_code: '', country: 'India' },
                         { address_type: 'Permanent', street: '', city: '', state: '', zip_code: '', country: 'India' }
@@ -1101,6 +1104,17 @@ export default function EmployeeInformationPage() {
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name {!formData.name && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
                         <Input name="name" value={formData.name} onChange={handleInputChange} disabled={isViewMode} placeholder="John Doe" className={`h-10 md:h-11 font-bold ${errors.name ? 'border-amber-400 bg-amber-50/30' : ''}`} />
                         {errors.name && <p className="text-[10px] font-bold text-amber-600 animate-in fade-in slide-in-from-top-1 ml-1">{errors.name}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Designation</label>
+                        <Input 
+                          name="designation" 
+                          value={formData.designation} 
+                          onChange={handleInputChange} 
+                          disabled={isViewMode} 
+                          placeholder="e.g. Driver, Plant Operator, Supervisor" 
+                          className="h-10 md:h-11 font-medium" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth {!formData.date_of_birth && <span className="text-[10px] font-medium lowercase">(Necessary)</span>}</label>
@@ -2283,6 +2297,7 @@ export default function EmployeeInformationPage() {
                 const q = searchQuery.toLowerCase().trim();
                 const matchesSearch = !q || (
                   (emp.name?.toLowerCase() || '').includes(q) || 
+                  (emp.designation?.toLowerCase() || '').includes(q) || 
                   (emp.employee_code?.toLowerCase() || '').includes(q) ||
                   (emp.username?.toLowerCase() || '').includes(q) ||
                   (emp.phone || '').includes(q) ||
@@ -2315,6 +2330,7 @@ export default function EmployeeInformationPage() {
                       <tr>
                         <th className="p-4 font-semibold w-24">Emp Code</th>
                         <th className="p-4 font-semibold">Full Name</th>
+                        <th className="p-4 font-semibold">Designation</th>
                         <th className="p-4 font-semibold">Department / Role</th>
                         <th className="p-4 font-semibold">Joining / Relieving</th>
                         <th className="p-4 font-semibold">Basic Salary</th>
@@ -2324,14 +2340,19 @@ export default function EmployeeInformationPage() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {loading ? (
-                        <tr><td colSpan={6} className="p-4 text-center">Loading employees...</td></tr>
+                        <tr><td colSpan={8} className="p-4 text-center">Loading employees...</td></tr>
                       ) : currentEmployees.length === 0 ? (
-                        <tr><td colSpan={6} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
+                        <tr><td colSpan={8} className="p-4 text-center text-foreground/60">No matching employees found.</td></tr>
                       ) : (
                         currentEmployees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-primary/5 transition-colors">
                       <td className="p-4 font-medium text-secondary">{emp.employee_code || 'SYS'}</td>
                       <td className="p-4 font-semibold text-foreground">{emp.name}</td>
+                      <td className="p-4">
+                        <span className="font-semibold text-slate-700 text-xs">
+                          {emp.designation || '-'}
+                        </span>
+                      </td>
                       <td className="p-4">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
                           emp.user_types?.name?.includes('ADMIN') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :

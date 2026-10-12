@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone, Mail, Truck } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone, Mail, Truck, Settings2, Edit2, Check } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -46,6 +46,18 @@ const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marke
 const OFFERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-offers`;
 const ORDERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/orders`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
+const OUTCOMES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-outcomes`;
+
+const DEFAULT_OUTCOMES = [
+  'Initial Contact',
+  'Product Demo',
+  'Proposal Sent',
+  'Negotiation',
+  'Order Received',
+  'Follow-up Scheduled',
+  'Payment Collected',
+  'Not Interested'
+];
 
 export default function MarketingVisitsPage() {
   const { hasPermission } = usePermission();
@@ -79,6 +91,13 @@ export default function MarketingVisitsPage() {
     is_active: true
   });
 
+
+  const [outcomes, setOutcomes] = useState<any[]>([]);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [outcomeLoading, setOutcomeLoading] = useState(false);
+  const [newOutcomeName, setNewOutcomeName] = useState('');
+  const [editingOutcomeId, setEditingOutcomeId] = useState<string | null>(null);
+  const [editingOutcomeName, setEditingOutcomeName] = useState('');
 
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [customerSubmitting, setCustomerSubmitting] = useState(false);
@@ -116,7 +135,7 @@ export default function MarketingVisitsPage() {
     feedback: '',
     company_id: '',
     is_quotation: false,
-    quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
+    quotation_items: [emptyQuotationItem()], quotation_type: 'PRODUCT' as QuotationType, quotation_ref: '', quotation_subject: '',
     quotation_delivery_date: '',
     quotation_status: 'Pending',
     probability: '',
@@ -199,10 +218,138 @@ export default function MarketingVisitsPage() {
           setVisitRecords(processed);
         }
       }
+      await fetchOutcomes(coId);
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOutcomes = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      const url = coId ? `${OUTCOMES_API}?company_id=${coId}` : OUTCOMES_API;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setOutcomes(data.data);
+      } else {
+        setOutcomes(DEFAULT_OUTCOMES.map((name, idx) => ({ id: `default-${idx}`, name, display_order: idx + 1 })));
+      }
+    } catch (err) {
+      console.error('Error fetching outcomes:', err);
+      setOutcomes(DEFAULT_OUTCOMES.map((name, idx) => ({ id: `default-${idx}`, name, display_order: idx + 1 })));
+    }
+  };
+
+  const handleCreateOutcome = async () => {
+    const trimmed = newOutcomeName.trim();
+    if (!trimmed) {
+      error('Please enter an outcome name.');
+      return;
+    }
+    if (outcomes.some(o => o.name.toLowerCase() === trimmed.toLowerCase())) {
+      error('An outcome with this name already exists.');
+      return;
+    }
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(OUTCOMES_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: trimmed,
+          company_id: currentCompanyId || undefined,
+          display_order: outcomes.length + 1
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(`"${trimmed}" is now available in visit outcomes.`);
+        setNewOutcomeName('');
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error adding outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not add outcome');
+    } finally {
+      setOutcomeLoading(false);
+    }
+  };
+
+  const handleUpdateOutcome = async (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      error('Outcome name cannot be empty.');
+      return;
+    }
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${OUTCOMES_API}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: trimmed })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Outcome title updated successfully.');
+        setEditingOutcomeId(null);
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error updating outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not update outcome');
+    } finally {
+      setOutcomeLoading(false);
+    }
+  };
+
+  const handleDeleteOutcome = async (id: string, name: string) => {
+    const confirmed = await confirm({
+      title: 'Delete Outcome Option',
+      message: `Are you sure you want to delete "${name}"? Existing recorded visits with this outcome will not be affected.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${OUTCOMES_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(`Outcome "${name}" removed.`);
+        if (formData.outcome === name) {
+          setFormData(prev => ({ ...prev, outcome: '' }));
+        }
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error deleting outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not delete outcome');
+    } finally {
+      setOutcomeLoading(false);
     }
   };
 
@@ -759,7 +906,7 @@ export default function MarketingVisitsPage() {
       feedback: '',
       company_id: currentCompanyId,
       is_quotation: false,
-      quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
+      quotation_items: [emptyQuotationItem()], quotation_type: 'PRODUCT' as QuotationType, quotation_ref: '', quotation_subject: '',
       quotation_delivery_date: '',
       quotation_status: 'Pending',
       probability: '',
@@ -797,7 +944,7 @@ export default function MarketingVisitsPage() {
             image: i.image || ''
           })) 
         : [emptyQuotationItem()],
-      quotation_type: (rec.quotation_type === 'TRADING' ? 'TRADING' : 'BAGS') as QuotationType,
+      quotation_type: (rec.quotation_type === 'TRADING' ? 'TRADING' : 'PRODUCT') as QuotationType,
       quotation_ref: rec.quotation_ref || '',
       quotation_subject: rec.quotation_subject || '',
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
@@ -816,7 +963,7 @@ export default function MarketingVisitsPage() {
       return;
     }
 
-    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Email ID', 'Probability', 'Location', 'Vehicle Number', 'Vehicle Description', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
+    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Customer Email ID', 'Probability', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
     const rows = activeRecords.map(rec => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -832,11 +979,9 @@ export default function MarketingVisitsPage() {
         rec.customer_name || 'N/A',
         rec.customers?.contact_person || 'N/A',
         rec.customers?.mobile_no || 'N/A',
-        rec.customers?.email_id || 'N/A',
+        (rec.customers?.email_id && !rec.customers?.email_id.toLowerCase().includes('maxtron')) ? rec.customers.email_id : 'N/A',
         rec.probability || 'N/A',
         rec.location || 'N/A',
-        rec.vehicle_number || 'N/A',
-        rec.vehicle_description || 'N/A',
         formatDate(rec.visit_date),
         rec.time_in || 'N/A',
         rec.time_out || 'N/A',
@@ -1313,23 +1458,42 @@ export default function MarketingVisitsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowOutcomeModal(true)}
+                          className="h-6 px-2 text-xs font-bold text-primary hover:bg-primary/10 gap-1 rounded-md"
+                          title="Manage visit outcome choices"
+                        >
+                          <Settings2 className="w-3.5 h-3.5" /> Manage Options
+                        </Button>
+                      </div>
                       <Select 
                         value={formData.outcome}
-                        onValueChange={(val) => setFormData({...formData, outcome: val})}
+                        onValueChange={(val) => {
+                          if (val === '__MANAGE_OUTCOMES__') {
+                            setShowOutcomeModal(true);
+                            return;
+                          }
+                          setFormData({...formData, outcome: val});
+                        }}
                       >
                         <SelectTrigger className="w-full h-10 bg-white border-slate-200">
                           <SelectValue placeholder="Select outcome..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Initial Contact">Initial Contact</SelectItem>
-                          <SelectItem value="Product Demo">Product Demo</SelectItem>
-                          <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
-                          <SelectItem value="Negotiation">Negotiation</SelectItem>
-                          <SelectItem value="Order Received">Order Received</SelectItem>
-                          <SelectItem value="Follow-up Scheduled">Follow-up Scheduled</SelectItem>
-                          <SelectItem value="Payment Collected">Payment Collected</SelectItem>
-                          <SelectItem value="Not Interested">Not Interested</SelectItem>
+                          <SelectItem value="__MANAGE_OUTCOMES__" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
+                            + Manage Outcome Options
+                          </SelectItem>
+                          {formData.outcome && !outcomes.some(o => o.name === formData.outcome) && (
+                            <SelectItem value={formData.outcome}>{formData.outcome}</SelectItem>
+                          )}
+                          {outcomes.map(opt => (
+                            <SelectItem key={opt.id || opt.name} value={opt.name}>{opt.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1361,31 +1525,6 @@ export default function MarketingVisitsPage() {
                         onChange={(e) => setFormData({...formData, feedback: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-4 lg:col-span-3 bg-slate-50/50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
-                      <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-primary" /> Vehicle Info
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-foreground/80">Vehicle Number</label>
-                          <Input 
-                            placeholder="e.g. KA-01-MJ-1234"
-                            value={formData.vehicle_number}
-                            onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})}
-                            className="bg-white"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-foreground/80">Description</label>
-                          <Input 
-                            placeholder="e.g. Service pickup truck"
-                            value={formData.vehicle_description}
-                            onChange={(e) => setFormData({...formData, vehicle_description: e.target.value})}
-                            className="bg-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
                     <div className="space-y-4 lg:col-span-3 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
                       <div className="flex items-center gap-3">
                         <label htmlFor="is_quotation" className="relative inline-flex items-center cursor-pointer">
@@ -1407,15 +1546,31 @@ export default function MarketingVisitsPage() {
                             <div className="md:col-span-3 space-y-1.5">
                               <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">Quotation Format</label>
                               <Select
-                                value={formData.quotation_type}
-                                onValueChange={(val) => setFormData(prev => ({ ...prev, quotation_type: val as QuotationType }))}
+                                value={formData.quotation_type === 'TRADING' ? 'TRADING' : 'PRODUCT'}
+                                onValueChange={(val) => {
+                                  const nextType = val as QuotationType;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    quotation_type: nextType,
+                                    quotation_items: prev.quotation_items.map(item => {
+                                      if (!item.product_id) return item;
+                                      const prod = products.find(p => p.id === item.product_id);
+                                      const prodCat = (prod?.category || 'PRODUCT').toUpperCase();
+                                      const targetCat = nextType === 'TRADING' ? 'TRADING' : 'PRODUCT';
+                                      if (prodCat !== targetCat) {
+                                        return { ...item, product_id: '', product_name: '' };
+                                      }
+                                      return item;
+                                    })
+                                  }));
+                                }}
                               >
                                 <SelectTrigger className="w-full h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
                                   <SelectValue placeholder="Format" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white z-[1000]">
-                                  <SelectItem value="BAGS">Bags (No. of Bags / KG)</SelectItem>
-                                  <SelectItem value="TRADING">Trading (with product image)</SelectItem>
+                                  <SelectItem value="PRODUCT">Product</SelectItem>
+                                  <SelectItem value="TRADING">Trading</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1428,7 +1583,7 @@ export default function MarketingVisitsPage() {
                                 className="h-9 text-xs font-mono font-bold"
                               />
                             </div>
-                            {formData.quotation_type === 'BAGS' && (
+                            {formData.quotation_type !== 'TRADING' && (
                               <div className="md:col-span-5 space-y-1.5">
                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Subject (Sub:)</label>
                                 <Input
@@ -1442,9 +1597,18 @@ export default function MarketingVisitsPage() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-primary flex items-center">
-                              <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
-                            </h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-primary flex items-center">
+                                <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
+                              </h4>
+                              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                formData.quotation_type === 'TRADING'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : 'bg-blue-100 text-blue-800 border-blue-300'
+                              }`}>
+                                {formData.quotation_type === 'TRADING' ? 'Trading Products Only' : 'Product Category Only'}
+                              </span>
+                            </div>
                             <Button 
                               type="button" 
                               variant="outline" 
@@ -1468,12 +1632,26 @@ export default function MarketingVisitsPage() {
                                     <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-xs font-semibold">
                                       <SelectValue placeholder="Select Product..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white z-[1000]">
-                                      {products.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>
-                                          {p.product_name} ({p.balance} Kg Available)
-                                        </SelectItem>
-                                      ))}
+                                    <SelectContent className="bg-white z-[1000] max-h-60">
+                                      {(() => {
+                                        const isTrading = formData.quotation_type === 'TRADING';
+                                        const filteredProds = products.filter(p => {
+                                          const cat = (p.category || 'PRODUCT').toUpperCase();
+                                          return isTrading ? cat === 'TRADING' : (cat === 'PRODUCT' || cat === 'BAGS');
+                                        });
+                                        if (filteredProds.length === 0) {
+                                          return (
+                                            <div className="p-3 text-xs text-muted-foreground text-center italic">
+                                              No {isTrading ? 'trading' : 'product'} items available
+                                            </div>
+                                          );
+                                        }
+                                        return filteredProds.map(p => (
+                                          <SelectItem key={p.id} value={p.id}>
+                                            {p.product_name} ({p.product_code}) {p.size ? ` - ${p.size}` : ''} {p.color ? `[${p.color}]` : ''}
+                                          </SelectItem>
+                                        ));
+                                      })()}
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -1680,8 +1858,8 @@ export default function MarketingVisitsPage() {
                   }
                 })}
                 loading={loading}
-                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome', 'vehicle_number']}
-                searchPlaceholder="Search staff name/ID, client name/ID, location, vehicle..."
+                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome']}
+                searchPlaceholder="Search staff name/ID, client name/ID, location, outcome..."
                 actions={
                   <div className="flex gap-3">
                     <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
@@ -1730,11 +1908,6 @@ export default function MarketingVisitsPage() {
                     </td>
                     <td className="px-6 py-4 text-xs text-muted-foreground">
                       <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
-                      {rec.vehicle_number && (
-                        <div className="flex items-center mt-1 text-[10px] text-primary/80 font-semibold" title={rec.vehicle_description || 'No description'}>
-                          <Truck className="w-3 h-3 mr-1 text-primary/60 shrink-0" /> {rec.vehicle_number}
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-mono text-[11px] text-primary">
@@ -2029,6 +2202,162 @@ export default function MarketingVisitsPage() {
               className="bg-primary text-white hover:bg-primary/95 h-10 px-6 rounded-full font-bold shadow-md shadow-primary/20"
             >
               <Save className="w-4 h-4 mr-2" /> Save & Select Customer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Visit Outcomes Modal */}
+      <Dialog open={showOutcomeModal} onOpenChange={setShowOutcomeModal}>
+        <DialogContent className="w-[92%] sm:max-w-lg bg-white rounded-3xl p-6 border shadow-2xl">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Settings2 className="w-5 h-5 text-primary" /> Manage Visit Outcomes
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium">
+              Add new outcome options, edit existing titles, or delete options from the visit outcome list.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            {/* Add new outcome form */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
+                Add New Outcome Option
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newOutcomeName}
+                  onChange={(e) => setNewOutcomeName(e.target.value)}
+                  placeholder="e.g. Site Survey Done, Deal Closed..."
+                  className="h-10 text-sm bg-white"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateOutcome();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  loading={outcomeLoading}
+                  onClick={handleCreateOutcome}
+                  className="h-10 px-4 bg-primary text-white hover:bg-primary/90 font-bold shrink-0 rounded-xl gap-1 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Configured outcomes list */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Configured Outcomes ({outcomes.length})
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  Add, edit or delete below
+                </span>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                {outcomes.length === 0 ? (
+                  <div className="text-center py-6 text-sm text-slate-400">
+                    No outcomes configured yet. Add your first option above!
+                  </div>
+                ) : (
+                  outcomes.map((item) => (
+                    <div
+                      key={item.id || item.name}
+                      className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl hover:border-primary/40 transition-all shadow-xs"
+                    >
+                      {editingOutcomeId === item.id ? (
+                        <div className="flex items-center gap-2 flex-1 mr-2">
+                          <Input
+                            value={editingOutcomeName}
+                            onChange={(e) => setEditingOutcomeName(e.target.value)}
+                            className="h-8 text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleUpdateOutcome(item.id, editingOutcomeName);
+                              } else if (e.key === 'Escape') {
+                                setEditingOutcomeId(null);
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleUpdateOutcome(item.id, editingOutcomeName)}
+                            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shrink-0"
+                            title="Save changes"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingOutcomeId(null)}
+                            className="h-8 px-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
+                            title="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                          <span className="text-sm font-semibold text-slate-800 truncate">
+                            {item.name}
+                          </span>
+                        </div>
+                      )}
+
+                      {editingOutcomeId !== item.id && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingOutcomeId(item.id);
+                              setEditingOutcomeName(item.name);
+                            }}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg"
+                            title="Edit outcome"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteOutcome(item.id, item.name)}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                            title="Delete outcome"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-3 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowOutcomeModal(false)}
+              className="h-10 px-5 rounded-full"
+            >
+              Close
             </Button>
           </div>
         </DialogContent>
