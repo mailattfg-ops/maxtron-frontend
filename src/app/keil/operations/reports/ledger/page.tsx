@@ -139,9 +139,17 @@ export default function HCEServiceLedgerPage() {
 
         const rows = entries.map(ent => {
             const total = (ent.yellow_bags || 0) + (ent.red_bags || 0) + (ent.white_containers || 0) + (ent.bottle_containers || 0);
-            const dateStr = ent.header?.collection_date 
-                ? new Date(ent.header.collection_date).toLocaleDateString() 
-                : 'N/A';
+            let dateStr = 'N/A';
+            if (ent.header?.collection_date) {
+                const clean = ent.header.collection_date.includes('T') ? ent.header.collection_date.split('T')[0] : ent.header.collection_date;
+                const parts = clean.split('-');
+                if (parts.length === 3 && parts[0].length === 4) {
+                    dateStr = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                } else {
+                    const dt = new Date(ent.header.collection_date);
+                    dateStr = !isNaN(dt.getTime()) ? `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}` : String(ent.header.collection_date);
+                }
+            }
                 
             return [
                 dateStr,

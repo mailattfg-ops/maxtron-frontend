@@ -217,32 +217,11 @@ export function exportQuotationToWord(record: any, companyInfo?: any) {
     downloadLink.click();
     document.body.removeChild(downloadLink);
 }
+import { downloadBagsQuotationTemplate } from './quotationWordTemplate';
 
 /**
- * Downloads a clean Word Template file (.doc) for reference or offline editing.
+ * Downloads the official Maxtron Word Template (.docx) matching the design from Field Visit Logs.
  */
-export function downloadQuotationTemplate() {
-    const sampleRecord = {
-        id: 'SAMPLE',
-        visit_date: new Date().toISOString(),
-        customer_name: 'Sample Client Enterprise Ltd',
-        contact_person: 'John Doe (Purchase Manager)',
-        location: 'Kochi, Kerala',
-        quotation_delivery_date: new Date(Date.now() + 7 * 86400000).toISOString(),
-        quotation_status: 'Approved',
-        users: { name: 'Marketing Officer' },
-        customers: {
-            customer_name: 'Sample Client Enterprise Ltd',
-            contact_person: 'John Doe',
-            mobile_no: '+91 98765 00000',
-            email_id: 'purchase@sampleclient.com',
-            gst_no: '32ABCDE1234F1Z5',
-            addresses: [{ city: 'Kochi', state: 'Kerala' }]
-        },
-        quotation_items: [
-            { product_name: 'Polybag High Density (50 Micron)', quantity: 500, unit: 'Kg', amount: 180, gst_percent: 18 },
-            { product_name: 'Extruded Packaging Film Roll', quantity: 200, unit: 'Pcs', amount: 450, gst_percent: 18 }
-        ]
-    };
-    exportQuotationToWord(sampleRecord);
+export async function downloadQuotationTemplate() {
+    await downloadBagsQuotationTemplate();
 }

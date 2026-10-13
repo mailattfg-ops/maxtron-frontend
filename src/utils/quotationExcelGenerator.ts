@@ -354,7 +354,10 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     put(ws, r++, 1, `For ${COMPANY}`);
     r++;
     const executive = record.users || {};
-    [executive.name || record.employee_name, executive.phone].filter(Boolean)
+    const signName = record.users?.name || record.employee_name || 'Marketing Officer';
+    const signRole = record.job_role || executive.job_role || executive.designation || '';
+    const signPhone = record.contact_number || executive.phone || record.contact_phone || '';
+    [signName, signRole, signPhone].filter(Boolean)
         .forEach(line => { ws.mergeCells(r, 1, r, 3); put(ws, r++, 1, String(line)); });
 
     // Footer: blue rule, then the manufacturing unit address, centred.
