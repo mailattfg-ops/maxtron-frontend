@@ -25,6 +25,12 @@ interface NavbarProps {
   onMenuToggle?: () => void;
 }
 
+/** The signed-in user's company as it is written on its documents. */
+const companyDisplayName = (user: any) => {
+  const name = String(user?.company_name || user?.company?.company_name || '').trim();
+  return name.toUpperCase() === 'MAXTRON' ? 'MAXTRON ASSOCIATES' : (name || 'N/A');
+};
+
 export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -138,7 +144,7 @@ export const Navbar = ({ user, handleLogout, onMenuToggle }: NavbarProps) => {
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Tenant / Entity</span>
                 <p className="font-bold text-primary mt-0.5 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5" /> Maxtron Rubber Pvt Ltd
+                  <Building2 className="w-3.5 h-3.5" /> {companyDisplayName(user)}
                 </p>
               </div>
             </div>
