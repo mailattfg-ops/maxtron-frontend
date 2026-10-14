@@ -376,14 +376,14 @@ export default function DailyCollectionEntryPage() {
         const clean = d.includes('T') ? d.split('T')[0] : d;
         const parts = clean.split('-');
         if (parts.length === 3 && parts[0].length === 4) {
-            return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+            return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
         }
         const dt = new Date(d);
         if (!isNaN(dt.getTime())) {
             const dd = String(dt.getDate()).padStart(2, '0');
             const mm = String(dt.getMonth() + 1).padStart(2, '0');
             const yyyy = dt.getFullYear();
-            return `${dd}/${mm}/${yyyy}`;
+            return `${dd}-${mm}-${yyyy}`;
         }
         return String(d);
     };

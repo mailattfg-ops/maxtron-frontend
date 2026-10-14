@@ -37,13 +37,13 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { plainCell, monthOf, yearOf, amountOf, dateOf } from '@/utils/payrollImport';
+import { writeSalaryFrontSheet, readSalaryFrontSheet, MONTH_ABBR } from '@/utils/payrollSheet';
 
 export default function KeilPayrollPage() {
     const pathname = usePathname();
     const activeEntity = pathname?.startsWith('/keil') ? 'keil' : 'maxtron';
     const activeTenant = activeEntity.toUpperCase();
-    const { hasPermission, loading: permissionLoading } = usePermission();
+    const { hasPermission, isAdmin, loading: permissionLoading } = usePermission();
 
     const canView = hasPermission('hr_payroll_view', 'view');
     const canCreate = hasPermission('hr_payroll_view', 'create');
@@ -318,45 +318,26 @@ export default function KeilPayrollPage() {
         const ExcelJS = (await import('exceljs')).default;
         const saveAs = (await import('file-saver')).saveAs;
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Payroll Report');
-
-        const headerRow = worksheet.addRow([
-            'EMP CODE', 'EMPLOYEE NAME', 'CATEGORY', 'MONTH', 'YEAR', 
-            'NO OF DUTIES', 'BASIC SALARY (₹)', 'ALLOWANCES (₹)', 'DEDUCTIONS (₹)', 
-            'INCENTIVES (₹)', 'NET SALARY (₹)', 'PAYMENT STATUS', 'PAYMENT MODE', 'PAYMENT DATE', 'REMARKS'
-        ]);
-
-        headerRow.eachCell((cell) => {
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-
-        payrolls.forEach(p => {
-            worksheet.addRow([
-                p.users?.employee_code || 'N/A',
-                p.users?.name || 'N/A',
-                p.users?.employee_categories?.category_name || 'General Staff',
-                months[p.month - 1] || p.month,
-                p.year,
-                p.no_of_duties ?? 0,
-                Number(p.basic_salary) || 0,
-                Number(p.allowances) || 0,
-                Number(p.deductions) || 0,
-                Number(p.incentives) || 0,
-                Number(p.net_salary) || 0,
-                p.payment_status || 'PENDING',
-                p.payment_mode || 'BANK',
-                p.payment_date || '-',
-                p.remarks || ''
-            ]);
-        });
-
-        worksheet.columns.forEach(col => { col.width = 18; });
+        // The salary front sheet (DRIVERS / PICKERS), the same layout the bulk upload reads.
+        writeSalaryFrontSheet(workbook, payrolls.map(p => {
+            const advance = Number(p.advance) || 0;
+            const penalty = Number(p.penalty) || 0;
+            return {
+                name: p.users?.name || p.worker_name || '',
+                designation: p.designation || p.users?.employee_categories?.category_name || 'OTHER',
+                duty: Number(p.no_of_duties) || 0,
+                // SALARY is the gross pay; rows saved before the front sheet kept extras apart
+                salary: (Number(p.basic_salary) || 0) + (Number(p.allowances) || 0) + (Number(p.incentives) || 0),
+                // Older rows have only a total deduction: shown as advance
+                advance: advance || penalty ? advance : Number(p.deductions) || 0,
+                penalty,
+                contractor: p.worker_name ? (p.remarks || '') : '',
+            };
+        }), filterMonth, filterYear);
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `keil_payroll_report_${months[filterMonth - 1]}_${filterYear}.xlsx`);
+        saveAs(blob, `FRONT SHEET SALARY KEIL ${MONTH_ABBR[filterMonth - 1]} ${filterYear}.xlsx`);
         success('Payroll report exported successfully.');
     };
 
@@ -364,54 +345,12 @@ export default function KeilPayrollPage() {
         const ExcelJS = (await import('exceljs')).default;
         const saveAs = (await import('file-saver')).saveAs;
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Payroll_Import_Template');
-
-        const headerRow = worksheet.addRow([
-            'Employee Code', 'Month', 'Year', 'No of Duties', 'Basic Salary', 
-            'Allowances', 'Deductions', 'Incentives', 'Payment Status', 'Payment Mode', 'Payment Date', 'Remarks'
-        ]);
-
-        headerRow.eachCell((cell) => {
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-
-        if (employees.length > 0) {
-            employees.slice(0, 3).forEach((emp, idx) => {
-                worksheet.addRow([
-                    emp.employee_code || `EMP-${1001 + idx}`,
-                    filterMonth,
-                    filterYear,
-                    26,
-                    Number(emp.basic_salary) || 25000,
-                    1500,
-                    500,
-                    1000,
-                    'PENDING',
-                    'BANK',
-                    new Date().toISOString().split('T')[0],
-                    'Monthly regular duty'
-                ]);
-            });
-        } else {
-            worksheet.addRow([
-                'EMP-1001',
-                filterMonth,
-                filterYear,
-                26,
-                25000,
-                2000,
-                500,
-                1000,
-                'PENDING',
-                'BANK',
-                new Date().toISOString().split('T')[0],
-                'Sample duty record'
-            ]);
-        }
-
-        worksheet.columns.forEach(col => { col.width = 18; });
+        // The template is the front sheet itself: fill it in, or edit an exported month, and upload it.
+        writeSalaryFrontSheet(workbook, [
+            ...employees.slice(0, 2).map((emp: any) => ({ name: emp.name, designation: 'DRIVER', duty: 26, salary: 25000, advance: 2500, penalty: 0, contractor: '' })),
+            { name: 'SPARE DRIVER NAME', designation: 'DRIVER', duty: 3, salary: 3000, advance: 0, penalty: 250, contractor: 'CONTRACTOR NAME' },
+            ...employees.slice(2, 3).map((emp: any) => ({ name: emp.name, designation: 'PICKER', duty: 24, salary: 18000, advance: 0, penalty: 0, contractor: '' })),
+        ], filterMonth, filterYear);
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -435,85 +374,10 @@ export default function KeilPayrollPage() {
                 return;
             }
 
-            const parsedRows: any[] = [];
-            const validationErrors: string[] = [];
-
-            const headerValues: string[] = [];
-            worksheet.getRow(1).eachCell((cell, colNumber) => {
-                headerValues[colNumber] = String(plainCell(cell.value) ?? '').trim().toLowerCase();
-            });
-
-            worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber === 1) return;
-
-                const getCell = (namePart: string) => {
-                    const colIndex = headerValues.findIndex(h => h && h.includes(namePart));
-                    return colIndex > -1 ? plainCell(row.getCell(colIndex).value) : null;
-                };
-
-                const rawCode = getCell('code');
-                const empCode = rawCode ? rawCode.toString().trim() : '';
-                if (!empCode) return;
-
-                const matchedEmp = employees.find(
-                    emp => emp.employee_code?.trim().toUpperCase() === empCode.toUpperCase()
-                );
-
-                if (!matchedEmp) {
-                    validationErrors.push(`Row ${rowNumber}: Employee with code "${empCode}" not found.`);
-                    return;
-                }
-
-                const noOfDuties = amountOf(getCell('dut')) ?? 0;
-                const basicSalary = amountOf(getCell('basic')) || Number(matchedEmp.basic_salary) || 0;
-                const allowances = amountOf(getCell('allow')) ?? 0;
-                const deductions = amountOf(getCell('deduct')) ?? 0;
-                const incentives = amountOf(getCell('incent')) ?? 0;
-                const netSalary = (basicSalary + allowances + incentives) - deductions;
-
-                // A blank Month or Year takes the month being viewed. One that cannot
-                // be read stops the row here, listed as an error, instead of reaching
-                // the server as null and failing the whole import.
-                const rawMonth = getCell('month');
-                const rawYear = getCell('year');
-                const blank = (v: any) => v === null || v === undefined || v === '';
-                const monthVal = blank(rawMonth) ? filterMonth : monthOf(rawMonth);
-                const yearVal = blank(rawYear) ? (yearOf(rawMonth) ?? filterYear) : yearOf(rawYear);
-                if (monthVal === null || yearVal === null) {
-                    validationErrors.push(monthVal === null
-                        ? `Row ${rowNumber}: Month "${rawMonth}" not understood. Use 1-12 or the month name.`
-                        : `Row ${rowNumber}: Year "${rawYear}" not understood. Use a 4-digit year.`);
-                    return;
-                }
-                const rawStatus = getCell('status')?.toString().toUpperCase().trim();
-                const paymentStatus = rawStatus === 'PAID' ? 'PAID' : 'PENDING';
-                const paymentMode = getCell('mode')?.toString().trim() || 'BANK';
-                const rawDate = getCell('date');
-                const paymentDate = blank(rawDate) ? new Date().toISOString().split('T')[0] : dateOf(rawDate);
-                if (paymentDate === null) {
-                    validationErrors.push(`Row ${rowNumber}: Payment Date "${rawDate}" not understood. Use DD-MM-YYYY.`);
-                    return;
-                }
-                const remarks = getCell('remark')?.toString().trim() || 'Bulk imported via Excel';
-
-                parsedRows.push({
-                    employee_id: matchedEmp.id,
-                    employee_name: matchedEmp.name,
-                    employee_code: matchedEmp.employee_code,
-                    company_id: currentCompanyId,
-                    month: monthVal,
-                    year: yearVal,
-                    no_of_duties: noOfDuties,
-                    basic_salary: basicSalary,
-                    allowances,
-                    deductions,
-                    incentives,
-                    net_salary: netSalary,
-                    payment_status: paymentStatus,
-                    payment_mode: paymentMode,
-                    payment_date: paymentDate,
-                    remarks
-                });
+            const { rows: parsedRows, notes: validationErrors } = readSalaryFrontSheet(worksheet, employees, {
+                month: filterMonth,
+                year: filterYear,
+                companyId: currentCompanyId,
             });
 
             if (parsedRows.length === 0 && validationErrors.length === 0) {
@@ -541,9 +405,9 @@ export default function KeilPayrollPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
-                // employee_name and employee_code are only for the preview table. The
+                // display_name and is_spare are only for the preview table. The
                 // payroll table has no such columns and rejects the whole batch with them.
-                body: JSON.stringify(importPreview.map(({ employee_name, employee_code, ...row }) => row))
+                body: JSON.stringify(importPreview.map(({ display_name, is_spare, ...row }) => row))
             });
             const data = await res.json();
             if (data.success) {
@@ -881,24 +745,31 @@ export default function KeilPayrollPage() {
                     headers={['Employee', 'Category', 'Duties', 'Basic', 'Deductions', 'Net Payout', 'Status', 'Actions']}
                     data={payrolls}
                     loading={loading}
-                    searchFields={['users.name', 'users.employee_code']}
+                    searchFields={['users.name', 'users.employee_code', 'worker_name']}
+                    // Admins only: tick rows (or the header box, then "Select all") and delete them together
+                    deleteUrl={isAdmin ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/keil/payroll` : undefined}
+                    onRefresh={fetchPayrolls}
+                    deleteConfirmTitle="Delete payroll records"
+                    deleteConfirmMessage="The selected payroll records will be permanently deleted. This cannot be undone."
                     searchPlaceholder="Search employee name or code..."
                     renderRow={(row: any) => (
                         <tr key={row.id} className="hover:bg-primary/5 transition-all border-b border-slate-50 last:border-none group">
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                                        {row.users?.name?.charAt(0)}
+                                        {(row.users?.name || row.worker_name)?.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-slate-900">{row.users?.name}</div>
-                                        <div className="text-[10px] font-black text-slate-400 font-mono tracking-tighter uppercase">{row.users?.employee_code}</div>
+                                        <div className="font-bold text-slate-900">{row.users?.name || row.worker_name}</div>
+                                        <div className="text-[10px] font-black text-slate-400 font-mono tracking-tighter uppercase">
+                                            {row.users?.employee_code || (row.worker_name ? `Spare · ${row.remarks || 'no contractor'}` : '')}
+                                        </div>
                                     </div>
                                 </div>
                             </td>
                             <td className="px-6 py-4">
                                 <span className="text-xs font-semibold text-slate-500">
-                                    {row.users?.employee_categories?.category_name || 'General Staff'}
+                                    {row.designation || row.users?.employee_categories?.category_name || 'General Staff'}
                                 </span>
                             </td>
                             <td className="px-6 py-4">
@@ -986,35 +857,30 @@ export default function KeilPayrollPage() {
                                     <table className="w-full text-left text-xs whitespace-nowrap">
                                         <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 sticky top-0">
                                             <tr>
-                                                <th className="p-3">Emp Code</th>
-                                                <th className="p-3">Employee Name</th>
-                                                <th className="p-3">Duties</th>
-                                                <th className="p-3">Basic (₹)</th>
-                                                <th className="p-3">Allowances (₹)</th>
-                                                <th className="p-3">Deductions (₹)</th>
-                                                <th className="p-3">Incentives (₹)</th>
-                                                <th className="p-3">Net (₹)</th>
-                                                <th className="p-3">Status</th>
+                                                <th className="p-3">Name</th>
+                                                <th className="p-3">Designation</th>
+                                                <th className="p-3">Duty</th>
+                                                <th className="p-3">Salary (₹)</th>
+                                                <th className="p-3">Advance (₹)</th>
+                                                <th className="p-3">Penalty (₹)</th>
+                                                <th className="p-3">Total (₹)</th>
+                                                <th className="p-3">Contractor</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {importPreview.map((row, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-50/50">
-                                                    <td className="p-3 font-mono font-bold text-primary">{row.employee_code}</td>
-                                                    <td className="p-3 font-bold text-slate-800">{row.employee_name}</td>
+                                                    <td className="p-3 font-bold text-slate-800">
+                                                        {row.display_name}
+                                                        {row.is_spare && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] font-black uppercase">Spare</span>}
+                                                    </td>
+                                                    <td className="p-3">{row.designation}</td>
                                                     <td className="p-3 font-bold">{row.no_of_duties}</td>
                                                     <td className="p-3 font-bold text-slate-600">₹{row.basic_salary.toLocaleString()}</td>
-                                                    <td className="p-3">₹{row.allowances.toLocaleString()}</td>
-                                                    <td className="p-3 text-red-500">₹{row.deductions.toLocaleString()}</td>
-                                                    <td className="p-3 text-emerald-600">₹{row.incentives.toLocaleString()}</td>
+                                                    <td className="p-3 text-red-500">₹{row.advance.toLocaleString()}</td>
+                                                    <td className="p-3 text-red-500">₹{row.penalty.toLocaleString()}</td>
                                                     <td className="p-3 font-black text-primary">₹{row.net_salary.toLocaleString()}</td>
-                                                    <td className="p-3">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                            row.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                                        }`}>
-                                                            {row.payment_status}
-                                                        </span>
-                                                    </td>
+                                                    <td className="p-3">{row.remarks || ''}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

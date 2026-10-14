@@ -144,10 +144,10 @@ export default function HCEServiceLedgerPage() {
                 const clean = ent.header.collection_date.includes('T') ? ent.header.collection_date.split('T')[0] : ent.header.collection_date;
                 const parts = clean.split('-');
                 if (parts.length === 3 && parts[0].length === 4) {
-                    dateStr = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                    dateStr = `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
                 } else {
                     const dt = new Date(ent.header.collection_date);
-                    dateStr = !isNaN(dt.getTime()) ? `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}` : String(ent.header.collection_date);
+                    dateStr = !isNaN(dt.getTime()) ? `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}` : String(ent.header.collection_date);
                 }
             }
                 
