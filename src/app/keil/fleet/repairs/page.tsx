@@ -39,6 +39,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { reportDate, reportDateTime } from '@/utils/reportDate';
 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
@@ -316,7 +317,7 @@ export default function VehicleRepairLogPage() {
         // Add Data
         repairs.forEach(r => {
             const rowData = [
-                new Date(r.log_date).toLocaleDateString(),
+                reportDate(r.log_date),
                 r.vehicle?.registration_number || 'N/A',
                 r.driver?.name || 'N/A',
                 r.spare_driver_name || '-',
@@ -331,8 +332,8 @@ export default function VehicleRepairLogPage() {
                 r.closing_km || 0,
                 (r.closing_km - r.starting_km) || 0,
                 r.repair_description || '',
-                r.entry_date ? new Date(r.entry_date).toLocaleString() : '-',
-                r.exit_date ? new Date(r.exit_date).toLocaleString() : '-',
+                r.entry_date ? reportDateTime(r.entry_date) : '-',
+                r.exit_date ? reportDateTime(r.exit_date) : '-',
                 r.status || 'Pending',
                 r.cost || 0,
                 r.remarks || ''

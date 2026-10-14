@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 
 import { readFuelRegister } from '@/utils/fuelRegisterImport';
+import { reportDate } from '@/utils/reportDate';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const FUEL_API = `${API_BASE}/api/keil/fleet/fuel-fillings`;
@@ -515,7 +516,7 @@ export default function FuelFillingPage() {
         });
         exportData.forEach(f => {
             const row = worksheet.addRow([
-                new Date(f.log_date).toLocaleDateString(),
+                reportDate(f.log_date),
                 f.vehicle?.registration_number || 'N/A',
                 f.odometer_reading ? parseFloat(f.odometer_reading).toLocaleString() : '-',
                 f.indent_number || '-',
