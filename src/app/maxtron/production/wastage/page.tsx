@@ -345,6 +345,8 @@ export default function DamagesWastagePage() {
           headers={['Date', 'Stage', 'Wastage (Kg)', 'Reason Code', 'Remarks', 'Actions']}
           data={wastageRecords}
           loading={loading}
+          deleteUrl={WASTAGE_API}
+          onRefresh={() => fetchWastage(currentCompanyId)}
           searchFields={['stage', 'reason_code', 'remarks']}
           searchPlaceholder="Search reason or stage..."
           renderRow={(w: any) => (

@@ -321,6 +321,8 @@ export default function SupplierPaymentPage() {
                     headers={['Voucher No', 'Date', 'Supplier', 'Mode', 'Amount', 'Actions']}
                     data={payments}
                     loading={loading}
+                    deleteUrl={`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/finance/payments`}
+                    onRefresh={fetchData}
                     searchFields={['voucher_no', 'supplier_master.supplier_name']}
                     searchPlaceholder="Search voucher or supplier..."
                     renderRow={(row: any) => (

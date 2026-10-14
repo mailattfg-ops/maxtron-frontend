@@ -564,6 +564,8 @@ export default function CuttingSealingPage() {
           headers={['Job No', 'Date', 'Batch', 'Items Produced', 'Input', 'Output', 'Wastage', 'Operator', 'Actions']}
           data={conversions}
           loading={loading}
+          deleteUrl={CONVERSION_API}
+          onRefresh={() => fetchConversions(currentCompanyId)}
           searchFields={['conversion_number', 'production_batches.batch_number']}
           searchPlaceholder="Search job or batch no..."
           renderRow={(c: any) => (

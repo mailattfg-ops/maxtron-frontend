@@ -56,6 +56,7 @@ export default function ExtrusionPage() {
     supervisor_id: '',
     machine_no: '',
     raw_material_consumed_qty: 0,
+    wastage_qty: 0,
     extrusion_output_qty: 0,
     date: new Date().toISOString().split('T')[0],
     company_id: '',
@@ -166,10 +167,23 @@ export default function ExtrusionPage() {
     }));
   };
 
+  const handleWastageChange = (val: string) => {
+    const wasteNum = parseFloat(val) || 0;
+    const grossOutput = (formData.items || []).reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const netOutput = Math.max(0, Number((grossOutput - wasteNum).toFixed(2)));
+    setFormData({
+      ...formData,
+      wastage_qty: val === '' ? '' : wasteNum,
+      extrusion_output_qty: netOutput
+    });
+  };
+
   const removeItem = (index: number) => {
     const newItems = [...(formData.items || [])];
     newItems.splice(index, 1);
-    const totalOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const grossOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const wasteNum = Number(formData.wastage_qty) || 0;
+    const netOutput = Math.max(0, Number((grossOutput - wasteNum).toFixed(2)));
 
     const reqPrinting = newItems.some((it: any) => {
       const p = products.find(prod => prod.id === it.product_id);
@@ -180,7 +194,7 @@ export default function ExtrusionPage() {
     setFormData({
       ...formData,
       items: newItems,
-      extrusion_output_qty: totalOutput,
+      extrusion_output_qty: netOutput,
       product_id: newItems[0]?.product_id || '',
       requires_printing: newItems.length > 0 ? reqPrinting : formData.requires_printing
     });
@@ -190,7 +204,9 @@ export default function ExtrusionPage() {
     const newItems = [...(formData.items || [])];
     newItems[index] = { ...newItems[index], [field]: value };
 
-    const totalOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const grossOutput = newItems.reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const wasteNum = Number(formData.wastage_qty) || 0;
+    const netOutput = Math.max(0, Number((grossOutput - wasteNum).toFixed(2)));
 
     const reqPrinting = newItems.some((it: any) => {
       const p = products.find(prod => prod.id === it.product_id);
@@ -201,7 +217,7 @@ export default function ExtrusionPage() {
     setFormData({
       ...formData,
       items: newItems,
-      extrusion_output_qty: totalOutput,
+      extrusion_output_qty: netOutput,
       product_id: newItems[0]?.product_id || '',
       requires_printing: reqPrinting
     });
@@ -262,6 +278,7 @@ export default function ExtrusionPage() {
       supervisor_id: '',
       machine_no: '',
       raw_material_consumed_qty: 0,
+      wastage_qty: 0,
       extrusion_output_qty: 0,
       date: new Date().toISOString().split('T')[0],
       company_id: currentCompanyId,
@@ -285,6 +302,7 @@ export default function ExtrusionPage() {
       supervisor_id: b.supervisor_id,
       machine_no: b.machine_no,
       raw_material_consumed_qty: b.raw_material_consumed_qty,
+      wastage_qty: b.wastage_qty ?? 0,
       extrusion_output_qty: b.extrusion_output_qty,
       date: b.date.split('T')[0],
       company_id: b.company_id,
@@ -363,6 +381,21 @@ export default function ExtrusionPage() {
       return;
     }
 
+    const grossOutput = (formData.items || []).reduce((sum: number, it: any) => sum + (Number(it.output_qty) || 0), 0);
+    const wasteQty = Number(formData.wastage_qty) || 0;
+
+    if (wasteQty < 0) {
+      error("Wastage quantity cannot be negative.");
+      return;
+    }
+
+    if (wasteQty > grossOutput) {
+      error(`Wastage quantity (${wasteQty} Kg) cannot exceed total finished product output (${grossOutput} Kg).`);
+      return;
+    }
+
+    const netOutput = Math.max(0, Number((grossOutput - wasteQty).toFixed(2)));
+
     const token = localStorage.getItem('token');
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `${BATCH_API}/${editingId}` : BATCH_API;
@@ -376,6 +409,8 @@ export default function ExtrusionPage() {
         },
         body: JSON.stringify({
           ...formData,
+          wastage_qty: wasteQty,
+          extrusion_output_qty: netOutput,
           product_id: formData.items[0]?.product_id || formData.product_id,
           supervisor_id: formData.supervisor_id === 'none' ? '' : formData.supervisor_id
         })
@@ -651,7 +686,7 @@ export default function ExtrusionPage() {
             </div>
 
             {/* Row 4: Personnel & Yield Quantities */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 pt-2 border-t">
               <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
                    <User className="w-4 h-4 text-primary" /> Operator <span className="text-rose-500">*</span>
@@ -686,19 +721,36 @@ export default function ExtrusionPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80"><Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)</label>
+                <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
+                  <Layers className="w-4 h-4 text-primary" /> RM Consumed (Kg)
+                </label>
                 <Input type="number" readOnly className="h-11 bg-muted cursor-not-allowed font-bold" value={formData.raw_material_consumed_qty} />
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-semibold flex items-center gap-2 text-rose-600">
+                  <Trash2 className="w-4 h-4 text-rose-500" /> Wastage (Kg)
+                </label>
+                <Input 
+                  type="number" 
+                  min={0}
+                  step="0.01"
+                  placeholder="0.00" 
+                  className="h-11 font-bold text-rose-600 border-rose-200 focus-visible:ring-rose-500 bg-rose-50/30"
+                  value={formData.wastage_qty === 0 ? '' : formData.wastage_qty} 
+                  onChange={e => handleWastageChange(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-semibold flex items-center gap-2 text-foreground/80">
-                  <Activity className="w-4 h-4 text-primary" /> Total Output (Kg) <span className="text-rose-500">*</span>
+                  <Activity className="w-4 h-4 text-emerald-600" /> Total Output (Kg) <span className="text-rose-500">*</span>
                 </label>
                 <Input 
                   type="number" 
                   readOnly
                   placeholder="0.00" 
-                  className="h-11 bg-muted cursor-not-allowed font-bold text-primary"
+                  className="h-11 bg-muted cursor-not-allowed font-black text-emerald-700"
                   value={formData.extrusion_output_qty} 
                 />
               </div>
@@ -709,6 +761,16 @@ export default function ExtrusionPage() {
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Total RM Input</span>
                      <span className="text-xl font-black text-primary">{formData.raw_material_consumed_qty} Kg</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-slate-200"></div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest text-left">Wastage Loss</span>
+                     <span className="text-xl font-black text-rose-600">{Number(formData.wastage_qty || 0).toFixed(2)} Kg</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-slate-200"></div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Net Output</span>
+                     <span className="text-xl font-black text-emerald-600">{Number(formData.extrusion_output_qty || 0).toFixed(2)} Kg</span>
                   </div>
                   <div className="w-[1px] h-8 bg-slate-200"></div>
                   <div className="flex flex-col">
@@ -743,9 +805,11 @@ export default function ExtrusionPage() {
         <TableView
           title="Batch History"
           description="History of production batches and machine assignments."
-          headers={['Date', 'Batch #', 'Finished Products Produced', 'Shift', 'Machine', 'Material Used', 'Total Output', 'Operator', 'Actions']}
+          headers={['Date', 'Batch #', 'Finished Products Produced', 'Shift', 'Machine', 'Material Used', 'Wastage', 'Total Output', 'Operator', 'Actions']}
           data={filteredBatches}
           loading={loading}
+          deleteUrl={BATCH_API}
+          onRefresh={() => fetchBatches(currentCompanyId)}
           searchFields={['batch_number', 'finished_products.product_name']}
           searchPlaceholder="Search batches or products..."
           renderRow={(b: any) => {
@@ -799,9 +863,21 @@ export default function ExtrusionPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
+                  {Number(b.wastage_qty) > 0 ? (
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm text-rose-600 font-mono">
+                        {Number(b.wastage_qty).toFixed(2)} Kg
+                      </span>
+                      <span className="text-[9px] font-bold text-rose-500 uppercase tracking-tight">Wastage Loss</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 font-mono">0.00 Kg</span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
                     <div className="flex flex-col items-end sm:items-start">
-                      <span className="font-bold text-base text-foreground/80">{b.extrusion_output_qty} Kg</span>
-                      <span className="text-[10px] text-muted-foreground">RM: {b.raw_material_consumed_qty} Kg</span>
+                      <span className="font-black text-base text-emerald-700">{b.extrusion_output_qty} Kg</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">RM: {b.raw_material_consumed_qty} Kg</span>
                     </div>
                 </td>
                 <td className="px-6 py-4">

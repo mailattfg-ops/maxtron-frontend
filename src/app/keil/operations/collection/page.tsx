@@ -371,6 +371,23 @@ export default function DailyCollectionEntryPage() {
         }
     };
 
+    const formatCollectionDate = (d?: string | null): string => {
+        if (!d) return 'N/A';
+        const clean = d.includes('T') ? d.split('T')[0] : d;
+        const parts = clean.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+        }
+        const dt = new Date(d);
+        if (!isNaN(dt.getTime())) {
+            const dd = String(dt.getDate()).padStart(2, '0');
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const yyyy = dt.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+        return String(d);
+    };
+
     const handleExport = async (exportAllForDate: boolean = false) => {
         setExporting(true);
         const token = localStorage.getItem('token');
@@ -414,7 +431,7 @@ export default function DailyCollectionEntryPage() {
                     const entry = entries[a.hce_id] || {};
                     return [
                         idx + 1,
-                        headerData.collection_date || 'N/A',
+                        formatCollectionDate(headerData.collection_date),
                         routeData?.route_name || 'N/A',
                         routeData?.route_code || 'N/A',
                         headerData.registration_number || 'N/A',
@@ -477,7 +494,7 @@ export default function DailyCollectionEntryPage() {
                         bEntries.forEach((entry: any) => {
                             rows.push([
                                 slNo++,
-                                b.collection_date ? b.collection_date.split('T')[0] : headerData.collection_date,
+                                formatCollectionDate(b.collection_date || headerData.collection_date),
                                 b.route?.route_name || 'N/A',
                                 b.route?.route_code || 'N/A',
                                 b.registration_number || 'N/A',
@@ -514,7 +531,7 @@ export default function DailyCollectionEntryPage() {
                         const entry = entries[a.hce_id] || {};
                         return [
                             idx + 1,
-                            headerData.collection_date || 'N/A',
+                            formatCollectionDate(headerData.collection_date),
                             routeData?.route_name || 'N/A',
                             routeData?.route_code || 'N/A',
                             headerData.registration_number || 'N/A',
@@ -541,6 +558,7 @@ export default function DailyCollectionEntryPage() {
                         ];
                     });
                 }
+
 
                 if (rows.length === 0) {
                     error(`No collection data found to export for ${headerData.collection_date}.`);

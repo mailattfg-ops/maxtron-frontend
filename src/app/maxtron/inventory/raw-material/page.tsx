@@ -692,6 +692,8 @@ export default function RawMaterialPage() {
           headers={['Code', 'Material Name', 'HSN Code', 'Type', 'Grade / Quality', 'Procurement Rate', 'Threshold', 'Availability', 'Created', 'Actions']}
           data={materials.filter(m => m.rm_name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rm_code.toLowerCase().includes(searchQuery.toLowerCase()))}
           loading={loading}
+          deleteUrl={RM_API}
+          onRefresh={fetchMaterials}
           searchFields={['rm_code', 'rm_name', 'grade', 'hsn_code']}
           searchPlaceholder="Filter items by code, name or HSN..."
           renderRow={(m: any) => (

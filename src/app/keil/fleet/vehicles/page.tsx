@@ -39,7 +39,7 @@ import { usePermission } from '@/hooks/usePermission';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
 
-const vehicleTypes = ['LCV', 'HCV', 'Car', 'Bike', 'Bus', 'Other'];
+const vehicleTypes = ['LCV', 'HCV', 'Pickup', 'Other'];
 const purposes = ['BMW Collection', 'Delivery', 'Office Use', 'Employee Transportation'];
 const fuelTypes = ['Diesel', 'Electric', 'CNG', 'Petrol'];
 const statusOptions = [
@@ -807,6 +807,8 @@ export default function VehicleMasterPage() {
                                 : vehicles
                             }
                             loading={loading}
+                            deleteUrl={VEHICLE_API}
+                            onRefresh={() => fetchVehicles(currentCompanyId)}
                             searchFields={['registration_number', 'model', 'owner_name']}
                             renderRow={(v: any) => {
                                 const fitnessExpired = v.fitness_renewal_date && new Date(v.fitness_renewal_date) < new Date();

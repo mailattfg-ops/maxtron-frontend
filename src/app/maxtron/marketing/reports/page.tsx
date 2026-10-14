@@ -134,11 +134,9 @@ export default function MarketingReportsPage() {
       'Client': v.customer_name,
       'Contact Person': v.customers?.contact_person || 'N/A',
       'Contact Number': v.customers?.mobile_no || 'N/A',
-      'Email ID': v.customers?.email_id || 'N/A',
+      'Customer Email ID': (v.customers?.email_id && !v.customers?.email_id.toLowerCase().includes('maxtron')) ? v.customers.email_id : 'N/A',
       'Probability': v.probability || 'N/A',
       'Location': v.location,
-      'Vehicle Number': v.vehicle_number || 'N/A',
-      'Vehicle Description': v.vehicle_description || 'N/A',
       'Type': v.is_quotation ? 'Quotation' : 'Visit Only',
       'Status': v.quotation_status || 'N/A',
       'Quotation Details': v.quotation_items?.map((i: any) => `${i.product_name || i.product} (Qty: ${i.quantity}, Amt: ${i.amount})`).join('; ') || '',
@@ -298,12 +296,6 @@ export default function MarketingReportsPage() {
                         <MapPin className="w-2.5 h-2.5 text-rose-400" />
                         {rec.location}
                       </div>
-                      {rec.vehicle_number && (
-                        <div className="flex items-center gap-1.5 text-[9px] text-primary/80 font-bold mt-0.5" title={rec.vehicle_description || 'No description'}>
-                          <Truck className="w-2.5 h-2.5 text-primary/60 shrink-0" />
-                          {rec.vehicle_number}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </td>

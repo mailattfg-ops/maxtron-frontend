@@ -1289,6 +1289,8 @@ export default function PurchaseEntryPage() {
           headers={['GRN / Date', 'Procurement Context', 'Qty Delivered', 'Valuation', 'Vehicle / Bill', 'Details', 'Actions']}
           data={entries}
           loading={loading}
+          deleteUrl={PURCHASE_API}
+          onRefresh={() => fetchEntries(currentCompanyId)}
           searchFields={['entry_number', 'suppliers.supplier_name', 'invoice_number']}
           renderRow={(e: any) => {
             const gstType = getGstType(e.supplier_id);

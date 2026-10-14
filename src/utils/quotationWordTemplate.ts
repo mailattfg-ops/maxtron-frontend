@@ -50,9 +50,10 @@ export async function fillBagsQuotation(template: ArrayBuffer | Uint8Array, reco
     let xml = await part.async('string');
 
     const items = itemsOf(record);
-    const gst = uniformGst(items);
-    const subTotal = items.reduce((s, it) => s + num(it.amount) * num(it.quantity), 0);
-    const gstAmount = items.reduce((s, it) => s + (num(it.amount) * num(it.quantity) * num(it.gst_percent)) / 100, 0);
+    const validItems = items.filter(Boolean);
+    const gst = uniformGst(validItems);
+    const subTotal = validItems.reduce((s, it) => s + num(it.amount) * num(it.quantity), 0);
+    const gstAmount = validItems.reduce((s, it) => s + (num(it.amount) * num(it.quantity) * num(it.gst_percent)) / 100, 0);
 
     // Item rows; a quotation with no items keeps one empty row so the table stands.
     const rows = items.length ? items : [null];
@@ -70,9 +71,12 @@ export async function fillBagsQuotation(template: ArrayBuffer | Uint8Array, reco
     const to = [customerName(record).toUpperCase(), ...locationParts(record)].filter(Boolean);
     xml = repeat(xml, 'w:p', '{{TO_LINE}}', to.map((line, i) => set({ TO_LINE: `${line}${i === to.length - 1 ? '.' : ','}` })));
 
-    // Sign-off: the executive who raised the quotation, with their phone.
+    // Sign-off: the executive who raised the quotation, with their job role and contact details.
     const executive = record.users || {};
-    const sign = [executive.name || record.employee_name, executive.phone].filter(Boolean);
+    const signName = record.users?.name || record.employee_name || 'Marketing Officer';
+    const signRole = record.job_role || executive.job_role || executive.designation || '';
+    const signPhone = record.contact_number || executive.phone || record.contact_phone || '';
+    const sign = [signName, signRole, signPhone].filter(Boolean);
     xml = repeat(xml, 'w:p', '{{SIGN_LINE}}', sign.map(line => set({ SIGN_LINE: line })));
 
     const d = quoteDate(record);
@@ -95,7 +99,7 @@ export async function fillBagsQuotation(template: ArrayBuffer | Uint8Array, reco
     return zip;
 }
 
-export async function exportBagsQuotationToWord(record: any) {
+export async function exportBagsQuotationToWord(record: any, customFileName?: string) {
     const res = await fetch('/quotation/bags-template.docx');
     if (!res.ok) throw new Error('Quotation template could not be loaded');
     const zip = await fillBagsQuotation(await res.arrayBuffer(), record);
@@ -104,5 +108,36 @@ export async function exportBagsQuotationToWord(record: any) {
         compression: 'DEFLATE',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
-    saveAs(blob, quotationFileName(record, 'docx'));
+    saveAs(blob, customFileName || quotationFileName(record, 'docx'));
 }
+
+/**
+ * Downloads the official Maxtron Word Quotation Template (.docx / .doc)
+ * with the exact letterhead, table layout, terms, and sign-off used in Field Visit Logs.
+ */
+export async function downloadBagsQuotationTemplate() {
+    const sampleRecord = {
+        quotation_type: 'BAGS',
+        quotation_ref: 'MA/VKM(FO)-QUOTE-0131/2026-27',
+        visit_date: '2026-10-10',
+        customer_name: 'NATIONAL AGENCY',
+        location: 'Century building, basin road, Ernakulam',
+        quotation_subject: 'Mission of quotation',
+        job_role: 'Business Development Executive',
+        contact_number: '8136861444',
+        users: { name: 'SHIBIN', phone: '8136861444', designation: 'Business Development Executive' },
+        quotation_items: [
+            {
+                product_name: 'BLUE 19 X 22',
+                amount: 110,
+                bags_per_kg: '45 to 50',
+                quantity: 50,
+                gst_percent: 18,
+            },
+            null, // empty second row matching the official template reference
+        ],
+    };
+    await exportBagsQuotationToWord(sampleRecord, 'Quotation_Template_MAXTRON_ASSOCIATES.docx');
+}
+
+

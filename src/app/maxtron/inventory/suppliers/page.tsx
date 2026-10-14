@@ -727,6 +727,8 @@ export default function SupplierPage() {
           headers={['Vendor Identity', 'Office Location', 'Financial Terms', 'Product Line', 'Actions']}
           data={suppliers}
           loading={loading}
+          deleteUrl={SUPPLIER_API}
+          onRefresh={() => fetchSuppliers(currentCompanyId)}
           searchFields={['supplier_name', 'supplier_code', 'gst_no']}
           renderRow={(s: any) => (
             <tr key={s.id} className="hover:bg-primary/5 transition-all group border-b border-slate-50 last:border-none">

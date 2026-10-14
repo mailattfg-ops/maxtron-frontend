@@ -235,6 +235,8 @@ export default function KeilUserTypesPage() {
           headers={['Role Name', 'Description', 'Actions']}
           data={userTypes}
           loading={loading}
+          deleteUrl={API_URL}
+          onRefresh={() => fetchUserTypes(currentCompanyId)}
           searchFields={['name', 'description']}
           searchPlaceholder="Search roles..."
           renderRow={(role: any) => (

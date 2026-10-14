@@ -112,7 +112,7 @@ export default function ProductionSummaryReport() {
 
   const downloadCSV = async () => {
     if (data.length === 0) { info('No data to export.'); return; }
-    const headers = ['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Consumed', 'Extrusion Output'];
+    const headers = ['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Consumed', 'Wastage (Kg)', 'Extrusion Output'];
     const rows = data.map(b => [
       b.date || '',
       b.batch_number || '',
@@ -120,6 +120,7 @@ export default function ProductionSummaryReport() {
       b.shift || '',
       b.machine_no || '',
       Number(b.raw_material_consumed_qty || 0),
+      Number(b.wastage_qty || 0),
       Number(b.extrusion_output_qty || 0)
     ]);
     
@@ -173,6 +174,12 @@ export default function ProductionSummaryReport() {
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Total Batches</p>
                   <p className="text-xl font-black text-primary leading-none">{filtered.length}</p>
                 </div>
+                <div className="text-right border-r border-primary/20 pr-4">
+                  <p className="text-[10px] text-rose-500 uppercase font-bold tracking-tighter">Total Wastage</p>
+                  <p className="text-xl font-black text-rose-600 leading-none">
+                    {filtered.reduce((sum, item) => sum + (parseFloat(item.wastage_qty) || 0), 0).toFixed(2)} <span className="text-xs font-medium">Kg</span>
+                  </p>
+                </div>
                 <div className="text-right">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Total Output</p>
                   <p className="text-xl font-black text-primary leading-none">
@@ -188,7 +195,7 @@ export default function ProductionSummaryReport() {
       <TableView
         title="Production Report"
         description="Filtered view of production efficiency."
-        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Output (Kg)']}
+        headers={['Date', 'Batch No', 'Product', 'Shift', 'Machine', 'RM Con (Kg)', 'Wastage (Kg)', 'Output (Kg)']}
         data={filtered}
         loading={loading}
         searchFields={['batch_number', 'finished_products.product_name']}
@@ -200,7 +207,8 @@ export default function ProductionSummaryReport() {
             <td className="px-6 py-4 text-xs font-bold uppercase text-slate-500">{b.shift}</td>
             <td className="px-6 py-4 text-xs font-semibold text-slate-500">{b.machine_no}</td>
             <td className="px-6 py-4 text-slate-600 font-medium">{b.raw_material_consumed_qty}</td>
-            <td className="px-6 py-4 font-black text-primary">{b.extrusion_output_qty}</td>
+            <td className="px-6 py-4 font-bold text-rose-600">{b.wastage_qty ? `${Number(b.wastage_qty).toFixed(2)} Kg` : '0.00 Kg'}</td>
+            <td className="px-6 py-4 font-black text-primary">{b.extrusion_output_qty} Kg</td>
           </tr>
         )}
       />

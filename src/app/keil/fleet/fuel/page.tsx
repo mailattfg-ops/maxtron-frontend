@@ -50,12 +50,20 @@ const VEHICLE_API = `${API_BASE}/api/keil/fleet/vehicles`;
 export default function FuelFillingPage() {
     const { success, error } = useToast();
     const { confirm } = useConfirm();
-    const { hasPermission, loading: permissionLoading } = usePermission();
+    const { hasPermission, loading: permissionLoading, isAdmin: hookIsAdmin, user } = usePermission();
+
+    const isAdmin = Boolean(
+        hookIsAdmin || 
+        user?.role_name?.toLowerCase() === 'admin' || 
+        user?.email?.toLowerCase() === 'admin@maxtron.com' ||
+        user?.email?.toLowerCase() === 'admin@keil.com' ||
+        user?.email?.toLowerCase() === 'admin'
+    );
 
     const canView = hasPermission('fleet_fuel_view', 'view');
     const canCreate = hasPermission('fleet_fuel_view', 'create');
     const canEdit = hasPermission('fleet_fuel_view', 'edit');
-    const canDelete = hasPermission('fleet_fuel_view', 'delete');
+    const canDelete = isAdmin;
 
     const [fillings, setFillings] = useState<any[]>([]);
     const [vehicles, setVehicles] = useState<any[]>([]);
@@ -222,6 +230,10 @@ export default function FuelFillingPage() {
     };
 
     const handleDelete = async (id: string) => {
+        if (!isAdmin) {
+            error("Access denied: Only administrators can delete fuel records.");
+            return;
+        }
         if (await confirm({ message: "Delete this fuel record?" })) {
             const token = localStorage.getItem('token');
             try {
@@ -233,6 +245,8 @@ export default function FuelFillingPage() {
                 if (data.success) {
                     success("Record deleted.");
                     fetchFillings();
+                } else {
+                    error(data.message || "Failed to delete fuel record.");
                 }
             } catch (err: any) {
                 error(err.message);
@@ -1029,6 +1043,9 @@ export default function FuelFillingPage() {
                         <TableView 
                             data={fillings}
                             loading={loading}
+                            deleteUrl={isAdmin ? FUEL_API : undefined}
+                            selectable={isAdmin}
+                            onRefresh={() => fetchFillings(currentCompanyId)}
                             headers={['DATE', 'VEHICLE NO', 'INDENT NO', 'PUMP DETAILS', 'QUANTITY', 'RATE / AMOUNT', 'EFFICIENCY HUB', 'REMARKS', 'ACTIONS']}
                             searchFields={['indent_number', 'vehicle.registration_number', 'remarks', 'pump_details', 'odometer_reading']}
                             renderRow={(f) => (

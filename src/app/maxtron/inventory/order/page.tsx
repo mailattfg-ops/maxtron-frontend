@@ -1119,6 +1119,8 @@ export default function RMOrderPage() {
           headers={['PO Details', 'Supplier Partner', 'Total Items', 'Order Value', 'Status', 'Action']}
           data={orders.filter(o => statusFilter === 'ALL' || o.status === statusFilter)}
           loading={loading}
+          deleteUrl={ORDER_API}
+          onRefresh={() => fetchOrders(currentCompanyId)}
           searchFields={['order_number', 'supplier_master.supplier_name']}
           actions={
             <div className="flex items-center gap-2">

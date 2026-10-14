@@ -17,7 +17,7 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-export type QuotationType = 'TRADING' | 'BAGS';
+export type QuotationType = 'TRADING' | 'BAGS' | 'PRODUCT';
 
 export interface QuoteImage {
     dataUrl: string;
@@ -132,19 +132,26 @@ const placeImage = (
     const w = Math.max(1, Math.round(img.width * scale));
     const h = Math.max(1, Math.round(img.height * scale));
 
-    // Walk the offset across cells so the anchor cell is the one the offset falls in.
-    let offX = Math.round((boxW - w) / 2);
-    let col = col1;
-    while (col < col2 && offX >= colPx(ws.getColumn(col).width || 8.43)) { offX -= colPx(ws.getColumn(col).width || 8.43); col++; }
-    let offY = Math.round((boxH - h) / 2);
-    let row = row1;
-    while (row < row2 && offY >= rowPx(ws.getRow(row).height || 15)) { offY -= rowPx(ws.getRow(row).height || 15); row++; }
+    // A pixel distance from the block's corner -> the cell it falls in and the
+    // offset inside that cell.
+    const cellAt = (startX: number, startY: number) => {
+        let x = startX, col = col1;
+        while (col < col2 && x >= colPx(ws.getColumn(col).width || 8.43)) { x -= colPx(ws.getColumn(col).width || 8.43); col++; }
+        let y = startY, row = row1;
+        while (row < row2 && y >= rowPx(ws.getRow(row).height || 15)) { y -= rowPx(ws.getRow(row).height || 15); row++; }
+        return { nativeCol: col - 1, nativeColOff: x * EMU_PER_PX, nativeRow: row - 1, nativeRowOff: y * EMU_PER_PX };
+    };
+    const offX = Math.round((boxW - w) / 2);
+    const offY = Math.round((boxH - h) / 2);
 
     const extension = /^data:image\/png/i.test(img.dataUrl) ? 'png' : 'jpeg';
     const id = wb.addImage({ base64: img.dataUrl, extension });
+    // Pinned at both corners (a two-cell anchor). The one-corner-plus-size form
+    // is drawn by desktop Excel but left out by phone viewers, which is how the
+    // letterhead went missing on mobile.
     ws.addImage(id, {
-        tl: { nativeCol: col - 1, nativeColOff: offX * EMU_PER_PX, nativeRow: row - 1, nativeRowOff: offY * EMU_PER_PX } as any,
-        ext: { width: w, height: h },
+        tl: cellAt(offX, offY) as any,
+        br: cellAt(offX + w, offY + h) as any,
         editAs: 'oneCell',
     });
 };
@@ -154,7 +161,8 @@ const pageSetup = (ws: ExcelJS.Worksheet) => {
     // reads every row at 96/DPI of its height (two-thirds at 150%), while
     // pictures and columns keep their size — so the letterhead and product
     // images spill over the text. Measured, not assumed; the check guards it.
-    ws.views = [{ state: 'normal' }];
+    // No gridlines: the quotation is a letter, and opens looking like one.
+    ws.views = [{ state: 'normal', showGridLines: false }];
     ws.pageSetup = {
         paperSize: 9, // A4
         orientation: 'portrait',
@@ -250,6 +258,8 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
 const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) => {
     const ws = wb.addWorksheet('Quotation');
     pageSetup(ws);
+    // Not Page Layout view: on the client's machine it split the letter over
+    // four pages instead of fitting it to one (tried 9 Oct 2026, reverted).
     [8, 28, 16, 22, 14, 12].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const items = itemsOf(record);
@@ -262,9 +272,9 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     if (assets.name) placeImage(wb, ws, assets.name, 3, 1, 6, 2, 4);
     else { ws.mergeCells(1, 3, 2, 6); put(ws, 1, 3, COMPANY, { bold: true, size: 24, h: 'center' }); }
     ws.mergeCells(3, 3, 3, 6);
-    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true });
+    put(ws, 3, 3, ADDRESS_BAGS, { h: 'center', size: 8, shrink: true, font: 'Times New Roman' });
     ws.mergeCells(4, 3, 4, 6);
-    put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true });
+    put(ws, 4, 3, EMAIL_LINE.replace(/, /g, '  '), { h: 'center', size: 8, shrink: true, font: 'Times New Roman' });
     for (let c = 1; c <= 6; c++) ws.getCell(4, c).border = { bottom: THIN };
 
     // REF (left) and Date (right).
@@ -344,7 +354,10 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
     put(ws, r++, 1, `For ${COMPANY}`);
     r++;
     const executive = record.users || {};
-    [executive.name || record.employee_name, executive.phone].filter(Boolean)
+    const signName = record.users?.name || record.employee_name || 'Marketing Officer';
+    const signRole = record.job_role || executive.job_role || executive.designation || '';
+    const signPhone = record.contact_number || executive.phone || record.contact_phone || '';
+    [signName, signRole, signPhone].filter(Boolean)
         .forEach(line => { ws.mergeCells(r, 1, r, 3); put(ws, r++, 1, String(line)); });
 
     // Footer: blue rule, then the manufacturing unit address, centred.

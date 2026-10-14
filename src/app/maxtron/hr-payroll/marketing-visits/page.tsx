@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone, Mail, Truck } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Clock, Plus, Search, Edit, Trash2, X, Save, Building2, Quote, Download, ExternalLink, ArrowRight, Package, ChevronDown, ChevronUp, Eye, TrendingUp, Users, CheckCircle, Phone, Mail, Truck, Settings2, Edit2, Check } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -46,6 +46,25 @@ const MARKETING_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marke
 const OFFERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-offers`;
 const ORDERS_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/orders`;
 const EMPLOYEES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/employees`;
+const OUTCOMES_API = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/maxtron/marketing-outcomes`;
+
+export const MARKETING_JOB_ROLES = [
+  'Asst.marketing manager',
+  'Team leader',
+  'Business Development Executive',
+  'office Assistant'
+];
+
+const DEFAULT_OUTCOMES = [
+  'New visit',
+  'Proposal sent',
+  'Negotiation',
+  'Order Received',
+  'Revisit',
+  'Payment follow-up',
+  'Next follow-up scheduled',
+  'Not Interested'
+];
 
 export default function MarketingVisitsPage() {
   const { hasPermission } = usePermission();
@@ -80,6 +99,13 @@ export default function MarketingVisitsPage() {
   });
 
 
+  const [outcomes, setOutcomes] = useState<any[]>([]);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [outcomeLoading, setOutcomeLoading] = useState(false);
+  const [newOutcomeName, setNewOutcomeName] = useState('');
+  const [editingOutcomeId, setEditingOutcomeId] = useState<string | null>(null);
+  const [editingOutcomeName, setEditingOutcomeName] = useState('');
+
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [customerSubmitting, setCustomerSubmitting] = useState(false);
   const [newCustomerData, setNewCustomerData] = useState({
@@ -105,6 +131,8 @@ export default function MarketingVisitsPage() {
 
   const [formData, setFormData] = useState({
     employee_id: '',
+    job_role: 'Business Development Executive',
+    contact_number: '',
     customer_id: '',
     customer_name: '',
     location: '',
@@ -116,13 +144,18 @@ export default function MarketingVisitsPage() {
     feedback: '',
     company_id: '',
     is_quotation: false,
-    quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
+    quotation_items: [emptyQuotationItem()],
+    quotation_type: 'BAGS' as QuotationType,
+    quote_location: 'VKM',
+    quote_seq: '',
+    quote_year: '2026-27',
+    quotation_ref: '',
+    quotation_subject: 'Quotation for the Supply of Poly Bags – Reg.',
     quotation_delivery_date: '',
     quotation_status: 'Pending',
-    probability: '',
-    vehicle_number: '',
-    vehicle_description: ''
+    probability: ''
   });
+
 
   useEffect(() => {
     fetchInitialData();
@@ -199,10 +232,138 @@ export default function MarketingVisitsPage() {
           setVisitRecords(processed);
         }
       }
+      await fetchOutcomes(coId);
     } catch (err) {
       console.error('Error fetching initial data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOutcomes = async (coId?: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      const url = coId ? `${OUTCOMES_API}?company_id=${coId}` : OUTCOMES_API;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setOutcomes(data.data);
+      } else {
+        setOutcomes(DEFAULT_OUTCOMES.map((name, idx) => ({ id: `default-${idx}`, name, display_order: idx + 1 })));
+      }
+    } catch (err) {
+      console.error('Error fetching outcomes:', err);
+      setOutcomes(DEFAULT_OUTCOMES.map((name, idx) => ({ id: `default-${idx}`, name, display_order: idx + 1 })));
+    }
+  };
+
+  const handleCreateOutcome = async () => {
+    const trimmed = newOutcomeName.trim();
+    if (!trimmed) {
+      error('Please enter an outcome name.');
+      return;
+    }
+    if (outcomes.some(o => o.name.toLowerCase() === trimmed.toLowerCase())) {
+      error('An outcome with this name already exists.');
+      return;
+    }
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(OUTCOMES_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: trimmed,
+          company_id: currentCompanyId || undefined,
+          display_order: outcomes.length + 1
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(`"${trimmed}" is now available in visit outcomes.`);
+        setNewOutcomeName('');
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error adding outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not add outcome');
+    } finally {
+      setOutcomeLoading(false);
+    }
+  };
+
+  const handleUpdateOutcome = async (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      error('Outcome name cannot be empty.');
+      return;
+    }
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${OUTCOMES_API}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: trimmed })
+      });
+      const data = await res.json();
+      if (data.success) {
+        success('Outcome title updated successfully.');
+        setEditingOutcomeId(null);
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error updating outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not update outcome');
+    } finally {
+      setOutcomeLoading(false);
+    }
+  };
+
+  const handleDeleteOutcome = async (id: string, name: string) => {
+    const confirmed = await confirm({
+      title: 'Delete Outcome Option',
+      message: `Are you sure you want to delete "${name}"? Existing recorded visits with this outcome will not be affected.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
+    setOutcomeLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${OUTCOMES_API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(`Outcome "${name}" removed.`);
+        if (formData.outcome === name) {
+          setFormData(prev => ({ ...prev, outcome: '' }));
+        }
+        await fetchOutcomes(currentCompanyId);
+      } else {
+        error(data.message || 'Error deleting outcome');
+      }
+    } catch (err: any) {
+      error(err.message || 'Could not delete outcome');
+    } finally {
+      setOutcomeLoading(false);
     }
   };
 
@@ -344,7 +505,6 @@ export default function MarketingVisitsPage() {
         addresses: [
           {
             address_type: 'billing',
-            address_line1: newCustomerData.address || '',
             street: newCustomerData.address || '',
             city: newCustomerData.city || '',
             state: newCustomerData.state || 'Kerala',
@@ -379,7 +539,8 @@ export default function MarketingVisitsPage() {
           location: autoLoc
         }));
       } else {
-        error(data.message || 'Failed to create customer');
+        // Say why, not only that it failed
+        error([data.message || 'Failed to create customer', data.error].filter(Boolean).join(': '));
       }
     } catch (err: any) {
       error(err.message || 'Error creating customer');
@@ -388,10 +549,52 @@ export default function MarketingVisitsPage() {
     }
   };
 
+  const getCurrentFinancialYear = () => {
+    const d = new Date();
+    const curYear = d.getFullYear();
+    const nextYear2 = String(curYear + 1).slice(-2);
+    return `${curYear}-${nextYear2}`;
+  };
+
+  const getNextQuoteSeq = (customRecords?: any[]) => {
+    const list = customRecords || visitRecords;
+    const quotes = list.filter((r: any) => r.is_quotation && r.quotation_ref);
+    let maxNum = 0;
+    for (const q of quotes) {
+      const match = String(q.quotation_ref).match(/QUOTE-([0-9]+)/i);
+      if (match && match[1]) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    const next = maxNum > 0 ? maxNum + 1 : quotes.length + 1;
+    return String(next).padStart(4, '0');
+  };
+
+  const extractLocationCode = (loc?: string) => {
+    if (!loc) return 'VKM';
+    const firstPart = loc.split(',')[0].trim().toUpperCase().replace(/[^A-Z]/g, '');
+    if (firstPart.startsWith('VANIYAM')) return 'VKM';
+    if (firstPart.startsWith('KOCH') || firstPart.startsWith('ERNAK')) return 'KLM';
+    if (firstPart.startsWith('PALAKK')) return 'PKD';
+    if (firstPart.startsWith('THRISS')) return 'TSR';
+    if (firstPart.startsWith('CALIC') || firstPart.startsWith('KOZHIK')) return 'CLT';
+    if (firstPart.length >= 3) return firstPart.substring(0, 3);
+    return 'VKM';
+  };
+
+  const composeQuoteRef = (loc?: string, seq?: string, yr?: string) => {
+    const l = (loc || 'VKM').toUpperCase().trim();
+    const s = (seq || '0131').trim();
+    const y = (yr || getCurrentFinancialYear()).trim();
+    return `MA/${l}(FO)-QUOTE-${s}/${y}`;
+  };
+
   // The client's own quotation formats (Trading / Bags), as an .xlsx.
   const downloadQuotationExcel = (rec: any) => {
     exportQuotationToExcel(rec).catch(() => error('Could not generate the Excel quotation.'));
   };
+
 
   // Bags quotations download as the client's own Word document with the data
   // filled in. Their trading format exists only as an Excel sheet, so a trading
@@ -399,6 +602,10 @@ export default function MarketingVisitsPage() {
   const downloadQuotationWord = (rec: any) => {
     if (quotationTypeOf(rec) !== 'BAGS') return exportQuotationToWord(rec);
     exportBagsQuotationToWord(rec).catch(() => error('Could not generate the Word quotation.'));
+  };
+
+  const handleDownloadQuotationTemplate = () => {
+    downloadQuotationTemplate().catch(() => error('Could not generate the Word quotation template.'));
   };
 
   const pickQuotationImage = async (index: number, file?: File) => {
@@ -602,6 +809,7 @@ export default function MarketingVisitsPage() {
       if (formData.quotation_items.length === 0) {
         return error('Please add at least one item to the quotation.');
       }
+      const isBags = formData.quotation_type !== 'TRADING';
       for (const item of formData.quotation_items) {
         if (!item.product_id) {
           return error('Product selection is required for all items.');
@@ -612,8 +820,8 @@ export default function MarketingVisitsPage() {
         if (!item.amount || Number(item.amount) <= 0) {
           return error(`Invalid Price: Must be greater than 0 for ${item.product_name || 'Item'}`);
         }
-        if (!item.gst_percent || Number(item.gst_percent) <= 0) {
-          return error(`Invalid GST: Must be greater than 0 for ${item.product_name || 'Item'}`);
+        if (isBags && !item.bags_per_kg?.trim()) {
+          return error(`"No. of Bags / KG" is required for ${item.product_name || 'Poly Bags Item'}`);
         }
       }
     }
@@ -624,13 +832,16 @@ export default function MarketingVisitsPage() {
 
     // The quotation header fields travel only with a quotation, so saving a
     // plain visit never depends on those columns.
-    const { quotation_type, quotation_ref, quotation_subject, ...visitFields } = formData;
+    const { quotation_type, quotation_ref, quotation_subject, quote_location, quote_seq, quote_year, ...visitFields } = formData as any;
+    const finalRef = (quotation_ref && quotation_ref.trim()) || composeQuoteRef(quote_location, quote_seq, quote_year);
     const dataToSave = {
       ...visitFields,
+      job_role: formData.job_role || 'Business Development Executive',
+      contact_number: formData.contact_number || null,
       ...(formData.is_quotation ? {
-        quotation_type,
-        quotation_ref: quotation_ref.trim() || null,
-        quotation_subject: quotation_subject.trim() || null
+        quotation_type: quotation_type || 'BAGS',
+        quotation_ref: finalRef,
+        quotation_subject: quotation_subject?.trim() || null
       } : {}),
       customer_id: formData.customer_id === '' ? null : formData.customer_id,
       employee_id: formData.employee_id === '' ? null : formData.employee_id,
@@ -638,10 +849,11 @@ export default function MarketingVisitsPage() {
         ...item,
         quantity: item.quantity === '' ? null : Number(item.quantity),
         amount: item.amount === '' ? null : Number(item.amount),
-        gst_percent: item.gst_percent === '' ? null : Number(item.gst_percent)
+        gst_percent: item.gst_percent === '' ? 18 : Number(item.gst_percent)
       })) : [],
       quotation_delivery_date: formData.quotation_delivery_date === '' ? null : formData.quotation_delivery_date
     };
+
 
     try {
       setSubmitting(true);
@@ -748,6 +960,8 @@ export default function MarketingVisitsPage() {
   const resetForm = () => {
     setFormData({
       employee_id: '',
+      job_role: 'Business Development Executive',
+      contact_number: '',
       customer_id: '',
       customer_name: '',
       location: '',
@@ -759,12 +973,16 @@ export default function MarketingVisitsPage() {
       feedback: '',
       company_id: currentCompanyId,
       is_quotation: false,
-      quotation_items: [emptyQuotationItem()], quotation_type: 'BAGS' as QuotationType, quotation_ref: '', quotation_subject: '',
+      quotation_items: [emptyQuotationItem()],
+      quotation_type: 'BAGS' as QuotationType,
+      quote_location: 'VKM',
+      quote_seq: '',
+      quote_year: getCurrentFinancialYear(),
+      quotation_ref: '',
+      quotation_subject: 'Quotation for the Supply of Poly Bags – Reg.',
       quotation_delivery_date: '',
       quotation_status: 'Pending',
-      probability: '',
-      vehicle_number: '',
-      vehicle_description: ''
+      probability: ''
     });
   };
 
@@ -772,8 +990,20 @@ export default function MarketingVisitsPage() {
     setEditingId(rec.id);
     const matchedCust = customers.find(c => (rec.customer_id && c.id === rec.customer_id) || c.customer_name === rec.customer_name);
     const fallbackLoc = extractCustomerLocation(matchedCust);
+    const locCode = extractLocationCode(rec.location || fallbackLoc);
+    let seqCode = getNextQuoteSeq();
+    let yrCode = getCurrentFinancialYear();
+    if (rec.quotation_ref) {
+      const match = String(rec.quotation_ref).match(/^MA\/([A-Za-z]+)\(FO\)-QUOTE-([0-9A-Za-z]+)\/(.+)$/);
+      if (match) {
+        seqCode = match[2];
+        yrCode = match[3];
+      }
+    }
     setFormData({
-      employee_id: rec.employee_id,
+      employee_id: rec.employee_id || '',
+      job_role: rec.job_role || rec.users?.designation || 'Business Development Executive',
+      contact_number: rec.contact_number || rec.users?.phone || '',
       customer_id: rec.customer_id || '',
       customer_name: rec.customer_name,
       location: rec.location || fallbackLoc || '',
@@ -792,22 +1022,24 @@ export default function MarketingVisitsPage() {
             quantity: i.quantity || '',
             unit: i.unit || 'Kg',
             amount: i.amount || '',
-            gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '0',
+            gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '18',
             bags_per_kg: i.bags_per_kg || '',
             image: i.image || ''
           })) 
         : [emptyQuotationItem()],
       quotation_type: (rec.quotation_type === 'TRADING' ? 'TRADING' : 'BAGS') as QuotationType,
+      quote_location: locCode,
+      quote_seq: seqCode,
+      quote_year: yrCode,
       quotation_ref: rec.quotation_ref || '',
-      quotation_subject: rec.quotation_subject || '',
+      quotation_subject: rec.quotation_subject || 'Quotation for the Supply of Poly Bags – Reg.',
       quotation_delivery_date: rec.quotation_delivery_date ? rec.quotation_delivery_date.split('T')[0] : '',
       quotation_status: rec.quotation_status || 'Pending',
-      probability: rec.probability || '',
-      vehicle_number: rec.vehicle_number || '',
-      vehicle_description: rec.vehicle_description || ''
+      probability: rec.probability || ''
     });
     setShowForm(true);
   };
+
 
   const downloadVisitList = async () => {
     const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
@@ -816,7 +1048,7 @@ export default function MarketingVisitsPage() {
       return;
     }
 
-    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Email ID', 'Probability', 'Location', 'Vehicle Number', 'Vehicle Description', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
+    const headers = ['Staff', 'Client', 'Contact Person', 'Contact Number', 'Customer Email ID', 'Probability', 'Location', 'Date', 'Time In', 'Time Out', 'Purpose', 'Outcome', 'Feedback', 'Quotation', 'Status', 'Q. Items', 'Q. Delivery'];
     const rows = activeRecords.map(rec => {
       const formatDate = (dateStr: any) => {
         if (!dateStr || dateStr === 'null') return 'N/A';
@@ -832,11 +1064,9 @@ export default function MarketingVisitsPage() {
         rec.customer_name || 'N/A',
         rec.customers?.contact_person || 'N/A',
         rec.customers?.mobile_no || 'N/A',
-        rec.customers?.email_id || 'N/A',
+        (rec.customers?.email_id && !rec.customers?.email_id.toLowerCase().includes('maxtron')) ? rec.customers.email_id : 'N/A',
         rec.probability || 'N/A',
         rec.location || 'N/A',
-        rec.vehicle_number || 'N/A',
-        rec.vehicle_description || 'N/A',
         formatDate(rec.visit_date),
         rec.time_in || 'N/A',
         rec.time_out || 'N/A',
@@ -1050,7 +1280,7 @@ export default function MarketingVisitsPage() {
                     <Button onClick={() => setShowQuotationHistoryModal(true)} variant="outline" className="border-indigo-300 text-indigo-900 bg-indigo-50/60 hover:bg-indigo-100 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto font-bold">
                       <History className="w-4 h-4 mr-2 text-indigo-600" /> Customer Quote History
                     </Button>
-                    <Button onClick={downloadQuotationTemplate} variant="outline" className="border-blue-300 text-blue-900 bg-blue-50/60 hover:bg-blue-100 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto font-bold" title="Download Word Quotation Template (.doc)">
+                    <Button onClick={handleDownloadQuotationTemplate} variant="outline" className="border-blue-300 text-blue-900 bg-blue-50/60 hover:bg-blue-100 flex rounded-full px-5 h-10 shadow-sm transition-all hover:scale-105 active:scale-95 w-full sm:w-auto font-bold" title="Download Word Quotation Template (.doc)">
                       <FileText className="w-4 h-4 mr-2 text-blue-600" /> Word Template (.doc)
                     </Button>
                   </>
@@ -1172,11 +1402,19 @@ export default function MarketingVisitsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-foreground/80 flex items-center">
-                        Field Staff
+                        <Users className="w-4 h-4 mr-2 text-primary" /> Field Staff
                       </label>
                       <Select 
                         value={formData.employee_id}
-                        onValueChange={(val) => setFormData({...formData, employee_id: val})}
+                        onValueChange={(val) => {
+                          const emp = employees.find(e => e.id === val);
+                          setFormData(prev => ({
+                            ...prev, 
+                            employee_id: val,
+                            job_role: emp?.designation || prev.job_role || 'Business Development Executive',
+                            contact_number: emp?.phone || prev.contact_number || ''
+                          }));
+                        }}
                       >
                         <SelectTrigger className="w-full h-10 bg-white border-slate-200">
                           <SelectValue placeholder="Select staff..." />
@@ -1187,6 +1425,38 @@ export default function MarketingVisitsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Briefcase className="w-4 h-4 mr-2 text-primary" /> Job Role (Marketing)
+                      </label>
+                      <Select 
+                        value={formData.job_role}
+                        onValueChange={(val) => setFormData(prev => ({ ...prev, job_role: val }))}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white border-slate-200 font-semibold text-xs">
+                          <SelectValue placeholder="Select role..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {MARKETING_JOB_ROLES.map(role => (
+                            <SelectItem key={role} value={role}>{role}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground/80 flex items-center">
+                        <Phone className="w-4 h-4 mr-2 text-primary" /> Contact Details (Phone)
+                      </label>
+                      <Input 
+                        type="text"
+                        placeholder="e.g. 8136861444"
+                        value={formData.contact_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, contact_number: e.target.value }))}
+                        className="h-10 bg-white border-slate-200 font-mono text-xs font-semibold"
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -1214,14 +1484,22 @@ export default function MarketingVisitsPage() {
                             }
                             const selectedCust = customers.find(c => c.customer_name === val);
                             const autoLocation = extractCustomerLocation(selectedCust);
-                            setFormData(prev => ({
-                              ...prev, 
-                              customer_name: val,
-                              customer_id: selectedCust?.id || '',
-                              location: autoLocation
-                            }));
+                            const locCode = extractLocationCode(autoLocation);
+                            setFormData(prev => {
+                              const seq = prev.quote_seq || getNextQuoteSeq();
+                              const yr = prev.quote_year || getCurrentFinancialYear();
+                              return {
+                                ...prev, 
+                                customer_name: val,
+                                customer_id: selectedCust?.id || '',
+                                location: autoLocation,
+                                quote_location: locCode,
+                                quotation_ref: prev.is_quotation ? composeQuoteRef(locCode, seq, yr) : prev.quotation_ref
+                              };
+                            });
                           }}
                         >
+
                           <SelectTrigger className="w-full h-10 bg-white border-slate-200">
                             <SelectValue placeholder="Select customer..." />
                           </SelectTrigger>
@@ -1313,23 +1591,42 @@ export default function MarketingVisitsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-foreground/80">Visit Outcome</label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowOutcomeModal(true)}
+                          className="h-6 px-2 text-xs font-bold text-primary hover:bg-primary/10 gap-1 rounded-md"
+                          title="Manage visit outcome choices"
+                        >
+                          <Settings2 className="w-3.5 h-3.5" /> Manage Options
+                        </Button>
+                      </div>
                       <Select 
                         value={formData.outcome}
-                        onValueChange={(val) => setFormData({...formData, outcome: val})}
+                        onValueChange={(val) => {
+                          if (val === '__MANAGE_OUTCOMES__') {
+                            setShowOutcomeModal(true);
+                            return;
+                          }
+                          setFormData({...formData, outcome: val});
+                        }}
                       >
                         <SelectTrigger className="w-full h-10 bg-white border-slate-200">
                           <SelectValue placeholder="Select outcome..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Initial Contact">Initial Contact</SelectItem>
-                          <SelectItem value="Product Demo">Product Demo</SelectItem>
-                          <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
-                          <SelectItem value="Negotiation">Negotiation</SelectItem>
-                          <SelectItem value="Order Received">Order Received</SelectItem>
-                          <SelectItem value="Follow-up Scheduled">Follow-up Scheduled</SelectItem>
-                          <SelectItem value="Payment Collected">Payment Collected</SelectItem>
-                          <SelectItem value="Not Interested">Not Interested</SelectItem>
+                          <SelectItem value="__MANAGE_OUTCOMES__" className="text-primary font-bold bg-primary/5 hover:bg-primary/10">
+                            + Manage Outcome Options
+                          </SelectItem>
+                          {formData.outcome && !outcomes.some(o => o.name === formData.outcome) && (
+                            <SelectItem value={formData.outcome}>{formData.outcome}</SelectItem>
+                          )}
+                          {outcomes.map(opt => (
+                            <SelectItem key={opt.id || opt.name} value={opt.name}>{opt.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1361,31 +1658,6 @@ export default function MarketingVisitsPage() {
                         onChange={(e) => setFormData({...formData, feedback: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-4 lg:col-span-3 bg-slate-50/50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
-                      <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-primary" /> Vehicle Info
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-foreground/80">Vehicle Number</label>
-                          <Input 
-                            placeholder="e.g. KA-01-MJ-1234"
-                            value={formData.vehicle_number}
-                            onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})}
-                            className="bg-white"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-foreground/80">Description</label>
-                          <Input 
-                            placeholder="e.g. Service pickup truck"
-                            value={formData.vehicle_description}
-                            onChange={(e) => setFormData({...formData, vehicle_description: e.target.value})}
-                            className="bg-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
                     <div className="space-y-4 lg:col-span-3 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100 mt-2">
                       <div className="flex items-center gap-3">
                         <label htmlFor="is_quotation" className="relative inline-flex items-center cursor-pointer">
@@ -1403,193 +1675,420 @@ export default function MarketingVisitsPage() {
 
                       {formData.is_quotation && (
                         <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-                            <div className="md:col-span-3 space-y-1.5">
-                              <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">Quotation Format</label>
-                              <Select
-                                value={formData.quotation_type}
-                                onValueChange={(val) => setFormData(prev => ({ ...prev, quotation_type: val as QuotationType }))}
-                              >
-                                <SelectTrigger className="w-full h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
-                                  <SelectValue placeholder="Format" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white z-[1000]">
-                                  <SelectItem value="BAGS">Bags (No. of Bags / KG)</SelectItem>
-                                  <SelectItem value="TRADING">Trading (with product image)</SelectItem>
-                                </SelectContent>
-                              </Select>
+                          {/* Quotation Header & Numbering Controls */}
+                          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <Quote className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Quotation Number & Header Configuration</span>
+                              </div>
+                              <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                                Standard: MA/{'{LOC}'}(FO)-QUOTE-{'{SEQ}'}/{'{YEAR}'}
+                              </span>
                             </div>
-                            <div className="md:col-span-4 space-y-1.5">
-                              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Quotation Ref No</label>
-                              <Input
-                                value={formData.quotation_ref}
-                                onChange={(e) => setFormData(prev => ({ ...prev, quotation_ref: e.target.value }))}
-                                placeholder={formData.quotation_type === 'TRADING' ? 'MA/TSR-01420/26-27' : 'MA/VKM(FO)-QUOTE-0131/2026-27'}
-                                className="h-9 text-xs font-mono font-bold"
-                              />
-                            </div>
-                            {formData.quotation_type === 'BAGS' && (
-                              <div className="md:col-span-5 space-y-1.5">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Subject (Sub:)</label>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                              <div className="lg:col-span-3 space-y-1.5">
+                                <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">
+                                  Quotation Format <span className="text-rose-500">*</span>
+                                </label>
+                                <Select
+                                  value={formData.quotation_type === 'TRADING' ? 'TRADING' : 'BAGS'}
+                                  onValueChange={(val) => {
+                                    const nextType = val as QuotationType;
+                                    setFormData(prev => {
+                                      const nextSubject = nextType === 'TRADING' ? '' : 'Quotation for the Supply of Semi Virgin Poly Bags 51 MICRONS – Reg.';
+                                      return {
+                                        ...prev,
+                                        quotation_type: nextType,
+                                        quotation_subject: nextSubject,
+                                        quotation_items: prev.quotation_items.map(item => {
+                                          if (!item.product_id) return item;
+                                          const prod = products.find(p => p.id === item.product_id);
+                                          const prodCat = (prod?.category || 'PRODUCT').toUpperCase();
+                                          const targetCat = nextType === 'TRADING' ? 'TRADING' : 'PRODUCT';
+                                          if (prodCat !== targetCat) {
+                                            return { ...item, product_id: '', product_name: '' };
+                                          }
+                                          return item;
+                                        })
+                                      };
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
+                                    <SelectValue placeholder="Format" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white z-[1000]">
+                                    <SelectItem value="BAGS" className="font-bold text-blue-900">Poly Bags (Bags Format)</SelectItem>
+                                    <SelectItem value="TRADING" className="font-bold text-amber-900">Trading Goods (Trading Format)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="lg:col-span-2 space-y-1.5">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 flex items-center justify-between">
+                                  <span>Location Code</span>
+                                  <span className="text-[9px] text-blue-600 font-semibold">(Editable)</span>
+                                </label>
                                 <Input
-                                  value={formData.quotation_subject}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, quotation_subject: e.target.value }))}
-                                  placeholder="Quotation for the Supply of Semi Virgin Poly Bags 51 MICRONS – Reg."
-                                  className="h-9 text-xs font-semibold"
+                                  value={formData.quote_location}
+                                  onChange={(e) => {
+                                    const locVal = e.target.value.toUpperCase();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      quote_location: locVal,
+                                      quotation_ref: composeQuoteRef(locVal, prev.quote_seq || getNextQuoteSeq(), prev.quote_year || getCurrentFinancialYear())
+                                    }));
+                                  }}
+                                  placeholder="VKM"
+                                  className="h-9 text-xs font-bold text-center uppercase"
                                 />
                               </div>
-                            )}
+
+                              <div className="lg:col-span-2 space-y-1.5">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 flex items-center justify-between">
+                                  <span>Quote Number</span>
+                                  <span className="text-[9px] text-emerald-600 font-bold">(Auto)</span>
+                                </label>
+                                <Input
+                                  value={formData.quote_seq || getNextQuoteSeq()}
+                                  onChange={(e) => {
+                                    const seqVal = e.target.value;
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      quote_seq: seqVal,
+                                      quotation_ref: composeQuoteRef(prev.quote_location || 'VKM', seqVal, prev.quote_year || getCurrentFinancialYear())
+                                    }));
+                                  }}
+                                  placeholder="0131"
+                                  className="h-9 text-xs font-mono font-bold text-center"
+                                />
+                              </div>
+
+                              <div className="lg:col-span-2 space-y-1.5">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 flex items-center justify-between">
+                                  <span>Year</span>
+                                  <span className="text-[9px] text-blue-600 font-semibold">(Editable)</span>
+                                </label>
+                                <Input
+                                  value={formData.quote_year || getCurrentFinancialYear()}
+                                  onChange={(e) => {
+                                    const yrVal = e.target.value;
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      quote_year: yrVal,
+                                      quotation_ref: composeQuoteRef(prev.quote_location || 'VKM', prev.quote_seq || getNextQuoteSeq(), yrVal)
+                                    }));
+                                  }}
+                                  placeholder="2026-27"
+                                  className="h-9 text-xs font-bold text-center"
+                                />
+                              </div>
+
+                              <div className="lg:col-span-3 space-y-1.5">
+                                <label className="text-[10px] font-bold text-slate-800 uppercase tracking-widest px-1">
+                                  Final Quotation No.
+                                </label>
+                                <Input
+                                  value={formData.quotation_ref || composeQuoteRef(formData.quote_location, formData.quote_seq || getNextQuoteSeq(), formData.quote_year)}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, quotation_ref: e.target.value }))}
+                                  placeholder="MA/VKM(FO)-QUOTE-0131/2026-27"
+                                  className="h-9 text-xs font-mono font-black text-primary bg-slate-50 border-slate-300"
+                                />
+                              </div>
+
+                              {formData.quotation_type !== 'TRADING' && (
+                                <div className="lg:col-span-12 space-y-1.5 pt-1">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Subject (Sub:)</label>
+                                  <Input
+                                    value={formData.quotation_subject}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, quotation_subject: e.target.value }))}
+                                    placeholder="Quotation for the Supply of Semi Virgin Poly Bags 51 MICRONS – Reg."
+                                    className="h-9 text-xs font-semibold"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-primary flex items-center">
-                              <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
-                            </h4>
+                          {/* Product-Wise Item List Header */}
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-primary flex items-center">
+                                <Briefcase className="w-4 h-4 mr-2" /> Quotation Item List
+                              </h4>
+                              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                formData.quotation_type === 'TRADING'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : 'bg-blue-100 text-blue-800 border-blue-300'
+                              }`}>
+                                {formData.quotation_type === 'TRADING' ? 'Trading Goods Entry' : 'Poly Bags Entry'}
+                              </span>
+                            </div>
                             <Button 
                               type="button" 
                               variant="outline" 
                               size="sm" 
                               onClick={addQuotationItem}
-                              className="h-8 rounded-full border-primary/30 text-primary hover:bg-primary/5 px-4"
+                              className="h-8 rounded-full border-primary/30 text-primary hover:bg-primary/5 px-4 font-bold"
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> <span className='hidden md:block'>Add Product</span>
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Add {formData.quotation_type === 'TRADING' ? 'Trading Item' : 'Bag Item'}
                             </Button>
                           </div>
 
+                          {/* Product-Wise Items Table / Grid */}
                           <div className="space-y-3">
-                            {formData.quotation_items.map((item, idx) => (
-                              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm transition-all hover:border-primary/30">
-                                <div className="md:col-span-3 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Product Name</label>
-                                  <Select 
-                                    value={item.product_id}
-                                    onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
-                                  >
-                                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-xs font-semibold">
-                                      <SelectValue placeholder="Select Product..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white z-[1000]">
-                                      {products.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>
-                                          {p.product_name} ({p.balance} Kg Available)
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Quantity</label>
-                                  <Input 
-                                    type="number"
-                                    placeholder="0"
-                                    value={item.quantity}
-                                    onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
-                                    className="h-9 text-xs text-center font-mono font-bold"
-                                  />
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">Unit (Pcs/Kg)</label>
-                                  <Select
-                                    value={item.unit || 'Kg'}
-                                    onValueChange={(val) => updateQuotationItem(idx, 'unit', val)}
-                                  >
-                                    <SelectTrigger className="h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
-                                      <SelectValue placeholder="Unit" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white z-[1000]">
-                                      <SelectItem value="Pcs">Pcs (Pieces)</SelectItem>
-                                      <SelectItem value="Kg">Kg (Kilograms)</SelectItem>
-                                      <SelectItem value="Bag">Bag</SelectItem>
-                                      <SelectItem value="Roll">Roll</SelectItem>
-                                      <SelectItem value="Mtr">Mtr (Meters)</SelectItem>
-                                      <SelectItem value="Set">Set</SelectItem>
-                                      <SelectItem value="Box">Box</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Unit Price (₹)</label>
-                                  <Input 
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={item.amount}
-                                    onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
-                                    className="h-9 text-xs text-right font-mono font-bold text-slate-800"
-                                  />
-                                </div>
-                                <div className="md:col-span-1 space-y-1.5">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">GST %</label>
-                                  <Select 
-                                    value={String(item.gst_percent)}
-                                    onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
-                                  >
-                                    <SelectTrigger className="h-9 bg-white border-slate-200 text-xs">
-                                      <SelectValue placeholder="0" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white z-[1000]">
-                                      <SelectItem value="0">0%</SelectItem>
-                                      <SelectItem value="5">5%</SelectItem>
-                                      <SelectItem value="12">12%</SelectItem>
-                                      <SelectItem value="18">18%</SelectItem>
-                                      <SelectItem value="28">28%</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="md:col-span-2 flex justify-end items-center gap-1 pl-2 pb-0.5">
-                                  <div className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 whitespace-nowrap">
-                                    ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                  </div>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => removeQuotationItem(idx)}
-                                    disabled={formData.quotation_items.length <= 1}
-                                    className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                <div className="md:col-span-12">
-                                  {formData.quotation_type === 'TRADING' ? (
-                                    <div className="flex items-center gap-3">
-                                      {item.image && (
-                                        // eslint-disable-next-line @next/next/no-img-element -- a data URL preview, nothing for next/image to optimise
-                                        <img src={item.image} alt="Product" className="h-14 w-14 object-contain rounded border border-slate-200 bg-white" />
-                                      )}
-                                      <label className="inline-flex items-center h-8 px-3 rounded-full border border-blue-300 bg-blue-50/60 text-[11px] font-bold text-blue-800 cursor-pointer hover:bg-blue-100">
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          className="hidden"
-                                          onChange={(e) => { pickQuotationImage(idx, e.target.files?.[0]); e.target.value = ''; }}
-                                        />
-                                        {item.image ? 'Change Product Image' : 'Add Product Image'}
-                                      </label>
-                                      {item.image && (
-                                        <button
-                                          type="button"
-                                          onClick={() => updateQuotationItem(idx, 'image', '')}
-                                          className="text-[11px] font-bold text-rose-600 hover:underline"
-                                        >
-                                          Remove
-                                        </button>
-                                      )}
+                            {formData.quotation_items.map((item, idx) => {
+                              const isTrading = formData.quotation_type === 'TRADING';
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className={`p-3.5 rounded-xl border shadow-sm transition-all bg-white ${
+                                    isTrading ? 'border-amber-200/80 hover:border-amber-400' : 'border-blue-200/80 hover:border-blue-400'
+                                  }`}
+                                >
+                                  {isTrading ? (
+                                    /* TRADING GOODS ENTRY LAYOUT */
+                                    <div className="space-y-3">
+                                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                        <div className="md:col-span-3 space-y-1.5">
+                                          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                            Product Name <span className="text-rose-500">*</span>
+                                          </label>
+                                          <Select 
+                                            value={item.product_id}
+                                            onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
+                                          >
+                                            <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-xs font-semibold">
+                                              <SelectValue placeholder="Select Trading Product..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white z-[1000] max-h-60">
+                                              {products
+                                                .filter(p => (p.category || 'PRODUCT').toUpperCase() === 'TRADING')
+                                                .map(p => (
+                                                  <SelectItem key={p.id} value={p.id}>
+                                                    {p.product_name} ({p.product_code}) {p.size ? ` - ${p.size}` : ''}
+                                                  </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        <div className="md:col-span-2 space-y-1.5">
+                                          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                            Quantity <span className="text-rose-500">*</span>
+                                          </label>
+                                          <Input 
+                                            type="number"
+                                            placeholder="0"
+                                            value={item.quantity}
+                                            onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
+                                            className="h-9 text-xs text-center font-mono font-bold"
+                                          />
+                                        </div>
+
+                                        <div className="md:col-span-2 space-y-1.5">
+                                          <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">
+                                            Unit <span className="text-rose-500">*</span>
+                                          </label>
+                                          <Select
+                                            value={item.unit || 'Pcs'}
+                                            onValueChange={(val) => updateQuotationItem(idx, 'unit', val)}
+                                          >
+                                            <SelectTrigger className="h-9 bg-white border-blue-300 text-xs font-black text-blue-700">
+                                              <SelectValue placeholder="Unit" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white z-[1000]">
+                                              <SelectItem value="Pcs">Pcs (Pieces)</SelectItem>
+                                              <SelectItem value="Box">Box</SelectItem>
+                                              <SelectItem value="Set">Set</SelectItem>
+                                              <SelectItem value="Roll">Roll</SelectItem>
+                                              <SelectItem value="Mtr">Mtr (Meters)</SelectItem>
+                                              <SelectItem value="Kg">Kg (Kilograms)</SelectItem>
+                                              <SelectItem value="Bag">Bag</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        <div className="md:col-span-2 space-y-1.5">
+                                          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                            Unit Price (₹) <span className="text-rose-500">*</span>
+                                          </label>
+                                          <Input 
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={item.amount}
+                                            onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
+                                            className="h-9 text-xs text-right font-mono font-bold text-slate-800"
+                                          />
+                                        </div>
+
+                                        <div className="md:col-span-1 space-y-1.5">
+                                          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">GST %</label>
+                                          <Select 
+                                            value={String(item.gst_percent)}
+                                            onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
+                                          >
+                                            <SelectTrigger className="h-9 bg-white border-slate-200 text-xs">
+                                              <SelectValue placeholder="0" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white z-[1000]">
+                                              <SelectItem value="0">0%</SelectItem>
+                                              <SelectItem value="5">5%</SelectItem>
+                                              <SelectItem value="12">12%</SelectItem>
+                                              <SelectItem value="18">18%</SelectItem>
+                                              <SelectItem value="28">28%</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        <div className="md:col-span-2 flex justify-end items-center gap-2 pl-2 pb-0.5">
+                                          <div className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 whitespace-nowrap">
+                                            ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                          </div>
+                                          <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => removeQuotationItem(idx)}
+                                            disabled={formData.quotation_items.length <= 1}
+                                            className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+
+                                      {/* Trading Product Image */}
+                                      <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                                        {item.image && (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img src={item.image} alt="Product" className="h-12 w-12 object-contain rounded border border-slate-200 bg-white" />
+                                        )}
+                                        <label className="inline-flex items-center h-8 px-3 rounded-full border border-amber-300 bg-amber-50/60 text-[11px] font-bold text-amber-900 cursor-pointer hover:bg-amber-100">
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => { pickQuotationImage(idx, e.target.files?.[0]); e.target.value = ''; }}
+                                          />
+                                          {item.image ? 'Change Product Image' : '+ Upload Product Image'}
+                                        </label>
+                                        {item.image && (
+                                          <button
+                                            type="button"
+                                            onClick={() => updateQuotationItem(idx, 'image', '')}
+                                            className="text-[11px] font-bold text-rose-600 hover:underline"
+                                          >
+                                            Remove
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   ) : (
-                                    <div className="md:w-1/4 space-y-1.5">
-                                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">No. of Bags / KG</label>
-                                      <Input
-                                        value={item.bags_per_kg}
-                                        onChange={(e) => updateQuotationItem(idx, 'bags_per_kg', e.target.value)}
-                                        placeholder="45 TO 50"
-                                        className="h-9 text-xs text-center font-bold"
-                                      />
+                                    /* POLY BAGS ENTRY LAYOUT */
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                      <div className="md:col-span-3 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                          Product Name <span className="text-rose-500">*</span>
+                                        </label>
+                                        <Select 
+                                          value={item.product_id}
+                                          onValueChange={(val) => updateQuotationItem(idx, 'product_id', val)}
+                                        >
+                                          <SelectTrigger className="w-full h-9 bg-white border-slate-200 text-xs font-semibold">
+                                            <SelectValue placeholder="Select Poly Bags Product..." />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white z-[1000] max-h-60">
+                                            {products
+                                              .filter(p => (p.category || 'PRODUCT').toUpperCase() !== 'TRADING')
+                                              .map(p => (
+                                                <SelectItem key={p.id} value={p.id}>
+                                                  {p.product_name} ({p.product_code}) {p.size ? ` - ${p.size}` : ''} {p.color ? `[${p.color}]` : ''}
+                                                </SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+
+                                      <div className="md:col-span-2 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-widest px-1">
+                                          No. of Bags / KG <span className="text-rose-500">*</span>
+                                        </label>
+                                        <Input
+                                          value={item.bags_per_kg}
+                                          onChange={(e) => updateQuotationItem(idx, 'bags_per_kg', e.target.value)}
+                                          placeholder="45 TO 50"
+                                          className="h-9 text-xs text-center font-bold border-blue-200"
+                                        />
+                                      </div>
+
+                                      <div className="md:col-span-2 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                          Qty in KG <span className="text-rose-500">*</span>
+                                        </label>
+                                        <Input 
+                                          type="number"
+                                          placeholder="0"
+                                          value={item.quantity}
+                                          onChange={(e) => updateQuotationItem(idx, 'quantity', e.target.value)}
+                                          className="h-9 text-xs text-center font-mono font-bold"
+                                        />
+                                      </div>
+
+                                      <div className="md:col-span-2 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                                          Rate / KG (₹) <span className="text-rose-500">*</span>
+                                        </label>
+                                        <Input 
+                                          type="number"
+                                          placeholder="0.00"
+                                          value={item.amount}
+                                          onChange={(e) => updateQuotationItem(idx, 'amount', e.target.value)}
+                                          className="h-9 text-xs text-right font-mono font-bold text-slate-800"
+                                        />
+                                      </div>
+
+                                      <div className="md:col-span-1 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">GST %</label>
+                                        <Select 
+                                          value={String(item.gst_percent)}
+                                          onValueChange={(val) => updateQuotationItem(idx, 'gst_percent', val)}
+                                        >
+                                          <SelectTrigger className="h-9 bg-white border-slate-200 text-xs">
+                                            <SelectValue placeholder="0" />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white z-[1000]">
+                                            <SelectItem value="0">0%</SelectItem>
+                                            <SelectItem value="5">5%</SelectItem>
+                                            <SelectItem value="12">12%</SelectItem>
+                                            <SelectItem value="18">18%</SelectItem>
+                                            <SelectItem value="28">28%</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+
+                                      <div className="md:col-span-2 flex justify-end items-center gap-2 pl-2 pb-0.5">
+                                        <div className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 whitespace-nowrap">
+                                          ₹{((Number(item.amount) || 0) * (Number(item.quantity) || 1) * (1 + (Number(item.gst_percent) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </div>
+                                        <Button 
+                                          type="button" 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => removeQuotationItem(idx)}
+                                          disabled={formData.quotation_items.length <= 1}
+                                          className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-full shrink-0"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end pt-4 border-t border-slate-200/50">
@@ -1680,8 +2179,8 @@ export default function MarketingVisitsPage() {
                   }
                 })}
                 loading={loading}
-                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome', 'vehicle_number']}
-                searchPlaceholder="Search staff name/ID, client name/ID, location, vehicle..."
+                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome']}
+                searchPlaceholder="Search staff name/ID, client name/ID, location, outcome..."
                 actions={
                   <div className="flex gap-3">
                     <span className="flex items-center text-sm font-semibold text-muted-foreground">Filter Date:</span>
@@ -1709,12 +2208,20 @@ export default function MarketingVisitsPage() {
                   <tr key={rec.id} className="hover:bg-primary/5 transition-all group">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3 font-bold text-xs shrink-0">
                           {rec.users?.name?.charAt(0) || 'U'}
                         </div>
                         <div>
-                          <div className="font-semibold">{rec.users?.name || 'Unknown Staff'}</div>
-                          <div className="text-[10px] text-muted-foreground">{rec.users?.employee_code || '#---'}</div>
+                          <div className="font-semibold text-slate-900">{rec.users?.name || 'Unknown Staff'}</div>
+                          <div className="text-[10px] text-primary font-bold">{rec.job_role || rec.users?.designation || 'Marketing Executive'}</div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span>{rec.users?.employee_code || '#---'}</span>
+                            {(rec.contact_number || rec.users?.phone) && (
+                              <span className="font-mono text-slate-600 flex items-center gap-1">
+                                • <Phone className="w-2.5 h-2.5 text-slate-400" />{rec.contact_number || rec.users?.phone}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -1730,11 +2237,6 @@ export default function MarketingVisitsPage() {
                     </td>
                     <td className="px-6 py-4 text-xs text-muted-foreground">
                       <div className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {rec.location || 'N/A'}</div>
-                      {rec.vehicle_number && (
-                        <div className="flex items-center mt-1 text-[10px] text-primary/80 font-semibold" title={rec.vehicle_description || 'No description'}>
-                          <Truck className="w-3 h-3 mr-1 text-primary/60 shrink-0" /> {rec.vehicle_number}
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4">{new Date(rec.visit_date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-mono text-[11px] text-primary">
@@ -2034,6 +2536,162 @@ export default function MarketingVisitsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Manage Visit Outcomes Modal */}
+      <Dialog open={showOutcomeModal} onOpenChange={setShowOutcomeModal}>
+        <DialogContent className="w-[92%] sm:max-w-lg bg-white rounded-3xl p-6 border shadow-2xl">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Settings2 className="w-5 h-5 text-primary" /> Manage Visit Outcomes
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium">
+              Add new outcome options, edit existing titles, or delete options from the visit outcome list.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            {/* Add new outcome form */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
+                Add New Outcome Option
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newOutcomeName}
+                  onChange={(e) => setNewOutcomeName(e.target.value)}
+                  placeholder="e.g. Site Survey Done, Deal Closed..."
+                  className="h-10 text-sm bg-white"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateOutcome();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  loading={outcomeLoading}
+                  onClick={handleCreateOutcome}
+                  className="h-10 px-4 bg-primary text-white hover:bg-primary/90 font-bold shrink-0 rounded-xl gap-1 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Configured outcomes list */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Configured Outcomes ({outcomes.length})
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  Add, edit or delete below
+                </span>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                {outcomes.length === 0 ? (
+                  <div className="text-center py-6 text-sm text-slate-400">
+                    No outcomes configured yet. Add your first option above!
+                  </div>
+                ) : (
+                  outcomes.map((item) => (
+                    <div
+                      key={item.id || item.name}
+                      className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl hover:border-primary/40 transition-all shadow-xs"
+                    >
+                      {editingOutcomeId === item.id ? (
+                        <div className="flex items-center gap-2 flex-1 mr-2">
+                          <Input
+                            value={editingOutcomeName}
+                            onChange={(e) => setEditingOutcomeName(e.target.value)}
+                            className="h-8 text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleUpdateOutcome(item.id, editingOutcomeName);
+                              } else if (e.key === 'Escape') {
+                                setEditingOutcomeId(null);
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleUpdateOutcome(item.id, editingOutcomeName)}
+                            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shrink-0"
+                            title="Save changes"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingOutcomeId(null)}
+                            className="h-8 px-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
+                            title="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                          <span className="text-sm font-semibold text-slate-800 truncate">
+                            {item.name}
+                          </span>
+                        </div>
+                      )}
+
+                      {editingOutcomeId !== item.id && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingOutcomeId(item.id);
+                              setEditingOutcomeName(item.name);
+                            }}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg"
+                            title="Edit outcome"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteOutcome(item.id, item.name)}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                            title="Delete outcome"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-3 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowOutcomeModal(false)}
+              className="h-10 px-5 rounded-full"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Customer Quotation History Modal */}
       <Dialog open={showQuotationHistoryModal} onOpenChange={setShowQuotationHistoryModal}>
         <DialogContent className="w-[95%] sm:max-w-4xl bg-white rounded-3xl p-6 border shadow-2xl max-h-[85vh] overflow-y-auto">
@@ -2046,7 +2704,7 @@ export default function MarketingVisitsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={downloadQuotationTemplate}
+                onClick={handleDownloadQuotationTemplate}
                 className="text-xs font-bold border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center gap-1.5"
               >
                 <FileText className="w-4 h-4 text-blue-600" /> Download Word Template (.doc)
@@ -2126,9 +2784,23 @@ export default function MarketingVisitsPage() {
                                   {quoteRec.quotation_status || 'Pending'}
                                 </span>
                               </div>
-                              <div className="text-xs text-slate-500 font-medium flex items-center gap-3">
+                              <div className="text-xs text-slate-500 font-medium flex items-center gap-3 flex-wrap">
                                 <span>Date: <strong className="text-slate-700">{new Date(quoteRec.visit_date).toLocaleDateString()}</strong></span>
-                                <span>Prepared by: <strong className="text-slate-700">{quoteRec.users?.name || quoteRec.employee_name || 'Executive'}</strong></span>
+                                <span>Prepared by: <strong className="text-slate-800 font-bold">{quoteRec.users?.name || quoteRec.employee_name || 'Executive'}</strong></span>
+                                {(quoteRec.job_role || quoteRec.users?.designation) && (
+                                  <span>Role: <strong className="text-primary font-bold">{quoteRec.job_role || quoteRec.users?.designation}</strong></span>
+                                )}
+                                {(quoteRec.contact_number || quoteRec.users?.phone) && (
+                                  <span className="flex items-center gap-1 font-mono text-slate-700">
+                                    <Phone className="w-3 h-3 text-slate-400" />
+                                    {quoteRec.contact_number || quoteRec.users?.phone}
+                                  </span>
+                                )}
+                                {quoteRec.quotation_ref && (
+                                  <span className="font-mono bg-blue-50 text-blue-900 border border-blue-200 px-2 py-0.5 rounded text-[11px] font-bold">
+                                    {quoteRec.quotation_ref}
+                                  </span>
+                                )}
                               </div>
                             </div>
 

@@ -417,6 +417,8 @@ export default function PrintingSectionPage() {
           headers={['Date', 'Print Job #', 'Batch #', 'Product', 'Color', 'Input Qty', 'Output Qty', 'Wastage', 'Operator', 'Actions']}
           data={printingJobs}
           loading={loading}
+          deleteUrl={PRINTING_API}
+          onRefresh={() => fetchPrintingJobs(currentCompanyId)}
           searchFields={['printing_number', 'production_batches.batch_number']}
           searchPlaceholder="Search print jobs..."
           renderRow={(job: any) => {

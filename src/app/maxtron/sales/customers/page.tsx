@@ -563,6 +563,8 @@ export default function CustomersPage() {
           loading={loading}
           searchFields={['customer_name', 'customer_code', 'gst_no']}
           searchPlaceholder="Search customers, codes or GST..."
+          deleteUrl={API_URL}
+          onRefresh={fetchCustomers}
           renderRow={(c: any) => {
             return (
               <tr key={c.id} className="hover:bg-primary/5 transition-colors group border-b border-primary/5 last:border-0">

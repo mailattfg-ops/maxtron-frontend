@@ -8,6 +8,15 @@ import { Sidebar } from './layout/Sidebar';
 import { Navbar } from './layout/Navbar';
 import { PermissionProvider, usePermissions } from '@/providers/PermissionProvider';
 
+/* Everything a marketing login can open: its own screens and the finished
+ * goods stock list. Trading Goods Inward and the raw-material Stock List were
+ * on this list until the client asked for them to go (9 Oct 2026). */
+const MARKETING_PATHS = [
+  '/maxtron/production/reports/fg-stock',
+  '/maxtron/hr-payroll/marketing-visits',
+  '/maxtron/marketing/reports'
+];
+
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -53,14 +62,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
         const roleStr = (userObj?.role_name || userObj?.user_types?.name || '').toLowerCase();
         if (roleStr.includes('marketing')) {
-          const allowedMarketingPaths = [
-            '/maxtron/inventory/trading-goods',
-            '/maxtron/production/reports/fg-stock',
-            '/maxtron/inventory/reports/stock',
-            '/maxtron/hr-payroll/marketing-visits',
-            '/maxtron/marketing/reports'
-          ];
-          const isAllowed = allowedMarketingPaths.some(p => pathname === p || pathname.startsWith(p + '/'));
+          const isAllowed = MARKETING_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
           if (!isAllowed && pathname !== '/login' && pathname !== '/maxtron') {
             router.push('/maxtron/production/reports/fg-stock');
           }
@@ -82,15 +84,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
     const isMarketing = userRole.includes('marketing');
     if (isMarketing) {
-      const allowedMarketingPaths = [
-        '/maxtron/inventory/trading-goods',
-        '/maxtron/production/reports/fg-stock',
-        '/maxtron/inventory/reports/stock',
-        '/maxtron/hr-payroll/marketing-visits',
-        '/maxtron/marketing/reports'
-      ];
       if (path) {
-        return allowedMarketingPaths.some(p => path === p || path.startsWith(p + '/'));
+        return MARKETING_PATHS.some(p => path === p || path.startsWith(p + '/'));
       }
     }
 
