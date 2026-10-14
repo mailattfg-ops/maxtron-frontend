@@ -25,7 +25,8 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
-import { exportQuotationToWord, downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
+import { downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
+import { exportTradingQuotationToWord } from '@/utils/quotationTradingWord';
 import { exportQuotationToExcel, resizeImageFile, emptyQuotationItem, quotationTypeOf, type QuotationType } from '@/utils/quotationExcelGenerator';
 import { exportBagsQuotationToWord } from '@/utils/quotationWordTemplate';
 import { 
@@ -596,12 +597,11 @@ export default function MarketingVisitsPage() {
   };
 
 
-  // Bags quotations download as the client's own Word document with the data
-  // filled in. Their trading format exists only as an Excel sheet, so a trading
-  // quotation keeps the general Word layout.
+  // Both formats download on the client's own Word letterhead: bags as their
+  // bags quotation, trading in the trading layout (with product photos).
   const downloadQuotationWord = (rec: any) => {
-    if (quotationTypeOf(rec) !== 'BAGS') return exportQuotationToWord(rec);
-    exportBagsQuotationToWord(rec).catch(() => error('Could not generate the Word quotation.'));
+    const build = quotationTypeOf(rec) === 'TRADING' ? exportTradingQuotationToWord : exportBagsQuotationToWord;
+    build(rec).catch(() => error('Could not generate the Word quotation.'));
   };
 
   const handleDownloadQuotationTemplate = () => {
