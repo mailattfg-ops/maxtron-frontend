@@ -15,7 +15,7 @@
  */
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName } from './quotationExcelGenerator';
+import { itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName, itemDescription } from './quotationExcelGenerator';
 
 const DOCUMENT = 'word/document.xml';
 const RELS = 'word/_rels/document.xml.rels';
@@ -161,7 +161,7 @@ export async function fillTradingQuotation(template: ArrayBuffer | Uint8Array, r
         }
         return row([
             cell(widths[0], text(String(i + 1), { align: 'center' })),
-            cell(widths[1], text(String(it.product_name || '').toUpperCase(), { bold: true, align: 'center' })),
+            cell(widths[1], text(itemDescription(it).toUpperCase(), { bold: true, align: 'center' })),
             cell(widths[2], pic),
             cell(widths[3], text(rate ? money(rate) : '', { bold: true, align: 'center' })),
             cell(widths[4], text(rate ? money(perUnitGst) : '', { bold: true, align: 'center' })),
