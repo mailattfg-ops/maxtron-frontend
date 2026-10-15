@@ -63,6 +63,20 @@ export const num = (v: unknown) => Number(v) || 0;
 export const pad2 = (n: number) => String(n).padStart(2, '0');
 export const quoteDate = (record: any) => new Date(record.visit_date || Date.now());
 
+/**
+ * What a quotation line prints as its description: the product's name, with
+ * the client's own size in place of the standard one when the line has one
+ * ("BLUE 30 X 36" with client size 28 X 34 -> "BLUE 28 X 34"). The product
+ * itself is not changed; the size lives on this quotation line only.
+ */
+export const itemDescription = (it: any): string => {
+    const name = String(it?.product_name || '');
+    const size = String(it?.custom_size || '').trim();
+    if (!size) return name;
+    const standard = /\d+(?:\.\d+)?\s*[xX*×]\s*\d+(?:\.\d+)?/;
+    return standard.test(name) ? name.replace(standard, size) : `${name} ${size}`.trim();
+};
+
 export const itemsOf = (record: any): any[] => (Array.isArray(record.quotation_items) ? record.quotation_items : []);
 export const customerName = (record: any) => String(record.customer_name || record.customers?.customer_name || '').trim();
 /** "Vaniyamkulam, Kerala" -> ["Vaniyamkulam", "Kerala"] */
@@ -229,7 +243,7 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
             const p = num(it.gst_percent);
             const gstPerUnit = (rate * p) / 100;
             put(ws, r, 1, i + 1, { h: 'center' });
-            put(ws, r, 2, String(it.product_name || '').toUpperCase(), { bold: true, h: 'center', wrap: true });
+            put(ws, r, 2, itemDescription(it).toUpperCase(), { bold: true, h: 'center', wrap: true });
             put(ws, r, 4, rate || null, { bold: true, h: 'center', fmt: '0.00' });
             put(ws, r, 5, { formula: `D${r}*${p}/100`, result: gstPerUnit }, { bold: true, h: 'center', fmt: '0.00' });
             put(ws, r, 6, qty || null, { bold: true, h: 'center' });
@@ -312,7 +326,7 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
         const qty = num(it.quantity);
         ws.getRow(row).height = 20;
         put(ws, row, 1, i + 1, { h: 'center' });
-        put(ws, row, 2, String(it.product_name || '').toUpperCase(), { h: 'center', wrap: true });
+        put(ws, row, 2, itemDescription(it).toUpperCase(), { h: 'center', wrap: true });
         put(ws, row, 3, rate || null, { h: 'center' });
         put(ws, row, 4, it.bags_per_kg ? String(it.bags_per_kg) : null, { h: 'center' });
         put(ws, row, 5, qty || null, { h: 'center' });
@@ -380,6 +394,7 @@ const buildBags = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets) =
 export const emptyQuotationItem = () => ({
     product_id: '', product_name: '', quantity: '', unit: 'Kg', amount: '', gst_percent: '0',
     bags_per_kg: '', // BAGS format: "No. of Bags/KG", free text such as "45 TO 50"
+    custom_size: '', // the client's own size for this quotation only, e.g. "28 X 34"
     image: '',       // TRADING format: product picture, a small JPEG data URL
 });
 
@@ -395,7 +410,7 @@ export function buildQuotationWorkbook(record: any, assets: QuotationAssets = {}
     return wb;
 }
 
-export const quotationFileName = (record: any, ext: 'xlsx' | 'docx' = 'xlsx') => {
+export const quotationFileName = (record: any, ext: 'xlsx' | 'docx' | 'pdf' = 'xlsx') => {
     const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
     const ref = safe(String(record.quotation_ref || '')) || 'Quotation';
     const cust = safe(customerName(record)) || 'Customer';
@@ -404,7 +419,7 @@ export const quotationFileName = (record: any, ext: 'xlsx' | 'docx' = 'xlsx') =>
 
 // ── Browser side ─────────────────────────────────────────────────────────────
 
-const measure = (dataUrl: string): Promise<QuoteImage | undefined> =>
+export const measure = (dataUrl: string): Promise<QuoteImage | undefined> =>
     new Promise(resolve => {
         const img = new Image();
         img.onload = () => resolve({ dataUrl, width: img.naturalWidth, height: img.naturalHeight });
@@ -412,7 +427,7 @@ const measure = (dataUrl: string): Promise<QuoteImage | undefined> =>
         img.src = dataUrl;
     });
 
-const loadAsset = async (url: string): Promise<QuoteImage | undefined> => {
+export const loadAsset = async (url: string): Promise<QuoteImage | undefined> => {
     try {
         const blob = await (await fetch(url)).blob();
         const dataUrl = await new Promise<string>((resolve, reject) => {

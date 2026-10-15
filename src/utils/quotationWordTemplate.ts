@@ -13,7 +13,7 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import {
-    itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName,
+    itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName, itemDescription,
 } from './quotationExcelGenerator';
 
 const DOCUMENT = 'word/document.xml';
@@ -59,7 +59,7 @@ export async function fillBagsQuotation(template: ArrayBuffer | Uint8Array, reco
     const rows = items.length ? items : [null];
     xml = repeat(xml, 'w:tr', '{{SL}}', rows.map((it, i) => set(it ? {
         SL: i + 1,
-        DESC: String(it.product_name || '').toUpperCase(),
+        DESC: itemDescription(it).toUpperCase(),
         RATE: num(it.amount) ? amount(num(it.amount)) : '',
         BAGS: it.bags_per_kg || '',
         QTY: num(it.quantity) ? amount(num(it.quantity)) : '',

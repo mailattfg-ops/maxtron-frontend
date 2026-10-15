@@ -27,7 +27,8 @@ import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
 import { downloadQuotationTemplate } from '@/utils/quotationWordGenerator';
 import { exportTradingQuotationToWord } from '@/utils/quotationTradingWord';
-import { exportQuotationToExcel, resizeImageFile, emptyQuotationItem, quotationTypeOf, type QuotationType } from '@/utils/quotationExcelGenerator';
+import { exportQuotationToPdf } from '@/utils/quotationPdf';
+import { resizeImageFile, emptyQuotationItem, quotationTypeOf, type QuotationType } from '@/utils/quotationExcelGenerator';
 import { exportBagsQuotationToWord } from '@/utils/quotationWordTemplate';
 import { 
     Tag, 
@@ -591,9 +592,11 @@ export default function MarketingVisitsPage() {
     return `MA/${l}(FO)-QUOTE-${s}/${y}`;
   };
 
-  // The client's own quotation formats (Trading / Bags), as an .xlsx.
-  const downloadQuotationExcel = (rec: any) => {
-    exportQuotationToExcel(rec).catch(() => error('Could not generate the Excel quotation.'));
+  // The client's quotation formats (Bags / Trading) as a PDF laid out like the
+  // Word quotation: it looks the same on a phone as on a computer, which the
+  // Excel version did not.
+  const downloadQuotationPdf = (rec: any) => {
+    exportQuotationToPdf(rec).catch(() => error('Could not generate the PDF quotation.'));
   };
 
 
@@ -1024,6 +1027,7 @@ export default function MarketingVisitsPage() {
             amount: i.amount || '',
             gst_percent: i.gst_percent !== undefined ? String(i.gst_percent) : '18',
             bags_per_kg: i.bags_per_kg || '',
+            custom_size: i.custom_size || '',
             image: i.image || ''
           })) 
         : [emptyQuotationItem()],
@@ -2010,6 +2014,13 @@ export default function MarketingVisitsPage() {
                                               ))}
                                           </SelectContent>
                                         </Select>
+                                        {/* The client's own size, for this quotation only; the product keeps its standard size */}
+                                        <Input
+                                          value={item.custom_size || ''}
+                                          onChange={(e) => updateQuotationItem(idx, 'custom_size', e.target.value.toUpperCase())}
+                                          placeholder="Client size, e.g. 28 X 34 (optional)"
+                                          className="h-8 text-[11px] font-semibold border-dashed border-slate-300"
+                                        />
                                       </div>
 
                                       <div className="md:col-span-2 space-y-1.5">
@@ -2327,11 +2338,11 @@ export default function MarketingVisitsPage() {
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => downloadQuotationExcel(rec)}
-                                    className="h-6 text-[9px] font-bold border-emerald-300 text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 px-2 rounded flex items-center gap-1 shadow-sm"
-                                    title="Download quotation in Excel (.xlsx), in the Maxtron quotation format"
+                                    onClick={() => downloadQuotationPdf(rec)}
+                                    className="h-6 text-[9px] font-bold border-rose-300 text-rose-800 bg-rose-50/70 hover:bg-rose-100 px-2 rounded flex items-center gap-1 shadow-sm"
+                                    title="Download quotation as PDF, in the Maxtron quotation format"
                                   >
-                                    <Download className="w-3 h-3 text-emerald-600" /> Excel (.xlsx)
+                                    <Download className="w-3 h-3 text-rose-600" /> PDF
                                   </Button>
                                   <Button
                                     type="button"
@@ -2811,10 +2822,10 @@ export default function MarketingVisitsPage() {
                               <Button
                                 type="button"
                                 size="sm"
-                                onClick={() => downloadQuotationExcel(quoteRec)}
-                                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20 text-xs flex items-center gap-1.5 shrink-0"
+                                onClick={() => downloadQuotationPdf(quoteRec)}
+                                className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-md shadow-rose-600/20 text-xs flex items-center gap-1.5 shrink-0"
                               >
-                                <Download className="w-4 h-4" /> Download Excel (.xlsx)
+                                <Download className="w-4 h-4" /> Download PDF
                               </Button>
                               <Button
                                 type="button"
