@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
     Plus, 
@@ -60,6 +60,8 @@ function RouteAssignmentsContent() {
     const [availableHces, setAvailableHces] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState(false);
+    const [facilitySearch, setFacilitySearch] = useState('');
+    const facilitySearchRef = useRef<HTMLInputElement>(null);
     const [editingAssignment, setEditingAssignment] = useState<any>(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -230,6 +232,7 @@ function RouteAssignmentsContent() {
             collection_days: DAYS,
             remarks: ''
         });
+        setFacilitySearch('');
         setIsAssigning(false);
     };
 
@@ -255,6 +258,13 @@ function RouteAssignmentsContent() {
         );
         return !globallyAssignedIds.has(h.id);
     });
+
+    // The facility list narrowed by the search box; the chosen one always stays listed
+    const facilityQuery = facilitySearch.trim().toLowerCase();
+    const matchingHces = !facilityQuery ? effectiveHces : effectiveHces.filter(h =>
+        h.id === assignmentForm.hce_id
+        || String(h.hce_name || '').toLowerCase().includes(facilityQuery)
+        || String(h.hce_code || '').toLowerCase().includes(facilityQuery));
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
@@ -346,14 +356,34 @@ function RouteAssignmentsContent() {
                                             <p className="text-[10px] text-muted-foreground uppercase">{editingAssignment.keil_hces?.hce_code}</p>
                                         </div>
                                     ) : (
-                                        <Select value={assignmentForm.hce_id} onValueChange={(val) => setAssignmentForm({ ...assignmentForm, hce_id: val })}>
+                                        <Select
+                                            value={assignmentForm.hce_id}
+                                            onValueChange={(val) => setAssignmentForm({ ...assignmentForm, hce_id: val })}
+                                            // Put the cursor in the search box as soon as the list opens
+                                            onOpenChange={(open) => { if (open) setTimeout(() => facilitySearchRef.current?.focus(), 0); }}
+                                        >
                                             <SelectTrigger className="h-10 w-full border-primary/20 bg-background shadow-sm font-bold">
                                                 <SelectValue placeholder="Choose Hospital/Clinic" />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-white border-primary/20">
-                                                {effectiveHces.map(h => (
+                                            <SelectContent position="popper" className="bg-white border-primary/20 max-h-80">
+                                                {/* Search inside the list: type part of a name or code. Keys stay in
+                                                    the box instead of jumping the list by first letter. */}
+                                                <div className="sticky top-0 z-10 bg-white p-1.5 border-b border-slate-100">
+                                                    <Input
+                                                        ref={facilitySearchRef}
+                                                        value={facilitySearch}
+                                                        onChange={(e) => setFacilitySearch(e.target.value)}
+                                                        onKeyDown={(e) => e.stopPropagation()}
+                                                        placeholder="Search facility name or code..."
+                                                        className="h-8 text-sm border-primary/20"
+                                                    />
+                                                </div>
+                                                {matchingHces.map(h => (
                                                     <SelectItem key={h.id} value={h.id}>{h.hce_name} ({h.hce_code})</SelectItem>
                                                 ))}
+                                                {matchingHces.length === 0 && (
+                                                    <div className="px-3 py-2 text-xs text-muted-foreground">No facility matches &ldquo;{facilitySearch}&rdquo;</div>
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     )}
