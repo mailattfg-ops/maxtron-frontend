@@ -68,6 +68,9 @@ const DEFAULT_OUTCOMES = [
   'Not Interested'
 ];
 
+/** An office assistant (by designation) does not record visit times. */
+const isOfficeAssistantDesignation = (designation?: string) => /office\s*assistant/i.test(String(designation || ''));
+
 export default function MarketingVisitsPage() {
   const { hasPermission } = usePermission();
   // marketing_view is the key the sidebar gates this page on, and the one the
@@ -780,18 +783,23 @@ export default function MarketingVisitsPage() {
     }
   };
 
+  // Office assistants work from the office: their visits have no Time In / Time Out.
+  // Decided by this visit's Job Role, which picking the staff fills from their
+  // designation in Employee Management and which can be changed here.
+  const isOfficeAssistant = isOfficeAssistantDesignation(formData.job_role);
+
   const saveVisit = async () => {
     if (!formData.employee_id || !formData.customer_name || !formData.visit_date) {
       error('Please fill staff, customer, and date.');
       return;
     }
 
-    if (!formData.time_in || !formData.time_out) {
+    if (!isOfficeAssistant && (!formData.time_in || !formData.time_out)) {
       error('Both Time In and Time Out are required.');
       return;
     }
 
-    if (formData.time_out <= formData.time_in) {
+    if (!isOfficeAssistant && formData.time_out <= formData.time_in) {
       error(`Invalid timing: Time Out (${formData.time_out}) must be strictly later than Time In (${formData.time_in}).`);
       return;
     }
@@ -848,6 +856,7 @@ export default function MarketingVisitsPage() {
       } : {}),
       customer_id: formData.customer_id === '' ? null : formData.customer_id,
       employee_id: formData.employee_id === '' ? null : formData.employee_id,
+      ...(isOfficeAssistant ? { time_in: null, time_out: null } : {}),
       quotation_items: formData.is_quotation ? formData.quotation_items.map(item => ({
         ...item,
         quantity: item.quantity === '' ? null : Number(item.quantity),
@@ -1416,7 +1425,8 @@ export default function MarketingVisitsPage() {
                             ...prev, 
                             employee_id: val,
                             job_role: emp?.designation || prev.job_role || 'Business Development Executive',
-                            contact_number: emp?.phone || prev.contact_number || ''
+                            contact_number: emp?.phone || prev.contact_number || '',
+                            ...(isOfficeAssistantDesignation(emp?.designation) ? { time_in: '', time_out: '' } : {})
                           }));
                         }}
                       >
@@ -1437,7 +1447,7 @@ export default function MarketingVisitsPage() {
                       </label>
                       <Select 
                         value={formData.job_role}
-                        onValueChange={(val) => setFormData(prev => ({ ...prev, job_role: val }))}
+                        onValueChange={(val) => setFormData(prev => ({ ...prev, job_role: val, ...(isOfficeAssistantDesignation(val) ? { time_in: '', time_out: '' } : {}) }))}
                       >
                         <SelectTrigger className="w-full h-10 bg-white border-slate-200 font-semibold text-xs">
                           <SelectValue placeholder="Select role..." />
@@ -1563,6 +1573,8 @@ export default function MarketingVisitsPage() {
                       <Input 
                         type="time"
                         value={formData.time_in}
+                        disabled={isOfficeAssistant}
+                        title={isOfficeAssistant ? 'Not needed for an office assistant' : undefined}
                         onChange={(e) => setFormData({...formData, time_in: e.target.value})}
                         className={formData.time_in && formData.time_out && formData.time_out <= formData.time_in ? 'border-destructive' : ''}
                       />
@@ -1575,6 +1587,8 @@ export default function MarketingVisitsPage() {
                       <Input 
                         type="time"
                         value={formData.time_out}
+                        disabled={isOfficeAssistant}
+                        title={isOfficeAssistant ? 'Not needed for an office assistant' : undefined}
                         onChange={(e) => setFormData({...formData, time_out: e.target.value})}
                         className={formData.time_in && formData.time_out && formData.time_out <= formData.time_in ? 'border-destructive' : ''}
                       />
