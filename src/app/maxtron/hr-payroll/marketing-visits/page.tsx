@@ -2437,7 +2437,8 @@ export default function MarketingVisitsPage() {
 
       {/* Add Customer Modal */}
       <Dialog open={showAddCustomerModal} onOpenChange={setShowAddCustomerModal}>
-        <DialogContent className="w-[92%] sm:max-w-lg bg-white rounded-2xl p-6 border shadow-2xl">
+        {/* Scrolls inside itself on a phone, so the fields and Save stay reachable above the keyboard */}
+        <DialogContent className="w-[92%] sm:max-w-lg max-h-[90dvh] overflow-y-auto overscroll-contain bg-white rounded-2xl p-6 border shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-primary" /> Add New Customer
