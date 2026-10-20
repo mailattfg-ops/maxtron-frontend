@@ -35,6 +35,18 @@ export interface TableViewProps<T> {
   onDelete?: (id: string) => Promise<any> | void;
   deleteConfirmTitle?: string;
   deleteConfirmMessage?: string;
+  /** Told what is typed in the search box, so the page can export what is shown. */
+  onSearchChange?: (query: string) => void;
+}
+
+/** The table's search rule, for anyone who must list exactly what the table shows (an export, say). */
+export function matchesSearch(item: any, query: string, fields: (string | number | symbol)[]): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return fields.some(field => {
+    const value = String(field).split('.').reduce((acc: any, part) => acc && acc[part], item);
+    return value !== null && value !== undefined && String(value).toLowerCase().includes(q);
+  });
 }
 
 export function TableView<T>({
@@ -59,7 +71,8 @@ export function TableView<T>({
   onDeleteSelected,
   onDelete,
   deleteConfirmTitle,
-  deleteConfirmMessage
+  deleteConfirmMessage,
+  onSearchChange
 }: TableViewProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
@@ -99,19 +112,7 @@ export function TableView<T>({
     return String(fallbackIndex);
   };
 
-  // Helper to resolve nested fields like 'users.name'
-  const getNestedValue = (obj: any, path: string) => {
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-  };
-
-  const filteredData = data.filter(item => {
-    if (!searchQuery) return true;
-    return searchFields.some(field => {
-      const value = getNestedValue(item, String(field));
-      if (value === null || value === undefined) return false;
-      return String(value).toLowerCase().includes(searchQuery.toLowerCase());
-    });
-  });
+  const filteredData = data.filter(item => matchesSearch(item, searchQuery, searchFields as any[]));
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
   const currentData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
@@ -299,6 +300,7 @@ export function TableView<T>({
               autoComplete="off"
               onChange={(e) => {
                 setSearchQuery(e.target.value);
+                onSearchChange?.(e.target.value);
                 setCurrentPage(1);
               }}
             />
