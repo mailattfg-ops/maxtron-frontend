@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { TableView } from '@/components/ui/table-view';
+import { TableView, matchesSearch } from '@/components/ui/table-view';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
@@ -70,6 +70,9 @@ const DEFAULT_OUTCOMES = [
 
 /** An office assistant (by designation) does not record visit times. */
 const isOfficeAssistantDesignation = (designation?: string) => /office\s*assistant/i.test(String(designation || ''));
+
+/** What the visit list's search box looks in. */
+const VISIT_SEARCH_FIELDS = ['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome'];
 
 export default function MarketingVisitsPage() {
   const { hasPermission } = usePermission();
@@ -128,6 +131,7 @@ export default function MarketingVisitsPage() {
   });
 
   const [dateFilter, setDateFilter] = useState(''); // Default to empty to show all records initially
+  const [visitSearch, setVisitSearch] = useState(''); // what is typed in the list's search box
   const { success, error, info } = useToast();
   const { confirm } = useConfirm();
 
@@ -1054,8 +1058,24 @@ export default function MarketingVisitsPage() {
   };
 
 
+  /** On the date picked in "Filter Date" (all dates when none is picked). */
+  const onFilterDate = (rec: any) => {
+    if (!dateFilter) return true;
+    if (!rec.visit_date) return false;
+    if (String(rec.visit_date).split('T')[0] === dateFilter) return true;
+    const d = new Date(rec.visit_date);
+    return !isNaN(d.getTime())
+      && `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === dateFilter;
+  };
+
+  /** The visits the list is showing: the date filter, then the search box (staff name, client, ...). */
+  const shownVisits = () => visitRecords
+    .filter(onFilterDate)
+    .filter(rec => matchesSearch(rec, visitSearch, VISIT_SEARCH_FIELDS));
+
   const downloadVisitList = async () => {
-    const activeRecords = visitRecords.filter(rec => !dateFilter || (rec.visit_date && rec.visit_date.startsWith(dateFilter)));
+    // Exactly what is on screen; it used to ignore the search box and export every staff member
+    const activeRecords = shownVisits();
     if (activeRecords.length === 0) {
       info('No visit records found to export.');
       return;
@@ -2190,21 +2210,10 @@ export default function MarketingVisitsPage() {
                 title="Field Visit Logs"
                 description="Punching details for field staff tracking."
                 headers={['Field Staff', 'Customer / Client', 'Locality', 'Date', 'Timing', 'Outcome / Feedback', 'Action']}
-                data={visitRecords.filter(rec => {
-                  if (!dateFilter) return true;
-                  if (!rec.visit_date) return false;
-                  const raw = String(rec.visit_date).split('T')[0];
-                  if (raw === dateFilter) return true;
-                  try {
-                    const d = new Date(rec.visit_date);
-                    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    return local === dateFilter;
-                  } catch (e) {
-                    return false;
-                  }
-                })}
+                data={visitRecords.filter(onFilterDate)}
                 loading={loading}
-                searchFields={['users.name', 'users.employee_code', 'employee_name', 'employee_code', 'customer_name', 'customers.customer_name', 'customers.customer_code', 'customers.contact_person', 'purpose', 'location', 'outcome']}
+                searchFields={VISIT_SEARCH_FIELDS}
+                onSearchChange={setVisitSearch}
                 searchPlaceholder="Search staff name/ID, client name/ID, location, outcome..."
                 actions={
                   <div className="flex gap-3">

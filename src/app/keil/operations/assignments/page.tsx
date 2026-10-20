@@ -170,7 +170,9 @@ function RouteAssignmentsContent() {
             });
             const data = await res.json();
             if (data.success) {
-                success("HCE assigned to route.");
+                success(data.data?.merged
+                    ? `Already on this route: days are now ${(data.data.collection_days || []).join(', ')}.`
+                    : "HCE assigned to route.");
                 resetForm();
                 fetchAssignments(selectedRouteId);
             } else {
@@ -198,6 +200,8 @@ function RouteAssignmentsContent() {
                 setEditingAssignment(null);
                 resetForm();
                 fetchAssignments(selectedRouteId);
+            } else {
+                error(data.message || 'Could not update the assignment.');
             }
         } catch (err: any) {
             error(err.message);
@@ -249,15 +253,14 @@ function RouteAssignmentsContent() {
         setAssignmentForm(prev => ({ ...prev, collection_days: DAYS }));
     };
 
-    // Filter: exclude HCEs already assigned to ANY route (except when editing the current assignment)
-    const effectiveHces = availableHces.filter(h => {
-        const globallyAssignedIds = new Set(
-            allAssignments
-                .filter(a => !editingAssignment || a.id !== editingAssignment.id)
-                .map(a => a.hce_id)
-        );
-        return !globallyAssignedIds.has(h.id);
-    });
+    // Facilities on another route are left out. Facilities already on this route
+    // stay in the list: linking one again adds the new days to its link.
+    const onOtherRoutes = new Set(
+        allAssignments
+            .filter(a => a.route_id !== selectedRouteId && (!editingAssignment || a.id !== editingAssignment.id))
+            .map(a => a.hce_id)
+    );
+    const effectiveHces = availableHces.filter(h => !onOtherRoutes.has(h.id));
 
     // The facility list narrowed by the search box; the chosen one always stays listed
     const facilityQuery = facilitySearch.trim().toLowerCase();
