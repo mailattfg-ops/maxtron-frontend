@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { TableView } from '@/components/ui/table-view';
 import * as XLSX from 'xlsx';
+import { reportDate } from '@/utils/reportDate';
 
 export default function MarketingReportsPage() {
   const [visits, setVisits] = useState<any[]>([]);
@@ -129,7 +130,10 @@ export default function MarketingReportsPage() {
 
   const downloadReport = () => {
     const reportData = filteredVisits.map(v => ({
-      'Date': new Date(v.visit_date).toLocaleDateString(),
+      'Date': reportDate(v.visit_date),
+      // Office assistants record no times: shown as N/A
+      'Time In': v.time_in ? String(v.time_in).slice(0, 5) : 'N/A',
+      'Time Out': v.time_out ? String(v.time_out).slice(0, 5) : 'N/A',
       'Staff': v.users?.name || 'N/A',
       'Client': v.customer_name,
       'Contact Person': v.customers?.contact_person || 'N/A',
