@@ -55,6 +55,11 @@ const paragraphs = async (record: any) => {
     order(p, 'Mr. Sivadas', '81390-12444', 'with their phone under the name');
     has(p, '4. Taxes: GST extra as applicable at the time of billing.', 'terms untouched');
 
+    // One page: no empty spacer row, nothing blank after the signature (fitOnOnePage).
+    const xml = await (await fillBagsQuotation(template, reference)).file('word/document.xml')!.async('string');
+    assert.strictEqual((xml.match(/<w:tr[ >]/g) || []).length, 1 + 3 + 3, 'header, three items, three total rows'); checks++;
+    assert.ok(/81390-12444<\/w:t>(?:(?!<w:p[ >])[\s\S])*<w:sectPr/.test(xml), 'the phone number ends the page'); checks++;
+
     // Text that would break the XML if it went in raw.
     const odd = await paragraphs({ ...reference, customer_name: 'A & B <Traders>' });
     has(odd, 'A & B <TRADERS>,', 'ampersands and angle brackets are escaped');

@@ -113,8 +113,8 @@ const signOff = (doc: jsPDF, record: any, y: number) => {
         record.job_role || executive.job_role || executive.designation,
         record.contact_number || executive.phone || record.contact_phone,
     ].filter(Boolean).map(String);
-    // Keep the sign-off together
-    if (y + 14 + sign.length * 6 + 18 > BOTTOM) { doc.addPage(); y = 20; }
+    // Keep the sign-off together: a new page only when its last line would pass BOTTOM
+    if (y + 6 + 10 + 10 + Math.max(sign.length - 1, 0) * 6 > BOTTOM) { doc.addPage(); y = 20; }
     return lines(doc, [
         { text: 'Thanks & Best Regards,', size: 12, gap: 10 },
         { text: 'For MAXTRON ASSOCIATES', size: 12, gap: 10 },
@@ -161,7 +161,6 @@ function bagsBody(doc: jsPDF, record: any) {
         num(it.quantity) ? plain(num(it.quantity)) : '',
         { content: plain(num(it.amount) * num(it.quantity)), styles: { halign: 'right' } },
     ] : ['', '', '', '', '', '']);
-    body.push(['', '', '', '', '', '']); // one blank ruled row under the items, as on the reference
     autoTable(doc, {
         ...tableStyles,
         startY: y,

@@ -4,8 +4,8 @@
  * This does not redraw the client's quotation — it IS their quotation:
  * public/quotation/bags-template.docx is the .docx they sent, with the
  * variable text swapped for {{PLACEHOLDERS}}. Filling it changes text only,
- * so the letterhead, fonts, spacing, table borders and page footer come out
- * exactly as they made them.
+ * so the letterhead, fonts, table borders and page footer come out exactly as
+ * they made them. Only the vertical spacing is tightened (see fitOnOnePage).
  *
  * (Word has no live formulas here; the totals are computed at export time.
  * The Excel export keeps them live.)
@@ -42,12 +42,51 @@ const repeat = (xml: string, tag: string, marker: string, fills: ((block: string
 const set = (values: Record<string, unknown>) => (block: string) =>
     Object.entries(values).reduce((s, [key, value]) => s.split(`{{${key}}}`).join(esc(value)), block);
 
+/** The text a block shows, markup stripped. */
+const textOf = (block: string) =>
+    (block.match(/<w:t(?: [^>]*)?>[^<]*/g) || []).map(t => t.slice(t.indexOf('>') + 1)).join('');
+const isBlank = (block: string) => !textOf(block).trim() && !/<w:(drawing|pict)\b/.test(block);
+
+/** Font size of the blank gap lines, in half-points (6pt). */
+const GAP = 12;
+
+/**
+ * The client's layout leaves room for only three short items: a fourth, or
+ * descriptions that wrap to two lines, pushed the sign-off onto a second page.
+ * So, before filling:
+ *  - the empty spacer row under the items goes;
+ *  - blank gap lines above "Thanks & Best Regards" become thin (the blank lines
+ *    of the signature space stay);
+ *  - the empty paragraphs after the signature go, so they cannot start a blank page.
+ * The footer stays put: it is pinned to the page, and text below its line would print over it.
+ * ponytail: measured in Word, five two-line items fit on one page; a longer quotation still runs to two.
+ */
+const fitOnOnePage = (xml: string) => {
+    xml = xml.replace(/<w:tr[ >][\s\S]*?<\/w:tr>/g, row => (textOf(row).trim() ? row : ''));
+
+    const signOff = xml.indexOf('Thanks &amp; Best Regards');
+    xml = xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>|<w:p[ >][\s\S]*?<\/w:p>/g, (block, at: number) =>
+        at < signOff && block.startsWith('<w:p') && isBlank(block)
+            ? block
+                .replace(/(<w:sz(?:Cs)? w:val=")(\d+)"/g, (_, tag, size) => `${tag}${Math.min(Number(size), GAP)}"`)
+                .replace(/<w:spacing [^>]*\/>/g, '')
+            : block);
+
+    for (;;) {
+        const end = xml.lastIndexOf('<w:sectPr');
+        if (!xml.endsWith('</w:p>', end)) return xml;
+        const start = Math.max(xml.lastIndexOf('<w:p ', end), xml.lastIndexOf('<w:p>', end));
+        if (!isBlank(xml.slice(start, end))) return xml;
+        xml = xml.slice(0, start) + xml.slice(end);
+    }
+};
+
 /** The template with this quotation's data in it. Pure: no DOM, runs in Node. */
 export async function fillBagsQuotation(template: ArrayBuffer | Uint8Array, record: any): Promise<JSZip> {
     const zip = await JSZip.loadAsync(template);
     const part = zip.file(DOCUMENT);
     if (!part) throw new Error('Quotation template is not a Word document');
-    let xml = await part.async('string');
+    let xml = fitOnOnePage(await part.async('string'));
 
     const items = itemsOf(record);
     const validItems = items.filter(Boolean);
