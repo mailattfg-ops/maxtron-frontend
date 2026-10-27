@@ -46,6 +46,16 @@ for (const s of ['REF:  MA/VKM(FO)-QUOTE-0131/2026-27', 'Date: 08.09.2026', 'PK 
 }
 assert.strictEqual(b.getNumberOfPages(), 1, 'bags fits one page');
 
+// MA/ALP(FO)-QUOTE-0290: four items whose descriptions wrap to two lines, signed with name, role and phone.
+const long = (size: string) => ({ product_name: `ALL COLOURS - WITHOUT PRINT ${size}`, amount: 110, bags_per_kg: 45, quantity: 1, gst_percent: 18 });
+const alp = buildQuotationPdf({
+    quotation_type: 'BAGS', quotation_ref: 'MA/ALP(FO)-QUOTE-0290/2026-27', visit_date: '2026-10-23',
+    customer_name: 'TALUK HEAD QUATERS HOSPITAL', location: 'ALAPPUZHA',
+    users: { name: 'SAFA SANAZ' }, job_role: 'office Assistant', contact_number: '8137961444',
+    quotation_items: ['19X22', '24X30', '30X35', '30X50'].map(long),
+}, assets);
+assert.strictEqual(alp.getNumberOfPages(), 1, 'four two-line items fit one page');
+
 const t = buildQuotationPdf(trading, { ...assets, itemImages: [jpeg('logo.jpeg'), undefined] });
 const tt = textOf(t.output());
 for (const s of ['TO,', 'PURCHASE DEPARTMENT,', 'QUOTATION REF: MA/KLM(FO)-QUOTE-0280/2026-27', 'DATE:14/10/26', 'PRODUCT IMAGE', 'RATE/pcs', 'GST(18%)', 'RECTANGULAR 10 PEDAL BIN', '387.00', '69.66', '457.00', '1180.00', '3. Quote Validity: 15 days.', 'Thanks & Best Regards,', 'SHIBIN']) {
