@@ -66,8 +66,8 @@ export default function HCERegistryPage() {
             // Uppercase Alphanumeric, Hyphen, Underscore (Max 15)
             value = value.toUpperCase().replace(/[^A-Z0-9-_]/g, '').slice(0, 15);
         } else if (name === 'contact_mobile') {
-            // Numbers only (Max 10)
-            value = value.replace(/[^0-9]/g, '').slice(0, 10);
+            // Numbers, comma separated for more than one
+            value = value.replace(/[^0-9,\s]/g, '');
         } else if (name === 'contact_person') {
             // Letters, Spaces, Dots (Max 50)
             value = value.replace(/[^a-zA-Z\s\.]/g, '').slice(0, 50);
@@ -169,8 +169,9 @@ export default function HCERegistryPage() {
         }
 
         // Contact Validations
-        if (formData.contact_mobile && formData.contact_mobile.length !== 10) {
-            error("Contact Mobile must be exactly 10 digits.");
+        const mobiles = formData.contact_mobile.split(',').map(m => m.trim()).filter(Boolean);
+        if (mobiles.some(m => !/^\d{10}$/.test(m))) {
+            error("Each Contact Mobile must be exactly 10 digits, separated by commas.");
             return;
         }
 
@@ -203,9 +204,9 @@ export default function HCERegistryPage() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ ...formData, contact_mobile: mobiles.join(', ') })
             });
-            
+
             const data = await res.json();
             if (data.success) {
                 success(`HCE ${editingId ? 'updated' : 'registered'} successfully.`);
@@ -441,9 +442,8 @@ export default function HCERegistryPage() {
                                         <Input 
                                             name="contact_mobile"
                                             className="h-10 rounded-md border-primary/20 bg-background text-sm font-bold" 
-                                            placeholder="10-digit Mobile No" 
-                                            maxLength={10}
-                                            value={formData.contact_mobile} 
+                                            placeholder="9744863290, 9876543210"
+                                            value={formData.contact_mobile}
                                             onChange={handleInputChange} 
                                         />
                                     </div>
