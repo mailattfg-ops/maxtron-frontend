@@ -79,10 +79,10 @@ export default function HCERegistryPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    /** The database allows each HCE code once per company. */
+    /** Each branch numbers its HCEs in its own series, so a code is unique within its branch. */
     const codeClash = () => {
-        const other = hces.find(h => h.hce_code === formData.hce_code && h.id !== editingId);
-        return other ? `HCE Code ${formData.hce_code} is already used by ${other.hce_name}. Enter a different code.` : '';
+        const other = hces.find(h => h.hce_code === formData.hce_code && h.branch_id === formData.branch_id && h.id !== editingId);
+        return other ? `HCE Code ${formData.hce_code} is already used by ${other.hce_name} in this branch. Enter a different code.` : '';
     };
 
     const [formData, setFormData] = useState({
@@ -224,8 +224,8 @@ export default function HCERegistryPage() {
                 setIsFormOpen(false);
                 resetForm();
                 fetchHces(currentCompanyId);
-            } else if (/hce_code_company_id_key/.test(data.message)) {
-                // Clashes with an HCE outside this user's branches, so not in the list above
+            } else if (/keil_hces_hce_code/.test(data.message)) {
+                // Clashes with an HCE not in this user's list (or, before migrations/hce_code_unique_per_branch.sql, in another branch)
                 setActiveTab('basic');
                 error(`HCE Code ${formData.hce_code} is already used by another HCE. Enter a different code.`);
             } else {
