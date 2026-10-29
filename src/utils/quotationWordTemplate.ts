@@ -72,6 +72,11 @@ const fitOnOnePage = (xml: string) => {
                 .replace(/<w:spacing [^>]*\/>/g, '')
             : block);
 
+    return dropTrailingBlanks(xml);
+};
+
+/** The empty paragraphs at the end of the body go, so they cannot start a blank page. */
+export const dropTrailingBlanks = (xml: string) => {
     for (;;) {
         const end = xml.lastIndexOf('<w:sectPr');
         if (!xml.endsWith('</w:p>', end)) return xml;

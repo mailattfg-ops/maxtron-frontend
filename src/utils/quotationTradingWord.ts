@@ -15,7 +15,8 @@
  */
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName, itemDescription } from './quotationExcelGenerator';
+import { itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName, itemDescription, tradingLineTotal, tradingGrandTotal } from './quotationExcelGenerator';
+import { dropTrailingBlanks } from './quotationWordTemplate';
 
 const DOCUMENT = 'word/document.xml';
 const RELS = 'word/_rels/document.xml.rels';
@@ -37,8 +38,8 @@ const para = (inner: string, o: { align?: 'left' | 'center' | 'right'; after?: n
     `<w:p><w:pPr><w:spacing w:before="0" w:after="${o.after ?? 0}" w:line="276" w:lineRule="auto"/>${o.align && o.align !== 'left' ? `<w:jc w:val="${o.align}"/>` : ''}</w:pPr>${inner}</w:p>`;
 const text = (t: string, o: { bold?: boolean; size?: number; align?: 'left' | 'center' | 'right'; after?: number } = {}) => para(run(t, o), o);
 const BORDERS = '<w:tcBorders><w:top w:val="single" w:sz="4" w:color="000000"/><w:left w:val="single" w:sz="4" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:color="000000"/><w:right w:val="single" w:sz="4" w:color="000000"/></w:tcBorders>';
-const cell = (width: number, content: string, o: { vMerge?: 'restart' | 'continue'; vAlign?: 'top' | 'center' } = {}) =>
-    `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${o.vMerge ? `<w:vMerge${o.vMerge === 'restart' ? ' w:val="restart"' : ''}/>` : ''}${BORDERS}<w:vAlign w:val="${o.vAlign || 'center'}"/></w:tcPr>${content || para('')}</w:tc>`;
+const cell = (width: number, content: string, o: { vMerge?: 'restart' | 'continue'; vAlign?: 'top' | 'center'; span?: number } = {}) =>
+    `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${o.span ? `<w:gridSpan w:val="${o.span}"/>` : ''}${o.vMerge ? `<w:vMerge${o.vMerge === 'restart' ? ' w:val="restart"' : ''}/>` : ''}${BORDERS}<w:vAlign w:val="${o.vAlign || 'center'}"/></w:tcPr>${content || para('')}</w:tc>`;
 const table = (widths: number[], rows: string[]) =>
     `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
 const row = (cells: string[], height?: number) =>
@@ -166,11 +167,15 @@ export async function fillTradingQuotation(template: ArrayBuffer | Uint8Array, r
             cell(widths[3], text(rate ? money(rate) : '', { bold: true, align: 'center' })),
             cell(widths[4], text(rate ? money(perUnitGst) : '', { bold: true, align: 'center' })),
             cell(widths[5], text(qty ? String(qty) : '', { bold: true, align: 'center' })),
-            cell(widths[6], text(money(Math.round((rate + perUnitGst) * qty)), { bold: true, align: 'center' })),
+            cell(widths[6], text(money(tradingLineTotal(it)), { bold: true, align: 'center' })),
         ], 1900);
     });
     types = types_ok;
-    const itemsTable = table(widths, [row(headings.map((h, i) => cell(widths[i], text(h, { bold: true, align: 'center' }))), 500), ...itemRows]);
+    const grandTotal = row([
+        cell(widths.slice(0, 6).reduce((a, b) => a + b, 0), text('GRAND TOTAL', { bold: true, align: 'right' }), { span: 6 }),
+        cell(widths[6], text(money(tradingGrandTotal(items)), { bold: true, align: 'center' })),
+    ], 500);
+    const itemsTable = table(widths, [row(headings.map((h, i) => cell(widths[i], text(h, { bold: true, align: 'center' }))), 500), ...itemRows, grandTotal]);
 
     const terms = [
         text('', {}),
@@ -178,7 +183,7 @@ export async function fillTradingQuotation(template: ArrayBuffer | Uint8Array, r
         ...TERMS.map((t, i) => text(`${i + 1}. ${t}`)),
     ].join('');
 
-    xml = xml.slice(0, bodyStart) + letterhead + rule + head + text('') + itemsTable + terms + text('') + signOff + sectPr + xml.slice(xml.indexOf('</w:body>'));
+    xml = dropTrailingBlanks(xml.slice(0, bodyStart) + letterhead + rule + head + text('') + itemsTable + terms + text('') + signOff + sectPr + xml.slice(xml.indexOf('</w:body>')));
     zip.file(DOCUMENT, xml);
     zip.file(RELS, rels);
     zip.file(TYPES, types);

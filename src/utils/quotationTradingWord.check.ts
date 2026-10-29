@@ -33,7 +33,7 @@ const photo = fs.readFileSync(path.join(pub, 'logo.jpeg'));
 
     for (const s of ['TO,', 'PURCHASE DEPARTMENT,', 'SIVAGIRI SREE NARAYANA MEDICAL MISSION HOSPITAL,', 'KOLLAM, KERALA',
         'QUOTATION REF:MA/KLM(FO)-QUOTE-0280/2026-27', 'DATE:14/10/26', 'PRODUCT IMAGE', 'RATE/pcs', 'GST(18%)', 'TOTAL AMT INCL. GST',
-        'RECTANGULAR 10 PEDAL BIN', '387.00', '69.66', '457.00', '1180.00', 'Terms &amp; Conditions:']) {
+        'RECTANGULAR 10 PEDAL BIN', '387.00', '69.66', '457.00', '1180.00', 'GRAND TOTAL', '1637.00', 'Terms &amp; Conditions:']) {
         assert.ok(texts.includes(s), `has "${s}"`);
     }
     assert.ok(!/MAXTRON ENTERPRISE|98765|sales@maxtron/.test(texts), 'no invented company details');
@@ -43,6 +43,7 @@ const photo = fs.readFileSync(path.join(pub, 'logo.jpeg'));
     for (const s of ['Thanks &amp; Best Regards,', 'For MAXTRON ASSOCIATES', 'SHIBIN', 'Business Development Executive', '8136861444']) {
         assert.ok(texts.includes(s), `sign-off has "${s}"`);
     }
+    assert.ok(/8136861444<\/w:t>(?:(?!<w:p[ >])[\s\S])*<w:sectPr/.test(xml), 'the phone number ends the page, no blank lines after it');
     assert.ok(texts.replace(/\|/g, '').includes('13/95,13/96 PIRIVUSALA'), 'the client letterhead is kept');
     assert.strictEqual((xml.match(/r:embed="rIdTrade/g) || []).length, 1, 'one product photo placed');
     assert.ok(zip.file('word/media/trade1001.jpeg'), 'the photo is in the file');

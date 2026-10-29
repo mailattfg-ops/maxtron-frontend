@@ -93,6 +93,9 @@ const findRow = (ws: any, col: number, text: string) => {
     eq(result(t.getCell('E11')), 0, 'a line with no rate shows 0 GST, as on the reference');
     eq(result(t.getCell('G11')), 0, 'and 0 total');
     eq(t.getCell('A13').value, null, 'spare slots stay empty');
+    eq(t.getCell('A14').value, 'GRAND TOTAL', 'grand total under the slots');
+    eq(result(t.getCell('G14')), 19187, 'grand total adds the line totals');
+    eq(formula(t.getCell('G14')), 'SUM(G10:G13)', 'grand total stays a live formula');
     eq(t.getCell(findRow(t, 2, 'Terms & Conditions:') + 3, 2).value, '3. Quote Validity: 15 days.', 'three terms');
     eq(t.getImages().length, (logo ? 1 : 0) + (name ? 1 : 0) + (productImage ? 1 : 0), 'letterhead + product pictures');
     // Without a sheet view Excel shrinks rows on scaled displays and pictures overflow them.

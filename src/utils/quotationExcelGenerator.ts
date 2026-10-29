@@ -61,6 +61,13 @@ const rowPx = (points: number) => Math.round((points * 96) / 72);
 
 export const num = (v: unknown) => Number(v) || 0;
 export const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** TRADING: a line's total incl. GST, rounded to the rupee as the reference prints it. */
+export const tradingLineTotal = (it: any) => {
+    const rate = num(it.amount);
+    return Math.round((rate + (rate * num(it.gst_percent)) / 100) * num(it.quantity));
+};
+export const tradingGrandTotal = (items: any[]) => items.filter(Boolean).reduce((s, it) => s + tradingLineTotal(it), 0);
 export const quoteDate = (record: any) => new Date(record.visit_date || Date.now());
 
 /**
@@ -247,14 +254,22 @@ const buildTrading = (wb: ExcelJS.Workbook, record: any, assets: QuotationAssets
             put(ws, r, 4, rate || null, { bold: true, h: 'center', fmt: '0.00' });
             put(ws, r, 5, { formula: `D${r}*${p}/100`, result: gstPerUnit }, { bold: true, h: 'center', fmt: '0.00' });
             put(ws, r, 6, qty || null, { bold: true, h: 'center' });
-            put(ws, r, 7, { formula: `ROUND((D${r}+E${r})*F${r},0)`, result: Math.round((rate + gstPerUnit) * qty) }, { bold: true, h: 'center', fmt: '0.00' });
+            put(ws, r, 7, { formula: `ROUND((D${r}+E${r})*F${r},0)`, result: tradingLineTotal(it) }, { bold: true, h: 'center', fmt: '0.00' });
             placeImage(wb, ws, assets.itemImages?.[i], 3, r, 3, r);
         }
     }
     box(ws, first, 1, first + slots - 1, 7);
 
+    // GRAND TOTAL under the item slots: the sum of the totals column, live.
+    const totalRow = first + slots;
+    ws.getRow(totalRow).height = 20;
+    ws.mergeCells(totalRow, 1, totalRow, 6);
+    put(ws, totalRow, 1, 'GRAND TOTAL', { bold: true, size: 12, h: 'right' });
+    put(ws, totalRow, 7, { formula: `SUM(G${first}:G${totalRow - 1})`, result: tradingGrandTotal(items) }, { bold: true, size: 12, h: 'center', fmt: '0.00' });
+    box(ws, totalRow, 1, totalRow, 7);
+
     // Terms & Conditions — the trading sheet carries the first three.
-    let r = first + slots;
+    let r = totalRow + 1;
     ws.getRow(r).height = 15;
     r++;
     put(ws, r, 2, 'Terms & Conditions:', { bold: true });
