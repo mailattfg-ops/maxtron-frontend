@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
     itemsOf, customerName, locationParts, uniformGst, quoteDate, num, pad2, quotationFileName,
-    quotationTypeOf, loadAsset, measure, itemDescription, type QuoteImage,
+    quotationTypeOf, loadAsset, measure, itemDescription, tradingLineTotal, tradingGrandTotal, type QuoteImage,
 } from './quotationExcelGenerator';
 
 const ADDRESS = '13/95,13/96 PIRIVUSALA, CHANDRANAGAR, PALAKKAD KERALA ,678007, PHONE:87148-23444';
@@ -229,9 +229,12 @@ function tradingBody(doc: jsPDF, record: any, assets: QuotationPdfAssets) {
             const qty = num(it.quantity);
             const perUnitGst = (rate * num(it.gst_percent)) / 100;
             return [String(i + 1), pdfText(itemDescription(it).toUpperCase()), '',
-                rate ? money(rate) : '', rate ? money(perUnitGst) : '', qty ? String(qty) : '', money(Math.round((rate + perUnitGst) * qty))];
+                rate ? money(rate) : '', rate ? money(perUnitGst) : '', qty ? String(qty) : '', money(tradingLineTotal(it))];
         }),
+        foot: [[{ content: 'GRAND TOTAL', colSpan: 6, styles: { halign: 'right' } }, money(tradingGrandTotal(items))]],
+        showFoot: 'lastPage',
         headStyles: { ...tableStyles.headStyles, fontSize: 9.5 },
+        footStyles: { ...tableStyles.headStyles, fontSize: 11 },
         bodyStyles: { minCellHeight: 36, fontStyle: 'bold' },
         columnStyles: { ...Object.fromEntries(widths.map((w, i) => [i, { cellWidth: w }])), 0: { cellWidth: widths[0], fontStyle: 'normal' } },
         didDrawCell: (data: any) => {

@@ -79,6 +79,12 @@ export default function HCERegistryPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    /** The database allows each HCE code once per company. */
+    const codeClash = () => {
+        const other = hces.find(h => h.hce_code === formData.hce_code && h.id !== editingId);
+        return other ? `HCE Code ${formData.hce_code} is already used by ${other.hce_name}. Enter a different code.` : '';
+    };
+
     const [formData, setFormData] = useState({
         hce_name: '',
         hce_code: '',
@@ -159,6 +165,11 @@ export default function HCERegistryPage() {
             error("HCE Code is required (min 2 chars).");
             return;
         }
+        if (codeClash()) {
+            setActiveTab('basic');
+            error(codeClash());
+            return;
+        }
         if (!formData.hce_name || formData.hce_name.length < 3) {
             error("Facility Name is required (min 3 chars).");
             return;
@@ -213,6 +224,10 @@ export default function HCERegistryPage() {
                 setIsFormOpen(false);
                 resetForm();
                 fetchHces(currentCompanyId);
+            } else if (/hce_code_company_id_key/.test(data.message)) {
+                // Clashes with an HCE outside this user's branches, so not in the list above
+                setActiveTab('basic');
+                error(`HCE Code ${formData.hce_code} is already used by another HCE. Enter a different code.`);
             } else {
                 error(data.message);
             }
@@ -517,6 +532,10 @@ export default function HCERegistryPage() {
                                                 }
                                                 if (!formData.branch_id) {
                                                     error("Please select the organizational Branch for this facility.");
+                                                    return;
+                                                }
+                                                if (codeClash()) {
+                                                    error(codeClash());
                                                     return;
                                                 }
                                                 setActiveTab('ops');

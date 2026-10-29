@@ -58,7 +58,7 @@ assert.strictEqual(alp.getNumberOfPages(), 1, 'four two-line items fit one page'
 
 const t = buildQuotationPdf(trading, { ...assets, itemImages: [jpeg('logo.jpeg'), undefined] });
 const tt = textOf(t.output());
-for (const s of ['TO,', 'PURCHASE DEPARTMENT,', 'QUOTATION REF: MA/KLM(FO)-QUOTE-0280/2026-27', 'DATE:14/10/26', 'PRODUCT IMAGE', 'RATE/pcs', 'GST(18%)', 'RECTANGULAR 10 PEDAL BIN', '387.00', '69.66', '457.00', '1180.00', '3. Quote Validity: 15 days.', 'Thanks & Best Regards,', 'SHIBIN']) {
+for (const s of ['TO,', 'PURCHASE DEPARTMENT,', 'QUOTATION REF: MA/KLM(FO)-QUOTE-0280/2026-27', 'DATE:14/10/26', 'PRODUCT IMAGE', 'RATE/pcs', 'GST(18%)', 'RECTANGULAR 10 PEDAL BIN', '387.00', '69.66', '457.00', '1180.00', 'GRAND TOTAL', '1637.00', '3. Quote Validity: 15 days.', 'Thanks & Best Regards,', 'SHIBIN']) {
     assert.ok(tt.join('').includes(s) || tt.join(' ').includes(s), `trading has "${s}"`); // text wraps inside cells
 }
 assert.ok(!tt.some(x => /Taxes: GST extra/.test(x)), 'trading carries three terms');
