@@ -903,7 +903,7 @@ export default function DailyCollectionEntryPage() {
                                         const visitStatus = entries[a.hce_id]?.visit_status || 'Not Visited';
                                         return (
                                             <tr key={a.id} className={`group border-b border-slate-50 transition-all ${isVisited ? 'bg-primary/10/30' : 'hover:bg-slate-50'}`}>
-                                                <td className="px-4 py-6 text-center text-xs font-black text-primary">{i + 1}</td>
+                                                <td className="px-4 py-6 text-center text-xs font-black text-primary">{(!showAllDays && a.sl_no) || i + 1}</td>
                                                 <td className="px-6 py-6 text-center">
                                                     <div 
                                                         onClick={() => {

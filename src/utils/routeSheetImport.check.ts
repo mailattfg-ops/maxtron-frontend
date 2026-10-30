@@ -9,7 +9,7 @@
  */
 import assert from 'assert';
 import ExcelJS from 'exceljs';
-import { readRouteSheet, matchRouteSheet, frequencyOf, codeKey } from './routeSheetImport';
+import { readRouteSheet, matchRouteSheet, matchBlock, frequencyOf, codeKey } from './routeSheetImport';
 
 (async () => {
     const wb = new ExcelJS.Workbook();
@@ -24,13 +24,20 @@ import { readRouteSheet, matchRouteSheet, frequencyOf, codeKey } from './routeSh
     sunday.getCell('B1').value = 'EKM 1 SUNDAY ROUTE';
     sunday.getRow(2).values = ['SL NO', 'HCF NAME', 'AFF.NO'];
     sunday.getRow(3).values = [1, 'TALUK HOSPITAL PIRAVOM', 85];
+    const alp = wb.addWorksheet('Sheet3');
+    alp.getCell('A1').value = 'MONDAY,THURSADY (ALAPPUZHA 1)';
+    alp.getRow(2).values = ['SL NO', 'HCF NAME', 'AFF NO'];
+    alp.getRow(3).values = [1, 'GENERAL HOSPITAL ALAPPUZHA', 1428];
+    alp.getRow(4).values = [2, 'MDS LAB', null];
+    alp.getRow(5).values = [3, 'Cherthala Thaluk', 641];
 
     const uploaded = new ExcelJS.Workbook();
     await uploaded.xlsx.load(await wb.xlsx.writeBuffer() as any);
     const blocks = readRouteSheet(uploaded);
 
     assert.deepStrictEqual(blocks.map(b => [b.route, b.days.join('/')]),
-        [['EKM 1', 'Monday/Thursday'], ['EKM 2', 'Monday/Thursday'], ['EKM 1', 'Sunday']], 'a list per route and set of days');
+        [['EKM 1', 'Monday/Thursday'], ['EKM 2', 'Monday/Thursday'], ['EKM 1', 'Sunday'], ['ALAPPUZHA 1', 'Monday/Thursday']],
+        'a list per route and set of days; the route can follow the days');
     assert.deepStrictEqual(blocks[0].rows.map(r => r.code), ['1428', '00078', ''], 'rows in the sheet order, blank code kept');
     assert.strictEqual(blocks[0].rows[2].name, 'LISSI HOSPITAL', 'a row with no AFF NO is still read');
 
@@ -44,16 +51,20 @@ import { readRouteSheet, matchRouteSheet, frequencyOf, codeKey } from './routeSh
         { id: 'h78', hce_code: '78', branch_id: ekm },
         { id: 'h2194', hce_code: '2194', branch_id: ekm },
         { id: 'h85', hce_code: '85', branch_id: ekm },
-        { id: 'tvla9999', hce_code: '9999', branch_id: 'branch-tvla' },
+        { id: 'tvla9999', hce_code: '9999', hce_name: 'SOME OTHER HOSPITAL', branch_id: 'branch-tvla' },
+        { id: 'tvla641', hce_code: '641', hce_name: 'CHERTHALA TALUK', branch_id: 'branch-tvla' },
     ];
     const plan = matchRouteSheet(blocks, routes, hces);
-    assert.deepStrictEqual(plan.map(p => p.target?.id), ['r1', 'r2', 'r1'], '"EKM 1" is route "EKM- 1"');
-    assert.deepStrictEqual(plan[0].items, [{ hce_id: 'h1428' }, { hce_id: 'h78' }], 'AFF NO 00078 is HCE code 78');
+    assert.deepStrictEqual(plan.map(p => p.target?.id), ['r1', 'r2', 'r1', undefined], '"EKM 1" is route "EKM- 1"; "ALAPPUZHA 1" matches none');
+    assert.deepStrictEqual(matchBlock(plan[3], routes[0], hces).items, [{ hce_id: 'h1428', sl_no: 1 }, { hce_id: 'tvla641', sl_no: 3 }],
+        'a route picked by hand is matched in its branch; a hospital registered under another branch (same AFF NO and name) is not registered again; '
+        + 'a skipped row leaves a gap in the SL NOs');
+    assert.deepStrictEqual(plan[0].items, [{ hce_id: 'h1428', sl_no: 1 }, { hce_id: 'h78', sl_no: 2 }], 'AFF NO 00078 is HCE code 78');
     assert.deepStrictEqual(plan[0].missing.map(r => r.name), ['LISSI HOSPITAL'], 'no AFF NO: cannot be registered, listed');
     assert.deepStrictEqual(plan[1].items, [
-        { hce_id: 'h2194' },
-        { hce_code: '9999', hce_name: 'NOT REGISTERED' },
-        { hce_id: 'h2194' },
+        { hce_id: 'h2194', sl_no: 1 },
+        { hce_code: '9999', hce_name: 'NOT REGISTERED', sl_no: 2 },
+        { hce_id: 'h2194', sl_no: 3 },
     ], 'sheet order kept; a facility listed twice stays twice; an unregistered one is registered in its place');
     assert.deepStrictEqual(plan[1].toRegister.map(r => r.code), ['9999'], 'another branch\'s HCE is not matched');
 

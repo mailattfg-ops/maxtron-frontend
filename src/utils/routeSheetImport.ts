@@ -54,8 +54,11 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
             }
             const words = `${title} ${ws.name}`.toUpperCase().match(DAY_WORD) || [];
             const days = DAYS.filter(d => words.some(w => w.startsWith(d.slice(0, 3).toUpperCase())));
-            const firstDay = title.toUpperCase().search(DAY_WORD);
-            const route = (firstDay >= 0 ? title.slice(0, firstDay) : title).trim();
+            // The route comes first ("EKM 1 MONDAY&THURSDAY") or after the days ("MONDAY,THURSDAY (ALAPPUZHA 1)")
+            const upper = title.toUpperCase();
+            const firstDay = upper.search(DAY_WORD);
+            const route = (firstDay > 0 ? title.slice(0, firstDay)
+                : title.match(/\(([^)]+)\)/)?.[1] || upper.replace(DAY_WORD, ' ').replace(/ROUTE|[^A-Z0-9 -]/g, ' ')).trim();
 
             const rows: RouteSheetBlock['rows'] = [];
             for (let r = header + 1; r <= ws.rowCount; r++) {
@@ -72,6 +75,9 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
 /** An HCE code as the registry compares it: digits without leading zeros ("00078" is 78). */
 export const codeKey = (v: unknown) => String(v ?? '').trim().replace(/\.0+$/, '').replace(/^0+(?=\d)/, '');
 
+/** A facility name as compared across branches: its consonants and digits, so "Cherthala Thaluk" is "CHERTHALA TALUK". */
+export const nameKey = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]|[aeiouhy]/g, '');
+
 /** Route names compared without spaces or dashes, so the sheet's "EKM 1" is route "EKM- 1". */
 export const routeKey = (v: unknown) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -79,8 +85,8 @@ export const routeKey = (v: unknown) => String(v ?? '').toUpperCase().replace(/[
 export const frequencyOf = (days: string[]) =>
     ({ 1: 'Once a Week', 2: 'Alternate days', 3: 'Thrice a Week' } as Record<number, string>)[days.length] || 'Daily';
 
-/** A list entry: an HCE already registered, or one to register from the sheet's name and AFF NO. */
-export type RouteSheetItem = { hce_id: string } | { hce_code: string; hce_name: string };
+/** A list entry, with its SL NO on the sheet: an HCE already registered, or one to register from the sheet's name and AFF NO. */
+export type RouteSheetItem = ({ hce_id: string } | { hce_code: string; hce_name: string }) & { sl_no: number | null };
 
 /**
  * Matches each block to its route (by name, else by code) and each row to the
@@ -90,21 +96,37 @@ export type RouteSheetItem = { hce_id: string } | { hce_code: string; hce_name: 
  * cannot be, and is listed in `missing`, never dropped silently.
  */
 export function matchRouteSheet(blocks: RouteSheetBlock[], routes: any[], hces: any[]) {
-    return blocks.map(block => {
-        const target = routes.find(r => routeKey(r.route_name) === routeKey(block.route))
-            || routes.find(r => routeKey(r.route_code) === routeKey(block.route));
-        const byCode = new Map(hces.filter(h => target && h.branch_id === target.branch_id).map(h => [codeKey(h.hce_code), h]));
-        const items: RouteSheetItem[] = [];
-        const toRegister: RouteSheetBlock['rows'] = [];
-        const missing: RouteSheetBlock['rows'] = [];
-        for (const row of block.rows) {
-            const hce = codeKey(row.code) ? byCode.get(codeKey(row.code)) : undefined;
-            if (hce) items.push({ hce_id: hce.id });
-            else if (codeKey(row.code) && row.name) {
-                items.push({ hce_code: row.code, hce_name: row.name });
-                toRegister.push(row);
-            } else missing.push(row);
-        }
-        return { ...block, target, items, toRegister, missing };
+    return blocks.map(block => matchBlock(block, routes.find(r => routeKey(r.route_name) === routeKey(block.route))
+        || routes.find(r => routeKey(r.route_code) === routeKey(block.route)), hces));
+}
+
+/**
+ * Matches a block's rows to the route's HCEs (the route picked by hand, say).
+ * AFF NOs are numbered per branch: a row is the HCE with its AFF NO in the
+ * route's branch, else the same hospital (same AFF NO and name) registered
+ * under another branch, so it is never registered twice.
+ */
+export function matchBlock(block: RouteSheetBlock, target: any, hces: any[]) {
+    const byCode = new Map<string, any>();
+    const elsewhere = new Map<string, any>();
+    if (target?.branch_id) hces.forEach(h => {
+        if (h.branch_id === target.branch_id) byCode.set(codeKey(h.hce_code), h);
+        else elsewhere.set(`${codeKey(h.hce_code)}|${nameKey(h.hce_name)}`, h);
     });
+    const items: RouteSheetItem[] = [];
+    const toRegister: RouteSheetBlock['rows'] = [];
+    const missing: RouteSheetBlock['rows'] = [];
+    for (const row of block.rows) {
+        const hce = codeKey(row.code)
+            ? byCode.get(codeKey(row.code)) || elsewhere.get(`${codeKey(row.code)}|${nameKey(row.name)}`)
+            : undefined;
+        const sl = parseInt(row.sl, 10);
+        const sl_no = Number.isNaN(sl) ? null : sl; // kept, so a skipped row leaves a gap rather than renumbering the rest
+        if (hce) items.push({ hce_id: hce.id, sl_no });
+        else if (codeKey(row.code) && row.name) {
+            items.push({ hce_code: row.code, hce_name: row.name, sl_no });
+            toRegister.push(row);
+        } else missing.push(row);
+    }
+    return { ...block, target, items, toRegister, missing };
 }
