@@ -33,7 +33,10 @@ import {
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
-import { readRouteSheet, matchRouteSheet, frequencyOf } from '@/utils/routeSheetImport';
+import { readRouteSheet, matchRouteSheet, matchBlock, frequencyOf } from '@/utils/routeSheetImport';
+
+// A sheet list can be uploaded once it has a route with a branch (AFF NOs are looked up in that branch), days and facilities
+const uploadable = (b: any) => Boolean(b.target?.branch_id && b.days.length && b.items.length);
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ASSIGN_API = `${API_BASE}/api/keil/operations/assignments`;
@@ -241,7 +244,7 @@ function RouteAssignmentsContent() {
                 return;
             }
             setBulkPlan(plan);
-            setBulkPicked(new Set(plan.flatMap((b, i) => (b.target && b.days.length && b.items.length ? [i] : []))));
+            setBulkPicked(new Set(plan.flatMap((b, i) => (uploadable(b) ? [i] : []))));
         } catch (err: any) {
             error(`Could not read the file: ${err.message}`);
         }
@@ -252,7 +255,7 @@ function RouteAssignmentsContent() {
         const picked = bulkPlan.filter((b, i) => bulkPicked.has(i));
         const names = picked.map(b => `${b.target.route_name} ${b.days.map(d => d.slice(0, 3)).join(' & ')}`);
         const newHces = picked.reduce((n, b) => n + b.toRegister.length, 0);
-        if (!(await confirm({ message: `Replace these lists with the sheet's lists, in the sheet's order: ${names.join(', ')}. The facilities now on them are taken off first, so none is listed twice. Lists for other days stay as they are.${newHces ? ` ${newHces} facilities not in the HCE Registry are added to it, with the sheet's name and AFF NO.` : ''}` }))) return;
+        if (!(await confirm({ message: `Replace these lists with the sheet's lists, in the sheet's order: ${names.join(', ')}. Each becomes the route's whole list for its days: facilities on that route for those days are taken off them first, so none is listed twice; their other days stay.${newHces ? ` ${newHces} facilities not in the HCE Registry are added to it, with the sheet's name and AFF NO.` : ''}` }))) return;
         const token = localStorage.getItem('token');
         setSubmitting(true);
         let added = 0;
@@ -328,24 +331,40 @@ function RouteAssignmentsContent() {
     const list = lists.includes(dayFilter) ? dayFilter : '';
     const shown = list ? assignments.filter(a => listOf(a) === list) : assignments;
     const position = new Map(shown.map((a, i) => [a.id, i + 1]));
+    // A list from a sheet is numbered by its SL NOs, so a skipped row leaves a gap; any other by place: 1, 2, 3...
+    const numbered = Boolean(list) && shown.some(a => a.sl_no != null);
+    const numberOf = (a: any): number => (numbered && a.sl_no != null ? a.sl_no : position.get(a.id) ?? 0);
 
     /**
-     * Move a facility to place `to` (from 1) in the list on screen. The listed
+     * Move a facility to number `to` in the list on screen: before the one now
+     * numbered `to` when it moves up, after it when it moves down. The listed
      * facilities only swap places among themselves, so the other days' lists
-     * keep their order; then the whole route is numbered 1, 2, 3...
+     * keep their order; then the whole route is numbered 1, 2, 3... A sheet's
+     * SL NOs stay, the moved facility taking `to`; if that is taken, the ones
+     * in between move one along, as when moving a row in Excel.
      */
     const moveTo = async (link: any, to: number) => {
-        const from = shown.indexOf(link);
-        const target = Math.min(Math.max(Math.round(to), 1), shown.length) - 1;
-        if (from < 0 || Number.isNaN(target) || target === from) return;
-        const reordered = shown.filter(a => a !== link);
-        reordered.splice(target, 0, link);
+        const from = numberOf(link);
+        const n = Math.round(to);
+        if (Number.isNaN(n) || n < 1 || n === from) return;
+        const up = n < from;
+        const others = shown.filter(a => a !== link);
+        const reordered = [...others];
+        reordered.splice(others.filter(a => numberOf(a) < n || (!up && numberOf(a) === n)).length, 0, link);
         const onScreen = new Set(shown);
         let next = 0;
         const route = assignments.map(a => (onScreen.has(a) ? reordered[next++] : a));
+        const slNo = new Map<any, number>();
+        if (numbered) {
+            slNo.set(link, n);
+            if (others.some(a => numberOf(a) === n)) others.forEach(a => {
+                const k = numberOf(a);
+                if (up ? k >= n && k < from : k > from && k <= n) slNo.set(a, up ? k + 1 : k - 1);
+            });
+        }
         const items = route
-            .map((a, i) => ({ id: a.id, sequence_order: i + 1 }))
-            .filter((it, i) => route[i].sequence_order !== it.sequence_order);
+            .map((a, i) => ({ id: a.id, sequence_order: i + 1, ...(slNo.has(a) ? { sl_no: slNo.get(a) } : {}) }))
+            .filter((it, i) => route[i].sequence_order !== it.sequence_order || slNo.has(route[i]));
         try {
             const res = await fetch(`${ASSIGN_API}/reorder`, {
                 method: 'PUT',
@@ -499,7 +518,7 @@ function RouteAssignmentsContent() {
                                                     <td className="p-3">
                                                         <input
                                                             type="checkbox"
-                                                            disabled={!(b.target && b.days.length && b.items.length)}
+                                                            disabled={!uploadable(b)}
                                                             checked={bulkPicked.has(i)}
                                                             onChange={() => setBulkPicked(prev => {
                                                                 const next = new Set(prev);
@@ -510,9 +529,29 @@ function RouteAssignmentsContent() {
                                                     </td>
                                                     <td className="p-3 font-bold">{b.title || b.sheet}</td>
                                                     <td className="p-3">
-                                                        {b.target
-                                                            ? `${b.target.route_name} (${b.target.branch_name || b.target.route_code})`
-                                                            : <span className="text-destructive font-bold">No route &ldquo;{b.route}&rdquo;</span>}
+                                                        <select
+                                                            value={b.target?.id || ''}
+                                                            onChange={e => {
+                                                                const next = matchBlock(b, routes.find(r => r.id === e.target.value), availableHces);
+                                                                setBulkPlan(plan => plan && plan.map((p, j) => (j === i ? next : p)));
+                                                                setBulkPicked(prev => {
+                                                                    const picked = new Set(prev);
+                                                                    if (uploadable(next)) picked.add(i); else picked.delete(i);
+                                                                    return picked;
+                                                                });
+                                                            }}
+                                                            className={`h-8 rounded-md border px-2 text-xs font-bold bg-white ${b.target ? 'border-primary/20' : 'border-destructive text-destructive'}`}
+                                                        >
+                                                            <option value="">{`Pick route for “${b.route}”`}</option>
+                                                            {routes.map(r => (
+                                                                <option key={r.id} value={r.id}>{r.route_name} ({r.branch_name || r.route_code})</option>
+                                                            ))}
+                                                        </select>
+                                                        {b.target && !b.target.branch_id && (
+                                                            <div className="mt-1 text-[11px] font-bold text-destructive">
+                                                                No branch: set it in Route Registry first
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="p-3">
                                                         {b.days.length
@@ -719,11 +758,10 @@ function RouteAssignmentsContent() {
                                 <div className="flex items-center gap-3">
                                     {canEdit ? (
                                         <input
-                                            key={`${a.id}-${position.get(a.id)}`}
+                                            key={`${a.id}-${numberOf(a)}`}
                                             type="number"
                                             min={1}
-                                            max={shown.length}
-                                            defaultValue={position.get(a.id)}
+                                            defaultValue={numberOf(a)}
                                             title="Type a new number and press Enter to move this facility"
                                             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                                             onBlur={e => moveTo(a, Number(e.target.value))}
@@ -731,7 +769,7 @@ function RouteAssignmentsContent() {
                                         />
                                     ) : (
                                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shadow-sm border border-primary/10">
-                                            {position.get(a.id)}
+                                            {numberOf(a)}
                                         </div>
                                     )}
                                     <div className="flex flex-col">
