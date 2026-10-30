@@ -58,7 +58,7 @@ function RouteAssignmentsContent() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [selectedRouteId, setSelectedRouteId] = useState(routeId || '');
     const [assignments, setAssignments] = useState<any[]>([]);
-    const [dayFilter, setDayFilter] = useState(''); // '' shows every day
+    const [dayFilter, setDayFilter] = useState(''); // a list ("Tue & Fri"); '' shows them all
     const [availableHces, setAvailableHces] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState(false);
@@ -318,8 +318,15 @@ function RouteAssignmentsContent() {
         setAssignmentForm(prev => ({ ...prev, collection_days: DAYS }));
     };
 
-    // The route's facilities for the chosen day, in route order (the order they were entered)
-    const shown = dayFilter ? assignments.filter(a => (a.collection_days || []).includes(dayFilter)) : assignments;
+    // A route's lists are its sets of days, as uploaded ("Tue & Fri"): the chosen
+    // list's facilities, in route order (the order they were entered)
+    const listOf = (a: any) => {
+        const days = DAYS.filter(d => (a.collection_days || []).includes(d));
+        return days.length === 7 ? 'Every day' : days.map(d => d.slice(0, 3)).join(' & ') || 'No days';
+    };
+    const lists = [...new Set(assignments.map(listOf))];
+    const list = lists.includes(dayFilter) ? dayFilter : '';
+    const shown = list ? assignments.filter(a => listOf(a) === list) : assignments;
     const position = new Map(shown.map((a, i) => [a.id, i + 1]));
 
     /**
@@ -405,19 +412,19 @@ function RouteAssignmentsContent() {
                     </div>
                     {selectedRouteId && (
                         <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Day</span>
-                            {['', ...DAYS].map(day => (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">List</span>
+                            {['', ...lists].map(l => (
                                 <Button
-                                    key={day || 'all'}
+                                    key={l || 'all'}
                                     type="button"
                                     size="sm"
-                                    variant={dayFilter === day ? 'default' : 'outline'}
-                                    onClick={() => setDayFilter(day)}
+                                    variant={list === l ? 'default' : 'outline'}
+                                    onClick={() => setDayFilter(l)}
                                     className="h-8 px-3 text-xs font-bold"
                                 >
-                                    {day ? day.slice(0, 3) : 'All'}
+                                    {l || 'All'}
                                     <span className="ml-1 opacity-60">
-                                        {day ? assignments.filter(a => (a.collection_days || []).includes(day)).length : assignments.length}
+                                        {l ? assignments.filter(a => listOf(a) === l).length : assignments.length}
                                     </span>
                                 </Button>
                             ))}
@@ -698,9 +705,9 @@ function RouteAssignmentsContent() {
                 </Card>
             ) : (
                 <TableView
-                    key={dayFilter}
+                    key={list}
                     title="Mapped Facilities"
-                    description={`Collection sequence for ${route?.route_name}${dayFilter ? ` on ${dayFilter}` : ''}${canEdit ? '. Type a new number to move a facility.' : ''}`}
+                    description={`Collection sequence for ${route?.route_name}${list ? `, ${list} list` : ''}${canEdit ? '. Type a new number to move a facility.' : ''}`}
                     headers={['HCE / Place', 'Type', 'Collection Days', 'Remarks', 'Actions']}
                     data={shown}
                     initialRowsPerPage={100}
