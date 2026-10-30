@@ -84,6 +84,27 @@ export default function DailyCollectionEntryPage() {
 
     // Entries state: Map of HCE ID -> Entry Details
     const [entries, setEntries] = useState<Record<string, any>>({});
+    const [showAllDays, setShowAllDays] = useState(false);
+
+    // The date's facilities in route order, each once: those due on its weekday,
+    // those with no days set, and any marked visited (so a saved visit never drops off).
+    const weekday = new Date(`${headerData.collection_date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
+    const listed = new Set<string>();
+    const dayHces = assignedHces.filter(a => {
+        const days = a.collection_days || [];
+        const due = showAllDays || !days.length || days.includes(weekday) || entries[a.hce_id]?.is_visited;
+        if (!due || listed.has(a.hce_id)) return false;
+        listed.add(a.hce_id);
+        return true;
+    });
+
+    const markAllVisited = () => setEntries(prev => {
+        const next = { ...prev };
+        dayHces.forEach(a => {
+            if (!next[a.hce_id]?.is_visited) next[a.hce_id] = { ...next[a.hce_id], hce_id: a.hce_id, is_visited: true, visit_status: 'Visited' };
+        });
+        return next;
+    });
 
     useEffect(() => {
         fetchInitialData();
@@ -267,17 +288,17 @@ export default function DailyCollectionEntryPage() {
     };
 
     const calculateTotals = () => {
-        const visitedList = Object.values(entries).filter(e => e.is_visited);
+        const visitedList = dayHces.map(a => entries[a.hce_id]).filter(e => e?.is_visited);
 
-        const total_assigned = assignedHces.length;
+        const total_assigned = dayHces.length;
         const total_visited = visitedList.length;
 
         // Breakdown
-        const assigned_bedded = assignedHces.filter(a => a.keil_hces?.hce_category === 'Bedded').length;
+        const assigned_bedded = dayHces.filter(a => a.keil_hces?.hce_category === 'Bedded').length;
         const assigned_others = total_assigned - assigned_bedded;
 
         const visited_bedded = visitedList.filter(e => {
-            const h = assignedHces.find(a => a.hce_id === e.hce_id);
+            const h = dayHces.find(a => a.hce_id === e.hce_id);
             return h?.keil_hces?.hce_category === 'Bedded';
         }).length;
         const visited_others = total_visited - visited_bedded;
@@ -350,7 +371,7 @@ export default function DailyCollectionEntryPage() {
                         collection_qty: (stats.total_visited / (stats.total_assigned || 1)) * 100,
                         company_id: currentCompanyId
                     },
-                    entries: Object.values(entries)
+                    entries: dayHces.map(a => entries[a.hce_id])
                 };
 
                 const res = await fetch(COLLECTION_API, {
@@ -422,12 +443,12 @@ export default function DailyCollectionEntryPage() {
 
             let rows: any[][] = [];
 
-            if (!exportAllForDate && selectedRouteId && assignedHces.length > 0) {
+            if (!exportAllForDate && selectedRouteId && dayHces.length > 0) {
                 // Export current route session
                 const routeData = routes.find(r => r.id === selectedRouteId);
                 const totalQty = (Number(headerData.dc_qty) || 0) + (Number(headerData.nw_qty) || 0) + (Number(headerData.rd_qty) || 0);
 
-                rows = assignedHces.map((a, idx) => {
+                rows = dayHces.map((a, idx) => {
                     const entry = entries[a.hce_id] || {};
                     return [
                         idx + 1,
@@ -524,10 +545,10 @@ export default function DailyCollectionEntryPage() {
                 }
 
                 // If no saved batches found but there are assigned HCEs on screen, fallback to exporting screen data
-                if (rows.length === 0 && assignedHces.length > 0) {
+                if (rows.length === 0 && dayHces.length > 0) {
                     const routeData = routes.find(r => r.id === selectedRouteId);
                     const totalQty = (Number(headerData.dc_qty) || 0) + (Number(headerData.nw_qty) || 0) + (Number(headerData.rd_qty) || 0);
-                    rows = assignedHces.map((a, idx) => {
+                    rows = dayHces.map((a, idx) => {
                         const entry = entries[a.hce_id] || {};
                         return [
                             idx + 1,
@@ -851,10 +872,25 @@ export default function DailyCollectionEntryPage() {
             {selectedRouteId ? (
                 <div className="space-y-6">
                     <Card className="border-primary/10 shadow-sm overflow-hidden bg-white rounded-xl">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-slate-100">
+                            <span className="text-xs font-bold text-muted-foreground">
+                                {showAllDays ? 'All facilities on this route' : `${weekday}'s facilities, in route order`} ({dayHces.length})
+                            </span>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer">
+                                    <input type="checkbox" checked={showAllDays} onChange={e => setShowAllDays(e.target.checked)} />
+                                    Show all days
+                                </label>
+                                <Button type="button" size="sm" variant="outline" onClick={markAllVisited} className="h-8 text-xs font-bold border-primary/20 text-primary">
+                                    <Check className="w-3.5 h-3.5 mr-1.5" /> Mark all visited
+                                </Button>
+                            </div>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left border-collapse">
                                 <thead className="text-[10px] font-bold uppercase bg-primary text-primary-foreground">
                                     <tr>
+                                        <th className="px-4 py-4 text-center">#</th>
                                         <th className="px-6 py-4 text-center">Visit</th>
                                         <th className="px-6 py-4">Managed Facility Detail</th>
                                         <th className="px-6 py-4">Visit Status</th>
@@ -862,11 +898,12 @@ export default function DailyCollectionEntryPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {assignedHces.map(a => {
+                                    {dayHces.map((a, i) => {
                                         const isVisited = entries[a.hce_id]?.is_visited;
                                         const visitStatus = entries[a.hce_id]?.visit_status || 'Not Visited';
                                         return (
                                             <tr key={a.id} className={`group border-b border-slate-50 transition-all ${isVisited ? 'bg-primary/10/30' : 'hover:bg-slate-50'}`}>
+                                                <td className="px-4 py-6 text-center text-xs font-black text-primary">{i + 1}</td>
                                                 <td className="px-6 py-6 text-center">
                                                     <div 
                                                         onClick={() => {

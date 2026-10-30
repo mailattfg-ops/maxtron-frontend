@@ -13,10 +13,11 @@ import {
     Settings,
     X,
     Save,
-    Map,
+    Map as MapIcon, // not "Map": that would hide JavaScript's Map
     Edit,
     Lock,
-    Loader2
+    Loader2,
+    Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
+import { readRouteSheet, matchRouteSheet, frequencyOf } from '@/utils/routeSheetImport';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const ASSIGN_API = `${API_BASE}/api/keil/operations/assignments`;
@@ -56,7 +58,7 @@ function RouteAssignmentsContent() {
     const [routes, setRoutes] = useState<any[]>([]);
     const [selectedRouteId, setSelectedRouteId] = useState(routeId || '');
     const [assignments, setAssignments] = useState<any[]>([]);
-    const [allAssignments, setAllAssignments] = useState<any[]>([]); // all assignments across all routes
+    const [dayFilter, setDayFilter] = useState(''); // '' shows every day
     const [availableHces, setAvailableHces] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAssigning, setIsAssigning] = useState(false);
@@ -64,6 +66,10 @@ function RouteAssignmentsContent() {
     const facilitySearchRef = useRef<HTMLInputElement>(null);
     const [editingAssignment, setEditingAssignment] = useState<any>(null);
     const [submitting, setSubmitting] = useState(false);
+    // Bulk upload: the route sheet read and matched, and which of its lists to upload
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [bulkPlan, setBulkPlan] = useState<ReturnType<typeof matchRouteSheet> | null>(null);
+    const [bulkPicked, setBulkPicked] = useState<Set<number>>(new Set());
 
     const [assignmentForm, setAssignmentForm] = useState({
         hce_id: '',
@@ -103,19 +109,16 @@ function RouteAssignmentsContent() {
             }
 
             if (coId) {
-                const [rRes, hRes, allAssignRes] = await Promise.all([
+                const [rRes, hRes] = await Promise.all([
                     fetch(`${ROUTE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch(`${HCE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch(`${ASSIGN_API}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch(`${HCE_API}?company_id=${coId}`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
                 const rData = await rRes.json();
                 const hData = await hRes.json();
-                const allAData = await allAssignRes.json();
 
                 if (rData.success) setRoutes(rData.data);
                 if (hData.success) setAvailableHces(hData.data);
-                if (allAData.success) setAllAssignments(allAData.data || []);
             }
         } catch (err) {
             console.error('Error fetching baseline data:', err);
@@ -170,9 +173,7 @@ function RouteAssignmentsContent() {
             });
             const data = await res.json();
             if (data.success) {
-                success(data.data?.merged
-                    ? `Already on this route: days are now ${(data.data.collection_days || []).join(', ')}.`
-                    : "HCE assigned to route.");
+                success("HCE assigned to route.");
                 resetForm();
                 fetchAssignments(selectedRouteId);
             } else {
@@ -229,6 +230,70 @@ function RouteAssignmentsContent() {
         }
     };
 
+    const readSheet = async (file: File) => {
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(await file.arrayBuffer());
+            const plan = matchRouteSheet(readRouteSheet(workbook), routes, availableHces);
+            if (!plan.length) {
+                error('No route lists found. Each list needs SL NO, HCF NAME and AFF NO columns under a title such as "EKM 1 MONDAY&THURSDAY".');
+                return;
+            }
+            setBulkPlan(plan);
+            setBulkPicked(new Set(plan.flatMap((b, i) => (b.target && b.days.length && b.items.length ? [i] : []))));
+        } catch (err: any) {
+            error(`Could not read the file: ${err.message}`);
+        }
+    };
+
+    const uploadSheet = async () => {
+        if (!bulkPlan) return;
+        const picked = bulkPlan.filter((b, i) => bulkPicked.has(i));
+        const names = picked.map(b => `${b.target.route_name} ${b.days.map(d => d.slice(0, 3)).join(' & ')}`);
+        const newHces = picked.reduce((n, b) => n + b.toRegister.length, 0);
+        if (!(await confirm({ message: `Replace these lists with the sheet's lists, in the sheet's order: ${names.join(', ')}. The facilities now on them are taken off first, so none is listed twice. Lists for other days stay as they are.${newHces ? ` ${newHces} facilities not in the HCE Registry are added to it, with the sheet's name and AFF NO.` : ''}` }))) return;
+        const token = localStorage.getItem('token');
+        setSubmitting(true);
+        let added = 0;
+        try {
+            for (const [i, b] of bulkPlan.entries()) {
+                if (!bulkPicked.has(i)) continue;
+                const res = await fetch(`${ASSIGN_API}/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        route_id: b.target.id,
+                        company_id: b.target.company_id,
+                        collection_days: b.days,
+                        collection_type: frequencyOf(b.days),
+                        items: b.items
+                    })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    error(`${b.title || b.sheet}: ${data.message}`);
+                    return;
+                }
+                added += b.items.length;
+            }
+            success(`Uploaded ${added} facilities.`);
+            closeBulk();
+        } catch (err: any) {
+            error(err.message);
+        } finally {
+            setSubmitting(false);
+            fetchRoutesAndHces(); // newly registered HCEs
+            if (selectedRouteId) fetchAssignments(selectedRouteId);
+        }
+    };
+
+    const closeBulk = () => {
+        setBulkOpen(false);
+        setBulkPlan(null);
+        setBulkPicked(new Set());
+    };
+
     const resetForm = () => {
         setAssignmentForm({
             hce_id: '',
@@ -253,18 +318,45 @@ function RouteAssignmentsContent() {
         setAssignmentForm(prev => ({ ...prev, collection_days: DAYS }));
     };
 
-    // Facilities on another route are left out. Facilities already on this route
-    // stay in the list: linking one again adds the new days to its link.
-    const onOtherRoutes = new Set(
-        allAssignments
-            .filter(a => a.route_id !== selectedRouteId && (!editingAssignment || a.id !== editingAssignment.id))
-            .map(a => a.hce_id)
-    );
-    const effectiveHces = availableHces.filter(h => !onOtherRoutes.has(h.id));
+    // The route's facilities for the chosen day, in route order (the order they were entered)
+    const shown = dayFilter ? assignments.filter(a => (a.collection_days || []).includes(dayFilter)) : assignments;
+    const position = new Map(shown.map((a, i) => [a.id, i + 1]));
 
-    // The facility list narrowed by the search box; the chosen one always stays listed
+    /**
+     * Move a facility to place `to` (from 1) in the list on screen. The listed
+     * facilities only swap places among themselves, so the other days' lists
+     * keep their order; then the whole route is numbered 1, 2, 3...
+     */
+    const moveTo = async (link: any, to: number) => {
+        const from = shown.indexOf(link);
+        const target = Math.min(Math.max(Math.round(to), 1), shown.length) - 1;
+        if (from < 0 || Number.isNaN(target) || target === from) return;
+        const reordered = shown.filter(a => a !== link);
+        reordered.splice(target, 0, link);
+        const onScreen = new Set(shown);
+        let next = 0;
+        const route = assignments.map(a => (onScreen.has(a) ? reordered[next++] : a));
+        const items = route
+            .map((a, i) => ({ id: a.id, sequence_order: i + 1 }))
+            .filter((it, i) => route[i].sequence_order !== it.sequence_order);
+        try {
+            const res = await fetch(`${ASSIGN_API}/reorder`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                body: JSON.stringify({ items })
+            });
+            const data = await res.json();
+            if (!data.success) error(data.message || 'Could not change the order.');
+        } catch (err: any) {
+            error(err.message);
+        }
+        fetchAssignments(selectedRouteId);
+    };
+
+    // The facility list narrowed by the search box; the chosen one always stays listed.
+    // A facility can be linked again: for other days, or on another route.
     const facilityQuery = facilitySearch.trim().toLowerCase();
-    const matchingHces = !facilityQuery ? effectiveHces : effectiveHces.filter(h =>
+    const matchingHces = !facilityQuery ? availableHces : availableHces.filter(h =>
         h.id === assignmentForm.hce_id
         || String(h.hce_name || '').toLowerCase().includes(facilityQuery)
         || String(h.hce_code || '').toLowerCase().includes(facilityQuery));
@@ -291,7 +383,7 @@ function RouteAssignmentsContent() {
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                         <div className="relative flex justify-center items-center group w-full sm:w-[300px]">
-                            <Map className="hidden md:block w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
+                            <MapIcon className="hidden md:block w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 group-focus-within:text-primary transition-colors" />
                             <Select value={selectedRouteId} onValueChange={(val) => setSelectedRouteId(val)}>
                                 <SelectTrigger className="md:pl-9 h-10 w-full border-primary/20 bg-background shadow-sm font-bold text-xs md:text-sm">
                                     <SelectValue placeholder="Switch / Select Route" />
@@ -311,28 +403,158 @@ function RouteAssignmentsContent() {
                             </div>
                         )}
                     </div>
+                    {selectedRouteId && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Day</span>
+                            {['', ...DAYS].map(day => (
+                                <Button
+                                    key={day || 'all'}
+                                    type="button"
+                                    size="sm"
+                                    variant={dayFilter === day ? 'default' : 'outline'}
+                                    onClick={() => setDayFilter(day)}
+                                    className="h-8 px-3 text-xs font-bold"
+                                >
+                                    {day ? day.slice(0, 3) : 'All'}
+                                    <span className="ml-1 opacity-60">
+                                        {day ? assignments.filter(a => (a.collection_days || []).includes(day)).length : assignments.length}
+                                    </span>
+                                </Button>
+                            ))}
+                        </div>
+                    )}
                 </div>
-                {selectedRouteId && !isAssigning && !editingAssignment && canCreate && (
-                    <Button 
-                        onClick={() => setIsAssigning(true)} 
-                        className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 md:h-11 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
-                    >
-                        <LinkIcon className="w-4 h-4" /> 
-                        <span className="hidden md:inline">Add HCE to Route</span>
-                        <span className="md:hidden">Add HCE</span>
-                    </Button>
+                {!isAssigning && !editingAssignment && !bulkOpen && canCreate && (
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <Button
+                            variant="outline"
+                            onClick={() => setBulkOpen(true)}
+                            className="w-full md:w-auto border-primary/20 text-primary px-6 rounded-full h-10 md:h-11 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2"
+                        >
+                            <Upload className="w-4 h-4" /> Bulk Upload
+                        </Button>
+                        {selectedRouteId && (
+                            <Button
+                                onClick={() => setIsAssigning(true)}
+                                className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white px-8 rounded-full transition-all duration-300 shadow-lg shadow-primary/20 h-10 md:h-11 font-bold uppercase tracking-wider text-xs md:text-sm flex items-center justify-center gap-2 active:scale-95"
+                            >
+                                <LinkIcon className="w-4 h-4" />
+                                <span className="hidden md:inline">Add HCE to Route</span>
+                                <span className="md:hidden">Add HCE</span>
+                            </Button>
+                        )}
+                    </div>
                 )}
             </div>
 
-            {!selectedRouteId && (
+            {bulkOpen && (
+                <Card className="border-primary/20 shadow-xl overflow-hidden rounded-xl">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 py-6">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
+                                <Upload className="w-5 h-5" /> Bulk Upload Route Lists
+                            </CardTitle>
+                            <Button variant="ghost" size="icon" onClick={closeBulk} className="text-primary/60 hover:text-primary">
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        <CardDescription>
+                            Upload the route sheet (.xlsx): a sheet per set of days, each route as SL NO, HCF NAME and AFF NO columns
+                            under a title such as &ldquo;EKM 1 MONDAY&amp;THURSDAY&rdquo;. Each ticked list replaces that route&rsquo;s list
+                            for those days, in the sheet&rsquo;s order. Lists for other days stay as they are.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                        <Input
+                            type="file"
+                            accept=".xlsx"
+                            onChange={e => { const file = e.target.files?.[0]; if (file) readSheet(file); e.target.value = ''; }}
+                            className="h-11 border-primary/20"
+                        />
+                        {bulkPlan && (
+                            <>
+                                <div className="overflow-x-auto border border-primary/10 rounded-lg">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-primary/5 text-[10px] uppercase font-bold text-primary">
+                                            <tr>
+                                                <th className="p-3"></th>
+                                                <th className="p-3">Sheet list</th>
+                                                <th className="p-3">Route</th>
+                                                <th className="p-3">Days</th>
+                                                <th className="p-3 text-right">Facilities</th>
+                                                <th className="p-3">New to HCE Registry</th>
+                                                <th className="p-3">Skipped (no AFF NO)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {bulkPlan.map((b, i) => (
+                                                <tr key={i} className="border-t border-slate-100 align-top">
+                                                    <td className="p-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            disabled={!(b.target && b.days.length && b.items.length)}
+                                                            checked={bulkPicked.has(i)}
+                                                            onChange={() => setBulkPicked(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(i)) next.delete(i); else next.add(i);
+                                                                return next;
+                                                            })}
+                                                        />
+                                                    </td>
+                                                    <td className="p-3 font-bold">{b.title || b.sheet}</td>
+                                                    <td className="p-3">
+                                                        {b.target
+                                                            ? `${b.target.route_name} (${b.target.branch_name || b.target.route_code})`
+                                                            : <span className="text-destructive font-bold">No route &ldquo;{b.route}&rdquo;</span>}
+                                                    </td>
+                                                    <td className="p-3">
+                                                        {b.days.length
+                                                            ? b.days.map(d => d.slice(0, 3)).join(' & ')
+                                                            : <span className="text-destructive font-bold">No days in the title</span>}
+                                                    </td>
+                                                    <td className="p-3 text-right font-bold">{b.items.length} of {b.rows.length}</td>
+                                                    {[b.toRegister, b.missing].map((rows, k) => (
+                                                        <td key={k} className="p-3">
+                                                            {rows.length ? (
+                                                                <details>
+                                                                    <summary className={`cursor-pointer font-bold ${k ? 'text-destructive' : 'text-amber-700'}`}>{rows.length} rows</summary>
+                                                                    <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                                                                        {rows.map((r, j) => (
+                                                                            <li key={j}>#{r.sl} {r.name || '(no name)'} {r.code ? `(AFF ${r.code})` : '(no AFF NO)'}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </details>
+                                                            ) : '—'}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Button
+                                    onClick={uploadSheet}
+                                    disabled={submitting || !bulkPicked.size}
+                                    className="bg-primary hover:bg-primary/90 text-white px-8 rounded-full h-10 font-bold uppercase tracking-wider"
+                                >
+                                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                                    Upload {bulkPicked.size} {bulkPicked.size === 1 ? 'list' : 'lists'}
+                                </Button>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {!bulkOpen && !selectedRouteId && (
                 <div className="h-80 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                    <Map className="w-16 h-16 text-slate-200 mb-4" />
+                    <MapIcon className="w-16 h-16 text-slate-200 mb-4" />
                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Route Selected</p>
                     <p className="text-[10px] text-slate-400 mt-1">Select a logistical loop from the dropdown above to manage facility mapping.</p>
                 </div>
             )}
 
-            {selectedRouteId && (
+            {!bulkOpen && selectedRouteId && (
                 <>
 
             {isAssigning || editingAssignment ? (
@@ -476,19 +698,35 @@ function RouteAssignmentsContent() {
                 </Card>
             ) : (
                 <TableView
+                    key={dayFilter}
                     title="Mapped Facilities"
-                    description={`Collection sequence for ${route?.route_name}`}
+                    description={`Collection sequence for ${route?.route_name}${dayFilter ? ` on ${dayFilter}` : ''}${canEdit ? '. Type a new number to move a facility.' : ''}`}
                     headers={['HCE / Place', 'Type', 'Collection Days', 'Remarks', 'Actions']}
-                    data={assignments}
+                    data={shown}
+                    initialRowsPerPage={100}
                     loading={loading}
                     searchFields={['keil_hces.hce_name', 'keil_hces.hce_code', 'keil_hces.hce_place']}
                     renderRow={(a: any) => (
                         <tr key={a.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
                             <td className="px-6 py-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shadow-sm border border-primary/10">
-                                        {a.sequence_order}
-                                    </div>
+                                    {canEdit ? (
+                                        <input
+                                            key={`${a.id}-${position.get(a.id)}`}
+                                            type="number"
+                                            min={1}
+                                            max={shown.length}
+                                            defaultValue={position.get(a.id)}
+                                            title="Type a new number and press Enter to move this facility"
+                                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                                            onBlur={e => moveTo(a, Number(e.target.value))}
+                                            className="w-12 h-8 rounded-lg bg-primary/10 text-center text-xs font-black text-primary shadow-sm border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shadow-sm border border-primary/10">
+                                            {position.get(a.id)}
+                                        </div>
+                                    )}
                                     <div className="flex flex-col">
                                         <span className="font-bold text-foreground text-sm truncate max-w-[200px]" title={a.keil_hces?.hce_name}>{a.keil_hces?.hce_name}</span>
                                         <div className="flex items-center gap-2">
