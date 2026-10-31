@@ -32,7 +32,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => removeToast(id), 5000);
+    // Errors stay longer, so they can be read and screenshotted on a phone
+    setTimeout(() => removeToast(id), type === 'error' ? 15000 : 5000);
   }, [removeToast]);
 
   const success = (msg: string) => showToast(msg, 'success');

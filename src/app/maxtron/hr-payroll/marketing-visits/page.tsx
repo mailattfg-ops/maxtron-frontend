@@ -908,11 +908,12 @@ export default function MarketingVisitsPage() {
         fetchVisits();
         resetForm();
       } else {
-        error(data.message || 'Transmission error');
+        // The server's reason (data.error) is what tells us why a save failed
+        error(['The visit was NOT saved', data.message, data.error].filter(Boolean).join(': '));
       }
     } catch (err) {
       console.error('Error saving visit:', err);
-      error('An error occurred while saving the visit.');
+      error('The visit was NOT saved: the server could not be reached. Check the internet connection and press Save again.');
     } finally {
       setSubmitting(false);
     }
