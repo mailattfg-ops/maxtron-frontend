@@ -59,6 +59,8 @@ export default function KeilDashboard() {
     const [filterCollectionRoute, setFilterCollectionRoute] = useState('all');
     const [filterFuelVehicle, setFilterFuelVehicle] = useState('all');
     const [filterMaintenanceVehicle, setFilterMaintenanceVehicle] = useState('all');
+    // Month filter for all four telemetry cards: 'YYYY-MM', or 'all'
+    const [filterMonth, setFilterMonth] = useState('all');
 
     const [loading, setLoading] = useState(true);
 
@@ -140,11 +142,26 @@ export default function KeilDashboard() {
         }
     };
 
+    // A date column starts with 'YYYY-MM', so a month match is a prefix match.
+    // ponytail: the logs, collections and repairs APIs return at most 1000 rows (newest first),
+    // so once a table passes 1000 its oldest months come up short; fetch by month then.
+    const inMonth = (d: any) => filterMonth === 'all' || String(d || '').startsWith(filterMonth);
+
+    // Months that have any telemetry data, newest first, plus the current month
+    const monthOptions = useMemo(() => {
+        const now = new Date();
+        const months = new Set([`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`]);
+        [...vehicleLogs, ...fuelFillings, ...repairs].forEach(r => r.log_date && months.add(String(r.log_date).slice(0, 7)));
+        collections.forEach(c => c.collection_date && months.add(String(c.collection_date).slice(0, 7)));
+        return [...months].sort().reverse();
+    }, [vehicleLogs, fuelFillings, repairs, collections]);
+
     // 1. Total Running KM (filtered by vehicle)
     const runningKmData = useMemo(() => {
+        const monthLogs = vehicleLogs.filter(l => inMonth(l.log_date));
         const filtered = filterKmVehicle === 'all'
-            ? vehicleLogs
-            : vehicleLogs.filter(l => String(l.vehicle_id) === String(filterKmVehicle));
+            ? monthLogs
+            : monthLogs.filter(l => String(l.vehicle_id) === String(filterKmVehicle));
 
         const totalKm = filtered.reduce((acc, log) => {
             const start = parseFloat(log.start_km) || 0;
@@ -164,13 +181,14 @@ export default function KeilDashboard() {
             avgKm,
             vehicleLabel: selectedVeh ? selectedVeh.registration_number : 'All Fleet'
         };
-    }, [vehicleLogs, filterKmVehicle, vehicles]);
+    }, [vehicleLogs, filterKmVehicle, vehicles, filterMonth]);
 
     // 2. Collection % (filtered route-wise)
     const collectionRateData = useMemo(() => {
+        const monthCollections = collections.filter(c => inMonth(c.collection_date));
         const filtered = filterCollectionRoute === 'all'
-            ? collections
-            : collections.filter(c => String(c.route_id) === String(filterCollectionRoute));
+            ? monthCollections
+            : monthCollections.filter(c => String(c.route_id) === String(filterCollectionRoute));
 
         let totalAssigned = 0;
         let totalVisited = 0;
@@ -198,13 +216,14 @@ export default function KeilDashboard() {
             batchCount: filtered.length,
             routeLabel: selectedRoute ? selectedRoute.route_name : 'All Routes'
         };
-    }, [collections, filterCollectionRoute, routes]);
+    }, [collections, filterCollectionRoute, routes, filterMonth]);
 
     // 3. Fuel Consumption (filtered vehicle-wise)
     const fuelConsumptionData = useMemo(() => {
+        const monthFuel = fuelFillings.filter(f => inMonth(f.log_date));
         const filtered = filterFuelVehicle === 'all'
-            ? fuelFillings
-            : fuelFillings.filter(f => String(f.vehicle_id) === String(filterFuelVehicle));
+            ? monthFuel
+            : monthFuel.filter(f => String(f.vehicle_id) === String(filterFuelVehicle));
 
         let totalLiters = 0;
         let totalAmount = 0;
@@ -226,13 +245,14 @@ export default function KeilDashboard() {
             avgRate,
             vehicleLabel: selectedVeh ? selectedVeh.registration_number : 'All Fleet'
         };
-    }, [fuelFillings, filterFuelVehicle, vehicles]);
+    }, [fuelFillings, filterFuelVehicle, vehicles, filterMonth]);
 
     // 4. Vehicle Maintenance (filtered vehicle-wise)
     const maintenanceData = useMemo(() => {
+        const monthRepairs = repairs.filter(r => inMonth(r.log_date));
         const filtered = filterMaintenanceVehicle === 'all'
-            ? repairs
-            : repairs.filter(r => String(r.vehicle_id) === String(filterMaintenanceVehicle));
+            ? monthRepairs
+            : monthRepairs.filter(r => String(r.vehicle_id) === String(filterMaintenanceVehicle));
 
         let totalCost = 0;
         let gstCost = 0;
@@ -261,7 +281,7 @@ export default function KeilDashboard() {
             avgCost,
             vehicleLabel: selectedVeh ? selectedVeh.registration_number : 'All Fleet'
         };
-    }, [repairs, filterMaintenanceVehicle, vehicles]);
+    }, [repairs, filterMaintenanceVehicle, vehicles, filterMonth]);
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
@@ -304,7 +324,22 @@ export default function KeilDashboard() {
                         <BarChart3 className="w-5 h-5 text-primary" />
                         <h2 className="text-lg font-black text-slate-800 tracking-tight">Operational & Fleet Telemetry</h2>
                     </div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dynamic Interactive Filters</span>
+                    <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <Select value={filterMonth} onValueChange={setFilterMonth}>
+                            <SelectTrigger className="h-8 w-36 text-xs font-bold bg-white border-slate-200 rounded-lg">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 text-xs">
+                                <SelectItem value="all" className="font-bold">All Months</SelectItem>
+                                {monthOptions.map(m => (
+                                    <SelectItem key={m} value={m}>
+                                        {new Date(`${m}-01T00:00:00`).toLocaleString('en-IN', { month: 'short', year: 'numeric' })}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
