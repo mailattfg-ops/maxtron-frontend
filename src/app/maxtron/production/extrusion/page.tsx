@@ -232,16 +232,19 @@ export default function ExtrusionPage() {
     }
 
     try {
-      const res = await fetch(`${BATCH_API}?company_id=${targetCoId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      // Consumptions too: saving or deleting a batch changes which are free
+      const [res, conRes] = await Promise.all([
+        fetch(`${BATCH_API}?company_id=${targetCoId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/maxtron/consumptions?company_id=${targetCoId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      const [data, conData] = await Promise.all([res.json(), conRes.json()]);
       if (data.success) {
-        const sorted = (data.data || []).sort((a: any, b: any) => 
+        const sorted = (data.data || []).sort((a: any, b: any) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         setBatches(sorted);
       }
+      if (conData.success) setConsumptions(conData.data);
     } catch (err) {
       console.error('Error fetching batches:', err);
     } finally {
@@ -448,19 +451,11 @@ export default function ExtrusionPage() {
     return sup.length > 0 ? sup : employees;
   }, [employees]);
 
-  const availableConsumptions = useMemo(() => {
-    const usedConsumptionIds = batches.flatMap(b => {
-      if (editingId && b.id === editingId) return [];
-      if (b.consumption_ids && Array.isArray(b.consumption_ids)) {
-        return b.consumption_ids;
-      }
-      return b.consumption_id ? [b.consumption_id] : [];
-    }).filter(id => !!id);
-
-    return consumptions.filter(c => 
-        !usedConsumptionIds.includes(c.id) || (formData.consumption_ids || []).includes(c.id)
-    );
-  }, [consumptions, batches, formData.consumption_ids, editingId]);
+  // Saving a batch links its consumptions by setting their batch_id, so a
+  // consumption is free when it has none (or belongs to the batch being edited).
+  const availableConsumptions = useMemo(() =>
+    consumptions.filter(c => !c.batch_id || c.batch_id === editingId),
+  [consumptions, editingId]);
 
   const filteredBatches = batches.filter(b => {
     const q = searchQuery.toLowerCase();
