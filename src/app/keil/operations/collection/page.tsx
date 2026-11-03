@@ -71,6 +71,7 @@ export default function DailyCollectionEntryPage() {
         registration_number: '',
         driver_name: '',
         spare_driver_name: '',
+        spare_picker_name: '',
         supervisor_name: '',
         remarks: '',
         start_time: '',
@@ -207,6 +208,7 @@ export default function DailyCollectionEntryPage() {
                     registration_number: savedBatch.registration_number || '',
                     driver_name: savedBatch.driver_name || '',
                     spare_driver_name: savedBatch.spare_driver_name || '',
+                    spare_picker_name: savedBatch.spare_picker_name || '',
                     supervisor_name: savedBatch.supervisor_name || '',
                     remarks: savedBatch.remarks || '',
                     start_time: savedBatch.start_time || '',
@@ -360,6 +362,7 @@ export default function DailyCollectionEntryPage() {
                     header: {
                         ...headerData,
                         spare_driver_name: headerData.spare_driver_name ? headerData.spare_driver_name.trim() : null,
+                        spare_picker_name: headerData.spare_picker_name ? headerData.spare_picker_name.trim() : null,
                         total_hce_assigned: stats.total_assigned,
                         total_visited: stats.total_visited,
                         assigned_bedded: stats.assigned_bedded,
@@ -421,6 +424,7 @@ export default function DailyCollectionEntryPage() {
                 'Vehicle Number',
                 'Driver Name',
                 'Spare Driver Name',
+                'Spare Picker Name',
                 'Supervisor Name',
                 'Start Time',
                 'End Time',
@@ -458,6 +462,7 @@ export default function DailyCollectionEntryPage() {
                         headerData.registration_number || 'N/A',
                         headerData.driver_name || 'N/A',
                         headerData.spare_driver_name || '-',
+                        headerData.spare_picker_name || '-',
                         headerData.supervisor_name || 'N/A',
                         headerData.start_time || '-',
                         headerData.end_time || '-',
@@ -521,6 +526,7 @@ export default function DailyCollectionEntryPage() {
                                 b.registration_number || 'N/A',
                                 b.driver_name || 'N/A',
                                 b.spare_driver_name || '-',
+                                b.spare_picker_name || '-',
                                 b.supervisor_name || 'N/A',
                                 b.start_time || '-',
                                 b.end_time || '-',
@@ -558,6 +564,7 @@ export default function DailyCollectionEntryPage() {
                             headerData.registration_number || 'N/A',
                             headerData.driver_name || 'N/A',
                             headerData.spare_driver_name || '-',
+                            headerData.spare_picker_name || '-',
                             headerData.supervisor_name || 'N/A',
                             headerData.start_time || '-',
                             headerData.end_time || '-',
@@ -803,7 +810,18 @@ export default function DailyCollectionEntryPage() {
                                 placeholder="Enter spare driver name..." 
                                 className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm" 
                                 value={headerData.spare_driver_name} 
-                                onChange={e => setHeaderData({ ...headerData, spare_driver_name: e.target.value })} 
+                                onChange={e => setHeaderData({ ...headerData, spare_driver_name: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 pl-1">
+                                <User className="w-3 h-3 text-primary" /> Spare Picker Name
+                            </label>
+                            <Input
+                                placeholder="Enter spare picker name..."
+                                className="h-10 rounded-md border-primary/20 bg-background font-bold text-sm"
+                                value={headerData.spare_picker_name}
+                                onChange={e => setHeaderData({ ...headerData, spare_picker_name: e.target.value })}
                             />
                         </div>
                         <div className="space-y-1.5">
