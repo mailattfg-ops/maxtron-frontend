@@ -20,7 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { TableView, matchesSearch } from '@/components/ui/table-view';
+import { TableView } from '@/components/ui/table-view';
+import { matchesSearch } from '@/utils/tableSearch';
 import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
