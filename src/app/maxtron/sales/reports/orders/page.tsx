@@ -12,6 +12,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { exportToExcel } from '@/utils/export';
 import { useToast } from '@/components/ui/toast';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -64,10 +65,7 @@ export default function OrderReport() {
   };
 
   const filteredData = useMemo(() => {
-    return data.filter(item => 
-      item.customers?.customer_name.toLowerCase().includes(filters.customer.toLowerCase()) ||
-      item.order_number.toLowerCase().includes(filters.customer.toLowerCase())
-    );
+    return searchRows(data, filters.customer, ['order_number', 'customers.customer_name']);
   }, [data, filters.customer]);
 
   const totalValue = filteredData.reduce((sum, item) => sum + (parseFloat(item.total_value) || 0), 0);

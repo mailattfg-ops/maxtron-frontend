@@ -17,6 +17,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { exportToExcel } from '@/utils/export';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -62,20 +63,12 @@ export default function ConsumptionReportPage() {
   const processTypes = useMemo(() =>
     [...new Set(consumptions.map(c => c.process_type).filter(Boolean))], [consumptions]);
 
-  const filtered = useMemo(() => consumptions.filter(c => {
+  const filtered = useMemo(() => searchRows(consumptions.filter(c => {
     if (dateFrom && new Date(c.consumption_date) < new Date(dateFrom)) return false;
     if (dateTo && new Date(c.consumption_date) > new Date(dateTo)) return false;
     if (filterProcess && filterProcess !== 'all' && c.process_type !== filterProcess) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        c.consumption_slip_no?.toLowerCase().includes(q) ||
-        c.raw_materials?.rm_name?.toLowerCase().includes(q) ||
-        c.process_type?.toLowerCase().includes(q)
-      );
-    }
     return true;
-  }), [consumptions, dateFrom, dateTo, filterProcess, searchQuery]);
+  }), searchQuery, ['consumption_slip_no', 'raw_materials.rm_name', 'process_type']), [consumptions, dateFrom, dateTo, filterProcess, searchQuery]);
 
   const totalQty = useMemo(() => filtered.reduce((a, c) => a + Number(c.quantity_used || 0), 0), [filtered]);
 

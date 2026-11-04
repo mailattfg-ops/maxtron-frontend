@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { usePermission } from '@/hooks/usePermission';
 import { exportToExcel } from '@/utils/export';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const TRADING_API = `${API_BASE}/api/maxtron/inventory/trading-goods`;
@@ -366,19 +367,12 @@ export default function TradingGoodsInwardPage() {
     success('Trading stock report exported successfully!');
   };
 
-  const filteredList = inwardList.filter(item => {
-    const matchesSearch = 
-      (item.inward_number?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (item.reference_no?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (item.finished_products?.product_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (item.finished_products?.product_code?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (item.supplier_master?.supplier_name?.toLowerCase() || '').includes(searchQuery.toLowerCase());
-
+  const filteredList = searchRows(inwardList.filter(item => {
     const matchesSupplier = supplierFilter === 'ALL' || item.supplier_id === supplierFilter;
     const matchesProduct = productFilter === 'ALL' || item.product_id === productFilter;
 
-    return matchesSearch && matchesSupplier && matchesProduct;
-  });
+    return matchesSupplier && matchesProduct;
+  }), searchQuery, ['finished_products.product_code', 'finished_products.product_name', 'inward_number', 'reference_no', 'supplier_master.supplier_name']);
 
   // Calculate Metrics
   const totalInwardQty = inwardList.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);

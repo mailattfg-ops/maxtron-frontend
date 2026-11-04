@@ -15,11 +15,16 @@ export function matchesSearch(item: any, query: string, fields: Field[]): boolea
     return searchWords(query).every(word => fields.some(field => fieldText(item, field).includes(word)));
 }
 
-/** Lower is better: an earlier search field first, then the whole value, its start, anywhere in it. */
+/**
+ * Lower is better. A page lists its main fields first, a name and a code usually: those two count
+ * the same, and later fields rank after them. Within a field: the whole value, its start, anywhere in it.
+ */
 function wordRank(item: any, word: string, fields: Field[]) {
-    const index = fields.findIndex(field => fieldText(item, field).includes(word));
-    const text = fieldText(item, fields[index]);
-    return index * 3 + (text === word ? 0 : text.startsWith(word) ? 1 : 2);
+    return Math.min(...fields.map((field, index) => {
+        const text = fieldText(item, field);
+        if (!text.includes(word)) return Infinity;
+        return Math.max(index - 1, 0) * 3 + (text === word ? 0 : text.startsWith(word) ? 1 : 2);
+    }));
 }
 
 /** The rows that match, best fit first. With nothing typed, the rows keep their order. */

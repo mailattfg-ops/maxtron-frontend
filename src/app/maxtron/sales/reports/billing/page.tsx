@@ -13,6 +13,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import { exportToExcel } from '@/utils/export';
 import { useToast } from '@/components/ui/toast';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -73,10 +74,7 @@ export default function BillingSummary() {
   };
 
   const filteredData = useMemo(() => {
-    return data.filter(item => 
-      item.customers?.customer_name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.invoice_number.toLowerCase().includes(filters.search.toLowerCase())
-    );
+    return searchRows(data, filters.search, ['invoice_number', 'customers.customer_name']);
   }, [data, filters.search]);
 
   const stats = useMemo(() => {
