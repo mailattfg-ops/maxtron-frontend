@@ -26,6 +26,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import { exportToExcel } from '@/utils/export';
+import { searchRows } from '@/utils/tableSearch';
 
 const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
@@ -1999,20 +2000,8 @@ export default function EmployeeInformationPage() {
         </CardHeader>
         <CardContent className="px-0 md:px-6 pt-6">
           {(() => {
-            const filteredEmployees = employees
+            const filteredEmployees = searchRows(employees
               .filter((emp) => {
-                const q = searchQuery.toLowerCase().trim();
-                const matchesSearch = !q || (
-                  (emp.name?.toLowerCase() || '').includes(q) || 
-                  (emp.designation?.toLowerCase() || '').includes(q) || 
-                  (emp.employee_code?.toLowerCase() || '').includes(q) ||
-                  (emp.username?.toLowerCase() || '').includes(q) ||
-                  (emp.phone || '').includes(q) ||
-                  (emp.aadhaar || '').includes(q) ||
-                  (emp.user_types?.name?.toLowerCase() || '').includes(q) ||
-                  (emp.employee_categories?.category_name?.toLowerCase() || '').includes(q)
-                );
-
                 const matchesRole = selectedRoleFilter === 'ALL' || 
                   emp.type === selectedRoleFilter || 
                   emp.user_types?.id === selectedRoleFilter ||
@@ -2023,9 +2012,9 @@ export default function EmployeeInformationPage() {
                   emp.employee_categories?.id === selectedCategoryFilter ||
                   emp.employee_categories?.category_name?.toLowerCase() === selectedCategoryFilter.toLowerCase();
 
-                return matchesSearch && matchesRole && matchesCategory;
+                return matchesRole && matchesCategory;
               })
-              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()), searchQuery, ['name', 'employee_code', 'designation', 'username', 'phone', 'aadhaar', 'user_types.name', 'employee_categories.category_name']);
             const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage) || 1;
             const currentEmployees = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 

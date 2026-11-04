@@ -543,7 +543,7 @@ export default function ExpendituresPage() {
                     <CardContent className="p-0">
                         <TableView 
                             title="Complete audit trail of documented expenses."
-                            searchFields={['remarks', 'amount', 'expenditure_date', 'other_name', 'employee.name', 'expense_head.head_name']}
+                            searchFields={['employee.name', 'expense_head.head_name', 'other_name', 'remarks', 'amount', 'expenditure_date']}
                             headers={['Date', 'Taxonomy Head', 'Paid To', 'Amount', 'Action']}
                             data={expenditures}
                             loading={loading}

@@ -34,6 +34,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableView } from "@/components/ui/table-view";
 import { usePermission } from '@/hooks/usePermission';
 import { readRouteSheet, matchRouteSheet, matchBlock, frequencyOf } from '@/utils/routeSheetImport';
+import { searchRows } from '@/utils/tableSearch';
 
 // A sheet list can be uploaded once it has a route with a branch (AFF NOs are looked up in that branch), days and facilities
 const uploadable = (b: any) => Boolean(b.target?.branch_id && b.days.length && b.items.length);
@@ -381,11 +382,8 @@ function RouteAssignmentsContent() {
 
     // The facility list narrowed by the search box; the chosen one always stays listed.
     // A facility can be linked again: for other days, or on another route.
-    const facilityQuery = facilitySearch.trim().toLowerCase();
-    const matchingHces = !facilityQuery ? availableHces : availableHces.filter(h =>
-        h.id === assignmentForm.hce_id
-        || String(h.hce_name || '').toLowerCase().includes(facilityQuery)
-        || String(h.hce_code || '').toLowerCase().includes(facilityQuery));
+    const facilityMatches = searchRows(availableHces, facilitySearch, ['hce_name', 'hce_code']);
+    const matchingHces = [...facilityMatches, ...availableHces.filter(h => h.id === assignmentForm.hce_id && !facilityMatches.includes(h))];
 
     if (permissionLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
 
@@ -751,7 +749,7 @@ function RouteAssignmentsContent() {
                     data={shown}
                     initialRowsPerPage={100}
                     loading={loading}
-                    searchFields={['keil_hces.hce_code', 'keil_hces.hce_name', 'keil_hces.hce_place']}
+                    searchFields={['keil_hces.hce_name', 'keil_hces.hce_code', 'keil_hces.hce_place']}
                     renderRow={(a: any) => (
                         <tr key={a.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
                             <td className="px-6 py-6">

@@ -28,6 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const DELIVERIES_API = `${API_BASE}/api/maxtron/sales/deliveries`;
@@ -667,12 +668,7 @@ export default function DeliveryDetails() {
                   ) : deliveries.length === 0 ? (
                     <tr><td colSpan={7} className="p-10 text-center text-slate-400 font-bold">No delivery records found.</td></tr>
                   ) : (
-                    deliveries
-                      .filter(del => 
-                        (del.delivery_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (del.dc_no || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (del.receiver_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-                      )
+                    searchRows(deliveries, searchQuery, ['delivery_number', 'receiver_name', 'dc_no'])
                       .map((del) => (
                         <tr key={del.id} className="hover:bg-primary/5 transition-all group">
                           <td className="px-6 py-4 font-mono font-black text-primary">{del.delivery_number}</td>

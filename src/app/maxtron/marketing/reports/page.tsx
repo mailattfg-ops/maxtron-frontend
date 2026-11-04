@@ -36,6 +36,7 @@ import {
 import { TableView } from '@/components/ui/table-view';
 import * as XLSX from 'xlsx';
 import { reportDate } from '@/utils/reportDate';
+import { searchRows } from '@/utils/tableSearch';
 
 export default function MarketingReportsPage() {
   const [visits, setVisits] = useState<any[]>([]);
@@ -97,7 +98,7 @@ export default function MarketingReportsPage() {
   };
 
   const filteredVisits = useMemo(() => {
-    return visits.filter(v => {
+    return searchRows(visits.filter(v => {
       const vDateStr = v.visit_date ? String(v.visit_date).split('T')[0] : '';
       const dateMatch = (!filters.startDate || (vDateStr && vDateStr >= filters.startDate)) && 
                        (!filters.endDate || (vDateStr && vDateStr <= filters.endDate));
@@ -105,13 +106,8 @@ export default function MarketingReportsPage() {
       const typeMatch = filters.type === 'all' || 
                        (filters.type === 'quotation' && v.is_quotation) || 
                        (filters.type === 'visit' && !v.is_quotation);
-      const searchMatch = !filters.search || 
-                        v.customer_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-                        v.users?.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-                        v.location?.toLowerCase().includes(filters.search.toLowerCase());
-      
-      return dateMatch && statusMatch && typeMatch && searchMatch;
-    });
+      return dateMatch && statusMatch && typeMatch;
+    }), filters.search, ['customer_name', 'users.name', 'location']);
   }, [visits, filters]);
 
   const stats = useMemo(() => {

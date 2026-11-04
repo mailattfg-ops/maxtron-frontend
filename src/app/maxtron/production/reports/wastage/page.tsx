@@ -215,7 +215,7 @@ export default function WastageAnalysisReport() {
         headers={['Date', 'Stage', 'Wasted Item', 'Waste (Kg)', 'Reason', 'Remarks', 'Actions']}
         data={filtered}
         loading={loading}
-        searchFields={['stage', 'reason_code', 'remarks', 'raw_materials.rm_name', 'finished_products.product_name']}
+        searchFields={['raw_materials.rm_name', 'finished_products.product_name', 'stage', 'reason_code', 'remarks']}
         renderRow={(w: any) => (
           <tr key={w.id} className="hover:bg-primary/5 border-b last:border-none text-xs transition-all group">
               <td className="px-6 py-4 font-medium text-muted-foreground">{new Date(w.date).toLocaleDateString()}</td>

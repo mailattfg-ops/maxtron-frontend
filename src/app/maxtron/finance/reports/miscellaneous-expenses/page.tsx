@@ -19,6 +19,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { exportToPDF } from '@/utils/export';
+import { searchRows } from '@/utils/tableSearch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 const EXPENSES_API = `${API_BASE}/api/maxtron/production/expenses`;
@@ -111,17 +112,12 @@ export default function MiscellaneousExpensesReport() {
   };
 
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(ex => {
+    return searchRows(expenses.filter(ex => {
       const exDate = new Date(ex.expense_date).toISOString().split('T')[0];
       const dateMatch = exDate >= startDate && exDate <= endDate;
       const categoryMatch = selectedCategory === 'All Categories' || ex.category === selectedCategory;
-      const searchMatch = !searchQuery || 
-        ex.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.reference_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.category?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      return dateMatch && categoryMatch && searchMatch;
-    });
+      return dateMatch && categoryMatch;
+    }), searchQuery, ['description', 'reference_no', 'category']);
   }, [expenses, startDate, endDate, selectedCategory, searchQuery]);
 
   const stats = useMemo(() => {

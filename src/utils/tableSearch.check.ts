@@ -24,6 +24,19 @@ assert.deepStrictEqual(codes('1038'), ['1038']);
 // Code and name together, in either order
 assert.deepStrictEqual(codes('1038 sreekrishna'), ['1038']);
 assert.deepStrictEqual(codes('sreekrishna 1038'), ['1038']);
+// Name and code count the same, whichever a page lists first
+const routes = [
+    { route_name: 'EKM KTM', route_code: 'KTM-', branch_name: 'KTM' },
+    { route_name: 'KTM MCH', route_code: 'MCH', branch_name: 'KOTTAYAM' },
+    { route_name: 'ALP-TVLA-KTM', route_code: 'TVL', branch_name: 'ALP' },
+    { route_name: 'KTM-2 to PLANT', route_code: 'KTM', branch_name: 'KOTTAYAM' },
+    { route_name: 'PTA', route_code: 'PTA', branch_name: 'KTM' },
+];
+const routeNames = (query: string, fields: string[]) => searchRows(routes, query, fields).map(r => r.route_name);
+const ktm = ['KTM-2 to PLANT', 'EKM KTM', 'KTM MCH', 'ALP-TVLA-KTM', 'PTA'];
+assert.deepStrictEqual(routeNames('ktm', ['route_name', 'route_code', 'branch_name']), ktm);
+assert.deepStrictEqual(routeNames('ktm', ['route_code', 'route_name', 'branch_name']), ktm);
+
 // Spaces around the words change nothing
 assert.deepStrictEqual(codes('  sreekri '), ['31', '1038', '1825']);
 // Nothing typed: every row, in its own order, and the data is left unsorted
