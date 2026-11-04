@@ -9,6 +9,7 @@ import { Pagination } from './pagination';
 import { Checkbox } from './checkbox';
 import { useConfirm } from './confirm-dialog';
 import { useToast } from './toast';
+import { searchRows } from '@/utils/tableSearch';
 
 export interface TableViewProps<T> {
   title?: string;
@@ -37,16 +38,6 @@ export interface TableViewProps<T> {
   deleteConfirmMessage?: string;
   /** Told what is typed in the search box, so the page can export what is shown. */
   onSearchChange?: (query: string) => void;
-}
-
-/** The table's search rule, for anyone who must list exactly what the table shows (an export, say). */
-export function matchesSearch(item: any, query: string, fields: (string | number | symbol)[]): boolean {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  return fields.some(field => {
-    const value = String(field).split('.').reduce((acc: any, part) => acc && acc[part], item);
-    return value !== null && value !== undefined && String(value).toLowerCase().includes(q);
-  });
 }
 
 export function TableView<T>({
@@ -112,7 +103,7 @@ export function TableView<T>({
     return String(fallbackIndex);
   };
 
-  const filteredData = data.filter(item => matchesSearch(item, searchQuery, searchFields as any[]));
+  const filteredData = searchRows(data, searchQuery, searchFields as any[]);
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
   const currentData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);

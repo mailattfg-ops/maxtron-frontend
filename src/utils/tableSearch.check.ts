@@ -1,0 +1,36 @@
+/**
+ * Self-check for the table search. From maxtron-frontend:
+ *
+ *   npx tsx src/utils/tableSearch.check.ts
+ */
+import assert from 'assert';
+import { matchesSearch, searchRows } from './tableSearch';
+
+const FIELDS = ['hce_code', 'hce_name', 'hce_place', 'branch_name'];
+const hces = [
+    { hce_code: '1825', hce_name: 'UHWC THUTHIYOOR', hce_place: 'NEAR SREEKRISHNA TEMPLE', branch_name: 'ERNAKULAM' },
+    { hce_code: '31', hce_name: 'SREEKRISHNA HOMEO HOSPITAL', hce_place: '', branch_name: 'THIRUVALLA' },
+    { hce_code: '1038', hce_name: 'SREEKRISHNA LAB KARUVATTA', hce_place: 'KARUVATTA', branch_name: 'THIRUVALLA' },
+    { hce_code: '310', hce_name: 'CITY CLINIC 31', hce_place: null, branch_name: 'ERNAKULAM' },
+    { hce_code: '77', hce_name: 'ST 31 CLINIC', hce_place: 'ERNAKULAM', branch_name: 'ERNAKULAM' },
+];
+const codes = (query: string) => searchRows(hces, query, FIELDS).map(h => h.hce_code);
+
+// A name match comes before a place match
+assert.deepStrictEqual(codes('sreekri'), ['31', '1038', '1825']);
+// A code comes before names holding the same digits: exact, then start, then the names
+assert.deepStrictEqual(codes('31'), ['31', '310', '77']);
+assert.deepStrictEqual(codes('1038'), ['1038']);
+// Code and name together, in either order
+assert.deepStrictEqual(codes('1038 sreekrishna'), ['1038']);
+assert.deepStrictEqual(codes('sreekrishna 1038'), ['1038']);
+// Spaces around the words change nothing
+assert.deepStrictEqual(codes('  sreekri '), ['31', '1038', '1825']);
+// Nothing typed: every row, in its own order, and the data is left unsorted
+assert.deepStrictEqual(codes(''), ['1825', '31', '1038', '310', '77']);
+assert.strictEqual(hces[0].hce_code, '1825');
+// Nested fields, and empty values, are read safely
+assert.strictEqual(matchesSearch({ customers: { customer_name: 'Asha' } }, 'ash', ['customers.customer_name']), true);
+assert.strictEqual(matchesSearch({ customers: null }, 'ash', ['customers.customer_name']), false);
+
+console.log('tableSearch: all checks passed');

@@ -751,7 +751,7 @@ function RouteAssignmentsContent() {
                     data={shown}
                     initialRowsPerPage={100}
                     loading={loading}
-                    searchFields={['keil_hces.hce_name', 'keil_hces.hce_code', 'keil_hces.hce_place']}
+                    searchFields={['keil_hces.hce_code', 'keil_hces.hce_name', 'keil_hces.hce_place']}
                     renderRow={(a: any) => (
                         <tr key={a.id} className="hover:bg-primary/[0.02] transition-colors group border-b last:border-0 border-slate-100">
                             <td className="px-6 py-6">
