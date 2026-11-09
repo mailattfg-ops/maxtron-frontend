@@ -17,7 +17,8 @@ import {
     Edit,
     Lock,
     Loader2,
-    Upload
+    Upload,
+    Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -298,6 +299,51 @@ function RouteAssignmentsContent() {
         setBulkPicked(new Set());
     };
 
+    const downloadTemplate = async () => {
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const saveAs = (await import('file-saver')).saveAs;
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('MON&THU');
+
+            const activeRouteName = routes.find(r => r.id === selectedRouteId)?.route_name || 'MPM-2';
+            
+            // Row 1: Title (Route name + Days)
+            ws.getCell('A1').value = `${activeRouteName} MONDAY&THURSDAY`;
+            ws.getCell('A1').font = { bold: true, size: 12, color: { argb: 'FF1E3A8A' } };
+
+            // Row 2: Headers
+            const headerRow = ws.getRow(2);
+            headerRow.values = ['SL NO', 'HCF NAME', 'AFF NO'];
+            headerRow.font = { bold: true };
+            headerRow.eachCell(cell => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFF1F5F9' }
+                };
+            });
+
+            // Sample rows
+            ws.addRow([1, 'TALUK HEADQUARTERS HOSPITAL', '101']);
+            ws.addRow([2, 'COMMUNITY HEALTH CENTRE', '102']);
+            ws.addRow([3, 'DISTRICT HOSPITAL', '103']);
+
+            ws.columns = [
+                { width: 10 },
+                { width: 35 },
+                { width: 16 }
+            ];
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `Route_Bulk_Upload_Template_${activeRouteName.replace(/[^A-Za-z0-9]/g, '_')}.xlsx`);
+            success('Template downloaded! Fill it in and upload.');
+        } catch (err: any) {
+            error(`Could not download template: ${err.message}`);
+        }
+    };
+
     const resetForm = () => {
         setAssignmentForm({
             hce_id: '',
@@ -489,12 +535,22 @@ function RouteAssignmentsContent() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4">
-                        <Input
-                            type="file"
-                            accept=".xlsx"
-                            onChange={e => { const file = e.target.files?.[0]; if (file) readSheet(file); e.target.value = ''; }}
-                            className="h-11 border-primary/20"
-                        />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            <Input
+                                type="file"
+                                accept=".xlsx"
+                                onChange={e => { const file = e.target.files?.[0]; if (file) readSheet(file); e.target.value = ''; }}
+                                className="h-11 border-primary/20 flex-1"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={downloadTemplate}
+                                className="h-11 border-primary/30 hover:bg-primary/5 text-primary font-bold text-xs flex items-center justify-center gap-2 whitespace-nowrap px-4"
+                            >
+                                <Download className="w-4 h-4" /> Download Sample Template (.xlsx)
+                            </Button>
+                        </div>
                         {bulkPlan && (
                             <>
                                 <div className="overflow-x-auto border border-primary/10 rounded-lg">
@@ -552,9 +608,37 @@ function RouteAssignmentsContent() {
                                                         )}
                                                     </td>
                                                     <td className="p-3">
-                                                        {b.days.length
-                                                            ? b.days.map(d => d.slice(0, 3)).join(' & ')
-                                                            : <span className="text-destructive font-bold">No days in the title</span>}
+                                                        {b.days.length > 0 && (
+                                                            <div className="font-bold text-xs mb-1">
+                                                                {b.days.map((d: string) => d.slice(0, 3)).join(' & ')}
+                                                            </div>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {DAYS.map(d => {
+                                                                const active = b.days.includes(d);
+                                                                return (
+                                                                    <button
+                                                                        key={d}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const nextDays = active ? b.days.filter((x: string) => x !== d) : [...b.days, d];
+                                                                            const next = { ...b, days: nextDays };
+                                                                            setBulkPlan(plan => plan && plan.map((p, j) => (j === i ? next : p)));
+                                                                            setBulkPicked(prev => {
+                                                                                const picked = new Set(prev);
+                                                                                if (uploadable(next)) picked.add(i); else picked.delete(i);
+                                                                                return picked;
+                                                                            });
+                                                                        }}
+                                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                                                            active ? 'bg-primary text-white border-primary' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                        }`}
+                                                                    >
+                                                                        {d.slice(0, 3)}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </td>
                                                     <td className="p-3 text-right font-bold">{b.items.length} of {b.rows.length}</td>
                                                     {[b.toRegister, b.missing].map((rows, k) => (

@@ -13,7 +13,9 @@ export type RouteSheetBlock = {
 
 /** A word that names a day: MON, MONDAY, THU, THURSDAY... */
 const DAY_WORD = /\b(MON|TUE|WED|THU|FRI|SAT|SUN)[A-Z]*/g;
-const SL_NO = /^SL\.?\s*NO/i;
+const SL_NO = /^(\s*|\b)(SL\.?\s*NO|SI\.?\s*NO|S\.?\s*NO|SR\.?\s*NO|SERIAL(\s*NO)?|NO\.?|#|SL)(\s*|\b)/i;
+const CODE_COL = /(AFF|HCE\s*(CODE|ID|NO\b)|HCF\s*(CODE|ID|NO\b)|FACILITY\s*CODE|\bCODE\b|\bID\b|REG(\.|\s*NO)?)/i;
+const NAME_COL = /(NAME|HOSPITAL|CENTRE|CENTER|CLINIC)/i;
 
 const cellText = (cell: any): string => {
     const v = cell?.value;
@@ -37,14 +39,22 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
     for (const ws of workbook.worksheets) {
         const text = (r: number, c: number) => cellText(ws.getRow(r).getCell(c));
         let header = 0;
-        for (let r = 1; r <= Math.min(ws.rowCount, 10) && !header; r++) {
-            for (let c = 1; c <= ws.columnCount; c++) if (SL_NO.test(text(r, c))) { header = r; break; }
+        let hasSl = false;
+        for (let r = 1; r <= Math.min(ws.rowCount, 30) && !header; r++) {
+            for (let c = 1; c <= ws.columnCount; c++) {
+                if (SL_NO.test(text(r, c))) { header = r; hasSl = true; break; }
+                if (NAME_COL.test(text(r, c)) && !header) { header = r; }
+            }
         }
         if (!header) continue;
 
         for (let c = 1; c <= ws.columnCount; c++) {
-            if (!SL_NO.test(text(header, c))) continue;
-            const codeCol = [c + 1, c + 2, c + 3].find(i => /AFF/i.test(text(header, i)));
+            if (hasSl && !SL_NO.test(text(header, c))) continue;
+            if (!hasSl && !NAME_COL.test(text(header, c))) continue;
+
+            const codeCol = [c + 1, c + 2, c + 3, c + 4, c + 5, c + 6].find(i => 
+                i <= ws.columnCount && CODE_COL.test(text(header, i)) && !NAME_COL.test(text(header, i))
+            );
             if (!codeCol) continue;
 
             // The title: the nearest text above the block's columns
@@ -52,6 +62,11 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
             for (let r = header - 1; r >= 1 && !title; r--) {
                 for (let i = c; i <= codeCol && !title; i++) title = text(r, i);
             }
+            // Fallback: check row 1 across the block
+            if (!title && header > 1) {
+                for (let i = c; i <= codeCol && !title; i++) title = text(1, i);
+            }
+
             const words = `${title} ${ws.name}`.toUpperCase().match(DAY_WORD) || [];
             const days = DAYS.filter(d => words.some(w => w.startsWith(d.slice(0, 3).toUpperCase())));
             // The route comes first ("EKM 1 MONDAY&THURSDAY") or after the days ("MONDAY,THURSDAY (ALAPPUZHA 1)")
@@ -62,9 +77,10 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
 
             const rows: RouteSheetBlock['rows'] = [];
             for (let r = header + 1; r <= ws.rowCount; r++) {
-                const name = codeCol > c + 1 ? text(r, c + 1) : '';
+                const name = codeCol > c + 1 ? text(r, c + 1) : (hasSl ? '' : text(r, c));
                 const code = text(r, codeCol);
-                if (name || code) rows.push({ sl: text(r, c), name, code });
+                const sl = hasSl ? text(r, c) : String(rows.length + 1);
+                if (name || code) rows.push({ sl, name, code });
             }
             blocks.push({ sheet: ws.name, title, route, days, rows });
         }
