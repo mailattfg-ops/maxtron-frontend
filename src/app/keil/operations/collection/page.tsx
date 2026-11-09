@@ -87,17 +87,24 @@ export default function DailyCollectionEntryPage() {
     const [entries, setEntries] = useState<Record<string, any>>({});
     const [showAllDays, setShowAllDays] = useState(false);
 
-    // The date's facilities in route order, each once: those due on its weekday,
+    // The date's facilities in exact serial number order: those due on its weekday,
     // those with no days set, and any marked visited (so a saved visit never drops off).
     const weekday = new Date(`${headerData.collection_date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
     const listed = new Set<string>();
-    const dayHces = assignedHces.filter(a => {
-        const days = a.collection_days || [];
-        const due = showAllDays || !days.length || days.includes(weekday) || entries[a.hce_id]?.is_visited;
-        if (!due || listed.has(a.hce_id)) return false;
-        listed.add(a.hce_id);
-        return true;
-    });
+    const dayHces = assignedHces
+        .filter(a => {
+            const days = a.collection_days || [];
+            const due = showAllDays || !days.length || days.includes(weekday) || entries[a.hce_id]?.is_visited;
+            if (!due || listed.has(a.id)) return false;
+            listed.add(a.id);
+            return true;
+        })
+        .sort((a, b) => {
+            const na = a.sl_no != null && !Number.isNaN(Number(a.sl_no)) ? Number(a.sl_no) : (a.sequence_order ?? Infinity);
+            const nb = b.sl_no != null && !Number.isNaN(Number(b.sl_no)) ? Number(b.sl_no) : (b.sequence_order ?? Infinity);
+            if (na !== nb) return na - nb;
+            return (a.sequence_order ?? 0) - (b.sequence_order ?? 0);
+        });
 
     const markAllVisited = () => setEntries(prev => {
         const next = { ...prev };

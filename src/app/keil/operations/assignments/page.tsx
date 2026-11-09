@@ -374,9 +374,30 @@ function RouteAssignmentsContent() {
         const days = DAYS.filter(d => (a.collection_days || []).includes(d));
         return days.length === 7 ? 'Every day' : days.map(d => d.slice(0, 3)).join(' & ') || 'No days';
     };
-    const lists = [...new Set(assignments.map(listOf))];
+
+    const dayOrder = (l: string) => {
+        const firstWord = l.split('&')[0].trim().toLowerCase();
+        const idx = DAYS.findIndex(d => d.toLowerCase().startsWith(firstWord));
+        return idx >= 0 ? idx : 99;
+    };
+
+    const lists = [...new Set(assignments.map(listOf))].sort((a, b) => dayOrder(a) - dayOrder(b));
     const list = lists.includes(dayFilter) ? dayFilter : '';
-    const shown = list ? assignments.filter(a => listOf(a) === list) : assignments;
+
+    // Wherever common affiliation codes appear, arrange them strictly according to exact serial number order for each respective day
+    const rawShown = list ? assignments.filter(a => listOf(a) === list) : assignments;
+    const shown = [...rawShown].sort((a, b) => {
+        if (!list) {
+            const dayA = listOf(a);
+            const dayB = listOf(b);
+            if (dayA !== dayB) return dayOrder(dayA) - dayOrder(dayB);
+        }
+        const na = a.sl_no != null && !Number.isNaN(Number(a.sl_no)) ? Number(a.sl_no) : (a.sequence_order ?? Infinity);
+        const nb = b.sl_no != null && !Number.isNaN(Number(b.sl_no)) ? Number(b.sl_no) : (b.sequence_order ?? Infinity);
+        if (na !== nb) return na - nb;
+        return (a.sequence_order ?? 0) - (b.sequence_order ?? 0);
+    });
+
     const position = new Map(shown.map((a, i) => [a.id, i + 1]));
     // A list from a sheet is numbered by its SL NOs, so a skipped row leaves a gap; any other by place: 1, 2, 3...
     const numbered = Boolean(list) && shown.some(a => a.sl_no != null);

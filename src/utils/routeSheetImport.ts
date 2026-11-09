@@ -82,6 +82,15 @@ export function readRouteSheet(workbook: Workbook): RouteSheetBlock[] {
                 const sl = hasSl ? text(r, c) : String(rows.length + 1);
                 if (name || code) rows.push({ sl, name, code });
             }
+            // Wherever common affiliation codes or multiple facilities appear, arrange them strictly according to exact serial number order
+            rows.sort((a, b) => {
+                const na = parseInt(a.sl, 10);
+                const nb = parseInt(b.sl, 10);
+                if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+                if (!Number.isNaN(na)) return -1;
+                if (!Number.isNaN(nb)) return 1;
+                return 0;
+            });
             blocks.push({ sheet: ws.name, title, route, days, rows });
         }
     }
