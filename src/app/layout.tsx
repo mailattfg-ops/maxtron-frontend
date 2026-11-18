@@ -1,6 +1,7 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import AppLayout from '@/components/AppLayout';
+import MovedNotice from '@/components/MovedNotice';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -32,6 +33,7 @@ export default function RootLayout({
             <ToastProvider>
               <ConfirmProvider>
                 <AppLayout>{children}</AppLayout>
+                <MovedNotice />
               </ConfirmProvider>
             </ToastProvider>
           </TooltipProvider>
